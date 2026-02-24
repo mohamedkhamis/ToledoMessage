@@ -81,6 +81,7 @@ dotnet run --project tests/ToledoMessage.Benchmarks -c Release
 ```
 ToledoMessage.sln
 src/
+  Toledo.SharedKernel/        # Shared utilities (DecimalTools ID generation)
   ToledoMessage/              # ASP.NET Core server (host + API + SignalR)
   ToledoMessage.Client/       # Blazor WASM client (crypto + UI)
   ToledoMessage.Shared/       # Shared DTOs and contracts
@@ -99,3 +100,4 @@ tests/
 2. **BouncyCastle.Cryptography** is the single crypto library (pure managed C#, works in WASM)
 3. **Hybrid crypto** — every key exchange combines X25519 + ML-KEM-768
 4. **Never log plaintext** — server logs contain only message IDs, timestamps, error codes
+5. **All primary keys** use `decimal(28,8)` via `Toledo.SharedKernel.Helpers.DecimalTools.GetNewId()` — no Guids

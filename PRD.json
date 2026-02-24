@@ -1,0 +1,502 @@
+{
+  "project": {
+    "name": "SecureChat",
+    "description": "Hybrid Post-Quantum Secure Messaging Platform",
+    "version": "1.0",
+    "phase": "Phase 1 - Web Foundation (16 Weeks)",
+    "database": "Microsoft SQL Server 2022",
+    "tech_stack": {
+      "backend": ".NET 8, ASP.NET Core, SignalR, Entity Framework Core",
+      "frontend": "Blazor WebAssembly",
+      "database": "Microsoft SQL Server 2022",
+      "cryptography": "libsodium, BouncyCastle, CRYSTALS-Kyber, Dilithium"
+    }
+  },
+  "sprints": [
+    {
+      "id": "SPRINT-1",
+      "name": "Project Setup & Core Cryptography",
+      "weeks": "1-2",
+      "objectives": [
+        "Initialize .NET solution structure",
+        "Configure SQL Server 2022 database with EF Core",
+        "Implement X25519 key generation",
+        "Implement Ed25519 signatures"
+      ],
+      "tasks": [
+        {
+          "id": "S1-T1",
+          "task": "Create .NET 8 solution with project structure",
+          "status": "pending",
+          "tests": [
+            "Should_Have_Solution_Structure",
+            "Should_Build_Successfully"
+          ]
+        },
+        {
+          "id": "S1-T2",
+          "task": "Configure SQL Server 2022 with EF Core",
+          "status": "pending",
+          "tests": [
+            "Should_Connect_To_SqlServer",
+            "Should_Run_Migrations"
+          ]
+        },
+        {
+          "id": "S1-T3",
+          "task": "Implement X25519 key generation",
+          "status": "pending",
+          "tests": [
+            "Should_Generate_Valid_X25519_KeyPair",
+            "Should_Perform_ECDH"
+          ]
+        },
+        {
+          "id": "S1-T4",
+          "task": "Implement Ed25519 digital signatures",
+          "status": "pending",
+          "tests": [
+            "Should_Sign_Message",
+            "Should_Verify_Signature"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "SPRINT-2",
+      "name": "Key Derivation & AES-GCM",
+      "weeks": "3-4",
+      "objectives": [
+        "Implement HKDF-SHA256 key derivation",
+        "Implement AES-256-GCM encryption",
+        "Create secure key storage interface"
+      ],
+      "tasks": [
+        {
+          "id": "S2-T1",
+          "task": "Implement HKDF-SHA256 key derivation",
+          "status": "completed",
+          "tests": [
+            "Should_Derive_Consistent_Keys",
+            "Should_Use_Domain_Separation"
+          ]
+        },
+        {
+          "id": "S2-T2",
+          "task": "Implement AES-256-GCM authenticated encryption",
+          "status": "completed",
+          "tests": [
+            "Should_Encrypt_And_Decrypt",
+            "Should_Detect_Tampering"
+          ]
+        },
+        {
+          "id": "S2-T3",
+          "task": "Create secure key storage with SQL Server encryption",
+          "status": "completed",
+          "tests": [
+            "Should_Store_Keys_Encrypted",
+            "Should_Retrieve_Keys_Correctly"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "SPRINT-3",
+      "name": "Post-Quantum Cryptography",
+      "weeks": "5-6",
+      "objectives": [
+        "Implement CRYSTALS-Kyber-768 KEM",
+        "Implement Dilithium-3 signatures",
+        "Create hybrid key pairs"
+      ],
+      "tasks": [
+        {
+          "id": "S3-T1",
+          "task": "Implement Kyber-768 key encapsulation",
+          "status": "completed",
+          "tests": [
+            "Should_Generate_Kyber_KeyPair",
+            "Should_Encapsulate_And_Decapsulate",
+            "Should_Pass_KAT_Vectors"
+          ]
+        },
+        {
+          "id": "S3-T2",
+          "task": "Implement Dilithium-3 signatures",
+          "status": "completed",
+          "tests": [
+            "Should_Sign_With_Dilithium",
+            "Should_Verify_Dilithium_Signature",
+            "Should_Pass_KAT_Vectors"
+          ]
+        },
+        {
+          "id": "S3-T3",
+          "task": "Create hybrid key pair structure (Classical + PQ)",
+          "status": "completed",
+          "tests": [
+            "Should_Generate_Both_Keys",
+            "Should_Verify_Both_Components"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "SPRINT-4",
+      "name": "Hybrid X3DH Protocol",
+      "weeks": "7-8",
+      "objectives": [
+        "Implement pre-key bundle generation",
+        "Implement X3DH initiator with Kyber",
+        "Implement X3DH responder"
+      ],
+      "tasks": [
+        {
+          "id": "S4-T1",
+          "task": "Implement hybrid pre-key bundle generation",
+          "status": "pending",
+          "tests": [
+            "Should_Generate_Complete_Bundle",
+            "Should_Sign_PreKeys"
+          ]
+        },
+        {
+          "id": "S4-T2",
+          "task": "Implement X3DH initiator with Kyber KEM",
+          "status": "pending",
+          "tests": [
+            "Should_Compute_4_DH_And_2_KEM",
+            "Should_Derive_Shared_Secret"
+          ]
+        },
+        {
+          "id": "S4-T3",
+          "task": "Implement X3DH responder",
+          "status": "pending",
+          "tests": [
+            "Should_Derive_Same_Secret_As_Initiator",
+            "Should_Consume_OneTime_Key"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "SPRINT-5",
+      "name": "Double Ratchet Algorithm",
+      "weeks": "9-10",
+      "objectives": [
+        "Implement symmetric ratchet",
+        "Implement hybrid DH ratchet",
+        "Handle out-of-order messages"
+      ],
+      "tasks": [
+        {
+          "id": "S5-T1",
+          "task": "Implement symmetric chain ratchet",
+          "status": "pending",
+          "tests": [
+            "Should_Advance_Chain",
+            "Should_Generate_Unique_Message_Keys"
+          ]
+        },
+        {
+          "id": "S5-T2",
+          "task": "Implement hybrid DH ratchet",
+          "status": "pending",
+          "tests": [
+            "Should_Ratchet_On_Receive",
+            "Should_Use_Both_Classical_And_PQ"
+          ]
+        },
+        {
+          "id": "S5-T3",
+          "task": "Implement message encryption/decryption",
+          "status": "pending",
+          "tests": [
+            "Should_Encrypt_Message",
+            "Should_Decrypt_Message",
+            "Should_Handle_Out_Of_Order"
+          ]
+        },
+        {
+          "id": "S5-T4",
+          "task": "Implement session persistence",
+          "status": "pending",
+          "tests": [
+            "Should_Save_Session",
+            "Should_Restore_Session"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "SPRINT-6",
+      "name": "Backend Infrastructure",
+      "weeks": "11-12",
+      "objectives": [
+        "Create SQL Server database schema",
+        "Build user management API",
+        "Implement SignalR message hub"
+      ],
+      "tasks": [
+        {
+          "id": "S6-T1",
+          "task": "Design and implement SQL Server database schema",
+          "status": "pending",
+          "tests": [
+            "Should_Create_All_Tables",
+            "Should_Have_Proper_Indexes"
+          ]
+        },
+        {
+          "id": "S6-T2",
+          "task": "Implement user registration/authentication API",
+          "status": "pending",
+          "tests": [
+            "Should_Register_User",
+            "Should_Authenticate",
+            "Should_Refresh_Token"
+          ]
+        },
+        {
+          "id": "S6-T3",
+          "task": "Build pre-key distribution endpoints",
+          "status": "pending",
+          "tests": [
+            "Should_Upload_Bundle",
+            "Should_Retrieve_Bundle"
+          ]
+        },
+        {
+          "id": "S6-T4",
+          "task": "Implement SignalR real-time message hub",
+          "status": "pending",
+          "tests": [
+            "Should_Deliver_Message_Realtime",
+            "Should_Queue_Offline_Messages"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "SPRINT-7",
+      "name": "Web Client Application",
+      "weeks": "13-14",
+      "objectives": [
+        "Build Blazor authentication UI",
+        "Create conversation interface",
+        "Implement real-time messaging"
+      ],
+      "tasks": [
+        {
+          "id": "S7-T1",
+          "task": "Implement authentication UI",
+          "status": "pending",
+          "tests": [
+            "Should_Login",
+            "Should_Register",
+            "Should_Logout"
+          ]
+        },
+        {
+          "id": "S7-T2",
+          "task": "Create conversation list and message view",
+          "status": "pending",
+          "tests": [
+            "Should_Display_Conversations",
+            "Should_Show_Messages"
+          ]
+        },
+        {
+          "id": "S7-T3",
+          "task": "Implement message composition with encryption",
+          "status": "pending",
+          "tests": [
+            "Should_Send_Encrypted_Message",
+            "Should_Receive_And_Decrypt"
+          ]
+        },
+        {
+          "id": "S7-T4",
+          "task": "Add real-time updates via SignalR",
+          "status": "pending",
+          "tests": [
+            "Should_Update_On_New_Message",
+            "Should_Reconnect_Automatically"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "SPRINT-8",
+      "name": "Integration & Polish",
+      "weeks": "15-16",
+      "objectives": [
+        "End-to-end testing",
+        "Performance optimization",
+        "Security audit preparation",
+        "Academic paper finalization"
+      ],
+      "tasks": [
+        {
+          "id": "S8-T1",
+          "task": "Write comprehensive E2E tests",
+          "status": "pending",
+          "tests": [
+            "Should_Complete_Full_Conversation_Flow"
+          ]
+        },
+        {
+          "id": "S8-T2",
+          "task": "Optimize performance (key exchange <500ms)",
+          "status": "pending",
+          "tests": [
+            "KeyExchange_Under_500ms",
+            "Encryption_Under_50ms"
+          ]
+        },
+        {
+          "id": "S8-T3",
+          "task": "Prepare security audit documentation",
+          "status": "pending",
+          "tests": [
+            "No_SQL_Injection",
+            "No_XSS",
+            "Replay_Attack_Prevention"
+          ]
+        },
+        {
+          "id": "S8-T4",
+          "task": "Finalize academic paper",
+          "status": "pending",
+          "tests": []
+        }
+      ]
+    }
+  ],
+  "test_suites": {
+    "unit_tests": {
+      "framework": "xUnit",
+      "project": "SecureChat.Tests.Unit",
+      "tests": [
+        {
+          "id": "UT-CRYPTO-1",
+          "name": "X25519KeyGenerationTest",
+          "method": "Should_Generate_Valid_X25519_KeyPair",
+          "code": "[Fact]\npublic void Should_Generate_Valid_X25519_KeyPair()\n{\n    var keyPair = X25519.GenerateKeyPair();\n    Assert.Equal(32, keyPair.PublicKey.Length);\n    Assert.Equal(32, keyPair.PrivateKey.Length);\n}"
+        },
+        {
+          "id": "UT-CRYPTO-2",
+          "name": "KyberKeyGenerationTest",
+          "method": "Should_Generate_Valid_Kyber768_KeyPair",
+          "code": "[Fact]\npublic void Should_Generate_Valid_Kyber768_KeyPair()\n{\n    var keyPair = Kyber768.GenerateKeyPair();\n    Assert.Equal(1184, keyPair.PublicKey.Length);\n    Assert.Equal(2400, keyPair.PrivateKey.Length);\n}"
+        },
+        {
+          "id": "UT-CRYPTO-3",
+          "name": "HybridSharedSecretTest",
+          "method": "Should_Derive_Same_Shared_Secret",
+          "code": "[Fact]\npublic async Task Should_Derive_Same_Shared_Secret()\n{\n    var alice = await _x3dhService.InitiateAsync(bobBundle);\n    var bob = await _x3dhService.RespondAsync(aliceMessage);\n    Assert.Equal(alice.SharedSecret, bob.SharedSecret);\n}"
+        },
+        {
+          "id": "UT-CRYPTO-4",
+          "name": "AesGcmEncryptionTest",
+          "method": "Should_Encrypt_And_Decrypt",
+          "code": "[Fact]\npublic void Should_Encrypt_And_Decrypt()\n{\n    var key = RandomNumberGenerator.GetBytes(32);\n    var plaintext = Encoding.UTF8.GetBytes(\"Hello\");\n    var ciphertext = AesGcm256.Encrypt(plaintext, key);\n    var decrypted = AesGcm256.Decrypt(ciphertext, key);\n    Assert.Equal(plaintext, decrypted);\n}"
+        },
+        {
+          "id": "UT-CRYPTO-5",
+          "name": "DoubleRatchetTest",
+          "method": "Should_Generate_Unique_Message_Keys",
+          "code": "[Fact]\npublic void Should_Generate_Unique_Message_Keys()\n{\n    var ratchet = new SymmetricRatchet(chainKey);\n    var key1 = ratchet.NextMessageKey();\n    var key2 = ratchet.NextMessageKey();\n    Assert.NotEqual(key1, key2);\n}"
+        },
+        {
+          "id": "UT-DB-1",
+          "name": "SqlServerConnectionTest",
+          "method": "Should_Connect_To_SqlServer",
+          "code": "[Fact]\npublic async Task Should_Connect_To_SqlServer()\n{\n    await using var conn = new SqlConnection(_connectionString);\n    await conn.OpenAsync();\n    Assert.Equal(ConnectionState.Open, conn.State);\n}"
+        },
+        {
+          "id": "UT-DB-2",
+          "name": "UserCrudTest",
+          "method": "Should_Create_And_Retrieve_User",
+          "code": "[Fact]\npublic async Task Should_Create_And_Retrieve_User()\n{\n    var user = new User { Username = \"test\" };\n    await _context.Users.AddAsync(user);\n    await _context.SaveChangesAsync();\n    var found = await _context.Users.FindAsync(user.Id);\n    Assert.NotNull(found);\n}"
+        }
+      ]
+    },
+    "integration_tests": {
+      "framework": "xUnit",
+      "project": "SecureChat.Tests.Integration",
+      "tests": [
+        {
+          "id": "IT-E2E-1",
+          "name": "FullConversationFlowTest",
+          "description": "Complete encrypted conversation from registration to message exchange"
+        },
+        {
+          "id": "IT-E2E-2",
+          "name": "MultiDeviceSyncTest",
+          "description": "Messages sync across multiple logged-in devices"
+        }
+      ]
+    },
+    "performance_tests": {
+      "framework": "BenchmarkDotNet",
+      "benchmarks": [
+        {
+          "id": "PERF-1",
+          "name": "KeyExchangeBenchmark",
+          "target": "<500ms"
+        },
+        {
+          "id": "PERF-2",
+          "name": "MessageEncryptionBenchmark",
+          "target": "<50ms"
+        },
+        {
+          "id": "PERF-3",
+          "name": "KyberEncapsBenchmark",
+          "target": "<20ms"
+        }
+      ]
+    }
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "criterion": "All unit tests pass",
+      "threshold": "100%"
+    },
+    {
+      "id": "AC-2",
+      "criterion": "Code coverage > 80%",
+      "threshold": "80%"
+    },
+    {
+      "id": "AC-3",
+      "criterion": "Key exchange < 500ms",
+      "threshold": "500ms"
+    },
+    {
+      "id": "AC-4",
+      "criterion": "Message encryption < 50ms",
+      "threshold": "50ms"
+    },
+    {
+      "id": "AC-5",
+      "criterion": "No security vulnerabilities",
+      "threshold": "0 critical"
+    },
+    {
+      "id": "AC-6",
+      "criterion": "KAT vectors pass",
+      "threshold": "100%"
+    }
+  ],
+  "progress": {
+    "last_updated": "2026-02-04",
+    "current_sprint": "SPRINT-4",
+    "status": "Sprint 3 Complete - Moving to Sprint 4",
+    "notes": "S3-T3 completed - Hybrid key pair structure implemented (HybridKeyPair.cs, HybridCrypto.cs). All Sprint 3 objectives complete. Next: S4-T1 (Hybrid pre-key bundle generation)."
+  }
+}

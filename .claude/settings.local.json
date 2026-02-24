@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod:*)",
+      "Bash(./afk-ralph.sh:*)",
+      "Bash(docker sandbox run:*)",
+      "Bash(docker sandbox logs:*)",
+      "Bash(docker sandbox:*)"
+    ]
+  }
+}

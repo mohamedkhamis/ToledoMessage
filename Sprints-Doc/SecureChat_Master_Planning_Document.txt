@@ -1,0 +1,192 @@
+
+SECURECHAT
+Hybrid Post-Quantum Secure Messaging Platform
+Master Project Planning Document
+Version 1.0
+January 2025
+Classification: Confidential
+
+
+Document Control
+Revision History
+VersionDateAuthorDescription1.0January 2025Project LeadInitial document creation1.1TBDTBDPhase 1 completion updates
+Approval
+RoleNameSignatureDateProject LeadAcademic AdvisorTechnical Reviewer
+
+Table of Contents
+Document Control	2
+Revision History	2
+Approval	2
+Table of Contents	3
+Executive Summary	5
+Project Objectives	5
+Key Deliverables	5
+Project Overview	6
+Vision Statement	6
+Problem Statement	6
+Proposed Solution	6
+Hybrid Post-Quantum Cryptography	6
+Signal Protocol Foundation	6
+Cross-Platform Architecture	6
+Technical Architecture	7
+System Overview	7
+Architecture Principles	7
+Core Components	7
+Cryptographic Stack	7
+Key Exchange (X3DH with Post-Quantum Enhancement)	7
+Message Encryption (Double Ratchet)	7
+Additional Security Measures	8
+Phase Breakdown	9
+Phase 1: Web Foundation (16 Weeks)	9
+Phase 1 Objectives	9
+Phase 1 Deliverables	9
+Phase 2: Desktop Expansion (12 Weeks)	9
+Phase 2 Objectives	9
+Phase 2 Deliverables	9
+Phase 3: Mobile Expansion (16 Weeks)	10
+Phase 3 Objectives	10
+Phase 3 Deliverables	10
+Technology Stack	11
+Development Technologies	11
+Cryptographic Libraries	11
+Development Tools	11
+Risk Assessment	12
+Technical Risks	12
+Project Risks	12
+Success Metrics	13
+Phase 1 Success Criteria	13
+Overall Project Success Criteria	13
+Appendices	14
+Appendix A: Glossary	14
+Appendix B: References	14
+
+
+
+Executive Summary
+SecureChat is an ambitious open-source secure messaging platform designed to provide state-of-the-art end-to-end encryption with novel post-quantum cryptographic enhancements. This project serves dual purposes: as a master's capstone demonstrating original research contributions to secure messaging protocols, and as a foundation for a commercial-grade open-source application.
+The platform implements a Hybrid Post-Quantum Signal Protocol, combining the proven security of the Signal Protocol (X3DH + Double Ratchet) with CRYSTALS-Kyber post-quantum key encapsulation. This approach ensures both current security and future resilience against quantum computing threats.
+Project Objectives
+• Implement Signal Protocol with hybrid post-quantum key exchange
+• Deliver a functional web-based messaging prototype (Phase 1)
+• Establish foundation for cross-platform expansion (Phases 2-3)
+• Contribute original research to the field of secure messaging
+• Create an open-source platform for community development
+Key Deliverables
+PhaseDeliverableTimelinePhase 1Web Application (Blazor WASM) + Academic Paper16 weeksPhase 2Desktop Application (.NET MAUI)12 weeksPhase 3Mobile Applications (iOS/Android)16 weeks
+
+Project Overview
+Vision Statement
+To create a secure, private, and quantum-resistant messaging platform that empowers individuals and organizations to communicate without fear of surveillance or future cryptographic compromise.
+Problem Statement
+Current secure messaging applications face several critical challenges that SecureChat aims to address:
+• Quantum Threat: Existing protocols using RSA/ECDH are vulnerable to future quantum attacks
+• Complexity Barrier: Implementing secure messaging is prohibitively complex for most developers
+• Platform Fragmentation: No unified solution exists across web, desktop, and mobile
+• Trust Issues: Proprietary solutions require trusting vendors with cryptographic implementations
+Proposed Solution
+SecureChat addresses these challenges through a comprehensive technical approach:
+Hybrid Post-Quantum Cryptography
+The platform implements a dual-layer key exchange combining X25519 (classical) with CRYSTALS-Kyber-768 (post-quantum). This ensures security against both current and future threats while maintaining compatibility with existing infrastructure.
+Signal Protocol Foundation
+Building on the battle-tested Signal Protocol provides forward secrecy and future secrecy through the Double Ratchet algorithm, ensuring that compromise of long-term keys does not affect past or future message security.
+Cross-Platform Architecture
+Using .NET MAUI and Blazor WebAssembly enables code sharing across all platforms while maintaining native performance and user experience.
+
+
+Technical Architecture
+System Overview
+SecureChat employs a client-server architecture where the server acts only as a message relay and key distribution center, never having access to plaintext messages or private keys.
+Architecture Principles
+• Zero-Knowledge Server: Server cannot decrypt messages or access private keys
+• End-to-End Encryption: All messages encrypted on client before transmission
+• Forward Secrecy: Compromise of current keys does not affect past messages
+• Post-Compromise Security: System recovers security after key compromise
+• Minimal Metadata: Server stores minimum necessary information
+Core Components
+ComponentTechnologyResponsibilityWeb ClientBlazor WebAssemblyUI, local encryption, key managementDesktop Client.NET MAUI (WinUI/macOS)Native desktop experienceMobile Client.NET MAUI (iOS/Android)Native mobile experienceAPI ServerASP.NET Core Minimal APIMessage relay, key distributionReal-time HubSignalRWebSocket connections, presenceDatabasePostgreSQLUser data, encrypted messages, public keysCacheRedis (Phase 2+)Session management, rate limiting
+Cryptographic Stack
+Key Exchange (X3DH with Post-Quantum Enhancement)
+The Extended Triple Diffie-Hellman (X3DH) protocol is enhanced with CRYSTALS-Kyber to create a hybrid key agreement:
+ComponentClassicalPost-QuantumPurposeIdentity KeyEd25519Dilithium-3Long-term identitySigned Pre-KeyX25519Kyber-768Medium-term key agreementOne-Time Pre-KeyX25519Kyber-768Single-use key agreementEphemeral KeyX25519Kyber-768Per-session key agreement
+Message Encryption (Double Ratchet)
+• Symmetric Ratchet: HKDF with SHA-256 for chain key derivation
+• DH Ratchet: X25519 + Kyber-768 hybrid for ratchet steps
+• Message Encryption: AES-256-GCM for authenticated encryption
+• Header Encryption: AES-256-GCM for metadata protection
+Additional Security Measures
+• Key Derivation: HKDF-SHA256 for all key derivations
+• Message Authentication: HMAC-SHA256 for integrity verification
+• Padding: PKCS#7 padding with random length extension
+• Timestamp Verification: Prevent replay attacks with bounded clock skew
+
+
+Phase Breakdown
+Phase 1: Web Foundation (16 Weeks)
+Phase 1 delivers a fully functional web-based secure messaging application along with the academic research paper documenting the hybrid post-quantum protocol.
+Phase 1 Objectives
+• Complete implementation of hybrid X3DH key exchange
+• Full Double Ratchet implementation with post-quantum enhancement
+• Blazor WebAssembly client with responsive UI
+• ASP.NET Core backend with SignalR real-time messaging
+• Academic paper submission-ready
+Phase 1 Deliverables
+DeliverableDescriptionSprintCrypto LibraryCore cryptographic primitives and protocols1-4Backend APIREST API and SignalR hub3-5Web ClientBlazor WASM application4-7IntegrationEnd-to-end testing and security audit6-8Academic PaperResearch contribution documentation1-8DocumentationTechnical and user documentation7-8
+Phase 2: Desktop Expansion (12 Weeks)
+Phase 2 extends SecureChat to desktop platforms using .NET MAUI, enabling native Windows and macOS applications with shared core logic.
+Phase 2 Objectives
+• Cross-platform desktop application using .NET MAUI
+• Native OS integration (notifications, file system, tray)
+• Offline message queue and sync
+• Multi-device support with key synchronization
+• Enhanced security features (hardware key support)
+Phase 2 Deliverables
+DeliverableDescriptionSprintShared CorePlatform-agnostic crypto and business logic1-2Windows ClientWinUI 3 native application2-4macOS ClientMac Catalyst application3-5Sync EngineMulti-device key and message sync4-5Native FeaturesOS-specific integrations5-6
+Phase 3: Mobile Expansion (16 Weeks)
+Phase 3 completes the platform with iOS and Android applications, achieving full cross-platform coverage.
+Phase 3 Objectives
+• Native iOS application with Apple ecosystem integration
+• Native Android application with Material Design
+• Push notification infrastructure
+• Background message retrieval
+• Biometric authentication support
+Phase 3 Deliverables
+DeliverableDescriptionSprintiOS ClientNative iOS application1-5Android ClientNative Android application1-5Push InfrastructureAPNS/FCM integration3-4Background SyncMessage retrieval in background5-6Security HardeningPlatform-specific security features6-8
+
+Technology Stack
+Development Technologies
+CategoryTechnologyVersionPurposeRuntime.NET10.0Core platformWeb FrameworkBlazor WebAssembly10.0Web clientCross-Platform.NET MAUI10.0Desktop/Mobile clientsBackendASP.NET Core10.0API and SignalRReal-timeSignalR10.0WebSocket communicationDatabasePostgreSQL16+Persistent storageORMEntity Framework Core10.0Data accessCacheRedis7+Session/rate limiting (Phase 2+)
+Cryptographic Libraries
+LibraryPurposePhaselibsodium (via libsodium-core)Ed25519, X25519, AES-GCM, HKDF1BouncyCastleKyber, Dilithium post-quantum algorithms1System.Security.Cryptography.NET native crypto primitives1
+Development Tools
+ToolPurposeVisual Studio 2025 / RiderPrimary IDEGit + GitHubVersion control and collaborationGitHub ActionsCI/CD pipelineDockerContainerization and deploymentxUnit + MoqUnit and integration testingBenchmarkDotNetPerformance benchmarking
+
+Risk Assessment
+Technical Risks
+RiskImpactProbabilityMitigationPost-quantum library immaturityHighMediumUse well-audited BouncyCastle; fallback to classical onlyWASM crypto performanceMediumMediumBenchmark early; use Web Crypto API where possibleCross-platform key storageHighLowPlatform-specific secure storage abstractionsProtocol implementation bugsCriticalMediumExtensive testing; security audit in Phase 1SignalR scaling limitsMediumLowDesign for horizontal scaling; Redis backplane
+Project Risks
+RiskImpactProbabilityMitigationScope creepHighHighStrict sprint boundaries; MVP focusTimeline slippageMediumMediumBuffer time in estimates; weekly reviewsSingle developer bottleneckHighHighComprehensive documentation; modular designAcademic requirements conflictMediumLowEarly advisor alignment; clear milestones
+
+Success Metrics
+Phase 1 Success Criteria
+MetricTargetMeasurement MethodProtocol SecurityPass security auditThird-party or peer reviewMessage Latency< 200ms E2EAutomated benchmarksKey Exchange Time< 500msPerformance testsCode Coverage> 80%xUnit coverage reportsAcademic PaperSubmission acceptedConference/journal acceptanceDocumentation100% API coverageDocumentation generator
+Overall Project Success Criteria
+• Phase 1: Functional web prototype with academic paper submitted
+• Phase 2: Desktop applications with feature parity to web
+• Phase 3: Mobile applications with push notifications
+• Open Source: Project published with community contributions
+• Security: No critical vulnerabilities in security audit
+
+
+Appendices
+Appendix A: Glossary
+TermDefinitionX3DHExtended Triple Diffie-Hellman - Key agreement protocol used by SignalDouble RatchetAlgorithm providing forward secrecy through continuous key rotationCRYSTALS-KyberPost-quantum key encapsulation mechanism (NIST standardized)Forward SecrecyProperty ensuring past messages remain secure if keys are compromisedPost-QuantumCryptography resistant to attacks by quantum computersE2E EncryptionEnd-to-end encryption where only endpoints can decryptWASMWebAssembly - Binary instruction format for web browsersMAUI.NET Multi-platform App UI - Cross-platform framework
+Appendix B: References
+• Signal Protocol Specification: https://signal.org/docs/
+• CRYSTALS-Kyber: https://pq-crystals.org/kyber/
+• NIST Post-Quantum Cryptography: https://csrc.nist.gov/projects/post-quantum-cryptography
+• .NET MAUI Documentation: https://docs.microsoft.com/dotnet/maui/
+• Blazor Documentation: https://docs.microsoft.com/aspnet/core/blazor/
+SecureChat - Master Planning Document
+
+Page 1 of 2
+

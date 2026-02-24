@@ -1,0 +1,3271 @@
+
+SECURECHAT
+Phase 1: Complete Sprint Planning
+Detailed User Stories, Tasks & Acceptance Criteria
+16 Weeks | 8 Sprints | 40+ User Stories | 778 Hours
+Version 1.0 | January 2025
+
+
+Table of Contents
+Table of Contents	2
+Phase 1 Overview	8
+Sprint Summary	8
+Sprint 1: Foundation & Project Setup (Weeks 1-2)	9
+Sprint Objectives	9
+Sprint Metrics	9
+User Stories	9
+Tasks Breakdown	9
+Acceptance Criteria	11
+Technical Notes	11
+Risks & Mitigations	11
+Tasks Breakdown	11
+Acceptance Criteria	13
+Technical Notes	13
+Dependencies	13
+Risks & Mitigations	13
+Tasks Breakdown	13
+Acceptance Criteria	14
+Technical Notes	15
+Dependencies	15
+Risks & Mitigations	15
+Tasks Breakdown	15
+Acceptance Criteria	17
+Technical Notes	17
+Dependencies	17
+Risks & Mitigations	17
+Sprint 2: Classical Cryptography (Weeks 3-4)	19
+Sprint Objectives	19
+Sprint Metrics	19
+User Stories	19
+Tasks Breakdown	19
+Acceptance Criteria	21
+Technical Notes	21
+Dependencies	21
+Risks & Mitigations	21
+Tasks Breakdown	22
+Acceptance Criteria	23
+Technical Notes	24
+Dependencies	24
+Risks & Mitigations	24
+Tasks Breakdown	24
+Acceptance Criteria	26
+Technical Notes	26
+Dependencies	26
+Risks & Mitigations	26
+Tasks Breakdown	26
+Acceptance Criteria	28
+Technical Notes	29
+Dependencies	29
+Risks & Mitigations	29
+Tasks Breakdown	29
+Acceptance Criteria	30
+Technical Notes	31
+Dependencies	31
+Risks & Mitigations	31
+Sprint 3: Post-Quantum Cryptography (Weeks 5-6)	32
+Sprint Objectives	32
+Sprint Metrics	32
+User Stories	32
+Tasks Breakdown	32
+Acceptance Criteria	34
+Technical Notes	34
+Dependencies	34
+Risks & Mitigations	34
+Tasks Breakdown	35
+Acceptance Criteria	36
+Technical Notes	36
+Dependencies	36
+Risks & Mitigations	36
+Tasks Breakdown	37
+Acceptance Criteria	38
+Technical Notes	38
+Dependencies	38
+Risks & Mitigations	39
+Tasks Breakdown	39
+Acceptance Criteria	40
+Technical Notes	40
+Dependencies	40
+Risks & Mitigations	41
+Sprint 4: Hybrid X3DH Protocol (Weeks 7-8)	42
+Sprint Objectives	42
+Sprint Metrics	42
+User Stories	42
+Tasks Breakdown	42
+Acceptance Criteria	44
+Technical Notes	44
+Dependencies	44
+Risks & Mitigations	44
+Tasks Breakdown	44
+Acceptance Criteria	46
+Technical Notes	46
+Dependencies	46
+Risks & Mitigations	46
+Tasks Breakdown	47
+Acceptance Criteria	48
+Technical Notes	48
+Dependencies	48
+Risks & Mitigations	48
+Tasks Breakdown	49
+Acceptance Criteria	50
+Technical Notes	50
+Dependencies	50
+Risks & Mitigations	50
+Sprint 5: Double Ratchet Algorithm (Weeks 9-10)	51
+Sprint Objectives	51
+Sprint Metrics	51
+User Stories	51
+Tasks Breakdown	51
+Acceptance Criteria	52
+Technical Notes	52
+Dependencies	52
+Risks & Mitigations	53
+Tasks Breakdown	53
+Acceptance Criteria	54
+Technical Notes	54
+Dependencies	54
+Risks & Mitigations	54
+Tasks Breakdown	55
+Acceptance Criteria	56
+Technical Notes	56
+Dependencies	56
+Risks & Mitigations	56
+Tasks Breakdown	57
+Acceptance Criteria	58
+Technical Notes	58
+Dependencies	58
+Risks & Mitigations	59
+Tasks Breakdown	59
+Acceptance Criteria	60
+Technical Notes	60
+Dependencies	60
+Risks & Mitigations	60
+Sprint 6: Backend Infrastructure (Weeks 11-12)	61
+Sprint Objectives	61
+Sprint Metrics	61
+User Stories	61
+Tasks Breakdown	61
+Acceptance Criteria	63
+Technical Notes	63
+Dependencies	63
+Risks & Mitigations	63
+Tasks Breakdown	64
+Acceptance Criteria	65
+Technical Notes	65
+Dependencies	65
+Risks & Mitigations	65
+Tasks Breakdown	66
+Acceptance Criteria	67
+Technical Notes	67
+Dependencies	67
+Risks & Mitigations	67
+Tasks Breakdown	68
+Acceptance Criteria	69
+Technical Notes	69
+Dependencies	69
+Risks & Mitigations	69
+Tasks Breakdown	70
+Acceptance Criteria	71
+Technical Notes	71
+Dependencies	71
+Risks & Mitigations	71
+Sprint 7: Web Client Application (Weeks 13-14)	72
+Sprint Objectives	72
+Sprint Metrics	72
+User Stories	72
+Tasks Breakdown	72
+Acceptance Criteria	73
+Technical Notes	73
+Dependencies	73
+Risks & Mitigations	74
+Tasks Breakdown	74
+Acceptance Criteria	75
+Technical Notes	75
+Dependencies	75
+Risks & Mitigations	75
+Tasks Breakdown	76
+Acceptance Criteria	77
+Technical Notes	77
+Dependencies	77
+Risks & Mitigations	77
+Tasks Breakdown	77
+Acceptance Criteria	79
+Technical Notes	79
+Dependencies	79
+Risks & Mitigations	79
+Tasks Breakdown	79
+Acceptance Criteria	80
+Technical Notes	81
+Dependencies	81
+Risks & Mitigations	81
+Tasks Breakdown	81
+Acceptance Criteria	82
+Technical Notes	82
+Dependencies	83
+Risks & Mitigations	83
+Sprint 8: Integration & Polish (Weeks 15-16)	84
+Sprint Objectives	84
+Sprint Metrics	84
+User Stories	84
+Tasks Breakdown	84
+Acceptance Criteria	86
+Technical Notes	86
+Dependencies	86
+Risks & Mitigations	86
+Tasks Breakdown	87
+Acceptance Criteria	88
+Technical Notes	88
+Dependencies	88
+Risks & Mitigations	88
+Tasks Breakdown	88
+Acceptance Criteria	90
+Technical Notes	90
+Dependencies	90
+Risks & Mitigations	90
+Tasks Breakdown	90
+Acceptance Criteria	91
+Technical Notes	92
+Risks & Mitigations	92
+Tasks Breakdown	92
+Acceptance Criteria	93
+Technical Notes	93
+Risks & Mitigations	93
+Tasks Breakdown	94
+Acceptance Criteria	95
+Technical Notes	95
+Dependencies	95
+Risks & Mitigations	95
+
+
+
+Phase 1 Overview
+Phase 1 delivers a complete web-based secure messaging application with hybrid post-quantum encryption, establishing the foundation for cross-platform expansion.
+
+Sprint Summary
+SprintWeeksFocusPointsHours11-2Foundation & Project Setup266223-4Classical Cryptography379535-6Post-Quantum Cryptography379647-8Hybrid X3DH Protocol349859-10Double Ratchet Algorithm34105611-12Backend Infrastructure34102713-14Web Client Application34108815-16Integration & Polish34112
+Total: 270 Story Points | 778 Estimated Hours
+
+
+Sprint 1: Foundation & Project Setup (Weeks 1-2)
+Sprint Goal
+Establish project infrastructure, development environment, CI/CD pipeline, and Clean Architecture solution structure.
+Sprint Objectives
+• Create GitHub repository with branch protection and CI/CD
+• Set up containerized development environment with Docker
+• Establish Clean Architecture project structure
+• Configure coding standards and contribution guidelines
+
+Sprint Metrics
+MetricValueStory Points26Hours62RiskLowUser Stories4
+User Stories
+User Story
+US-1.1: GitHub Repository Setup
+As a developer, I want to have a well-organized repository structure so that I can navigate and contribute to the codebase efficiently.
+PriorityStory PointsHoursCritical512
+Tasks Breakdown
+Task 1: Create GitHub Repository
+Hours: 2  |  Priority: Critical
+Description: Initialize SecureChat repository with proper settings, branch protection, and documentation.
+Subtasks:
+? Create repo under organization
+? Configure settings (disable wiki, enable issues)
+? Add description and topics
+? Set up repository secrets
+Technical Details: Use GitHub CLI: gh repo create SecureChat --public. Enable Dependabot and security alerts.
+Deliverables:
+? GitHub repository URL
+? Branch protection rules configured
+Task 2: Configure Branch Protection
+Hours: 1  |  Priority: High
+Description: Set up rules to enforce code review and status checks before merging.
+Subtasks:
+? Require PR reviews (min 1)
+? Require status checks
+? Prevent force pushes
+Technical Details: Apply to main and develop branches. Feature branches: feature/US-X.X-description.
+Deliverables:
+? Branch protection documentation
+Task 3: Create Solution Directory Structure
+Hours: 3  |  Priority: Critical
+Description: Establish complete directory structure following Clean Architecture principles.
+Subtasks:
+? Create /src for source projects
+? Create /tests for test projects
+? Create /docs for documentation
+? Create /.github for workflows
+Technical Details: Structure: /src/SecureChat.{Core,Crypto,Infrastructure,Api,Web.Client}
+Deliverables:
+? Complete directory structure
+? Architecture diagram
+Task 4: Configure EditorConfig
+Hours: 2  |  Priority: High
+Description: Set up code style rules for consistent formatting across developers.
+Subtasks:
+? Create .editorconfig with C# conventions
+? Configure naming rules
+? Set up analyzer settings
+Technical Details: Follow Microsoft C# conventions. Enable nullable reference types.
+Deliverables:
+? .editorconfig file
+? Code style documentation
+Task 5: Create Documentation
+Hours: 4  |  Priority: Medium
+Description: Write README, CONTRIBUTING, CODE_OF_CONDUCT, and SECURITY documents.
+Subtasks:
+? Write README with setup instructions
+? Create CONTRIBUTING guide
+? Add CODE_OF_CONDUCT
+? Create issue/PR templates
+Technical Details: Use GitHub-flavored Markdown. Include shields.io badges.
+Deliverables:
+? README.md
+? CONTRIBUTING.md
+? CODE_OF_CONDUCT.md
+? SECURITY.md
+Acceptance Criteria
+• ? Repository accessible and configured
+• ? Branch protection prevents direct pushes
+• ? All documentation complete
+• ? EditorConfig enforces style
+
+Technical Notes
+• Use signed commits
+• Branch naming: feature/US-X.X-description
+
+Risks & Mitigations
+RiskImpactMitigationPermission misconfigurationLowReview GitHub security docs
+
+User Story
+US-1.2: CI/CD Pipeline Setup
+As a developer, I want to have automated build, test, and security pipelines so that code quality is maintained automatically.
+PriorityStory PointsHoursCritical818
+Tasks Breakdown
+Task 1: Create Build Workflow
+Hours: 4  |  Priority: Critical
+Description: Set up GitHub Actions for building .NET solution on every push and PR.
+Subtasks:
+? Create .github/workflows/build.yml
+? Configure .NET 10 SDK
+? Add restore and build steps
+? Configure artifact upload
+Technical Details: Use ubuntu-latest runner. Cache NuGet packages. Build in Release mode.
+Deliverables:
+? build.yml workflow
+? Build status badge
+Task 2: Configure Test Execution
+Hours: 4  |  Priority: Critical
+Description: Add automated test execution with reporting.
+Subtasks:
+? Add dotnet test step
+? Configure test result publishing
+? Set up failure notifications
+Technical Details: Use --logger trx. Publish with dorny/test-reporter.
+Deliverables:
+? Test execution in CI
+? Test results in PRs
+Task 3: Set Up Code Coverage
+Hours: 3  |  Priority: High
+Description: Implement coverage collection with minimum 80% threshold.
+Subtasks:
+? Add coverlet.collector
+? Upload to Codecov
+? Add coverage badge
+? Set threshold enforcement
+Technical Details: Output format: cobertura. Fail if coverage drops below 80%.
+Deliverables:
+? Coverage configuration
+? Codecov integration
+Task 4: Configure CodeQL Scanning
+Hours: 3  |  Priority: High
+Description: Set up security analysis for vulnerability detection.
+Subtasks:
+? Create codeql.yml workflow
+? Configure C# analysis
+? Set up weekly scans
+Technical Details: Use github/codeql-action. Alert on high severity.
+Deliverables:
+? Security scanning workflow
+Task 5: Set Up Dependabot
+Hours: 2  |  Priority: Medium
+Description: Configure automatic dependency updates.
+Subtasks:
+? Create dependabot.yml
+? Configure update schedule
+? Set up auto-merge for patches
+Technical Details: Weekly updates, daily for security fixes.
+Deliverables:
+? Dependabot configuration
+Acceptance Criteria
+• ? Build runs on every PR
+• ? Tests execute with results in PR
+• ? Coverage reports to Codecov
+• ? Security scans running
+
+Technical Notes
+• Cache NuGet packages
+• Use concurrency groups
+
+Dependencies
+• US-1.1
+
+Risks & Mitigations
+RiskImpactMitigationFlaky testsMediumImplement retry logic
+
+User Story
+US-1.3: Development Environment
+As a developer, I want to have a containerized development environment so that setup is consistent and new contributors can start quickly.
+PriorityStory PointsHoursHigh510
+Tasks Breakdown
+Task 1: Create Docker Compose
+Hours: 4  |  Priority: Critical
+Description: Create Docker Compose for local development with all services.
+Subtasks:
+? Create docker-compose.yml
+? Configure API service
+? Configure PostgreSQL
+? Set up volumes
+Technical Details: Docker Compose v3.8. PostgreSQL 16, hot reload for API.
+Deliverables:
+? docker-compose.yml
+? Environment documentation
+Task 2: Configure PostgreSQL
+Hours: 2  |  Priority: High
+Description: Set up PostgreSQL container with initialization.
+Subtasks:
+? Configure image/version
+? Create init script
+? Add health check
+Technical Details: Image: postgres:16-alpine. Health: pg_isready.
+Deliverables:
+? PostgreSQL configuration
+? Init SQL script
+Task 3: Create Dev Certificates
+Hours: 2  |  Priority: Medium
+Description: Generate SSL certificates for local HTTPS.
+Subtasks:
+? Generate dev certificates
+? Configure trust
+? Document installation
+Technical Details: Use dotnet dev-certs. Consider mkcert for cross-platform.
+Deliverables:
+? Development certificates
+? Installation guide
+Task 4: Document Setup Process
+Hours: 2  |  Priority: Medium
+Description: Create comprehensive setup documentation.
+Subtasks:
+? Document prerequisites
+? Write step-by-step guide
+? Create troubleshooting FAQ
+Technical Details: Include Windows, macOS, Linux instructions.
+Deliverables:
+? DEVELOPMENT.md guide
+Acceptance Criteria
+• ? docker-compose up starts all services
+• ? New developer productive in 15 minutes
+• ? Hot reload works
+
+Technical Notes
+• Use .env for configuration
+• docker-compose.override.yml for local settings
+
+Dependencies
+• US-1.1
+
+Risks & Mitigations
+RiskImpactMitigationDocker performance on WindowsMediumDocument WSL2 setup
+
+User Story
+US-1.4: Clean Architecture Structure
+As a architect, I want to have a well-organized solution following Clean Architecture so that the codebase is maintainable and testable.
+PriorityStory PointsHoursCritical822
+Tasks Breakdown
+Task 1: Create SecureChat.Core
+Hours: 3  |  Priority: Critical
+Description: Create core domain library with entities and interfaces.
+Subtasks:
+? Create class library
+? Add Entities folder
+? Add Interfaces folder
+? Add Exceptions folder
+Technical Details: Zero external dependencies. Use nullable reference types.
+Deliverables:
+? SecureChat.Core.csproj
+? Base interfaces
+Task 2: Create SecureChat.Crypto
+Hours: 3  |  Priority: Critical
+Description: Create cryptographic library for all encryption operations.
+Subtasks:
+? Create class library
+? Add Primitives folder
+? Add Protocols folder
+? Configure NuGet packages
+Technical Details: Depends on Core only. Use Sodium.Core and BouncyCastle.
+Deliverables:
+? SecureChat.Crypto.csproj
+Task 3: Create SecureChat.Infrastructure
+Hours: 3  |  Priority: High
+Description: Create infrastructure library for data access and services.
+Subtasks:
+? Create class library
+? Add Persistence folder
+? Configure EF Core
+Technical Details: Implements Core interfaces. Uses Npgsql.
+Deliverables:
+? SecureChat.Infrastructure.csproj
+Task 4: Create SecureChat.Api
+Hours: 3  |  Priority: High
+Description: Create ASP.NET Core Web API project.
+Subtasks:
+? Create Web API project
+? Configure Minimal APIs
+? Set up Swagger
+? Add SignalR placeholder
+Technical Details: Use Minimal APIs. Configure Scalar for docs.
+Deliverables:
+? SecureChat.Api.csproj
+? Swagger UI
+Task 5: Create SecureChat.Web.Client
+Hours: 3  |  Priority: High
+Description: Create Blazor WebAssembly client project.
+Subtasks:
+? Create Blazor WASM project
+? Configure AOT
+? Set up folders
+? Configure HTTP client
+Technical Details: Standalone WASM. Enable trimming and AOT.
+Deliverables:
+? SecureChat.Web.Client.csproj
+Task 6: Create Test Projects
+Hours: 4  |  Priority: High
+Description: Create test projects for each source project.
+Subtasks:
+? Create 5 test projects
+? Configure xUnit
+? Add Moq and FluentAssertions
+Technical Details: Use xUnit. Add coverlet.collector.
+Deliverables:
+? Test projects configured
+Task 7: Configure Dependencies
+Hours: 3  |  Priority: High
+Description: Set up project references following Clean Architecture.
+Subtasks:
+? Verify Core has no references
+? Configure dependency flow
+? Add architectural tests
+Technical Details: Use ArchUnitNET to enforce rules.
+Deliverables:
+? Correct references
+? Architectural tests
+Acceptance Criteria
+• ? Solution builds successfully
+• ? References follow Clean Architecture
+• ? Tests discoverable
+• ? Swagger accessible
+
+Technical Notes
+• Use Directory.Build.props for shared settings
+• Enable ImplicitUsings
+
+Dependencies
+• US-1.1
+• US-1.3
+
+Risks & Mitigations
+RiskImpactMitigationCircular dependenciesHighArchitectural tests from day one
+
+
+
+Sprint 2: Classical Cryptography (Weeks 3-4)
+Sprint Goal
+Implement all classical cryptographic primitives: Ed25519, X25519, AES-256-GCM, and HKDF with comprehensive testing.
+Sprint Objectives
+• Implement Ed25519 key generation and digital signatures
+• Implement X25519 Diffie-Hellman key exchange
+• Implement AES-256-GCM authenticated encryption
+• Implement HKDF-SHA256 key derivation
+• Achieve >90% test coverage with standard test vectors
+
+Sprint Metrics
+MetricValueStory Points37Hours95RiskMediumUser Stories5
+User Stories
+User Story
+US-2.1: Key Pair Generation
+As a system, I want to generate secure Ed25519 and X25519 key pairs so that users can establish cryptographic identity and perform key exchanges.
+PriorityStory PointsHoursCritical824
+Tasks Breakdown
+Task 1: Implement Ed25519 Key Generation
+Hours: 4  |  Priority: Critical
+Description: Create Ed25519 key pairs for digital signatures using libsodium.
+Subtasks:
+? Create Ed25519KeyPair class
+? Implement Generate() method
+? Add key validation
+? Implement IDisposable
+? Add fingerprint generation
+Technical Details: Use Sodium.Core. Ed25519 private key is 64 bytes. Implement secure memory handling.
+Deliverables:
+? Ed25519KeyPair.cs
+? Unit tests with RFC 8032 vectors
+Task 2: Implement X25519 Key Generation
+Hours: 4  |  Priority: Critical
+Description: Create X25519 key pairs for Diffie-Hellman key exchange.
+Subtasks:
+? Create X25519KeyPair class
+? Implement Generate() method
+? Add key validation
+? Implement FromPrivateKey()
+Technical Details: X25519 keys are 32 bytes each. Clamp per RFC 7748.
+Deliverables:
+? X25519KeyPair.cs
+? RFC 7748 tests
+Task 3: Create Key Interfaces
+Hours: 3  |  Priority: High
+Description: Define interfaces for key pairs to enable abstraction.
+Subtasks:
+? Create IKeyPair interface
+? Create ISigningKeyPair
+? Create IKeyExchangeKeyPair
+? Add KeyPairType enum
+Technical Details: Interfaces in Core, implementations in Crypto.
+Deliverables:
+? Interface files
+? Documentation
+Task 4: Implement Key Serialization
+Hours: 4  |  Priority: High
+Description: Implement secure serialization for key storage and transmission.
+Subtasks:
+? Create KeySerializer class
+? Implement public key serialization
+? Implement encrypted private key serialization
+? Add versioning
+Technical Details: Use MessagePack. Encrypt private keys with AES-256-GCM.
+Deliverables:
+? KeySerializer.cs
+? Format specification
+Task 5: Add Key Validation
+Hours: 3  |  Priority: Medium
+Description: Implement validation to detect corrupted or malicious keys.
+Subtasks:
+? Create KeyValidator class
+? Check Ed25519 on-curve
+? Check X25519 non-zero
+? Add small subgroup check
+Technical Details: Constant-time comparison. Check against known bad keys.
+Deliverables:
+? KeyValidator.cs
+? Security tests
+Task 6: Write Comprehensive Tests
+Hours: 6  |  Priority: Critical
+Description: Create thorough tests with standard test vectors.
+Subtasks:
+? Add RFC 8032 Ed25519 vectors
+? Add RFC 7748 X25519 vectors
+? Test serialization
+? Add benchmarks
+Technical Details: Use xUnit [Theory]. Minimum 20 test cases per algorithm.
+Deliverables:
+? Test files
+? Benchmark results
+Acceptance Criteria
+• ? Key generation <10ms
+• ? All RFC vectors pass
+• ? Serialization round-trips
+• ? Invalid keys rejected
+
+Technical Notes
+• libsodium ops are constant-time
+• Never log private keys
+
+Dependencies
+• US-1.4
+
+Risks & Mitigations
+RiskImpactMitigationNative library loadingHighTest all platforms
+
+User Story
+US-2.2: Digital Signatures
+As a system, I want to create and verify Ed25519 digital signatures so that message authenticity can be cryptographically verified.
+PriorityStory PointsHoursCritical818
+Tasks Breakdown
+Task 1: Implement Ed25519 Signing
+Hours: 4  |  Priority: Critical
+Description: Create signatures with proper message handling.
+Subtasks:
+? Create Ed25519Signer class
+? Implement Sign() method
+? Add detached signature mode
+? Create Signature class
+Technical Details: Signatures are 64 bytes. Use SignDetached().
+Deliverables:
+? Ed25519Signer.cs
+? ISigner interface
+Task 2: Implement Ed25519 Verification
+Hours: 4  |  Priority: Critical
+Description: Verify signatures with malleability protection.
+Subtasks:
+? Create Ed25519Verifier class
+? Implement Verify() method
+? Add batch verification
+? Check non-canonical S values
+Technical Details: Use VerifyDetached(). Reject non-canonical signatures.
+Deliverables:
+? Ed25519Verifier.cs
+? IVerifier interface
+Task 3: Create Signature Abstraction
+Hours: 2  |  Priority: High
+Description: Define interface for algorithm flexibility.
+Subtasks:
+? Create IDigitalSignatureAlgorithm
+? Add SignatureAlgorithm enum
+? Document selection guidelines
+Technical Details: Support async operations with CancellationToken.
+Deliverables:
+? Interface file
+? Documentation
+Task 4: Implement Signature Serialization
+Hours: 2  |  Priority: Medium
+Description: Create serialization format with algorithm identification.
+Subtasks:
+? Create Signature class
+? Implement ToBytes/FromBytes
+? Add versioning
+Technical Details: Format: version | algorithm | signature data.
+Deliverables:
+? Serialization methods
+? Format spec
+Task 5: Write RFC 8032 Tests
+Hours: 4  |  Priority: Critical
+Description: Test with official test vectors.
+Subtasks:
+? Implement all RFC 8032 vectors
+? Test empty message
+? Test corrupted signatures
+? Add malleability tests
+Technical Details: Include TEST1, TEST2, TEST3, TEST1024 vectors.
+Deliverables:
+? Test files
+? Vector data
+Task 6: Benchmark Performance
+Hours: 2  |  Priority: Medium
+Description: Measure signing and verification performance.
+Subtasks:
+? Benchmark small/medium/large messages
+? Compare batch verification
+Technical Details: Target: sign <1ms, verify <1ms for small messages.
+Deliverables:
+? Benchmark results
+Acceptance Criteria
+• ? All RFC 8032 vectors pass
+• ? Sign/verify <5ms for 1KB
+• ? Non-canonical rejected
+• ? Batch verification works
+
+Technical Notes
+• Ed25519 is deterministic
+• Consider Ed25519ctx for domain separation
+
+Dependencies
+• US-2.1
+
+Risks & Mitigations
+RiskImpactMitigationSignature malleabilityHighStrict S value checking
+
+User Story
+US-2.3: X25519 Key Exchange
+As a system, I want to perform secure Diffie-Hellman key exchange so that shared secrets can be established over insecure channels.
+PriorityStory PointsHoursCritical818
+Tasks Breakdown
+Task 1: Implement X25519 DH
+Hours: 4  |  Priority: Critical
+Description: Implement core X25519 scalar multiplication.
+Subtasks:
+? Create X25519 static class
+? Implement ComputeSharedSecret()
+? Add all-zeros check
+? Ensure constant-time
+Technical Details: Use Sodium.ScalarMult. Never use raw secret directly.
+Deliverables:
+? X25519.cs
+? Security documentation
+Task 2: Create Shared Secret Derivation
+Hours: 3  |  Priority: Critical
+Description: Implement proper derivation combining DH with KDF.
+Subtasks:
+? Create DiffieHellmanResult class
+? Implement DeriveKey()
+? Add salt support
+? Document patterns
+Technical Details: Always use HKDF on raw DH output.
+Deliverables:
+? DiffieHellmanResult.cs
+? Usage docs
+Task 3: Implement Constant-Time Comparison
+Hours: 3  |  Priority: Critical
+Description: Prevent timing attacks in secret comparison.
+Subtasks:
+? Create CryptoCompare class
+? Implement ConstantTimeEquals()
+? Verify timing behavior
+Technical Details: Use XOR accumulator pattern.
+Deliverables:
+? CryptoCompare.cs
+? Timing tests
+Task 4: Add DH Validation
+Hours: 2  |  Priority: High
+Description: Validate DH results to detect malicious inputs.
+Subtasks:
+? Check all-zeros result
+? Validate public key points
+? Check known bad keys
+Technical Details: Reject low-order points and small subgroup attacks.
+Deliverables:
+? Validation logic
+? Bad key constants
+Task 5: Write RFC 7748 Tests
+Hours: 4  |  Priority: Critical
+Description: Test with official vectors.
+Subtasks:
+? Implement RFC 7748 Section 5.2 vectors
+? Add iterated test (1M iterations)
+? Test bad keys
+Technical Details: Iteration test validates long-term correctness.
+Deliverables:
+? Test file
+? Vector data
+Task 6: Document Security
+Hours: 2  |  Priority: Medium
+Description: Create comprehensive security documentation.
+Subtasks:
+? Document key requirements
+? Explain timing prevention
+? Provide examples
+Technical Details: Accessible to non-crypto developers.
+Deliverables:
+? X25519_SECURITY.md
+Acceptance Criteria
+• ? All RFC 7748 vectors pass
+• ? DH <2ms
+• ? All-zeros rejected
+• ? Constant-time verified
+
+Technical Notes
+• X25519 is Montgomery curve
+• Contributing factors prevent invalid curve attacks
+
+Dependencies
+• US-2.1
+
+Risks & Mitigations
+RiskImpactMitigationInvalid curve attackCriticalValidate all public keys
+
+User Story
+US-2.4: AES-256-GCM Encryption
+As a system, I want to encrypt messages with authenticated encryption so that confidentiality and integrity are protected simultaneously.
+PriorityStory PointsHoursCritical822
+Tasks Breakdown
+Task 1: Implement AES-GCM Encryption
+Hours: 4  |  Priority: Critical
+Description: Implement encryption with proper nonce and AAD handling.
+Subtasks:
+? Create Aes256Gcm class
+? Implement Encrypt()
+? Validate key/nonce lengths
+? Generate auth tag
+Technical Details: Nonce: 12 bytes, Tag: 16 bytes. Max message: 2^36-32 bytes.
+Deliverables:
+? Aes256Gcm.cs
+? IAuthenticatedEncryption interface
+Task 2: Implement AES-GCM Decryption
+Hours: 4  |  Priority: Critical
+Description: Implement decryption with tag verification.
+Subtasks:
+? Implement Decrypt()
+? Verify auth tag first
+? Clear on failure
+? Throw CryptoException
+Technical Details: No plaintext leakage on failure. Constant-time tag comparison.
+Deliverables:
+? Decryption methods
+? CryptoException class
+Task 3: Create Nonce Generation
+Hours: 3  |  Priority: Critical
+Description: Implement secure, unique nonce generation.
+Subtasks:
+? Create NonceGenerator class
+? Implement random nonce mode
+? Add counter mode option
+? Document requirements
+Technical Details: Random: collision after 2^48 messages. Consider hybrid approach.
+Deliverables:
+? NonceGenerator.cs
+? Nonce management docs
+Task 4: Implement AAD Support
+Hours: 3  |  Priority: High
+Description: Support additional authenticated data.
+Subtasks:
+? Add AAD parameter
+? Handle empty AAD
+? Document usage patterns
+Technical Details: AAD authenticated but not encrypted. Use for headers.
+Deliverables:
+? AAD implementation
+? Usage documentation
+Task 5: Add Size Validation
+Hours: 2  |  Priority: Medium
+Description: Validate message sizes to prevent overflow.
+Subtasks:
+? Define max size constant
+? Add size checks
+? Document limits
+Technical Details: Practical limit: 64MB in-memory. Chunk larger messages.
+Deliverables:
+? Size validation
+? Limit documentation
+Task 6: Write NIST Tests
+Hours: 4  |  Priority: Critical
+Description: Test with NIST AES-GCM vectors.
+Subtasks:
+? Parse NIST CAVP vectors
+? Test encrypt/decrypt
+? Test auth failure detection
+Technical Details: Include all key sizes and failure cases.
+Deliverables:
+? Test file
+? NIST vector data
+Task 7: Benchmark Throughput
+Hours: 2  |  Priority: Low
+Description: Measure encryption performance.
+Subtasks:
+? Benchmark various sizes
+? Measure throughput MB/s
+? Check hardware acceleration
+Technical Details: Expected: >1GB/s with AES-NI.
+Deliverables:
+? Benchmark results
+Acceptance Criteria
+• ? All NIST vectors pass
+• ? >100MB/s throughput
+• ? Nonce reuse prevented
+• ? Auth failures throw
+
+Technical Notes
+• GCM is stream cipher - never reuse nonce
+• Consider AES-GCM-SIV for nonce misuse resistance
+
+Dependencies
+• US-2.1
+
+Risks & Mitigations
+RiskImpactMitigationNonce reuseCriticalCounter mode or collision detection
+
+User Story
+US-2.5: HKDF Key Derivation
+As a system, I want to derive cryptographic keys from shared secrets so that secure uniform keys can be generated for various operations.
+PriorityStory PointsHoursCritical513
+Tasks Breakdown
+Task 1: Implement HKDF Extract
+Hours: 3  |  Priority: Critical
+Description: Create pseudorandom key from input keying material.
+Subtasks:
+? Create Hkdf class
+? Implement Extract()
+? Handle null salt
+? Validate IKM
+Technical Details: Extract: PRK = HMAC-SHA256(salt, IKM). Output: 32 bytes.
+Deliverables:
+? Hkdf.cs
+? Extract tests
+Task 2: Implement HKDF Expand
+Hours: 3  |  Priority: Critical
+Description: Produce output keying material of desired length.
+Subtasks:
+? Implement Expand()
+? Support up to 8160 bytes output
+? Clear intermediates
+Technical Details: Expand: T(i) = HMAC(PRK, T(i-1) | info | i).
+Deliverables:
+? Expand implementation
+? Tests
+Task 3: Create Convenience Method
+Hours: 2  |  Priority: High
+Description: Combine Extract and Expand in single call.
+Subtasks:
+? Implement DeriveKey()
+? Add length constants
+? Clear PRK after use
+Technical Details: Most common usage pattern.
+Deliverables:
+? DeriveKey method
+? Constants
+Task 4: Add Info Parameter Support
+Hours: 2  |  Priority: Medium
+Description: Implement domain separation via info parameter.
+Subtasks:
+? Support byte/string info
+? Document best practices
+? Provide standard strings
+Technical Details: Format: 'SecureChat v1 <purpose>'.
+Deliverables:
+? Info handling
+? Standard strings
+Task 5: Write RFC 5869 Tests
+Hours: 3  |  Priority: Critical
+Description: Test with official vectors.
+Subtasks:
+? Implement all RFC 5869 test cases
+? Add edge cases
+? Cross-verify
+Technical Details: Appendix A provides test vectors.
+Deliverables:
+? Test file
+? Vector data
+Acceptance Criteria
+• ? All RFC 5869 vectors pass
+• ? Consistent derivation
+• ? Proper cleanup
+
+Technical Notes
+• Salt provides entropy, info provides separation
+• Never derive multiple keys without differentiated info
+
+Dependencies
+• US-2.3
+
+Risks & Mitigations
+RiskImpactMitigationInfo collisionHighCentralized info management
+
+
+
+Sprint 3: Post-Quantum Cryptography (Weeks 5-6)
+Sprint Goal
+Integrate CRYSTALS-Kyber and CRYSTALS-Dilithium algorithms, create hybrid key structures.
+Sprint Objectives
+• Implement Kyber-768 KEM
+• Implement Dilithium-3 signatures
+• Create hybrid key pairs
+• Implement hybrid shared secret derivation
+
+Sprint Metrics
+MetricValueStory Points37Hours96RiskHighUser Stories4
+User Stories
+User Story
+US-3.1: Kyber Key Encapsulation
+As a system, I want to perform quantum-resistant key encapsulation so that shared secrets are protected against quantum attacks.
+PriorityStory PointsHoursCritical1330
+Tasks Breakdown
+Task 1: Integrate BouncyCastle
+Hours: 4  |  Priority: Critical
+Description: Add BouncyCastle package and configure Kyber.
+Subtasks:
+? Add NuGet package
+? Verify Kyber-768
+? Create wrapper structure
+Technical Details: Use BouncyCastle.Cryptography v2.3+.
+Deliverables:
+? Package integration
+Task 2: Create KEM Interface
+Hours: 3  |  Priority: High
+Description: Define key encapsulation interface.
+Subtasks:
+? Create IKeyEncapsulationMechanism
+? Define Encapsulate/Decapsulate
+? Add KemAlgorithm enum
+Technical Details: Generic enough for future algorithms.
+Deliverables:
+? Interface file
+Task 3: Implement Key Generation
+Hours: 4  |  Priority: Critical
+Description: Generate Kyber-768 key pairs.
+Subtasks:
+? Create KyberKeyPair class
+? Configure parameters
+? Validate sizes (pub: 1184, priv: 2400)
+Technical Details: Use KyberKeyPairGenerator.
+Deliverables:
+? KyberKeyPair.cs
+Task 4: Implement Encapsulation
+Hours: 4  |  Priority: Critical
+Description: Create ciphertext and shared secret.
+Subtasks:
+? Create KyberKem class
+? Implement Encapsulate()
+? Validate public key
+Technical Details: Ciphertext: 1088 bytes, secret: 32 bytes.
+Deliverables:
+? KyberKem.cs
+Task 5: Implement Decapsulation
+Hours: 4  |  Priority: Critical
+Description: Recover shared secret from ciphertext.
+Subtasks:
+? Implement Decapsulate()
+? Handle implicit rejection
+? Validate ciphertext
+Technical Details: Implicit rejection prevents CCA attacks.
+Deliverables:
+? Decapsulation method
+Task 6: Key Serialization
+Hours: 3  |  Priority: High
+Description: Serialize Kyber keys.
+Subtasks:
+? Implement serialization
+? Add version prefix
+Technical Details: Support encrypted private keys.
+Deliverables:
+? Serialization methods
+Task 7: KAT Vector Tests
+Hours: 6  |  Priority: Critical
+Description: Test with NIST KAT vectors.
+Subtasks:
+? Parse KAT files
+? Test all operations
+? Add negative tests
+Technical Details: NIST provides official vectors.
+Deliverables:
+? Test files
+Task 8: Performance Benchmarks
+Hours: 2  |  Priority: Medium
+Description: Benchmark Kyber operations.
+Subtasks:
+? Benchmark keygen/encaps/decaps
+Technical Details: Expected: keygen ~50ms, encaps/decaps ~20ms.
+Deliverables:
+? Benchmark results
+Acceptance Criteria
+• ? All KAT vectors pass
+• ? Keygen <100ms
+• ? Encaps/decaps <50ms
+
+Technical Notes
+• Kyber-768 = 128-bit PQ security
+
+Dependencies
+• US-2.1
+
+Risks & Mitigations
+RiskImpactMitigationPerformance insufficientMediumBenchmark early
+
+User Story
+US-3.2: Dilithium Signatures
+As a system, I want to create quantum-resistant digital signatures so that identity keys remain secure against quantum attacks.
+PriorityStory PointsHoursCritical821
+Tasks Breakdown
+Task 1: Implement Key Generation
+Hours: 4  |  Priority: Critical
+Description: Generate Dilithium-3 key pairs.
+Subtasks:
+? Create DilithiumKeyPair class
+? Configure parameters
+? Validate sizes (pub: 1952, priv: 4016)
+Technical Details: NIST Level 3 security.
+Deliverables:
+? DilithiumKeyPair.cs
+Task 2: Implement Signing
+Hours: 4  |  Priority: Critical
+Description: Create Dilithium signatures.
+Subtasks:
+? Create DilithiumSigner class
+? Implement Sign()
+? Clear private key after
+Technical Details: Signatures: 3293 bytes. Non-deterministic.
+Deliverables:
+? DilithiumSigner.cs
+Task 3: Implement Verification
+Hours: 4  |  Priority: Critical
+Description: Verify Dilithium signatures.
+Subtasks:
+? Create DilithiumVerifier class
+? Implement Verify()
+? Return boolean
+Technical Details: Verification faster than signing.
+Deliverables:
+? DilithiumVerifier.cs
+Task 4: Serialization
+Hours: 2  |  Priority: High
+Description: Serialize signatures.
+Subtasks:
+? Create format with algorithm ID
+Technical Details: Compatible with hybrid signatures.
+Deliverables:
+? Serialization
+Task 5: KAT Tests
+Hours: 5  |  Priority: Critical
+Description: Test with NIST vectors.
+Subtasks:
+? Parse vectors
+? Test all operations
+Technical Details: Verify byte-for-byte match.
+Deliverables:
+? Test files
+Task 6: Benchmarks
+Hours: 2  |  Priority: Medium
+Description: Compare with Ed25519.
+Subtasks:
+? Benchmark all operations
+Technical Details: 10-50x slower than Ed25519.
+Deliverables:
+? Comparison table
+Acceptance Criteria
+• ? All KAT vectors pass
+• ? Sign <50ms
+• ? Verify <30ms
+
+Technical Notes
+• Only for identity, not per-message
+
+Dependencies
+• US-3.1
+
+Risks & Mitigations
+RiskImpactMitigationLarge signature sizeLowOnly for identity
+
+User Story
+US-3.3: Hybrid Key Pairs
+As a system, I want to create combined classical and PQ key pairs so that protection against both classical and quantum attacks.
+PriorityStory PointsHoursCritical822
+Tasks Breakdown
+Task 1: Design Data Structure
+Hours: 3  |  Priority: Critical
+Description: Design hybrid key pair structure.
+Subtasks:
+? Define HybridIdentityKeyPair
+? Define HybridKeyExchangeKeyPair
+Technical Details: Public = classical || PQ.
+Deliverables:
+? Design document
+Task 2: Implement Identity Key Pair
+Hours: 4  |  Priority: Critical
+Description: Ed25519 + Dilithium hybrid.
+Subtasks:
+? Create class
+? Implement hybrid signing
+? Implement verification
+Technical Details: Total signature: 64 + 3293 = 3357 bytes.
+Deliverables:
+? HybridIdentityKeyPair.cs
+Task 3: Implement Exchange Key Pair
+Hours: 4  |  Priority: Critical
+Description: X25519 + Kyber hybrid.
+Subtasks:
+? Create class
+? Generate both components
+Technical Details: Public: 32 + 1184 = 1216 bytes.
+Deliverables:
+? HybridKeyExchangeKeyPair.cs
+Task 4: Serialization Format
+Hours: 4  |  Priority: High
+Description: Serialize hybrid keys.
+Subtasks:
+? Define format
+? Implement serialize/deserialize
+Technical Details: Version | type | classical | PQ.
+Deliverables:
+? Serialization
+Task 5: Key Fingerprinting
+Hours: 3  |  Priority: Medium
+Description: Generate human-readable fingerprints.
+Subtasks:
+? Create fingerprint from combined key
+? Format as hex groups
+Technical Details: SHA-256, formatted as 'XXXX XXXX...'
+Deliverables:
+? Fingerprint generation
+Task 6: Tests
+Hours: 4  |  Priority: High
+Description: Test hybrid functionality.
+Subtasks:
+? Test generation
+? Test signing requires both valid
+Technical Details: Verification fails if either fails.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Both components generated
+• ? Verification requires both valid
+• ? Serialization works
+
+Technical Notes
+• Both must succeed for security
+
+Dependencies
+• US-2.1
+• US-2.2
+• US-3.1
+• US-3.2
+
+Risks & Mitigations
+RiskImpactMitigationLarge key sizesMediumDocument requirements
+
+User Story
+US-3.4: Hybrid Shared Secret
+As a system, I want to combine classical and PQ shared secrets so that security even if one algorithm is broken.
+PriorityStory PointsHoursCritical823
+Tasks Breakdown
+Task 1: Design Combination Strategy
+Hours: 4  |  Priority: Critical
+Description: Design secure secret combination.
+Subtasks:
+? Research approaches
+? Choose concatenation + KDF
+Technical Details: final = HKDF(x25519 || kyber, salt, info).
+Deliverables:
+? Strategy document
+Task 2: Implement Combination
+Hours: 6  |  Priority: Critical
+Description: Combine X25519 and Kyber secrets.
+Subtasks:
+? Create HybridKeyExchange class
+? Implement initiator/responder
+? Apply HKDF
+Technical Details: 64 bytes input to HKDF, 32 bytes output.
+Deliverables:
+? HybridKeyExchange.cs
+Task 3: Create Hybrid KDF
+Hours: 4  |  Priority: High
+Description: KDF wrapper for hybrid derivation.
+Subtasks:
+? Create HybridKdf class
+? Define standard salt/info
+Technical Details: Salt: 'SecureChat Hybrid KDF v1'.
+Deliverables:
+? HybridKdf.cs
+Task 4: Domain Separation
+Hours: 3  |  Priority: High
+Description: Implement context separation.
+Subtasks:
+? Define domain strings
+? Create context builder
+Technical Details: Format: 'SecureChat|v1|operation|context'.
+Deliverables:
+? Domain constants
+Task 5: Security Documentation
+Hours: 4  |  Priority: High
+Description: Document security properties.
+Subtasks:
+? Analyze under classical/quantum attacker
+? Document assumptions
+Technical Details: IND-CCA2 if either provides it.
+Deliverables:
+? HYBRID_SECURITY.md
+Task 6: Tests
+Hours: 4  |  Priority: Critical
+Description: Test hybrid exchange.
+Subtasks:
+? Test both parties derive same secret
+? Test uniqueness
+Technical Details: Deterministic given same inputs.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Both parties derive same secret
+• ? Domain separation works
+• ? Security documented
+
+Technical Notes
+• Concatenation preferred over XOR
+
+Dependencies
+• US-2.3
+• US-2.5
+• US-3.1
+
+Risks & Mitigations
+RiskImpactMitigationIncorrect combinationCriticalFollow established patterns
+
+
+
+Sprint 4: Hybrid X3DH Protocol (Weeks 7-8)
+Sprint Goal
+Implement complete Hybrid Post-Quantum X3DH key agreement protocol.
+Sprint Objectives
+• Implement pre-key bundle generation
+• Implement X3DH initiator
+• Implement X3DH responder
+• Create session initialization
+
+Sprint Metrics
+MetricValueStory Points34Hours98RiskHighUser Stories4
+User Stories
+User Story
+US-4.1: Pre-Key Bundle Generation
+As a user, I want to generate and publish pre-key bundles so that others can initiate conversations when I'm offline.
+PriorityStory PointsHoursCritical824
+Tasks Breakdown
+Task 1: Design PreKeyBundle
+Hours: 3  |  Priority: Critical
+Description: Design bundle data structure.
+Subtasks:
+? Define all fields
+? Include hybrid identity key
+? Include signed pre-key
+? Include one-time pre-keys
+Technical Details: Bundle: regId, identityKey, signedPreKey + sig, oneTimePreKeys[].
+Deliverables:
+? PreKeyBundle.cs
+Task 2: Implement Signed Pre-Key
+Hours: 4  |  Priority: Critical
+Description: Generate signed pre-keys.
+Subtasks:
+? Create SignedPreKey class
+? Sign with identity key
+? Add key ID and timestamp
+Technical Details: Rotate weekly, keep old for 30 days.
+Deliverables:
+? SignedPreKey.cs
+Task 3: Implement One-Time Pre-Keys
+Hours: 4  |  Priority: Critical
+Description: Batch generate one-time keys.
+Subtasks:
+? Create OneTimePreKey class
+? Implement batch generation (100)
+? Track depletion
+Technical Details: Replenish when <20 remaining.
+Deliverables:
+? OneTimePreKey.cs
+Task 4: Bundle Serialization
+Hours: 4  |  Priority: High
+Description: Serialize bundles for transmission.
+Subtasks:
+? Define format
+? Implement serialize/deserialize
+Technical Details: Binary with length prefixes.
+Deliverables:
+? Serialization methods
+Task 5: Bundle Validation
+Hours: 3  |  Priority: High
+Description: Validate received bundles.
+Subtasks:
+? Validate key formats
+? Verify signature
+? Check freshness
+Technical Details: Reject invalid/expired bundles.
+Deliverables:
+? Validation logic
+Task 6: Tests
+Hours: 6  |  Priority: Critical
+Description: Test bundle functionality.
+Subtasks:
+? Test generation
+? Test serialization
+? Test validation
+Technical Details: >90% coverage.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Bundles generate correctly
+• ? Signatures verify
+• ? One-time keys unique
+• ? Serialization works
+
+Technical Notes
+• Upload on registration
+• Clients fetch to initiate
+
+Dependencies
+• US-3.3
+• US-3.4
+
+Risks & Mitigations
+RiskImpactMitigationLarge bundle sizeMediumCompress, lazy load
+
+User Story
+US-4.2: X3DH Initiator
+As a sender, I want to perform X3DH as initiator so that I can establish shared secret with recipient.
+PriorityStory PointsHoursCritical1028
+Tasks Breakdown
+Task 1: Implement DH Calculations
+Hours: 6  |  Priority: Critical
+Description: Compute DH1-DH4 values.
+Subtasks:
+? DH1: IK_A, SPK_B
+? DH2: EK_A, IK_B
+? DH3: EK_A, SPK_B
+? DH4: EK_A, OPK_B (optional)
+Technical Details: Combine X25519 results.
+Deliverables:
+? DH calculation code
+Task 2: Add Kyber Encapsulation
+Hours: 6  |  Priority: Critical
+Description: Perform Kyber KEM for each exchange.
+Subtasks:
+? Encapsulate to SPK Kyber
+? Encapsulate to OPK Kyber (if present)
+Technical Details: Produces ciphertexts for responder.
+Deliverables:
+? Kyber integration
+Task 3: Combine Shared Secrets
+Hours: 4  |  Priority: Critical
+Description: Derive master secret from all inputs.
+Subtasks:
+? Concatenate DH outputs
+? Concatenate Kyber secrets
+? Apply HKDF
+Technical Details: Master = HKDF(DH1||DH2||DH3||DH4||K1||K2).
+Deliverables:
+? Secret combination
+Task 4: Create Initial Message
+Hours: 4  |  Priority: Critical
+Description: Build message with all public data.
+Subtasks:
+? Include identity key
+? Include ephemeral key
+? Include Kyber ciphertexts
+Technical Details: Recipient uses to derive same secret.
+Deliverables:
+? InitialMessage structure
+Task 5: Handle No OPK Case
+Hours: 3  |  Priority: Medium
+Description: Support when no one-time key available.
+Subtasks:
+? Omit DH4 and K2
+? Adjust derivation
+Technical Details: Less forward secrecy without OPK.
+Deliverables:
+? OPK handling
+Task 6: Tests
+Hours: 5  |  Priority: Critical
+Description: Test initiator protocol.
+Subtasks:
+? Test with/without OPK
+? Verify secret matches responder
+Technical Details: Cross-verify both sides.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? All DH computed correctly
+• ? Kyber ciphertexts valid
+• ? Secret matches responder
+• ? Initial message complete
+
+Technical Notes
+• Ephemeral key generated fresh
+• OPK provides extra forward secrecy
+
+Dependencies
+• US-4.1
+
+Risks & Mitigations
+RiskImpactMitigationProtocol mismatchHighTest vectors
+
+User Story
+US-4.3: X3DH Responder
+As a recipient, I want to process X3DH initial messages so that I can derive shared secret for secure communication.
+PriorityStory PointsHoursCritical1026
+Tasks Breakdown
+Task 1: Parse Initial Message
+Hours: 3  |  Priority: Critical
+Description: Extract and validate message contents.
+Subtasks:
+? Parse identity key
+? Parse ephemeral key
+? Parse Kyber ciphertexts
+Technical Details: Validate all formats.
+Deliverables:
+? Message parsing
+Task 2: Perform DH Calculations
+Hours: 6  |  Priority: Critical
+Description: Compute DH values (responder side).
+Subtasks:
+? DH1: SPK_B, IK_A
+? DH2: IK_B, EK_A
+? DH3: SPK_B, EK_A
+? DH4: OPK_B, EK_A
+Technical Details: Symmetric to initiator.
+Deliverables:
+? DH code
+Task 3: Kyber Decapsulation
+Hours: 6  |  Priority: Critical
+Description: Recover Kyber shared secrets.
+Subtasks:
+? Decapsulate SPK ciphertext
+? Decapsulate OPK ciphertext
+Technical Details: Use corresponding private keys.
+Deliverables:
+? Decapsulation code
+Task 4: Derive Shared Secret
+Hours: 4  |  Priority: Critical
+Description: Combine all inputs identically.
+Subtasks:
+? Same concatenation order
+? Same HKDF parameters
+Technical Details: Must match initiator exactly.
+Deliverables:
+? Secret derivation
+Task 5: Consume One-Time Key
+Hours: 3  |  Priority: High
+Description: Mark OPK as used.
+Subtasks:
+? Delete OPK after use
+? Handle missing OPK
+Technical Details: OPK never reused.
+Deliverables:
+? Key consumption
+Task 6: Tests
+Hours: 4  |  Priority: Critical
+Description: Test responder protocol.
+Subtasks:
+? Verify secret matches initiator
+? Test all edge cases
+Technical Details: End-to-end verification.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Same secret as initiator
+• ? Invalid messages rejected
+• ? OPK consumed properly
+
+Technical Notes
+• Look up pre-keys by ID
+• Handle replay attempts
+
+Dependencies
+• US-4.1
+• US-4.2
+
+Risks & Mitigations
+RiskImpactMitigationKey lookup failureMediumProper error handling
+
+User Story
+US-4.4: Session Initialization
+As a system, I want to initialize Double Ratchet sessions from X3DH so that message encryption can begin.
+PriorityStory PointsHoursHigh620
+Tasks Breakdown
+Task 1: Design Session State
+Hours: 4  |  Priority: Critical
+Description: Define all session state fields.
+Subtasks:
+? Root key
+? Sending/receiving chains
+? Ratchet keys
+? Message counters
+Technical Details: Persist across restarts.
+Deliverables:
+? Session class design
+Task 2: Initialize from X3DH
+Hours: 4  |  Priority: Critical
+Description: Create session from shared secret.
+Subtasks:
+? Derive root key
+? Initialize chain keys
+? Set initial ratchet keys
+Technical Details: Asymmetric for initiator/responder.
+Deliverables:
+? Initialization code
+Task 3: Derive Initial Keys
+Hours: 4  |  Priority: Critical
+Description: Derive all initial key material.
+Subtasks:
+? Root key from master
+? First sending chain
+? First receiving chain
+Technical Details: Use HKDF with domain separation.
+Deliverables:
+? Key derivation
+Task 4: Session Persistence
+Hours: 4  |  Priority: High
+Description: Store session state securely.
+Subtasks:
+? Define storage format
+? Encrypt sensitive state
+Technical Details: Encrypted at rest.
+Deliverables:
+? Persistence code
+Task 5: Tests
+Hours: 4  |  Priority: Critical
+Description: Test session initialization.
+Subtasks:
+? Verify both sides compatible
+? Test persistence
+Technical Details: Ready for Double Ratchet.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Sessions initialize correctly
+• ? Keys derived properly
+• ? State persists
+• ? Ready for messaging
+
+Technical Notes
+• Initiator/responder have different initial state
+
+Dependencies
+• US-4.2
+• US-4.3
+
+Risks & Mitigations
+RiskImpactMitigationState corruptionHighAtomic updates
+
+
+
+Sprint 5: Double Ratchet Algorithm (Weeks 9-10)
+Sprint Goal
+Implement complete Hybrid Double Ratchet for message encryption with forward secrecy.
+Sprint Objectives
+• Implement symmetric ratchet
+• Implement hybrid DH ratchet
+• Create message encryption/decryption
+• Handle out-of-order messages
+• Add session persistence
+
+Sprint Metrics
+MetricValueStory Points34Hours105RiskHighUser Stories5
+User Stories
+User Story
+US-5.1: Symmetric Ratchet
+As a system, I want to perform symmetric key ratcheting so that each message has unique encryption key.
+PriorityStory PointsHoursCritical518
+Tasks Breakdown
+Task 1: Chain Key Derivation
+Hours: 4  |  Priority: Critical
+Description: Derive successive chain keys.
+Subtasks:
+? Create ChainKey class
+? Implement Advance()
+? Track index
+Technical Details: CK_next = HKDF(CK, constant_1).
+Deliverables:
+? ChainKey.cs
+Task 2: Message Key Derivation
+Hours: 4  |  Priority: Critical
+Description: Derive message-specific keys.
+Subtasks:
+? Create MessageKey class
+? Derive enc key and IV
+Technical Details: MK = HKDF(CK, constant_2).
+Deliverables:
+? MessageKey.cs
+Task 3: Chain State Management
+Hours: 4  |  Priority: High
+Description: Manage sending/receiving chains.
+Subtasks:
+? Create SendingChain
+? Create ReceivingChain
+? Track message numbers
+Technical Details: Handle skipped messages.
+Deliverables:
+? Chain classes
+Task 4: Tests
+Hours: 6  |  Priority: Critical
+Description: Test ratchet correctness.
+Subtasks:
+? Test unique keys
+? Test proper cleanup
+Technical Details: Verify security properties.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Chain advances correctly
+• ? Keys unique per message
+• ? Old keys deleted
+
+Technical Notes
+• Delete chain key after deriving message key
+
+Dependencies
+• US-4.4
+
+Risks & Mitigations
+RiskImpactMitigationKey reuseCriticalStrict advancement
+
+User Story
+US-5.2: Hybrid DH Ratchet
+As a system, I want to perform hybrid DH ratcheting so that new shared secrets established regularly for post-compromise security.
+PriorityStory PointsHoursCritical826
+Tasks Breakdown
+Task 1: DH Ratchet Step
+Hours: 5  |  Priority: Critical
+Description: Perform X25519 ratchet.
+Subtasks:
+? Generate new key pair
+? Compute DH with received key
+Technical Details: On receiving with new ratchet key.
+Deliverables:
+? DH ratchet code
+Task 2: Kyber Ratchet Step
+Hours: 6  |  Priority: Critical
+Description: Perform Kyber ratchet.
+Subtasks:
+? Encapsulate/decapsulate as appropriate
+Technical Details: KEM alongside DH.
+Deliverables:
+? Kyber ratchet code
+Task 3: Combine Ratchet Outputs
+Hours: 4  |  Priority: Critical
+Description: Derive new root and chain keys.
+Subtasks:
+? Concatenate DH and Kyber
+? Update root key
+? Initialize new chain
+Technical Details: RK, CK = HKDF(RK, DH||Kyber).
+Deliverables:
+? Combination code
+Task 4: New Key Pair Generation
+Hours: 4  |  Priority: High
+Description: Generate ratchet keys on send.
+Subtasks:
+? Generate after receiving
+? Include in message header
+Technical Details: Triggers recipient ratchet.
+Deliverables:
+? Key generation
+Task 5: Tests
+Hours: 5  |  Priority: Critical
+Description: Test DH ratchet.
+Subtasks:
+? Test both parties advance
+? Test key derivation
+Technical Details: Verify synchronization.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Ratchet advances on receive
+• ? Both parties derive same keys
+• ? Old keys deleted
+
+Technical Notes
+• Ratchet step on first message with new key
+
+Dependencies
+• US-5.1
+
+Risks & Mitigations
+RiskImpactMitigationDesynchronizationHighCareful state management
+
+User Story
+US-5.3: Message Encryption
+As a sender, I want to encrypt messages securely so that only intended recipient can read messages.
+PriorityStory PointsHoursCritical822
+Tasks Breakdown
+Task 1: Encryption Wrapper
+Hours: 4  |  Priority: Critical
+Description: Implement message encryption.
+Subtasks:
+? Get message key from chain
+? Encrypt plaintext
+Technical Details: AES-256-GCM.
+Deliverables:
+? Encrypt method
+Task 2: Header Construction
+Hours: 3  |  Priority: Critical
+Description: Build message header.
+Subtasks:
+? Include ratchet public key
+? Include message number
+? Include previous chain length
+Technical Details: Header needed for decryption.
+Deliverables:
+? Header structure
+Task 3: Header Encryption
+Hours: 4  |  Priority: Medium
+Description: Optionally encrypt header.
+Subtasks:
+? Derive header key
+? Encrypt with AES-GCM
+Technical Details: Metadata protection.
+Deliverables:
+? Header encryption
+Task 4: Padding
+Hours: 3  |  Priority: Medium
+Description: Hide message length.
+Subtasks:
+? Apply PKCS#7 padding
+? Add random extension
+Technical Details: Prevent length analysis.
+Deliverables:
+? Padding code
+Task 5: State Updates
+Hours: 4  |  Priority: Critical
+Description: Update ratchet state after send.
+Subtasks:
+? Advance sending chain
+? Update message counter
+Technical Details: Atomic state update.
+Deliverables:
+? State update code
+Task 6: Tests
+Hours: 4  |  Priority: Critical
+Description: Test encryption.
+Subtasks:
+? Test round-trip
+? Test padding
+Technical Details: Verify with decryption.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Messages encrypt correctly
+• ? Headers included
+• ? Padding applied
+• ? State updates atomically
+
+Technical Notes
+• New ratchet key on first send after receive
+
+Dependencies
+• US-5.2
+
+Risks & Mitigations
+RiskImpactMitigationState corruption on failureHighTransactional updates
+
+User Story
+US-5.4: Message Decryption
+As a recipient, I want to decrypt received messages so that I can read communications.
+PriorityStory PointsHoursCritical824
+Tasks Breakdown
+Task 1: Decrypt Message
+Hours: 4  |  Priority: Critical
+Description: Implement message decryption.
+Subtasks:
+? Parse header
+? Get/derive message key
+? Decrypt ciphertext
+Technical Details: Handle authentication failure.
+Deliverables:
+? Decrypt method
+Task 2: DH Ratchet Advancement
+Hours: 4  |  Priority: Critical
+Description: Process ratchet key in header.
+Subtasks:
+? Check if new ratchet key
+? Perform DH ratchet step
+Technical Details: Advance if new key received.
+Deliverables:
+? Ratchet advancement
+Task 3: Out-of-Order Handling
+Hours: 6  |  Priority: Critical
+Description: Handle messages arriving out of order.
+Subtasks:
+? Store skipped message keys
+? Try skipped keys first
+? Enforce MAX_SKIP limit
+Technical Details: MAX_SKIP = 1000 messages.
+Deliverables:
+? OOO handling
+Task 4: Skipped Key Storage
+Hours: 4  |  Priority: High
+Description: Store keys for skipped messages.
+Subtasks:
+? Key by (ratchet_key, message_num)
+? Delete after use or expiration
+Technical Details: Expire after 7 days.
+Deliverables:
+? Key storage
+Task 5: Key Cleanup
+Hours: 3  |  Priority: Medium
+Description: Delete old keys.
+Subtasks:
+? Delete used message keys
+? Prune old skipped keys
+Technical Details: Minimize stored key material.
+Deliverables:
+? Cleanup code
+Task 6: Tests
+Hours: 5  |  Priority: Critical
+Description: Test decryption.
+Subtasks:
+? Test in-order
+? Test out-of-order
+? Test skipped key expiration
+Technical Details: Comprehensive scenarios.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Decryption works in/out of order
+• ? Skipped keys stored correctly
+• ? MAX_SKIP enforced
+• ? Old keys cleaned
+
+Technical Notes
+• Try skipped keys before ratchet advance
+
+Dependencies
+• US-5.3
+
+Risks & Mitigations
+RiskImpactMitigationKey leakage from skipped keysMediumExpiration and limits
+
+User Story
+US-5.5: Session Persistence
+As a user, I want to have sessions persist across restarts so that conversations continue seamlessly.
+PriorityStory PointsHoursHigh515
+Tasks Breakdown
+Task 1: Serialization Format
+Hours: 4  |  Priority: High
+Description: Define session storage format.
+Subtasks:
+? Serialize all state
+? Include version for evolution
+Technical Details: Binary format with encryption.
+Deliverables:
+? Format specification
+Task 2: Secure Storage
+Hours: 5  |  Priority: Critical
+Description: Store sessions securely.
+Subtasks:
+? Encrypt with device key
+? Atomic writes
+Technical Details: Use platform secure storage.
+Deliverables:
+? Storage implementation
+Task 3: Session Recovery
+Hours: 4  |  Priority: High
+Description: Load and validate sessions.
+Subtasks:
+? Deserialize state
+? Validate integrity
+Technical Details: Handle corrupted sessions.
+Deliverables:
+? Recovery code
+Task 4: Tests
+Hours: 4  |  Priority: High
+Description: Test persistence.
+Subtasks:
+? Test save/load cycle
+? Test corruption handling
+Technical Details: Verify encryption works.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Sessions serialize correctly
+• ? Encryption protects at rest
+• ? Recovery handles corruption
+
+Technical Notes
+• Key storage separate from session storage
+
+Dependencies
+• US-5.4
+
+Risks & Mitigations
+RiskImpactMitigationData loss on corruptionHighBackup previous state
+
+
+
+Sprint 6: Backend Infrastructure (Weeks 11-12)
+Sprint Goal
+Build server infrastructure with REST API, SignalR hub, database, and user management.
+Sprint Objectives
+• Create database schema with EF Core
+• Implement user management API
+• Build pre-key distribution endpoints
+• Create SignalR message hub
+• Implement message storage
+
+Sprint Metrics
+MetricValueStory Points34Hours102RiskMediumUser Stories5
+User Stories
+User Story
+US-6.1: Database Schema
+As a system, I want to have a database schema for data persistence so that user data and messages can be stored.
+PriorityStory PointsHoursCritical822
+Tasks Breakdown
+Task 1: Design Entity Model
+Hours: 4  |  Priority: Critical
+Description: Design database entities.
+Subtasks:
+? User entity
+? PreKeyBundle entities
+? Message entity
+? Device entity
+Technical Details: EF Core with PostgreSQL.
+Deliverables:
+? Entity classes
+Task 2: Create User Entity
+Hours: 3  |  Priority: Critical
+Description: Define user table.
+Subtasks:
+? Id, Username, PasswordHash
+? Identity key reference
+? Registration timestamp
+Technical Details: Use GUID for Id.
+Deliverables:
+? User.cs
+Task 3: Create PreKey Entities
+Hours: 4  |  Priority: Critical
+Description: Define pre-key tables.
+Subtasks:
+? IdentityKey table
+? SignedPreKey table
+? OneTimePreKey table
+Technical Details: Foreign key to User.
+Deliverables:
+? PreKey entities
+Task 4: Create Message Entity
+Hours: 3  |  Priority: Critical
+Description: Define message storage.
+Subtasks:
+? Encrypted content
+? Sender/recipient
+? Timestamps
+Technical Details: Only encrypted blobs.
+Deliverables:
+? Message.cs
+Task 5: Setup Migrations
+Hours: 3  |  Priority: High
+Description: Configure EF Core migrations.
+Subtasks:
+? Initial migration
+? Apply to database
+Technical Details: Use code-first migrations.
+Deliverables:
+? Migration files
+Task 6: Create Indexes
+Hours: 2  |  Priority: Medium
+Description: Add database indexes.
+Subtasks:
+? Index on username
+? Index on recipient for messages
+Technical Details: Optimize queries.
+Deliverables:
+? Index configuration
+Task 7: Integration Tests
+Hours: 4  |  Priority: High
+Description: Test database operations.
+Subtasks:
+? Test CRUD operations
+? Test relationships
+Technical Details: Use test container.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Schema supports all features
+• ? Migrations run cleanly
+• ? Queries performant
+
+Technical Notes
+• Server never sees plaintext
+
+Dependencies
+• US-1.4
+
+Risks & Mitigations
+RiskImpactMitigationSchema changes difficult laterMediumDesign carefully upfront
+
+User Story
+US-6.2: User Management API
+As a user, I want to register and authenticate so that I can access the messaging service.
+PriorityStory PointsHoursCritical823
+Tasks Breakdown
+Task 1: Registration Endpoint
+Hours: 4  |  Priority: Critical
+Description: Implement user registration.
+Subtasks:
+? POST /api/users/register
+? Validate input
+? Hash password
+? Store user
+Technical Details: Use Argon2id for password.
+Deliverables:
+? Register endpoint
+Task 2: Authentication
+Hours: 5  |  Priority: Critical
+Description: Implement JWT authentication.
+Subtasks:
+? POST /api/auth/login
+? Validate credentials
+? Generate JWT
+Technical Details: RS256 signing.
+Deliverables:
+? Login endpoint
+? JWT config
+Task 3: Token Refresh
+Hours: 4  |  Priority: High
+Description: Implement refresh tokens.
+Subtasks:
+? POST /api/auth/refresh
+? Validate refresh token
+? Issue new tokens
+Technical Details: Refresh token rotation.
+Deliverables:
+? Refresh endpoint
+Task 4: Profile Endpoints
+Hours: 3  |  Priority: Medium
+Description: User profile management.
+Subtasks:
+? GET /api/users/me
+? PUT /api/users/me
+Technical Details: Authenticated routes.
+Deliverables:
+? Profile endpoints
+Task 5: Rate Limiting
+Hours: 3  |  Priority: Medium
+Description: Prevent abuse.
+Subtasks:
+? Limit login attempts
+? Limit registration
+Technical Details: Use sliding window.
+Deliverables:
+? Rate limiting middleware
+Task 6: Tests
+Hours: 4  |  Priority: High
+Description: Test all endpoints.
+Subtasks:
+? Test success/failure paths
+? Test rate limiting
+Technical Details: Integration tests.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Users can register
+• ? Authentication works
+• ? Refresh tokens work
+• ? Rate limiting active
+
+Technical Notes
+• Never store plaintext passwords
+
+Dependencies
+• US-6.1
+
+Risks & Mitigations
+RiskImpactMitigationAuth bypassCriticalSecurity testing
+
+User Story
+US-6.3: Pre-Key Distribution
+As a user, I want to upload and retrieve pre-key bundles so that key exchange can occur.
+PriorityStory PointsHoursCritical620
+Tasks Breakdown
+Task 1: Upload Endpoint
+Hours: 4  |  Priority: Critical
+Description: Upload pre-key bundle.
+Subtasks:
+? POST /api/keys/bundle
+? Validate bundle
+? Store keys
+Technical Details: Authenticated.
+Deliverables:
+? Upload endpoint
+Task 2: Retrieval Endpoint
+Hours: 4  |  Priority: Critical
+Description: Get recipient's bundle.
+Subtasks:
+? GET /api/keys/bundle/{userId}
+? Return identity + signed + one OTP
+Technical Details: Consume one-time key.
+Deliverables:
+? Retrieval endpoint
+Task 3: One-Time Key Consumption
+Hours: 4  |  Priority: Critical
+Description: Mark keys as used.
+Subtasks:
+? Delete after retrieval
+? Handle concurrent access
+Technical Details: Atomic operation.
+Deliverables:
+? Consumption logic
+Task 4: Replenishment Notification
+Hours: 3  |  Priority: Medium
+Description: Notify when keys low.
+Subtasks:
+? Check count on retrieval
+? Notify via SignalR
+Technical Details: When <20 remaining.
+Deliverables:
+? Notification logic
+Task 5: Bundle Validation
+Hours: 3  |  Priority: High
+Description: Validate uploaded bundles.
+Subtasks:
+? Check signatures
+? Validate formats
+Technical Details: Reject invalid bundles.
+Deliverables:
+? Validation code
+Task 6: Tests
+Hours: 4  |  Priority: Critical
+Description: Test key distribution.
+Subtasks:
+? Test upload/retrieve
+? Test consumption
+Technical Details: Integration tests.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Bundles upload/retrieve correctly
+• ? One-time keys consumed
+• ? Invalid bundles rejected
+
+Technical Notes
+• Server cannot read keys
+
+Dependencies
+• US-6.2
+
+Risks & Mitigations
+RiskImpactMitigationKey exhaustionMediumReplenishment notifications
+
+User Story
+US-6.4: SignalR Message Hub
+As a user, I want to receive messages in real-time so that I get messages instantly.
+PriorityStory PointsHoursCritical822
+Tasks Breakdown
+Task 1: Create SignalR Hub
+Hours: 4  |  Priority: Critical
+Description: Implement message hub.
+Subtasks:
+? Create ChatHub class
+? Add SendMessage method
+? Add authentication
+Technical Details: Authenticated connections.
+Deliverables:
+? ChatHub.cs
+Task 2: Connection Management
+Hours: 4  |  Priority: Critical
+Description: Track connected users.
+Subtasks:
+? Map userId to connectionId
+? Handle reconnection
+Technical Details: Support multiple devices.
+Deliverables:
+? Connection manager
+Task 3: Message Routing
+Hours: 4  |  Priority: Critical
+Description: Route messages to recipients.
+Subtasks:
+? Look up recipient connections
+? Send to all devices
+Technical Details: Fanout to devices.
+Deliverables:
+? Routing logic
+Task 4: Presence Tracking
+Hours: 3  |  Priority: Medium
+Description: Track online status.
+Subtasks:
+? Update on connect/disconnect
+? Expose to clients
+Technical Details: Privacy-respecting.
+Deliverables:
+? Presence tracking
+Task 5: Offline Queuing
+Hours: 5  |  Priority: Critical
+Description: Queue for offline users.
+Subtasks:
+? Store if no connection
+? Deliver on connect
+Technical Details: Persist to database.
+Deliverables:
+? Queuing logic
+Task 6: Tests
+Hours: 4  |  Priority: High
+Description: Test hub functionality.
+Subtasks:
+? Test real-time delivery
+? Test offline queue
+Technical Details: SignalR test client.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Messages deliver <100ms when online
+• ? Queue when offline
+• ? Multi-device support
+
+Technical Notes
+• SignalR handles reconnection
+
+Dependencies
+• US-6.2
+
+Risks & Mitigations
+RiskImpactMitigationScaling limitsMediumRedis backplane for scale
+
+User Story
+US-6.5: Message Storage
+As a user, I want to have messages stored for offline delivery so that I don't miss messages when disconnected.
+PriorityStory PointsHoursCritical515
+Tasks Breakdown
+Task 1: Encrypted Storage
+Hours: 4  |  Priority: Critical
+Description: Store encrypted messages.
+Subtasks:
+? Save ciphertext blob
+? Store metadata
+Technical Details: No plaintext access.
+Deliverables:
+? Storage methods
+Task 2: Retrieval Endpoint
+Hours: 3  |  Priority: Critical
+Description: Retrieve pending messages.
+Subtasks:
+? GET /api/messages
+? Return undelivered
+Technical Details: Authenticated, paginated.
+Deliverables:
+? Retrieval endpoint
+Task 3: Delivery Confirmation
+Hours: 3  |  Priority: Critical
+Description: Delete after delivery.
+Subtasks:
+? Client confirms receipt
+? Delete from storage
+Technical Details: Exactly-once delivery.
+Deliverables:
+? Confirmation endpoint
+Task 4: Message Expiration
+Hours: 3  |  Priority: Medium
+Description: Expire old messages.
+Subtasks:
+? Configure TTL
+? Background cleanup
+Technical Details: Default: 30 days.
+Deliverables:
+? Expiration job
+Task 5: Tests
+Hours: 4  |  Priority: High
+Description: Test storage.
+Subtasks:
+? Test store/retrieve/delete
+? Test expiration
+Technical Details: Integration tests.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Messages persist
+• ? Deliver on reconnect
+• ? Delete after delivery
+• ? Expire old messages
+
+Technical Notes
+• Server only sees encrypted blobs
+
+Dependencies
+• US-6.4
+
+Risks & Mitigations
+RiskImpactMitigationStorage growthMediumExpiration and quotas
+
+
+
+Sprint 7: Web Client Application (Weeks 13-14)
+Sprint Goal
+Build Blazor WebAssembly client with complete UI for secure messaging.
+Sprint Objectives
+• Implement authentication UI
+• Create conversation list
+• Build message view
+• Create message composition
+• Implement contact management
+• Add real-time updates
+
+Sprint Metrics
+MetricValueStory Points34Hours108RiskMediumUser Stories6
+User Stories
+User Story
+US-7.1: Authentication UI
+As a user, I want to login and register through the UI so that I can access the application.
+PriorityStory PointsHoursCritical516
+Tasks Breakdown
+Task 1: Login Page
+Hours: 4  |  Priority: Critical
+Description: Create login form.
+Subtasks:
+? Username/password fields
+? Submit button
+? Error display
+Technical Details: Blazor component.
+Deliverables:
+? Login.razor
+Task 2: Registration Page
+Hours: 4  |  Priority: Critical
+Description: Create registration form.
+Subtasks:
+? Form fields
+? Validation
+? Submit logic
+Technical Details: Client-side validation.
+Deliverables:
+? Register.razor
+Task 3: Auth State Management
+Hours: 4  |  Priority: Critical
+Description: Manage auth state.
+Subtasks:
+? Store tokens
+? Auto-refresh
+? Logout
+Technical Details: AuthenticationStateProvider.
+Deliverables:
+? Auth service
+Task 4: Secure Token Storage
+Hours: 4  |  Priority: Critical
+Description: Store tokens securely.
+Subtasks:
+? Use localStorage carefully
+? Clear on logout
+Technical Details: Consider memory-only option.
+Deliverables:
+? Token storage
+Acceptance Criteria
+• ? Login/register works
+• ? Tokens stored securely
+• ? Responsive design
+
+Technical Notes
+• Consider IndexedDB for secure storage
+
+Dependencies
+• US-6.2
+
+Risks & Mitigations
+RiskImpactMitigationToken theftHighShort expiry, refresh tokens
+
+User Story
+US-7.2: Conversation List
+As a user, I want to see my conversations so that I can select one to view.
+PriorityStory PointsHoursCritical516
+Tasks Breakdown
+Task 1: List Component
+Hours: 4  |  Priority: Critical
+Description: Create conversation list.
+Subtasks:
+? Load conversations
+? Display preview
+Technical Details: Virtualized list.
+Deliverables:
+? ConversationList.razor
+Task 2: Item Component
+Hours: 3  |  Priority: High
+Description: Single conversation item.
+Subtasks:
+? Avatar
+? Name
+? Preview
+? Timestamp
+Technical Details: Reusable component.
+Deliverables:
+? ConversationItem.razor
+Task 3: Unread Indicators
+Hours: 3  |  Priority: High
+Description: Show unread count.
+Subtasks:
+? Track read state
+? Display badge
+Technical Details: Update in real-time.
+Deliverables:
+? Unread logic
+Task 4: Search/Filter
+Hours: 3  |  Priority: Medium
+Description: Search conversations.
+Subtasks:
+? Text search
+? Filter unread
+Technical Details: Client-side filtering.
+Deliverables:
+? Search component
+Task 5: Tests
+Hours: 3  |  Priority: High
+Description: Test list component.
+Subtasks:
+? bUnit tests
+Technical Details: Component testing.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Conversations display
+• ? Unread counts shown
+• ? Search works
+
+Technical Notes
+• Lazy load old conversations
+
+Dependencies
+• US-6.4
+
+Risks & Mitigations
+RiskImpactMitigationPerformance with many conversationsLowVirtualization
+
+User Story
+US-7.3: Message View
+As a user, I want to view conversation messages so that I can read chat history.
+PriorityStory PointsHoursCritical518
+Tasks Breakdown
+Task 1: Message List
+Hours: 4  |  Priority: Critical
+Description: Display messages.
+Subtasks:
+? Load messages
+? Scroll to bottom
+? Infinite scroll
+Technical Details: Virtualized list.
+Deliverables:
+? MessageList.razor
+Task 2: Message Bubble
+Hours: 3  |  Priority: Critical
+Description: Single message display.
+Subtasks:
+? Sent/received styles
+? Timestamp
+? Status
+Technical Details: Different alignment.
+Deliverables:
+? MessageBubble.razor
+Task 3: Status Indicators
+Hours: 3  |  Priority: Medium
+Description: Show message status.
+Subtasks:
+? Sending/sent/delivered/read
+Technical Details: Update from server.
+Deliverables:
+? Status logic
+Task 4: Infinite Scroll
+Hours: 4  |  Priority: Medium
+Description: Load older messages.
+Subtasks:
+? Detect scroll to top
+? Load more
+Technical Details: Pagination.
+Deliverables:
+? Scroll loading
+Task 5: Tests
+Hours: 4  |  Priority: High
+Description: Test message view.
+Subtasks:
+? Test rendering
+? Test scrolling
+Technical Details: bUnit tests.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Messages display correctly
+• ? Timestamps shown
+• ? Infinite scroll works
+
+Technical Notes
+• Decrypt messages on client
+
+Dependencies
+• US-7.2
+
+Risks & Mitigations
+RiskImpactMitigationMemory with long conversationsMediumWindowed virtualization
+
+User Story
+US-7.4: Message Composition
+As a user, I want to compose and send messages so that I can communicate with others.
+PriorityStory PointsHoursCritical518
+Tasks Breakdown
+Task 1: Input Component
+Hours: 3  |  Priority: Critical
+Description: Create message input.
+Subtasks:
+? Text area
+? Auto-resize
+Technical Details: Blazor input.
+Deliverables:
+? MessageInput.razor
+Task 2: Send Logic
+Hours: 4  |  Priority: Critical
+Description: Encrypt and send.
+Subtasks:
+? Get session
+? Encrypt message
+? Send via SignalR
+Technical Details: Async operation.
+Deliverables:
+? Send logic
+Task 3: Crypto Integration
+Hours: 5  |  Priority: Critical
+Description: Connect to crypto layer.
+Subtasks:
+? Access session
+? Call encrypt
+? Handle errors
+Technical Details: WASM crypto.
+Deliverables:
+? Crypto service
+Task 4: Send Failure Handling
+Hours: 3  |  Priority: High
+Description: Handle send failures.
+Subtasks:
+? Retry logic
+? Error display
+Technical Details: Queue failed messages.
+Deliverables:
+? Error handling
+Task 5: Tests
+Hours: 3  |  Priority: High
+Description: Test composition.
+Subtasks:
+? Test encrypt/send
+Technical Details: Integration tests.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Messages send encrypted
+• ? UI responsive during send
+• ? Errors handled
+
+Technical Notes
+• Encrypt entirely on client
+
+Dependencies
+• US-7.3
+• US-5.3
+
+Risks & Mitigations
+RiskImpactMitigationCrypto performance in WASMMediumWeb Workers
+
+User Story
+US-7.5: Contact Management
+As a user, I want to manage contacts so that I can start new conversations.
+PriorityStory PointsHoursHigh822
+Tasks Breakdown
+Task 1: Contact List
+Hours: 3  |  Priority: High
+Description: Display contacts.
+Subtasks:
+? Load contacts
+? Display names
+Technical Details: Sorted list.
+Deliverables:
+? ContactList.razor
+Task 2: Contact Search
+Hours: 3  |  Priority: High
+Description: Search for users.
+Subtasks:
+? Search API
+? Display results
+Technical Details: Debounced search.
+Deliverables:
+? Search component
+Task 3: New Conversation Flow
+Hours: 4  |  Priority: Critical
+Description: Start new conversation.
+Subtasks:
+? Select contact
+? Fetch pre-keys
+? Perform X3DH
+? Create session
+Technical Details: Full protocol flow.
+Deliverables:
+? New conversation logic
+Task 4: Safety Number Verification
+Hours: 4  |  Priority: Critical
+Description: Verify contact identity.
+Subtasks:
+? Display fingerprint
+? Compare out-of-band
+Technical Details: Hybrid key fingerprint.
+Deliverables:
+? Verification UI
+Task 5: Tests
+Hours: 4  |  Priority: High
+Description: Test contact management.
+Subtasks:
+? Test search
+? Test new conversation
+Technical Details: Integration tests.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Contacts display
+• ? Search works
+• ? New conversations created
+• ? Safety numbers verifiable
+
+Technical Notes
+• X3DH on first message
+
+Dependencies
+• US-6.3
+• US-4.2
+
+Risks & Mitigations
+RiskImpactMitigationFailed key exchangeHighClear error handling
+
+User Story
+US-7.6: Real-Time Updates
+As a user, I want to see messages instantly so that messaging feels real-time.
+PriorityStory PointsHoursCritical618
+Tasks Breakdown
+Task 1: SignalR Client
+Hours: 4  |  Priority: Critical
+Description: Connect to hub.
+Subtasks:
+? Create connection
+? Handle messages
+Technical Details: Blazor SignalR client.
+Deliverables:
+? SignalR service
+Task 2: Connection Management
+Hours: 3  |  Priority: Critical
+Description: Handle reconnection.
+Subtasks:
+? Auto-reconnect
+? Queue during disconnect
+Technical Details: Exponential backoff.
+Deliverables:
+? Connection manager
+Task 3: Message Handlers
+Hours: 4  |  Priority: Critical
+Description: Process received messages.
+Subtasks:
+? Decrypt
+? Update UI
+Technical Details: Reactive updates.
+Deliverables:
+? Message handlers
+Task 4: Presence Updates
+Hours: 2  |  Priority: Low
+Description: Show online status.
+Subtasks:
+? Subscribe to presence
+? Update UI
+Technical Details: Privacy option.
+Deliverables:
+? Presence UI
+Task 5: Tests
+Hours: 3  |  Priority: High
+Description: Test real-time.
+Subtasks:
+? Test message receipt
+? Test reconnection
+Technical Details: Integration tests.
+Deliverables:
+? Test files
+Acceptance Criteria
+• ? Messages appear instantly
+• ? Reconnects automatically
+• ? Presence shows
+
+Technical Notes
+• Decrypt on receive
+
+Dependencies
+• US-6.4
+• US-5.4
+
+Risks & Mitigations
+RiskImpactMitigationConnection instabilityMediumRobust reconnection
+
+
+
+Sprint 8: Integration & Polish (Weeks 15-16)
+Sprint Goal
+Complete E2E testing, security review preparation, optimization, and documentation.
+Sprint Objectives
+• Write comprehensive E2E tests
+• Prepare security audit documentation
+• Optimize performance
+• Create user documentation
+• Complete developer documentation
+• Finalize academic paper
+
+Sprint Metrics
+MetricValueStory Points34Hours112RiskMediumUser Stories6
+User Stories
+User Story
+US-8.1: End-to-End Testing
+As a developer, I want to have comprehensive E2E tests so that system works correctly as a whole.
+PriorityStory PointsHoursCritical825
+Tasks Breakdown
+Task 1: Setup Playwright
+Hours: 3  |  Priority: High
+Description: Configure E2E framework.
+Subtasks:
+? Install Playwright
+? Configure for Blazor
+Technical Details: Playwright for .NET.
+Deliverables:
+? Playwright config
+Task 2: Registration E2E
+Hours: 3  |  Priority: Critical
+Description: Test user registration.
+Subtasks:
+? Fill form
+? Submit
+? Verify account
+Technical Details: Full browser test.
+Deliverables:
+? Registration tests
+Task 3: Key Exchange E2E
+Hours: 4  |  Priority: Critical
+Description: Test X3DH flow.
+Subtasks:
+? User A registers
+? User B registers
+? A initiates with B
+? Verify shared secret
+Technical Details: Two browser contexts.
+Deliverables:
+? Key exchange tests
+Task 4: Messaging E2E
+Hours: 4  |  Priority: Critical
+Description: Test message send/receive.
+Subtasks:
+? Send message
+? Verify receipt
+? Verify decryption
+Technical Details: Full protocol flow.
+Deliverables:
+? Messaging tests
+Task 5: Multi-Device E2E
+Hours: 4  |  Priority: Medium
+Description: Test multiple devices.
+Subtasks:
+? Login on two devices
+? Sync messages
+Technical Details: Multiple sessions.
+Deliverables:
+? Multi-device tests
+Task 6: Offline E2E
+Hours: 4  |  Priority: Medium
+Description: Test offline/reconnect.
+Subtasks:
+? Disconnect
+? Send message
+? Reconnect
+? Verify delivery
+Technical Details: Network simulation.
+Deliverables:
+? Offline tests
+Task 7: CI Integration
+Hours: 3  |  Priority: High
+Description: Run E2E in CI.
+Subtasks:
+? Configure pipeline
+? Handle artifacts
+Technical Details: GitHub Actions.
+Deliverables:
+? CI workflow
+Acceptance Criteria
+• ? All E2E tests pass
+• ? CI runs on every PR
+
+Technical Notes
+• Use headed mode for debugging
+
+Dependencies
+• US-7.6
+
+Risks & Mitigations
+RiskImpactMitigationFlaky testsMediumStable selectors, retry logic
+
+User Story
+US-8.2: Security Audit Prep
+As a security reviewer, I want to have audit documentation so that security review can be conducted.
+PriorityStory PointsHoursCritical524
+Tasks Breakdown
+Task 1: Security Architecture Doc
+Hours: 6  |  Priority: Critical
+Description: Document security design.
+Subtasks:
+? System overview
+? Crypto details
+? Trust boundaries
+Technical Details: Comprehensive document.
+Deliverables:
+? SECURITY_ARCHITECTURE.md
+Task 2: Threat Model
+Hours: 5  |  Priority: Critical
+Description: Document threats.
+Subtasks:
+? STRIDE analysis
+? Attack trees
+Technical Details: Standard methodology.
+Deliverables:
+? THREAT_MODEL.md
+Task 3: Crypto Specification
+Hours: 6  |  Priority: Critical
+Description: Detail crypto implementation.
+Subtasks:
+? Protocol spec
+? Key management
+? Algorithms
+Technical Details: Formal specification.
+Deliverables:
+? CRYPTO_SPEC.md
+Task 4: Security Test Cases
+Hours: 4  |  Priority: High
+Description: Define security tests.
+Subtasks:
+? Penetration test cases
+? Crypto test cases
+Technical Details: Testable requirements.
+Deliverables:
+? Security test doc
+Task 5: Key Management Doc
+Hours: 3  |  Priority: High
+Description: Document key lifecycle.
+Subtasks:
+? Generation
+? Storage
+? Rotation
+? Deletion
+Technical Details: Best practices.
+Deliverables:
+? KEY_MANAGEMENT.md
+Acceptance Criteria
+• ? Documentation complete
+• ? Ready for external review
+
+Technical Notes
+• Follow OWASP guidelines
+
+Dependencies
+• US-5.5
+
+Risks & Mitigations
+RiskImpactMitigationIncomplete documentationMediumChecklist review
+
+User Story
+US-8.3: Performance Optimization
+As a user, I want to have a fast application so that messaging feels instant.
+PriorityStory PointsHoursHigh520
+Tasks Breakdown
+Task 1: Profile Crypto
+Hours: 4  |  Priority: High
+Description: Profile crypto operations.
+Subtasks:
+? Identify bottlenecks
+? Measure times
+Technical Details: Benchmark tools.
+Deliverables:
+? Profile report
+Task 2: Optimize Key Exchange
+Hours: 5  |  Priority: High
+Description: Speed up X3DH.
+Subtasks:
+? Parallel operations
+? Cache where safe
+Technical Details: Async parallelism.
+Deliverables:
+? Optimized X3DH
+Task 3: Optimize Encryption
+Hours: 4  |  Priority: High
+Description: Speed up message encryption.
+Subtasks:
+? Buffer management
+? Reduce allocations
+Technical Details: Memory optimization.
+Deliverables:
+? Optimized encryption
+Task 4: WASM Optimization
+Hours: 3  |  Priority: Medium
+Description: Optimize WASM loading.
+Subtasks:
+? Lazy loading
+? AOT where beneficial
+Technical Details: Blazor optimization.
+Deliverables:
+? Faster load
+Task 5: Performance Benchmarks
+Hours: 4  |  Priority: High
+Description: Create benchmark suite.
+Subtasks:
+? Benchmark all operations
+? Document baselines
+Technical Details: BenchmarkDotNet.
+Deliverables:
+? Benchmark suite
+Acceptance Criteria
+• ? Key exchange <500ms
+• ? Message encryption <50ms
+• ? E2E latency <200ms
+
+Technical Notes
+• Measure on representative hardware
+
+Dependencies
+• US-5.5
+
+Risks & Mitigations
+RiskImpactMitigationWASM limitationsMediumWeb Workers for heavy crypto
+
+User Story
+US-8.4: User Documentation
+As a user, I want to have documentation so that I can use the app securely.
+PriorityStory PointsHoursHigh514
+Tasks Breakdown
+Task 1: Getting Started Guide
+Hours: 3  |  Priority: High
+Description: Write user guide.
+Subtasks:
+? Installation
+? First message
+Technical Details: User-friendly language.
+Deliverables:
+? Getting started
+Task 2: Safety Number Guide
+Hours: 3  |  Priority: Critical
+Description: Document verification.
+Subtasks:
+? Why important
+? How to verify
+Technical Details: Screenshots.
+Deliverables:
+? Verification guide
+Task 3: FAQ
+Hours: 2  |  Priority: Medium
+Description: Answer common questions.
+Subtasks:
+? Compile questions
+? Write answers
+Technical Details: Searchable format.
+Deliverables:
+? FAQ document
+Task 4: Privacy Policy
+Hours: 3  |  Priority: Critical
+Description: Define privacy practices.
+Subtasks:
+? Data collection
+? Data usage
+Technical Details: Legal review.
+Deliverables:
+? Privacy policy
+Task 5: Terms of Service
+Hours: 3  |  Priority: Critical
+Description: Define usage terms.
+Subtasks:
+? Acceptable use
+? Limitations
+Technical Details: Legal review.
+Deliverables:
+? ToS document
+Acceptance Criteria
+• ? All docs complete
+• ? Legal docs reviewed
+
+Technical Notes
+• Plain language
+
+Risks & Mitigations
+RiskImpactMitigationLegal issuesMediumLegal review
+
+User Story
+US-8.5: Developer Documentation
+As a developer, I want to have API documentation so that I can contribute to the project.
+PriorityStory PointsHoursHigh517
+Tasks Breakdown
+Task 1: API Documentation
+Hours: 3  |  Priority: High
+Description: Document REST API.
+Subtasks:
+? Generate Swagger
+? Add examples
+Technical Details: OpenAPI spec.
+Deliverables:
+? API docs
+Task 2: Architecture Overview
+Hours: 4  |  Priority: High
+Description: Document architecture.
+Subtasks:
+? System diagram
+? Component overview
+Technical Details: Diagrams + text.
+Deliverables:
+? Architecture doc
+Task 3: Crypto Library API
+Hours: 4  |  Priority: High
+Description: Document crypto API.
+Subtasks:
+? All public APIs
+? Usage examples
+Technical Details: XML doc comments.
+Deliverables:
+? Crypto API docs
+Task 4: Contribution Guide
+Hours: 3  |  Priority: High
+Description: Detailed contributor guide.
+Subtasks:
+? Setup
+? Workflow
+? Standards
+Technical Details: Step-by-step.
+Deliverables:
+? Updated CONTRIBUTING.md
+Task 5: Deployment Guide
+Hours: 3  |  Priority: High
+Description: Document deployment.
+Subtasks:
+? Docker deployment
+? Cloud options
+Technical Details: Infrastructure as code.
+Deliverables:
+? Deployment guide
+Acceptance Criteria
+• ? Docs complete
+• ? New dev can onboard
+
+Technical Notes
+• Keep updated
+
+Risks & Mitigations
+RiskImpactMitigationDocs out of dateLowDoc generation
+
+User Story
+US-8.6: Academic Paper
+As a researcher, I want to finalize the academic paper so that it can be submitted for publication.
+PriorityStory PointsHoursCritical622
+Tasks Breakdown
+Task 1: Performance Evaluation
+Hours: 6  |  Priority: Critical
+Description: Complete eval section.
+Subtasks:
+? Run benchmarks
+? Create tables/graphs
+? Write analysis
+Technical Details: LaTeX tables.
+Deliverables:
+? Evaluation section
+Task 2: Security Analysis
+Hours: 6  |  Priority: Critical
+Description: Finalize security section.
+Subtasks:
+? Formal arguments
+? Comparison
+Technical Details: Rigorous analysis.
+Deliverables:
+? Security section
+Task 3: Related Work
+Hours: 4  |  Priority: High
+Description: Complete literature review.
+Subtasks:
+? Add recent papers
+? Compare approaches
+Technical Details: Academic writing.
+Deliverables:
+? Related work section
+Task 4: References
+Hours: 2  |  Priority: High
+Description: Complete bibliography.
+Subtasks:
+? Format all refs
+? Verify citations
+Technical Details: BibTeX.
+Deliverables:
+? References
+Task 5: Formatting
+Hours: 2  |  Priority: High
+Description: Format for venue.
+Subtasks:
+? Apply template
+? Check length
+Technical Details: Conference template.
+Deliverables:
+? Formatted paper
+Task 6: Advisor Review
+Hours: 4  |  Priority: Critical
+Description: Get feedback and revise.
+Subtasks:
+? Submit draft
+? Address feedback
+Technical Details: Iteration.
+Deliverables:
+? Final paper
+Acceptance Criteria
+• ? Paper complete
+• ? Advisor approved
+• ? Ready for submission
+
+Technical Notes
+• Target venue selected
+
+Dependencies
+• US-8.3
+
+Risks & Mitigations
+RiskImpactMitigationFeedback delaysMediumEarly submission
+
+
+
+SecureChat - Phase 1 Sprint Planning
+
+Page 1 of 2
+

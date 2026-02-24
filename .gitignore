@@ -1,0 +1,21 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs/SecureChat
+/src/SecureChat.Client/bin/Debug/net8.0
+/src/SecureChat.Client/obj/Debug/net8.0
+/src/SecureChat.Client/obj
+/src/SecureChat.Client/wwwroot/lib/bootstrap/dist
+/src/SecureChat.Crypto/obj
+/src/SecureChat.Server/bin/Debug/net8.0
+/src/SecureChat.Server/obj
+/src/SecureChat.Shared/bin/Debug/net8.0
+/src/SecureChat.Shared/obj
+/tests/SecureChat.Tests.Integration/bin/Debug/net8.0
+/tests/SecureChat.Tests.Integration/obj
+/tests/SecureChat.Tests.Unit/obj
+/tests/SecureChat.Tests.Unit/bin/Debug/net8.0
+/.vscode
+/src/SecureChat.Crypto/bin/Debug/net8.0
+*.config

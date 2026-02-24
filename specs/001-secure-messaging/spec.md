@@ -13,6 +13,7 @@
 - Q: What message content types are supported? → A: Text-only for MVP (P1-P2 stories). The architecture MUST be extensible to support images, audio, and file attachments in future iterations without protocol changes. Media would be encrypted as blobs using the same per-message keys.
 - Q: Can a newly linked device access messages sent before it was linked? → A: No. A new device only receives messages sent after linking. Past messages remain on the original device only. This aligns with forward secrecy (past message keys are deleted) and the zero-trust server model.
 - Q: Are there rate limits or abuse prevention measures? → A: Yes. Server-enforced rate limits on registration (per IP), message sending (per user/minute), and search queries. Standard practice for production messaging services.
+- Q: What is the maximum number of linked devices per user? → A: Maximum 10 linked devices. Each message is encrypted once per recipient device, so this caps fan-out at 10x per recipient.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -135,6 +136,7 @@ A user sets a disappearing message timer on a conversation (e.g., 24 hours, 7 da
 - What happens if the server is compromised? The server only stores encrypted ciphertext and public keys. No plaintext, private keys, or session keys are ever transmitted to or stored on the server. A server compromise reveals no message content.
 - What happens when a user attempts to message a deactivated account? The system informs the sender that the recipient is no longer available and prevents message delivery.
 - What happens when a user loses all their devices? The user must create a new account and new identity. There is no server-side account recovery. Contacts are notified via a key change warning when the user re-registers, and previous message history is permanently lost.
+- What happens when a user sends messages too rapidly or a bot spams registrations? The server enforces rate limits per IP (registration) and per user (message sending, search). Requests exceeding the limit receive an error response and are temporarily throttled.
 
 ## Requirements *(mandatory)*
 
@@ -151,7 +153,7 @@ A user sets a disappearing message timer on a conversation (e.g., 24 hours, 7 da
 - **FR-008**: System MUST perform all encryption and decryption operations exclusively on the client device; the server MUST never have access to plaintext messages or private keys.
 - **FR-009**: System MUST provide a security fingerprint (safety number) for each conversation that both participants can compare for identity verification.
 - **FR-010**: System MUST warn users when a contact's identity key changes, indicating a potential security event.
-- **FR-011**: System MUST support linking multiple devices to a single account, with each device maintaining independent key material and ratchet state.
+- **FR-011**: System MUST support linking up to 10 devices to a single account, with each device maintaining independent key material and ratchet state.
 - **FR-012**: System MUST support group conversations with end-to-end encryption and automatic key rotation when membership changes.
 - **FR-013**: System MUST support disappearing messages with configurable timers per conversation.
 - **FR-014**: System MUST allow users to search for other registered users by display name to initiate conversations.
@@ -179,7 +181,7 @@ A user sets a disappearing message timer on a conversation (e.g., 24 hours, 7 da
 - **Session**: A secure communication channel between two users/devices, established via hybrid key exchange. Contains ratchet state for deriving per-message keys.
 - **Message**: An encrypted payload sent within a session. Contains ciphertext, authentication tag, sender identifier, timestamp, and sequence number. Plaintext is never stored on the server.
 - **Conversation**: A logical grouping of messages between two users (1:1) or among multiple users (group). Has associated metadata like disappearing timer settings and verification status.
-- **Device**: A user's registered client (web, desktop, or mobile). Each device has its own key material and maintains independent session/ratchet state.
+- **Device**: A user's registered client (web, desktop, or mobile). Each device has its own key material and maintains independent session/ratchet state. A user may link up to 10 devices.
 - **Group**: A multi-participant conversation with a shared encryption key distributed via pairwise channels. Membership changes trigger key rotation.
 
 ## Success Criteria *(mandatory)*

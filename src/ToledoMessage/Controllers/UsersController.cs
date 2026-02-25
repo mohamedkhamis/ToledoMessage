@@ -77,6 +77,20 @@ public class UsersController : ControllerBase
         return Ok(bundle);
     }
 
+    /// <summary>
+    /// List all active devices for a specific user (used for fan-out encryption).
+    /// </summary>
+    [HttpGet("{userId}/devices")]
+    public async Task<IActionResult> GetUserDevices(decimal userId)
+    {
+        var devices = await _db.Devices
+            .Where(d => d.UserId == userId && d.IsActive)
+            .Select(d => new DeviceInfoResponse(d.Id, d.DeviceName, d.CreatedAt, d.LastSeenAt))
+            .ToListAsync();
+
+        return Ok(devices);
+    }
+
     private decimal GetUserId()
     {
         var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)

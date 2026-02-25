@@ -1,22 +1,67 @@
 @page "/chat/{ConversationId:decimal}"
 @rendermode InteractiveWebAssembly
 @using System.Text
+@using System.Text.Json
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject CryptoService Crypto
 @inject SignalRService SignalR
 @inject LocalStorageService Storage
+@inject PreKeyReplenishmentService PreKeyReplenishment
 @implements IAsyncDisposable
 
 <div style="display:flex; flex-direction:column; height:100vh;">
     <div style="padding:12px 16px; border-bottom:1px solid #e0e0e0; display:flex; align-items:center; gap:12px;">
         <a href="/chat" style="text-decoration:none; font-size:1.2em;">&larr;</a>
-        <h3 style="margin:0;">Conversation</h3>
+        <div>
+            <h3 style="margin:0;">
+                @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
+                {
+                    @(conversationDetail.GroupName ?? "Group")
+                }
+                else
+                {
+                    <text>Conversation</text>
+                }
+            </h3>
+            @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
+            {
+                <span style="color:#666; font-size:0.8em;">@participants.Count members</span>
+            }
+        </div>
         @if (!string.IsNullOrEmpty(typingIndicator))
         {
             <span style="color:#999; font-size:0.85em; font-style:italic;">@typingIndicator</span>
         }
     </div>
+
+    @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group && showParticipants)
+    {
+        <div style="padding:8px 16px; background:#f5f5f5; border-bottom:1px solid #e0e0e0; max-height:150px; overflow-y:auto;">
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                @foreach (var p in participants)
+                {
+                    <span style="padding:2px 8px; background:#e8e8e8; border-radius:12px; font-size:0.85em;">
+                        @p.DisplayName
+                        @if (p.Role == ParticipantRole.Admin)
+                        {
+                            <span style="color:#1976d2; font-weight:bold; margin-left:4px;">Admin</span>
+                        }
+                    </span>
+                }
+            </div>
+        </div>
+    }
+
+    @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
+    {
+        <div style="padding:4px 16px; border-bottom:1px solid #e0e0e0;">
+            <button style="border:none; background:none; color:#1976d2; cursor:pointer; font-size:0.85em;"
+                    @onclick="() => showParticipants = !showParticipants">
+                @(showParticipants ? "Hide participants" : "Show participants")
+            </button>
+        </div>
+    }
 
     @if (!string.IsNullOrEmpty(errorMessage))
     {
@@ -57,8 +102,12 @@
     private bool isLoading = true;
     private string? typingIndicator;
     private decimal localDeviceId;
+    private decimal localUserId;
     private string? accessToken;
     private System.Timers.Timer? typingTimer;
+    private ConversationDetailResponse? conversationDetail;
+    private List<ParticipantResponse> participants = [];
+    private bool showParticipants;
 
     protected override async Task OnInitializedAsync()
     {
@@ -78,9 +127,21 @@
             localDeviceId = decimal.Parse(Encoding.UTF8.GetString(deviceIdBytes));
             accessToken = Encoding.UTF8.GetString(tokenBytes);
 
+            // Extract userId from JWT token
+            localUserId = ExtractUserIdFromJwt(accessToken);
+
             // Set auth header for HTTP requests
             Http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+            // Load conversation details
+            await LoadConversationDetails();
+
+            // If group, load participants
+            if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
+            {
+                await LoadParticipants();
+            }
 
             // Load pending messages from the server
             await LoadPendingMessages();
@@ -95,6 +156,8 @@
             SignalR.OnMessageDelivered += HandleMessageDelivered;
             SignalR.OnMessageRead += HandleMessageRead;
             SignalR.OnTypingIndicator += HandleTypingIndicator;
+            SignalR.OnParticipantAdded += HandleParticipantAdded;
+            SignalR.OnParticipantRemoved += HandleParticipantRemoved;
         }
         catch (Exception ex)
         {
@@ -103,6 +166,32 @@
         finally
         {
             isLoading = false;
+        }
+    }
+
+    private async Task LoadConversationDetails()
+    {
+        try
+        {
+            conversationDetail = await Http.GetFromJsonAsync<ConversationDetailResponse>(
+                $"/api/conversations/{ConversationId}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load conversation details: {ex.Message}";
+        }
+    }
+
+    private async Task LoadParticipants()
+    {
+        try
+        {
+            participants = await Http.GetFromJsonAsync<List<ParticipantResponse>>(
+                $"/api/conversations/{ConversationId}/participants") ?? [];
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load participants: {ex.Message}";
         }
     }
 
@@ -247,6 +336,34 @@
         typingTimer.Start();
     }
 
+    private async void HandleParticipantAdded(decimal conversationId, decimal userId, string displayName)
+    {
+        if (conversationId != ConversationId)
+            return;
+
+        await InvokeAsync(() =>
+        {
+            // Add to the local participant list if not already present
+            if (!participants.Any(p => p.UserId == userId))
+            {
+                participants.Add(new ParticipantResponse(userId, displayName, ParticipantRole.Member));
+            }
+            StateHasChanged();
+        });
+    }
+
+    private async void HandleParticipantRemoved(decimal conversationId, decimal userId)
+    {
+        if (conversationId != ConversationId)
+            return;
+
+        await InvokeAsync(() =>
+        {
+            participants.RemoveAll(p => p.UserId == userId);
+            StateHasChanged();
+        });
+    }
+
     private async Task HandleSendMessage(string text)
     {
         // Add message with Sending status
@@ -263,27 +380,43 @@
 
         try
         {
-            // Encrypt the message
-            // Note: recipientDeviceId is needed. For a 1:1 conversation we use the
-            // sender's device ID context. The server knows the recipient.
-            // For now we need the recipient's device ID from the conversation context.
-            // We'll use a placeholder approach: the server-side hub resolves routing.
-            // The ciphertext is encrypted for the recipient device.
-            var ciphertext = await Crypto.EncryptMessageAsync(localDeviceId, text);
+            if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
+            {
+                // Group message: encrypt for all participants' devices
+                var requests = await Crypto.EncryptGroupMessageAsync(ConversationId, localUserId, text);
 
-            var request = new SendMessageRequest(
-                ConversationId,
-                localDeviceId, // recipientDeviceId - the server will route appropriately
-                ciphertext,
-                MessageType.NormalMessage,
-                ContentType.Text);
+                SendMessageResult? lastResult = null;
+                foreach (var request in requests)
+                {
+                    lastResult = await SignalR.SendMessageAsync(request);
+                }
 
-            var result = await SignalR.SendMessageAsync(request);
+                if (lastResult is not null)
+                {
+                    tempMessage.MessageId = lastResult.MessageId;
+                    tempMessage.Timestamp = lastResult.ServerTimestamp;
+                    tempMessage.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sent;
+                }
+            }
+            else
+            {
+                // OneToOne message: encrypt for the single recipient
+                var ciphertext = await Crypto.EncryptMessageAsync(localDeviceId, text);
 
-            // Update the temporary message with server-assigned values
-            tempMessage.MessageId = result.MessageId;
-            tempMessage.Timestamp = result.ServerTimestamp;
-            tempMessage.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sent;
+                var request = new SendMessageRequest(
+                    ConversationId,
+                    localDeviceId, // recipientDeviceId - the server will route appropriately
+                    ciphertext,
+                    MessageType.NormalMessage,
+                    ContentType.Text);
+
+                var result = await SignalR.SendMessageAsync(request);
+
+                // Update the temporary message with server-assigned values
+                tempMessage.MessageId = result.MessageId;
+                tempMessage.Timestamp = result.ServerTimestamp;
+                tempMessage.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sent;
+            }
         }
         catch (Exception ex)
         {
@@ -308,6 +441,40 @@
         }
     }
 
+    /// <summary>
+    /// Extracts the user ID from a JWT token by decoding the payload.
+    /// </summary>
+    private static decimal ExtractUserIdFromJwt(string token)
+    {
+        var parts = token.Split('.');
+        if (parts.Length != 3)
+            throw new InvalidOperationException("Invalid JWT token format.");
+
+        var payload = parts[1];
+        // Fix base64 padding
+        switch (payload.Length % 4)
+        {
+            case 2: payload += "=="; break;
+            case 3: payload += "="; break;
+        }
+
+        var jsonBytes = Convert.FromBase64String(payload);
+        using var doc = JsonDocument.Parse(jsonBytes);
+        var root = doc.RootElement;
+
+        // Try "sub" claim first, then "nameid"
+        if (root.TryGetProperty("sub", out var subProp))
+            return decimal.Parse(subProp.GetString()!);
+
+        if (root.TryGetProperty("nameid", out var nameidProp))
+            return decimal.Parse(nameidProp.GetString()!);
+
+        if (root.TryGetProperty("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier", out var fullProp))
+            return decimal.Parse(fullProp.GetString()!);
+
+        throw new InvalidOperationException("JWT token does not contain a user ID claim.");
+    }
+
     public async ValueTask DisposeAsync()
     {
         // Unsubscribe from events
@@ -315,6 +482,8 @@
         SignalR.OnMessageDelivered -= HandleMessageDelivered;
         SignalR.OnMessageRead -= HandleMessageRead;
         SignalR.OnTypingIndicator -= HandleTypingIndicator;
+        SignalR.OnParticipantAdded -= HandleParticipantAdded;
+        SignalR.OnParticipantRemoved -= HandleParticipantRemoved;
 
         typingTimer?.Stop();
         typingTimer?.Dispose();

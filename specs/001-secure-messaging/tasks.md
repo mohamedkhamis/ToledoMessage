@@ -229,14 +229,14 @@
 
 ### Implementation for User Story 3
 
-- [ ] T104 [US3] Implement ChatHub (RegisterDevice, SendMessage, AcknowledgeDelivery, AcknowledgeRead, TypingIndicator) per SignalR hub contract in src/ToledoMessage/Hubs/ChatHub.cs
-- [ ] T105 [US3] Implement MessagesController (POST /api/messages, GET /api/messages/pending?deviceId, POST /api/messages/acknowledge) in src/ToledoMessage/Controllers/MessagesController.cs
-- [ ] T106 [US3] Implement MessageRelayService (route online messages via SignalR, store offline messages in DB, handle delivery confirmations) in src/ToledoMessage/Services/MessageRelayService.cs
-- [ ] T107 [US3] Implement SignalRService (client-side hub connection, event handlers for ReceiveMessage, MessageDelivered, MessageRead, reconnection logic) in src/ToledoMessage.Client/Services/SignalRService.cs
-- [ ] T108 [US3] Create Chat.razor page (message list, auto-scroll, real-time updates, Double Ratchet integration for per-message keys) with @rendermode InteractiveWebAssembly in src/ToledoMessage.Client/Pages/Chat.razor
-- [ ] T109 [P] [US3] Create MessageBubble.razor component (message text, timestamp, delivery status icon) in src/ToledoMessage.Client/Components/MessageBubble.razor
-- [ ] T110 [P] [US3] Create MessageInput.razor component (text input, send button, typing indicator trigger) in src/ToledoMessage.Client/Components/MessageInput.razor
-- [ ] T111 [P] [US3] Create DeliveryStatus.razor component (sent/delivered/read icons) in src/ToledoMessage.Client/Components/DeliveryStatus.razor
+- [x] T104 [US3] Implement ChatHub (RegisterDevice, SendMessage, AcknowledgeDelivery, AcknowledgeRead, TypingIndicator) per SignalR hub contract in src/ToledoMessage/Hubs/ChatHub.cs
+- [x] T105 [US3] Implement MessagesController (POST /api/messages, GET /api/messages/pending?deviceId, POST /api/messages/acknowledge) in src/ToledoMessage/Controllers/MessagesController.cs
+- [x] T106 [US3] Implement MessageRelayService (route online messages via SignalR, store offline messages in DB, handle delivery confirmations) in src/ToledoMessage/Services/MessageRelayService.cs
+- [x] T107 [US3] Implement SignalRService (client-side hub connection, event handlers for ReceiveMessage, MessageDelivered, MessageRead, reconnection logic) in src/ToledoMessage.Client/Services/SignalRService.cs
+- [x] T108 [US3] Create Chat.razor page (message list, auto-scroll, real-time updates, Double Ratchet integration for per-message keys) with @rendermode InteractiveWebAssembly in src/ToledoMessage.Client/Pages/Chat.razor
+- [x] T109 [P] [US3] Create MessageBubble.razor component (message text, timestamp, delivery status icon) in src/ToledoMessage.Client/Components/MessageBubble.razor
+- [x] T110 [P] [US3] Create MessageInput.razor component (text input, send button, typing indicator trigger) in src/ToledoMessage.Client/Components/MessageInput.razor
+- [x] T111 [P] [US3] Create DeliveryStatus.razor component (sent/delivered/read icons) in src/ToledoMessage.Client/Components/DeliveryStatus.razor
 
 **Checkpoint**: Full real-time messaging works — send/receive with Double Ratchet, delivery/read receipts, offline queuing. US3 is fully functional. MVP is now complete (US1 + US2 + US3).
 
@@ -257,10 +257,10 @@
 
 ### Implementation for User Story 4
 
-- [ ] T114 [US4] Implement FingerprintService (compute safety numbers from both users' identity keys, cache verification state) in src/ToledoMessage.Client/Services/FingerprintService.cs
-- [ ] T115 [US4] Create SecurityInfo.razor page (display fingerprint as numeric code, verify/unverify button, both parties' identity info) with @rendermode InteractiveWebAssembly in src/ToledoMessage.Client/Pages/SecurityInfo.razor
-- [ ] T116 [US4] Create KeyChangeWarning.razor component (prominent warning banner when IdentityKeyChanged event received) in src/ToledoMessage.Client/Components/KeyChangeWarning.razor
-- [ ] T117 [US4] Handle IdentityKeyChanged SignalR event (update verification state, show warning, mark conversation unverified) in src/ToledoMessage.Client/Services/SignalRService.cs
+- [x] T114 [US4] Implement FingerprintService (compute safety numbers from both users' identity keys, cache verification state) in src/ToledoMessage.Client/Services/FingerprintService.cs
+- [x] T115 [US4] Create SecurityInfo.razor page (display fingerprint as numeric code, verify/unverify button, both parties' identity info) with @rendermode InteractiveWebAssembly in src/ToledoMessage.Client/Pages/SecurityInfo.razor
+- [x] T116 [US4] Create KeyChangeWarning.razor component (prominent warning banner when IdentityKeyChanged event received) in src/ToledoMessage.Client/Components/KeyChangeWarning.razor
+- [x] T117 [US4] Handle IdentityKeyChanged SignalR event (update verification state, show warning, mark conversation unverified) in src/ToledoMessage.Client/Services/SignalRService.cs
 
 **Checkpoint**: Users can verify each other's identity via safety numbers. Key changes trigger visible warnings. US4 is fully functional.
 
@@ -281,11 +281,11 @@
 
 ### Implementation for User Story 5
 
-- [ ] T120 [US5] Implement device management endpoints (DELETE /api/devices/{deviceId} revoke, GET /api/devices/{deviceId}/prekeys/count, POST /api/devices/{deviceId}/prekeys replenish) in src/ToledoMessage/Controllers/DevicesController.cs
-- [ ] T121 [US5] Implement fan-out encryption (encrypt message once per recipient device using per-device session) in src/ToledoMessage.Client/Services/MessageEncryptionService.cs
-- [ ] T122 [US5] Update ChatHub for multi-device message routing (route to all active devices of recipient user) in src/ToledoMessage/Hubs/ChatHub.cs
-- [ ] T123 [US5] Handle PreKeyCountLow SignalR event (auto-generate and upload new one-time pre-keys) in src/ToledoMessage.Client/Services/SignalRService.cs
-- [ ] T124 [US5] Create Settings.razor page (list linked devices, link new device, unlink device, device name display) with @rendermode InteractiveWebAssembly in src/ToledoMessage.Client/Pages/Settings.razor
+- [x] T120 [US5] Implement device management endpoints (DELETE /api/devices/{deviceId} revoke, GET /api/devices/{deviceId}/prekeys/count, POST /api/devices/{deviceId}/prekeys replenish) in src/ToledoMessage/Controllers/DevicesController.cs
+- [x] T121 [US5] Implement fan-out encryption (encrypt message once per recipient device using per-device session) in src/ToledoMessage.Client/Services/MessageEncryptionService.cs
+- [x] T122 [US5] Update ChatHub for multi-device message routing (route to all active devices of recipient user) in src/ToledoMessage/Hubs/ChatHub.cs
+- [x] T123 [US5] Handle PreKeyCountLow SignalR event (auto-generate and upload new one-time pre-keys) in src/ToledoMessage.Client/Services/SignalRService.cs
+- [x] T124 [US5] Create Settings.razor page (list linked devices, link new device, unlink device, device name display) with @rendermode InteractiveWebAssembly in src/ToledoMessage.Client/Pages/Settings.razor
 
 **Checkpoint**: Multi-device support works — fan-out encryption, device management, pre-key replenishment. US5 is fully functional.
 
@@ -306,11 +306,11 @@
 
 ### Implementation for User Story 6
 
-- [ ] T127 [US6] Implement group conversation creation (POST /api/conversations with type=Group, validate 2-100 participants, assign Admin role to creator) in src/ToledoMessage/Controllers/ConversationsController.cs
-- [ ] T128 [US6] Implement participant management (POST /api/conversations/{id}/participants admin-only add, DELETE /api/conversations/{id}/participants/{userId} admin or self-removal) in src/ToledoMessage/Controllers/ConversationsController.cs
-- [ ] T129 [US6] Implement group key distribution via pairwise channels (send group message encrypted individually per participant device) in src/ToledoMessage.Client/Services/SessionService.cs
-- [ ] T130 [US6] Handle ParticipantAdded and ParticipantRemoved SignalR events (update local group state, trigger key rotation on removal) in src/ToledoMessage.Client/Services/SignalRService.cs
-- [ ] T131 [US6] Update Chat.razor for group conversation display (participant list header, group name, member indicators) in src/ToledoMessage.Client/Pages/Chat.razor
+- [x] T127 [US6] Implement group conversation creation (POST /api/conversations with type=Group, validate 2-100 participants, assign Admin role to creator) in src/ToledoMessage/Controllers/ConversationsController.cs
+- [x] T128 [US6] Implement participant management (POST /api/conversations/{id}/participants admin-only add, DELETE /api/conversations/{id}/participants/{userId} admin or self-removal) in src/ToledoMessage/Controllers/ConversationsController.cs
+- [x] T129 [US6] Implement group key distribution via pairwise channels (send group message encrypted individually per participant device) in src/ToledoMessage.Client/Services/CryptoService.cs
+- [x] T130 [US6] Handle ParticipantAdded and ParticipantRemoved SignalR events (update local group state, trigger key rotation on removal) in src/ToledoMessage.Client/Services/SignalRService.cs
+- [x] T131 [US6] Update Chat.razor for group conversation display (participant list header, group name, member indicators) in src/ToledoMessage.Client/Pages/Chat.razor
 
 **Checkpoint**: Group messaging works — creation, pairwise encryption, membership management, key rotation. US6 is fully functional.
 
@@ -331,10 +331,10 @@
 
 ### Implementation for User Story 7
 
-- [ ] T134 [US7] Implement timer endpoint (PUT /api/conversations/{conversationId}/timer) in src/ToledoMessage/Controllers/ConversationsController.cs
-- [ ] T135 [US7] Implement client-side message expiry (background timer checks ExpiresAt on LocalMessages, auto-delete expired) in src/ToledoMessage.Client/Services/LocalStorageService.cs
-- [ ] T136 [US7] Implement server-side expired message cleanup (delete delivered EncryptedMessages past retention period) in src/ToledoMessage/Services/MessageRelayService.cs
-- [ ] T137 [US7] Update Settings.razor to add disappearing timer configuration per conversation in src/ToledoMessage.Client/Pages/Settings.razor
+- [x] T134 [US7] Implement timer endpoint (PUT /api/conversations/{conversationId}/timer) in src/ToledoMessage/Controllers/ConversationsController.cs
+- [x] T135 [US7] Implement client-side message expiry (background timer checks ExpiresAt on LocalMessages, auto-delete expired) in src/ToledoMessage.Client/Services/MessageExpiryService.cs
+- [x] T136 [US7] Implement server-side expired message cleanup (delete delivered EncryptedMessages past retention period) in src/ToledoMessage/Services/MessageRelayService.cs
+- [x] T137 [US7] Update DisappearingTimerConfig component for per-conversation timer configuration in src/ToledoMessage.Client/Components/DisappearingTimerConfig.razor
 
 **Checkpoint**: Disappearing messages work — timer configuration, client-side expiry, server cleanup. US7 is fully functional.
 
@@ -344,14 +344,14 @@
 
 **Purpose**: Hardening, performance, rate limiting, end-to-end tests, and final validation
 
-- [ ] T138 [P] Implement RateLimitService middleware (registration per IP, messages per user/minute, search per user/minute) in src/ToledoMessage/Services/RateLimitService.cs
-- [ ] T139 [P] Create performance benchmarks (key exchange, encrypt/decrypt, ratchet step) in tests/ToledoMessage.Benchmarks/CryptoBenchmarks.cs
-- [ ] T140 Implement IndexedDB encryption at rest (derive storage encryption key from user password via HKDF) in src/ToledoMessage.Client/Services/LocalStorageService.cs
-- [ ] T141 [P] Write end-to-end integration test: two-user registration + messaging flow in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
-- [ ] T142 [P] Write end-to-end integration test: multi-device fan-out in tests/ToledoMessage.Integration.Tests/MultiDeviceTests.cs
-- [ ] T143 [P] Write end-to-end integration test: group messaging flow in tests/ToledoMessage.Integration.Tests/GroupMessagingTests.cs
-- [ ] T144 Security hardening review: verify no plaintext logging, no private keys on server, auth tags on all messages, HTTPS enforcement
-- [ ] T145 Run quickstart.md validation (full two-user test scenario per specs/001-secure-messaging/quickstart.md)
+- [x] T138 [P] Implement RateLimitService middleware (registration per IP, messages per user/minute, search per user/minute) in src/ToledoMessage/Services/RateLimitService.cs
+- [x] T139 [P] Create performance benchmarks (key exchange, encrypt/decrypt, ratchet step) in tests/ToledoMessage.Benchmarks/CryptoBenchmarks.cs
+- [x] T140 Implement IndexedDB encryption at rest (derive storage encryption key from user password via HKDF) in src/ToledoMessage.Client/Services/LocalStorageService.cs
+- [x] T141 [P] Write end-to-end integration test: two-user registration + messaging flow in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
+- [x] T142 [P] Write end-to-end integration test: multi-device fan-out in tests/ToledoMessage.Integration.Tests/MultiDeviceTests.cs
+- [x] T143 [P] Write end-to-end integration test: group messaging flow in tests/ToledoMessage.Integration.Tests/GroupMessagingTests.cs
+- [x] T144 Security hardening review: verify no plaintext logging, no private keys on server, auth tags on all messages, HTTPS enforcement
+- [x] T145 Run quickstart.md validation (full two-user test scenario per specs/001-secure-messaging/quickstart.md)
 
 ---
 

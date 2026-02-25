@@ -11,6 +11,7 @@ public class ConversationConfiguration : IEntityTypeConfiguration<Conversation>
         builder.HasKey(c => c.Id);
         builder.Property(c => c.Id).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
         builder.Property(c => c.Type).IsRequired();
+        builder.Property(c => c.GroupName).HasMaxLength(200);
         builder.Property(c => c.CreatedAt).IsRequired();
     }
 }

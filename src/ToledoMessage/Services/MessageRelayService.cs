@@ -101,4 +101,28 @@ public class MessageRelayService
 
         return message;
     }
+
+    /// <summary>
+    /// Delete expired messages that have already been delivered and whose conversation
+    /// has a disappearing timer set. Returns the count of deleted messages.
+    /// </summary>
+    public async Task<int> CleanupExpiredMessages()
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        var expiredMessages = await _db.EncryptedMessages
+            .Include(m => m.Conversation)
+            .Where(m => m.IsDelivered)
+            .Where(m => m.Conversation.DisappearingTimerSeconds != null)
+            .Where(m => m.ServerTimestamp.AddSeconds(m.Conversation.DisappearingTimerSeconds!.Value) < now)
+            .ToListAsync();
+
+        if (expiredMessages.Count == 0)
+            return 0;
+
+        _db.EncryptedMessages.RemoveRange(expiredMessages);
+        await _db.SaveChangesAsync();
+
+        return expiredMessages.Count;
+    }
 }

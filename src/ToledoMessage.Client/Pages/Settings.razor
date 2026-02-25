@@ -1,0 +1,165 @@
+@page "/settings"
+@rendermode InteractiveWebAssembly
+@using System.Text
+@inject HttpClient Http
+@inject LocalStorageService Storage
+@inject NavigationManager Navigation
+
+<div style="max-width:600px; margin:0 auto; padding:24px;">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+        <a href="/chat" style="text-decoration:none; font-size:1.2em;">&larr;</a>
+        <h2 style="margin:0;">Settings</h2>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div style="padding:8px 16px; background:#f8d7da; color:#721c24; border-radius:6px; margin-bottom:16px;">
+            @errorMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div style="padding:8px 16px; background:#d4edda; color:#155724; border-radius:6px; margin-bottom:16px;">
+            @successMessage
+        </div>
+    }
+
+    <h3 style="margin-bottom:12px;">Linked Devices</h3>
+
+    @if (isLoading)
+    {
+        <p style="color:#999;">Loading devices...</p>
+    }
+    else if (devices.Count == 0)
+    {
+        <p style="color:#999;">No active devices found.</p>
+    }
+    else
+    {
+        <div style="display:flex; flex-direction:column; gap:8px;">
+            @foreach (var device in devices)
+            {
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;
+                            border:1px solid #e0e0e0; border-radius:8px; background:#fafafa;">
+                    <div>
+                        <div style="font-weight:600;">
+                            @device.DeviceName
+                            @if (device.DeviceId == currentDeviceId)
+                            {
+                                <span style="font-size:0.8em; color:#28a745; margin-left:8px;">(this device)</span>
+                            }
+                        </div>
+                        <div style="font-size:0.85em; color:#666;">
+                            Linked @device.CreatedAt.ToString("MMM dd, yyyy")
+                        </div>
+                        <div style="font-size:0.8em; color:#999;">
+                            Last seen @device.LastSeenAt.ToString("MMM dd, yyyy HH:mm")
+                        </div>
+                    </div>
+
+                    @if (device.DeviceId != currentDeviceId)
+                    {
+                        <button style="padding:6px 14px; background:#dc3545; color:white; border:none;
+                                       border-radius:4px; cursor:pointer; font-size:0.85em;"
+                                @onclick="() => UnlinkDevice(device.DeviceId)"
+                                disabled="@unlinkingDeviceId.HasValue">
+                            @if (unlinkingDeviceId == device.DeviceId)
+                            {
+                                <span>Unlinking...</span>
+                            }
+                            else
+                            {
+                                <span>Unlink</span>
+                            }
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    <div style="margin-top:24px; padding:16px; border:1px dashed #ccc; border-radius:8px; text-align:center;">
+        <p style="color:#999; margin:0;">Link New Device</p>
+        <p style="color:#bbb; font-size:0.85em; margin:4px 0 0;">
+            QR code scanning will be available in a future update.
+        </p>
+    </div>
+</div>
+
+@code {
+    private List<DeviceInfoResponse> devices = [];
+    private decimal currentDeviceId;
+    private bool isLoading = true;
+    private string? errorMessage;
+    private string? successMessage;
+    private decimal? unlinkingDeviceId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Retrieve local deviceId and token
+            var deviceIdBytes = await Storage.GetAsync("local.deviceId");
+            var tokenBytes = await Storage.GetAsync("auth.token");
+
+            if (deviceIdBytes is null || tokenBytes is null)
+            {
+                errorMessage = "Not authenticated. Please log in.";
+                isLoading = false;
+                return;
+            }
+
+            currentDeviceId = decimal.Parse(Encoding.UTF8.GetString(deviceIdBytes));
+            var accessToken = Encoding.UTF8.GetString(tokenBytes);
+
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+            await LoadDevices();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load settings: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadDevices()
+    {
+        devices = await Http.GetFromJsonAsync<List<DeviceInfoResponse>>("/api/devices") ?? [];
+    }
+
+    private async Task UnlinkDevice(decimal deviceId)
+    {
+        errorMessage = null;
+        successMessage = null;
+        unlinkingDeviceId = deviceId;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"/api/devices/{deviceId}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                successMessage = "Device unlinked successfully.";
+                await LoadDevices();
+            }
+            else
+            {
+                errorMessage = "Failed to unlink device.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error unlinking device: {ex.Message}";
+        }
+        finally
+        {
+            unlinkingDeviceId = null;
+        }
+    }
+}

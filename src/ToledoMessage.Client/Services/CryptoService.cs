@@ -1,4 +1,7 @@
+using System.Net.Http.Json;
 using ToledoMessage.Crypto.Protocol;
+using ToledoMessage.Shared.DTOs;
+using ToledoMessage.Shared.Enums;
 
 namespace ToledoMessage.Client.Services;
 
@@ -12,11 +15,16 @@ public class CryptoService
 {
     private readonly SessionService _sessionService;
     private readonly MessageEncryptionService _messageEncryptionService;
+    private readonly HttpClient _http;
 
-    public CryptoService(SessionService sessionService, MessageEncryptionService messageEncryptionService)
+    public CryptoService(
+        SessionService sessionService,
+        MessageEncryptionService messageEncryptionService,
+        HttpClient http)
     {
         _sessionService = sessionService;
         _messageEncryptionService = messageEncryptionService;
+        _http = http;
     }
 
     /// <summary>
@@ -80,5 +88,75 @@ public class CryptoService
         await _sessionService.SaveSessionAsync(senderDeviceId, updatedState);
 
         return plaintext;
+    }
+
+    /// <summary>
+    /// Encrypts a plaintext message for all active devices of a recipient user.
+    /// Fetches the user's active devices, establishes sessions as needed, and
+    /// encrypts the message independently for each device (fan-out encryption).
+    /// </summary>
+    /// <param name="recipientUserId">The recipient user's ID.</param>
+    /// <param name="plaintext">The plaintext message to encrypt.</param>
+    /// <returns>A list of (deviceId, ciphertextBase64) tuples, one per active device.</returns>
+    public async Task<List<(decimal deviceId, string ciphertextBase64)>> EncryptMessageForAllDevicesAsync(
+        decimal recipientUserId, string plaintext)
+    {
+        // 1. Fetch all active devices for the recipient user
+        var devices = await _http.GetFromJsonAsync<List<DeviceInfoResponse>>(
+            $"/api/users/{recipientUserId}/devices")
+            ?? throw new InvalidOperationException(
+                $"Failed to fetch devices for user {recipientUserId}.");
+
+        var results = new List<(decimal deviceId, string ciphertextBase64)>();
+
+        // 2. For each device, ensure session exists and encrypt
+        foreach (var device in devices)
+        {
+            await EstablishSessionAsync(recipientUserId, device.DeviceId);
+            var ciphertextBase64 = await EncryptMessageAsync(device.DeviceId, plaintext);
+            results.Add((device.DeviceId, ciphertextBase64));
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Encrypts a plaintext message for all participants in a group conversation.
+    /// Fetches the participant list, then for each participant (except self) encrypts
+    /// the message for all their devices (fan-out). Returns a list of SendMessageRequests
+    /// ready to be sent via SignalR.
+    /// </summary>
+    /// <param name="conversationId">The group conversation ID.</param>
+    /// <param name="selfUserId">The current (sending) user's ID, to exclude from recipients.</param>
+    /// <param name="plaintext">The plaintext message to encrypt.</param>
+    /// <returns>A list of <see cref="SendMessageRequest"/> objects, one per recipient device.</returns>
+    public async Task<List<SendMessageRequest>> EncryptGroupMessageAsync(
+        decimal conversationId, decimal selfUserId, string plaintext)
+    {
+        // 1. Get all participants in the conversation
+        var participants = await _http.GetFromJsonAsync<List<ParticipantResponse>>(
+            $"/api/conversations/{conversationId}/participants")
+            ?? throw new InvalidOperationException(
+                $"Failed to fetch participants for conversation {conversationId}.");
+
+        var requests = new List<SendMessageRequest>();
+
+        // 2. For each participant (except self), encrypt for all their devices
+        foreach (var participant in participants.Where(p => p.UserId != selfUserId))
+        {
+            var deviceCiphertexts = await EncryptMessageForAllDevicesAsync(participant.UserId, plaintext);
+
+            foreach (var (deviceId, ciphertextBase64) in deviceCiphertexts)
+            {
+                requests.Add(new SendMessageRequest(
+                    conversationId,
+                    deviceId,
+                    ciphertextBase64,
+                    MessageType.NormalMessage,
+                    ContentType.Text));
+            }
+        }
+
+        return requests;
     }
 }

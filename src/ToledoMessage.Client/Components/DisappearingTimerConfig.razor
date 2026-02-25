@@ -1,0 +1,96 @@
+@rendermode InteractiveWebAssembly
+@inject HttpClient Http
+@inject LocalStorageService Storage
+
+<div style="padding:12px 0;">
+    <h4 style="margin:0 0 8px;">Disappearing Messages</h4>
+    <div style="display:flex; align-items:center; gap:8px;">
+        <select style="padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:0.9em;"
+                @bind="_selectedTimer">
+            <option value="">Off</option>
+            <option value="300">5 minutes</option>
+            <option value="3600">1 hour</option>
+            <option value="86400">24 hours</option>
+            <option value="604800">7 days</option>
+        </select>
+        <button style="padding:6px 14px; background:#007bff; color:white; border:none;
+                       border-radius:4px; cursor:pointer; font-size:0.9em;"
+                @onclick="SaveTimer"
+                disabled="@_isSaving">
+            @if (_isSaving)
+            {
+                <span>Saving...</span>
+            }
+            else
+            {
+                <span>Save</span>
+            }
+        </button>
+    </div>
+    @if (!string.IsNullOrEmpty(_status))
+    {
+        <p style="margin:6px 0 0; font-size:0.85em; color:@(_isError ? "#dc3545" : "#28a745");">@_status</p>
+    }
+</div>
+
+@code {
+    [Parameter] public decimal ConversationId { get; set; }
+    [Parameter] public int? CurrentTimer { get; set; }
+    [Parameter] public EventCallback<int?> OnTimerChanged { get; set; }
+
+    private string _selectedTimer = "";
+    private string? _status;
+    private bool _isError;
+    private bool _isSaving;
+
+    protected override void OnParametersSet()
+    {
+        _selectedTimer = CurrentTimer?.ToString() ?? "";
+    }
+
+    private async Task SaveTimer()
+    {
+        _status = null;
+        _isSaving = true;
+
+        try
+        {
+            // Ensure auth header is set
+            var tokenBytes = await Storage.GetAsync("auth.token");
+            if (tokenBytes is not null)
+            {
+                var accessToken = System.Text.Encoding.UTF8.GetString(tokenBytes);
+                Http.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+            }
+
+            int? timerSeconds = string.IsNullOrEmpty(_selectedTimer) ? null : int.Parse(_selectedTimer);
+
+            var request = new SetTimerRequest(timerSeconds);
+            var response = await Http.PutAsJsonAsync($"/api/conversations/{ConversationId}/timer", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _status = timerSeconds.HasValue
+                    ? $"Disappearing timer set."
+                    : "Disappearing messages disabled.";
+                _isError = false;
+                await OnTimerChanged.InvokeAsync(timerSeconds);
+            }
+            else
+            {
+                _status = "Failed to update timer.";
+                _isError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _status = $"Error: {ex.Message}";
+            _isError = true;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

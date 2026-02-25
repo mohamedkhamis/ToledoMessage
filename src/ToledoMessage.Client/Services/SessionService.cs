@@ -51,6 +51,10 @@ public class SessionService
         // 5. Persist session state
         await SaveSessionAsync(deviceId, session.GetState());
 
+        // 6. Store the remote device's identity public key for safety number verification
+        var remoteIdentityKey = Convert.FromBase64String(bundleResponse.IdentityPublicKeyClassical);
+        await _storage.StoreAsync($"remote.identity.{deviceId}", remoteIdentityKey);
+
         return session;
     }
 

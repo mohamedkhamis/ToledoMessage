@@ -24,6 +24,9 @@ public class DevicesController : ControllerBase
         _preKeyService = preKeyService;
     }
 
+    /// <summary>
+    /// Register a new device for the current user.
+    /// </summary>
     [HttpPost]
     public async Task<IActionResult> RegisterDevice([FromBody] DeviceRegistrationRequest request)
     {
@@ -59,6 +62,80 @@ public class DevicesController : ControllerBase
         }
 
         return Created(string.Empty, new { deviceId = device.Id });
+    }
+
+    /// <summary>
+    /// List all active devices for the requesting user.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> ListDevices()
+    {
+        var userId = GetUserId();
+
+        var devices = await _db.Devices
+            .Where(d => d.UserId == userId && d.IsActive)
+            .Select(d => new DeviceInfoResponse(d.Id, d.DeviceName, d.CreatedAt, d.LastSeenAt))
+            .ToListAsync();
+
+        return Ok(devices);
+    }
+
+    /// <summary>
+    /// Revoke/deactivate a device belonging to the requesting user.
+    /// </summary>
+    [HttpDelete("{deviceId}")]
+    public async Task<IActionResult> RevokeDevice(decimal deviceId)
+    {
+        var userId = GetUserId();
+
+        var device = await _db.Devices
+            .FirstOrDefaultAsync(d => d.Id == deviceId && d.UserId == userId && d.IsActive);
+
+        if (device is null)
+            return NotFound("Device not found or does not belong to the current user.");
+
+        device.IsActive = false;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Get remaining pre-key count for a device belonging to the requesting user.
+    /// </summary>
+    [HttpGet("{deviceId}/prekeys/count")]
+    public async Task<IActionResult> GetPreKeyCount(decimal deviceId)
+    {
+        var userId = GetUserId();
+
+        var deviceOwned = await _db.Devices
+            .AnyAsync(d => d.Id == deviceId && d.UserId == userId && d.IsActive);
+
+        if (!deviceOwned)
+            return NotFound("Device not found or does not belong to the current user.");
+
+        var count = await _preKeyService.CountRemainingPreKeys(deviceId);
+        return Ok(new { count });
+    }
+
+    /// <summary>
+    /// Replenish one-time pre-keys for a device belonging to the requesting user.
+    /// </summary>
+    [HttpPost("{deviceId}/prekeys")]
+    public async Task<IActionResult> ReplenishPreKeys(
+        decimal deviceId,
+        [FromBody] List<OneTimePreKeyDto> preKeys)
+    {
+        var userId = GetUserId();
+
+        var deviceOwned = await _db.Devices
+            .AnyAsync(d => d.Id == deviceId && d.UserId == userId && d.IsActive);
+
+        if (!deviceOwned)
+            return NotFound("Device not found or does not belong to the current user.");
+
+        await _preKeyService.StoreOneTimePreKeys(deviceId, preKeys);
+        return NoContent();
     }
 
     private decimal GetUserId()

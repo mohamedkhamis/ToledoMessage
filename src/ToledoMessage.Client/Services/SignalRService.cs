@@ -24,6 +24,18 @@ public class SignalRService : IAsyncDisposable
     /// <summary>Raised when a user is typing in a conversation. Parameters: conversationId, displayName.</summary>
     public event Action<decimal, string>? OnTypingIndicator;
 
+    /// <summary>Raised when a remote device's identity key has changed. Parameters: deviceId, displayName.</summary>
+    public event Action<decimal, string>? OnIdentityKeyChanged;
+
+    /// <summary>Raised when the server detects that a device's pre-key count is low. Parameters: deviceId, remainingCount.</summary>
+    public event Action<decimal, int>? OnPreKeyCountLow;
+
+    /// <summary>Raised when a participant is added to a group conversation. Parameters: conversationId, userId, displayName.</summary>
+    public event Action<decimal, decimal, string>? OnParticipantAdded;
+
+    /// <summary>Raised when a participant is removed from a group conversation. Parameters: conversationId, userId.</summary>
+    public event Action<decimal, decimal>? OnParticipantRemoved;
+
     /// <summary>
     /// Whether the hub connection is currently active.
     /// </summary>
@@ -69,6 +81,26 @@ public class SignalRService : IAsyncDisposable
         _hubConnection.On<decimal, string>("UserTyping", (conversationId, displayName) =>
         {
             OnTypingIndicator?.Invoke(conversationId, displayName);
+        });
+
+        _hubConnection.On<decimal, string>("IdentityKeyChanged", (deviceId, displayName) =>
+        {
+            OnIdentityKeyChanged?.Invoke(deviceId, displayName);
+        });
+
+        _hubConnection.On<decimal, int>("PreKeyCountLow", (deviceId, remainingCount) =>
+        {
+            OnPreKeyCountLow?.Invoke(deviceId, remainingCount);
+        });
+
+        _hubConnection.On<decimal, decimal, string>("ParticipantAdded", (conversationId, userId, displayName) =>
+        {
+            OnParticipantAdded?.Invoke(conversationId, userId, displayName);
+        });
+
+        _hubConnection.On<decimal, decimal>("ParticipantRemoved", (conversationId, userId) =>
+        {
+            OnParticipantRemoved?.Invoke(conversationId, userId);
         });
 
         await _hubConnection.StartAsync();

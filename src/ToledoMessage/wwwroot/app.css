@@ -170,6 +170,11 @@ button:disabled {
     width: 100%;
 }
 
+.btn-sm {
+    padding: 8px 16px;
+    font-size: 0.85em;
+}
+
 /* ============ Forms ============ */
 input, select, textarea {
     font-family: var(--font-family);
@@ -185,7 +190,7 @@ input, select, textarea {
 }
 input:focus, select:focus, textarea:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.15);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 label {
@@ -214,6 +219,7 @@ label {
     border-radius: var(--radius);
     font-size: 0.9em;
     margin-bottom: 16px;
+    animation: fadeIn 0.25s ease-out;
 }
 .alert-error {
     background: #fce4ec;
@@ -335,7 +341,7 @@ label {
     padding: 14px 16px;
     border-bottom: 1px solid var(--border);
     cursor: pointer;
-    transition: background 0.1s;
+    transition: background 0.15s;
 }
 .conversation-item:hover {
     background: var(--hover-bg);
@@ -375,6 +381,7 @@ label {
     padding: 2px 8px;
     font-size: 0.78em;
     font-weight: 600;
+    animation: badgePop 0.3s ease-out;
 }
 
 /* ============ Chat page ============ */
@@ -863,6 +870,248 @@ label {
 .delivery-sent { color: var(--text-secondary); }
 .delivery-delivered { color: var(--text-secondary); }
 .delivery-read { color: var(--accent); }
+
+/* ============ Animations & Transitions ============ */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInRight {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+@keyframes badgePop {
+    0% { transform: scale(0.6); }
+    60% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
+.spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+}
+.spinner-sm {
+    width: 14px;
+    height: 14px;
+    border-width: 1.5px;
+}
+
+.fade-in {
+    animation: fadeIn 0.25s ease-out;
+}
+.msg-slide-in-right {
+    animation: slideInRight 0.2s ease-out;
+}
+.msg-slide-in-left {
+    animation: slideInLeft 0.2s ease-out;
+}
+
+/* Smooth theme transitions */
+html[data-theme] body,
+html[data-theme] .app-nav,
+html[data-theme] .card,
+html[data-theme] .message-bubble,
+html[data-theme] input,
+html[data-theme] select,
+html[data-theme] textarea {
+    transition: background-color 0.3s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Focus ring utility */
+.focus-ring:focus-visible,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Typing indicator dots */
+.typing-dots span {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    margin: 0 1px;
+    animation: pulse 1.2s ease-in-out infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ============ Password strength ============ */
+.password-wrapper {
+    position: relative;
+}
+.password-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    font-size: 0.85em;
+}
+.strength-bar {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    margin-top: 6px;
+    overflow: hidden;
+}
+.strength-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+.strength-bar-fill.weak { width: 33%; background: var(--danger); }
+.strength-bar-fill.medium { width: 66%; background: var(--warning); }
+.strength-bar-fill.strong { width: 100%; background: var(--success); }
+.strength-text {
+    font-size: 0.78em;
+    margin-top: 2px;
+}
+
+/* ============ Logout button ============ */
+.btn-logout {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.4);
+    color: rgba(255,255,255,0.85);
+    padding: 4px 14px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: background 0.15s, border-color 0.15s;
+}
+.btn-logout:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.7);
+}
+
+/* ============ Active nav link ============ */
+.app-nav .nav-links a.active {
+    color: var(--nav-text);
+    border-bottom: 2px solid var(--nav-text);
+}
+
+/* ============ Mobile nav backdrop ============ */
+.nav-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    top: 56px;
+    background: rgba(0,0,0,0.4);
+    z-index: 98;
+}
+.nav-backdrop.open {
+    display: block;
+}
+
+/* ============ Copy button ============ */
+.btn-copy {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: background 0.15s, color 0.15s;
+}
+.btn-copy:hover {
+    background: var(--hover-bg);
+    color: var(--text-primary);
+}
+.btn-copy.copied {
+    color: var(--success);
+    border-color: var(--success);
+}
+
+/* ============ Confirm dialog ============ */
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    animation: fadeIn 0.15s ease-out;
+}
+.confirm-dialog {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 24px;
+    max-width: 380px;
+    width: 90%;
+    box-shadow: var(--shadow-md);
+}
+.confirm-dialog h4 { margin: 0 0 8px; }
+.confirm-dialog p { margin: 0 0 20px; color: var(--text-secondary); font-size: 0.93em; }
+.confirm-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* ============ Card flush (no padding) ============ */
+.card-flush {
+    padding: 0;
+    overflow: hidden;
+}
+
+/* ============ Inline margin utilities ============ */
+.mx-chat { margin: 8px 16px; }
+.mb-md { margin-bottom: 16px; }
+.mt-lg { margin-top: 32px; }
+.mb-0 { margin-bottom: 0; }
+
+/* ============ Loading skeleton ============ */
+.skeleton {
+    background: linear-gradient(90deg, var(--hover-bg) 25%, var(--border) 50%, var(--hover-bg) 75%);
+    background-size: 200% 100%;
+    animation: pulse 1.5s ease-in-out infinite;
+    border-radius: var(--radius);
+}
+.skeleton-line {
+    height: 14px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+}
+.skeleton-line.w-60 { width: 60%; }
+.skeleton-line.w-80 { width: 80%; }
+.skeleton-line.w-40 { width: 40%; }
 
 /* ============ Scrollbar ============ */
 ::-webkit-scrollbar {

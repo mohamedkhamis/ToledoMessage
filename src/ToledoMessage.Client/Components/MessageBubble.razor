@@ -1,6 +1,6 @@
 @using ToledoMessage.Shared.Enums
 
-<div class="message-row @(IsMine ? "mine" : "")">
+<div class="message-row @(IsMine ? "mine" : "") @(IsMine ? "msg-slide-in-right" : "msg-slide-in-left")">
     <div class="message-bubble @(IsMine ? "mine" : "theirs")">
         <div class="message-text">@Text</div>
         <div class="message-meta">

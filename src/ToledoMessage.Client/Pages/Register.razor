@@ -8,26 +8,48 @@
 @inject KeyGenerationService KeyGenService
 @inject LocalStorageService Storage
 
-<div class="auth-page">
+<div class="auth-page fade-in">
     <h2>Create Account</h2>
 
     <div class="card">
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-error">@errorMessage</div>
+            <div class="alert alert-error" role="alert">@errorMessage</div>
         }
 
         <form @onsubmit="HandleRegister">
             <div class="form-group">
                 <label for="displayName">Display Name</label>
-                <input id="displayName" @bind="displayName" placeholder="Choose a display name" />
+                <input id="displayName" @bind="displayName" placeholder="Choose a display name"
+                       autocomplete="username" required aria-required="true" />
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
-                <input id="password" type="password" @bind="password" placeholder="Minimum 8 characters" />
+                <div class="password-wrapper">
+                    <input id="password" type="password" @bind="password" @bind:event="oninput"
+                           @bind:after="OnPasswordChanged"
+                           placeholder="Minimum 8 characters"
+                           autocomplete="new-password" required aria-required="true" />
+                </div>
+                <div class="strength-bar">
+                    <div class="strength-bar-fill @passwordStrengthClass"></div>
+                </div>
+                @if (!string.IsNullOrEmpty(passwordStrengthText))
+                {
+                    <div class="strength-text" style="color: @passwordStrengthColor">@passwordStrengthText</div>
+                }
             </div>
-            <button type="submit" class="btn-primary btn-full" disabled="@isLoading">
-                @(isLoading ? "Creating account..." : "Create Account")
+            <button type="submit" class="btn-primary btn-full" disabled="@isLoading"
+                    aria-busy="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="spinner spinner-sm"></span>
+                    <text> Creating account...</text>
+                }
+                else
+                {
+                    <text>Create Account</text>
+                }
             </button>
         </form>
     </div>
@@ -40,6 +62,46 @@
     private string password = "";
     private string? errorMessage;
     private bool isLoading;
+    private string passwordStrengthClass = "";
+    private string passwordStrengthText = "";
+    private string passwordStrengthColor = "";
+
+    private void OnPasswordChanged()
+    {
+        if (string.IsNullOrEmpty(password))
+        {
+            passwordStrengthClass = "";
+            passwordStrengthText = "";
+            passwordStrengthColor = "";
+            return;
+        }
+
+        var score = 0;
+        if (password.Length >= 8) score++;
+        if (password.Length >= 12) score++;
+        if (password.Any(char.IsUpper) && password.Any(char.IsLower)) score++;
+        if (password.Any(char.IsDigit)) score++;
+        if (password.Any(c => !char.IsLetterOrDigit(c))) score++;
+
+        if (score <= 2)
+        {
+            passwordStrengthClass = "weak";
+            passwordStrengthText = "Weak";
+            passwordStrengthColor = "var(--danger)";
+        }
+        else if (score <= 3)
+        {
+            passwordStrengthClass = "medium";
+            passwordStrengthText = "Fair";
+            passwordStrengthColor = "var(--warning)";
+        }
+        else
+        {
+            passwordStrengthClass = "strong";
+            passwordStrengthText = "Strong";
+            passwordStrengthColor = "var(--success)";
+        }
+    }
 
     private async Task HandleRegister()
     {

@@ -14,12 +14,12 @@
 
     @if (!string.IsNullOrEmpty(errorMessage))
     {
-        <div class="alert alert-error">@errorMessage</div>
+        <div class="alert alert-error" role="alert">@errorMessage</div>
     }
 
     @if (!string.IsNullOrEmpty(successMessage))
     {
-        <div class="alert alert-success">@successMessage</div>
+        <div class="alert alert-success" role="status">@successMessage</div>
     }
 
     <h3 class="section-title">Appearance</h3>
@@ -35,11 +35,11 @@
         }
     </div>
 
-    <h3 class="section-title" style="margin-top:32px;">Linked Devices</h3>
+    <h3 class="section-title mt-lg">Linked Devices</h3>
 
     @if (isLoading)
     {
-        <p class="loading-text">Loading devices...</p>
+        <p class="loading-text"><span class="spinner"></span> Loading devices...</p>
     }
     else if (devices.Count == 0)
     {

@@ -65,13 +65,13 @@
 
     @if (!string.IsNullOrEmpty(errorMessage))
     {
-        <div class="alert alert-error" style="margin:8px 16px;">@errorMessage</div>
+        <div class="alert alert-error mx-chat" role="alert">@errorMessage</div>
     }
 
-    <div class="chat-messages" @ref="messageContainer">
+    <div class="chat-messages" @ref="messageContainer" role="log" aria-live="polite">
         @if (isLoading)
         {
-            <p class="chat-empty-state">Loading messages...</p>
+            <p class="chat-empty-state"><span class="spinner"></span> Loading messages...</p>
         }
         else if (messages.Count == 0)
         {

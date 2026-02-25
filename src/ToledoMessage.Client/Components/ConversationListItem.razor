@@ -1,6 +1,9 @@
+@using Microsoft.AspNetCore.Components.Web
 @inject NavigationManager Navigation
 
-<div class="conversation-item" @onclick="NavigateToChat">
+<div class="conversation-item" role="button" tabindex="0"
+     @onclick="NavigateToChat" @onkeydown="HandleKeyDown"
+     aria-label="@($"Conversation with {DisplayName}")">
     <div class="conversation-item-content">
         <div class="conversation-item-name">@DisplayName</div>
         <div class="conversation-item-preview">
@@ -14,7 +17,7 @@
         }
         @if (UnreadCount > 0)
         {
-            <span class="conversation-item-badge">@UnreadCount</span>
+            <span class="conversation-item-badge" aria-label="@($"{UnreadCount} unread")">@UnreadCount</span>
         }
     </div>
 </div>
@@ -38,6 +41,12 @@
     private void NavigateToChat()
     {
         Navigation.NavigateTo($"/chat/{ConversationId}");
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " ")
+            NavigateToChat();
     }
 
     private static string FormatRelativeTime(DateTimeOffset time)

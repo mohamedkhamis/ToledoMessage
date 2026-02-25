@@ -1,6 +1,6 @@
 @if (IsVisible)
 {
-    <div class="key-change-warning">
+    <div class="key-change-warning" role="alert">
         <div class="key-change-content">
             <p class="key-change-title">
                 Security keys changed
@@ -12,6 +12,7 @@
         </div>
         <button class="key-change-dismiss"
                 @onclick="HandleDismiss"
+                aria-label="Dismiss warning"
                 title="Dismiss">
             &times;
         </button>

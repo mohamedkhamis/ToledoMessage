@@ -8,12 +8,13 @@
     <h2>New Conversation</h2>
 </div>
 
-<div class="card" style="margin-bottom:16px;">
-    <div class="form-group" style="margin-bottom:0;">
+<div class="card mb-md">
+    <div class="form-group mb-0">
         <input placeholder="Search users by name..."
                @bind="searchQuery"
                @bind:event="oninput"
-               @bind:after="OnSearchInputChanged" />
+               @bind:after="OnSearchInputChanged"
+               aria-label="Search users" />
     </div>
 </div>
 
@@ -24,11 +25,11 @@
 
 @if (isSearching)
 {
-    <p class="centered-text">Searching...</p>
+    <p class="centered-text"><span class="spinner"></span> Searching...</p>
 }
 else if (searchResults is not null && searchResults.Count > 0)
 {
-    <div class="card" style="padding:0; overflow:hidden;">
+    <div class="card card-flush">
         @foreach (var user in searchResults)
         {
             <div class="search-result-item">
@@ -36,10 +37,9 @@ else if (searchResults is not null && searchResults.Count > 0)
                     <span class="search-result-name">@user.DisplayName</span>
                     <span class="search-result-meta">@user.DeviceCount device(s)</span>
                 </div>
-                <button class="btn-primary"
+                <button class="btn-primary btn-sm"
                         @onclick="() => StartConversation(user)"
-                        disabled="@isCreating"
-                        style="padding:8px 16px;">
+                        disabled="@isCreating">
                     @(isCreating && creatingUserId == user.UserId ? "Creating..." : "Message")
                 </button>
             </div>

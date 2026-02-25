@@ -2,20 +2,21 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject FingerprintService Fingerprint
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 
-<div class="security-page">
+<div class="security-page fade-in">
     <div class="security-header">
-        <a href="javascript:void(0)" @onclick="GoBack" class="back-link">&larr;</a>
+        <button @onclick="GoBack" class="back-link" aria-label="Go back">&larr;</button>
         <h3>Security Verification</h3>
     </div>
 
     @if (!string.IsNullOrEmpty(errorMessage))
     {
-        <div class="alert alert-error">@errorMessage</div>
+        <div class="alert alert-error" role="alert">@errorMessage</div>
     }
     else if (isLoading)
     {
-        <p class="centered-text">Computing safety number...</p>
+        <p class="centered-text"><span class="spinner"></span> Computing safety number...</p>
     }
     else
     {
@@ -24,6 +25,10 @@
             <div class="safety-number-value">
                 @safetyNumber
             </div>
+            <button class="btn-copy @(copied ? "copied" : "")" @onclick="CopySafetyNumber"
+                    aria-label="Copy safety number">
+                @(copied ? "Copied!" : "Copy")
+            </button>
         </div>
 
         <div class="verify-actions">
@@ -81,6 +86,7 @@
     private bool isVerified;
     private bool isLoading = true;
     private string? errorMessage;
+    private bool copied;
 
     protected override async Task OnInitializedAsync()
     {
@@ -118,6 +124,18 @@
         {
             await Fingerprint.MarkUnverifiedAsync(ConversationId.Value);
             isVerified = false;
+        }
+    }
+
+    private async Task CopySafetyNumber()
+    {
+        if (!string.IsNullOrEmpty(safetyNumber))
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", safetyNumber);
+            copied = true;
+            StateHasChanged();
+            await Task.Delay(2000);
+            copied = false;
         }
     }
 

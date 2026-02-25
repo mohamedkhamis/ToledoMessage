@@ -7,31 +7,42 @@
 @inject LocalStorageService Storage
 @inject KeyGenerationService KeyGenService
 
-<div class="auth-page">
+<div class="auth-page fade-in">
     <h2>Sign In</h2>
 
     <div class="card">
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-error">@errorMessage</div>
+            <div class="alert alert-error" role="alert">@errorMessage</div>
         }
 
         @if (!string.IsNullOrEmpty(statusMessage))
         {
-            <div class="alert alert-info">@statusMessage</div>
+            <div class="alert alert-info" role="status">@statusMessage</div>
         }
 
         <form @onsubmit="HandleLogin">
             <div class="form-group">
                 <label for="displayName">Display Name</label>
-                <input id="displayName" @bind="displayName" placeholder="Enter your display name" />
+                <input id="displayName" @bind="displayName" placeholder="Enter your display name"
+                       autocomplete="username" required aria-required="true" />
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
-                <input id="password" type="password" @bind="password" placeholder="Enter your password" />
+                <input id="password" type="password" @bind="password" placeholder="Enter your password"
+                       autocomplete="current-password" required aria-required="true" />
             </div>
-            <button type="submit" class="btn-primary btn-full" disabled="@isLoading">
-                @(isLoading ? "Signing in..." : "Sign In")
+            <button type="submit" class="btn-primary btn-full" disabled="@isLoading"
+                    aria-busy="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="spinner spinner-sm"></span>
+                    <text> Signing in...</text>
+                }
+                else
+                {
+                    <text>Sign In</text>
+                }
             </button>
         </form>
     </div>

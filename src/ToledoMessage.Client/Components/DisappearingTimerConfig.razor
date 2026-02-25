@@ -25,10 +25,12 @@
             }
         </button>
     </div>
-    @if (!string.IsNullOrEmpty(_status))
-    {
-        <p class="disappearing-status @(_isError ? "is-error" : "is-success")">@_status</p>
-    }
+    <div aria-live="polite">
+        @if (!string.IsNullOrEmpty(_status))
+        {
+            <p class="disappearing-status @(_isError ? "is-error" : "is-success")">@_status</p>
+        }
+    </div>
 </div>
 
 @code {

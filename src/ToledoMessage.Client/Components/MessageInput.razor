@@ -9,6 +9,7 @@
     <button @onclick="SendMessage"
             disabled="@string.IsNullOrWhiteSpace(messageText)"
             class="btn-primary send-btn"
+            aria-label="Send message"
             title="Send">
         &#10148;
     </button>

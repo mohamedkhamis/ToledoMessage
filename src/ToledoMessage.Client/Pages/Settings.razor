@@ -4,64 +4,72 @@
 @inject HttpClient Http
 @inject LocalStorageService Storage
 @inject NavigationManager Navigation
+@inject ThemeService Theme
 
-<div style="max-width:600px; margin:0 auto; padding:24px;">
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
-        <a href="/chat" style="text-decoration:none; font-size:1.2em;">&larr;</a>
-        <h2 style="margin:0;">Settings</h2>
+<div class="settings-page">
+    <div class="settings-header">
+        <a href="/chat" class="back-link">&larr;</a>
+        <h2>Settings</h2>
     </div>
 
     @if (!string.IsNullOrEmpty(errorMessage))
     {
-        <div style="padding:8px 16px; background:#f8d7da; color:#721c24; border-radius:6px; margin-bottom:16px;">
-            @errorMessage
-        </div>
+        <div class="alert alert-error">@errorMessage</div>
     }
 
     @if (!string.IsNullOrEmpty(successMessage))
     {
-        <div style="padding:8px 16px; background:#d4edda; color:#155724; border-radius:6px; margin-bottom:16px;">
-            @successMessage
-        </div>
+        <div class="alert alert-success">@successMessage</div>
     }
 
-    <h3 style="margin-bottom:12px;">Linked Devices</h3>
+    <h3 class="section-title">Appearance</h3>
+
+    <div class="theme-grid">
+        @foreach (var theme in ThemeService.GetAvailableThemes())
+        {
+            <div class="theme-card @(currentTheme == theme.Id ? "active" : "")"
+                 @onclick="() => SelectTheme(theme.Id)">
+                <div class="theme-swatch" style="background:@theme.SwatchColor;"></div>
+                <div class="theme-name">@theme.DisplayName</div>
+            </div>
+        }
+    </div>
+
+    <h3 class="section-title" style="margin-top:32px;">Linked Devices</h3>
 
     @if (isLoading)
     {
-        <p style="color:#999;">Loading devices...</p>
+        <p class="loading-text">Loading devices...</p>
     }
     else if (devices.Count == 0)
     {
-        <p style="color:#999;">No active devices found.</p>
+        <p class="loading-text">No active devices found.</p>
     }
     else
     {
-        <div style="display:flex; flex-direction:column; gap:8px;">
+        <div class="device-list">
             @foreach (var device in devices)
             {
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;
-                            border:1px solid #e0e0e0; border-radius:8px; background:#fafafa;">
+                <div class="device-card">
                     <div>
-                        <div style="font-weight:600;">
+                        <div class="device-name">
                             @device.DeviceName
                             @if (device.DeviceId == currentDeviceId)
                             {
-                                <span style="font-size:0.8em; color:#28a745; margin-left:8px;">(this device)</span>
+                                <span class="device-current">(this device)</span>
                             }
                         </div>
-                        <div style="font-size:0.85em; color:#666;">
+                        <div class="device-date">
                             Linked @device.CreatedAt.ToString("MMM dd, yyyy")
                         </div>
-                        <div style="font-size:0.8em; color:#999;">
+                        <div class="device-lastseen">
                             Last seen @device.LastSeenAt.ToString("MMM dd, yyyy HH:mm")
                         </div>
                     </div>
 
                     @if (device.DeviceId != currentDeviceId)
                     {
-                        <button style="padding:6px 14px; background:#dc3545; color:white; border:none;
-                                       border-radius:4px; cursor:pointer; font-size:0.85em;"
+                        <button class="btn-unlink"
                                 @onclick="() => UnlinkDevice(device.DeviceId)"
                                 disabled="@unlinkingDeviceId.HasValue">
                             @if (unlinkingDeviceId == device.DeviceId)
@@ -79,9 +87,9 @@
         </div>
     }
 
-    <div style="margin-top:24px; padding:16px; border:1px dashed #ccc; border-radius:8px; text-align:center;">
-        <p style="color:#999; margin:0;">Link New Device</p>
-        <p style="color:#bbb; font-size:0.85em; margin:4px 0 0;">
+    <div class="link-device-box">
+        <p>Link New Device</p>
+        <p class="link-device-sub">
             QR code scanning will be available in a future update.
         </p>
     </div>
@@ -94,12 +102,14 @@
     private string? errorMessage;
     private string? successMessage;
     private decimal? unlinkingDeviceId;
+    private string currentTheme = "default";
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            // Retrieve local deviceId and token
+            currentTheme = await Theme.GetThemeAsync();
+
             var deviceIdBytes = await Storage.GetAsync("local.deviceId");
             var tokenBytes = await Storage.GetAsync("auth.token");
 
@@ -126,6 +136,12 @@
         {
             isLoading = false;
         }
+    }
+
+    private async Task SelectTheme(string themeId)
+    {
+        currentTheme = themeId;
+        await Theme.SetThemeAsync(themeId);
     }
 
     private async Task LoadDevices()

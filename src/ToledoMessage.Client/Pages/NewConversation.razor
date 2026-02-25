@@ -3,9 +3,9 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 
-<div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
-    <a href="/chat" style="font-size:1.2em;">&larr;</a>
-    <h2 style="margin:0;">New Conversation</h2>
+<div class="page-header">
+    <a href="/chat" class="back-link">&larr;</a>
+    <h2>New Conversation</h2>
 </div>
 
 <div class="card" style="margin-bottom:16px;">
@@ -24,17 +24,17 @@
 
 @if (isSearching)
 {
-    <p style="text-align:center; color:var(--gray-500); padding:24px;">Searching...</p>
+    <p class="centered-text">Searching...</p>
 }
 else if (searchResults is not null && searchResults.Count > 0)
 {
     <div class="card" style="padding:0; overflow:hidden;">
         @foreach (var user in searchResults)
         {
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid var(--gray-200);">
+            <div class="search-result-item">
                 <div>
-                    <span style="font-weight:600;">@user.DisplayName</span>
-                    <span style="color:var(--gray-500); font-size:0.85em; margin-left:8px;">@user.DeviceCount device(s)</span>
+                    <span class="search-result-name">@user.DisplayName</span>
+                    <span class="search-result-meta">@user.DeviceCount device(s)</span>
                 </div>
                 <button class="btn-primary"
                         @onclick="() => StartConversation(user)"
@@ -48,7 +48,7 @@ else if (searchResults is not null && searchResults.Count > 0)
 }
 else if (searchResults is not null && searchResults.Count == 0 && !string.IsNullOrWhiteSpace(searchQuery))
 {
-    <p style="text-align:center; color:var(--gray-500); padding:24px;">No users found.</p>
+    <p class="centered-text">No users found.</p>
 }
 
 @code {

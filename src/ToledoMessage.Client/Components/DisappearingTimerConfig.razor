@@ -2,19 +2,17 @@
 @inject HttpClient Http
 @inject LocalStorageService Storage
 
-<div style="padding:12px 0;">
-    <h4 style="margin:0 0 8px;">Disappearing Messages</h4>
-    <div style="display:flex; align-items:center; gap:8px;">
-        <select style="padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:0.9em;"
-                @bind="_selectedTimer">
+<div class="disappearing-section">
+    <h4>Disappearing Messages</h4>
+    <div class="disappearing-controls">
+        <select class="disappearing-select" @bind="_selectedTimer">
             <option value="">Off</option>
             <option value="300">5 minutes</option>
             <option value="3600">1 hour</option>
             <option value="86400">24 hours</option>
             <option value="604800">7 days</option>
         </select>
-        <button style="padding:6px 14px; background:#007bff; color:white; border:none;
-                       border-radius:4px; cursor:pointer; font-size:0.9em;"
+        <button class="disappearing-save"
                 @onclick="SaveTimer"
                 disabled="@_isSaving">
             @if (_isSaving)
@@ -29,7 +27,7 @@
     </div>
     @if (!string.IsNullOrEmpty(_status))
     {
-        <p style="margin:6px 0 0; font-size:0.85em; color:@(_isError ? "#dc3545" : "#28a745");">@_status</p>
+        <p class="disappearing-status @(_isError ? "is-error" : "is-success")">@_status</p>
     }
 </div>
 

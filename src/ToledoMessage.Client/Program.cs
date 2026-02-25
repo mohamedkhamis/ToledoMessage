@@ -15,5 +15,6 @@ builder.Services.AddScoped<SignalRService>();
 builder.Services.AddScoped<FingerprintService>();
 builder.Services.AddScoped<PreKeyReplenishmentService>();
 builder.Services.AddScoped<MessageExpiryService>();
+builder.Services.AddScoped<ThemeService>();
 
 await builder.Build().RunAsync();

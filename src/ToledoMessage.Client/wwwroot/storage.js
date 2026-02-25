@@ -10,5 +10,17 @@ window.toledoStorage = {
     },
     containsKey: function (key) {
         return localStorage.getItem(key) !== null;
+    },
+    setTheme: function (name) {
+        if (name && name !== 'default') {
+            localStorage.setItem('app.theme', name);
+            document.documentElement.setAttribute('data-theme', name);
+        } else {
+            localStorage.removeItem('app.theme');
+            document.documentElement.removeAttribute('data-theme');
+        }
+    },
+    getTheme: function () {
+        return localStorage.getItem('app.theme') || 'default';
     }
 };

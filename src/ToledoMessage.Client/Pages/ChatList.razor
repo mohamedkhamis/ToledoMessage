@@ -3,8 +3,8 @@
 @using ToledoMessage.Client.Components
 @inject NavigationManager Navigation
 
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-    <h2 style="margin:0;">Conversations</h2>
+<div class="page-header-spacer">
+    <h2>Conversations</h2>
     <button class="btn-primary" @onclick="NavigateToNewConversation">
         + New Conversation
     </button>
@@ -26,8 +26,8 @@
     }
     else
     {
-        <div style="padding:48px 24px; text-align:center;">
-            <p style="color:var(--gray-500); margin-bottom:16px;">No conversations yet</p>
+        <div class="empty-state">
+            <p>No conversations yet</p>
             <button class="btn-outline" @onclick="NavigateToNewConversation">
                 Start your first conversation
             </button>

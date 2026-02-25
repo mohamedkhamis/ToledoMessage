@@ -2,8 +2,8 @@
 
 <div class="message-row @(IsMine ? "mine" : "")">
     <div class="message-bubble @(IsMine ? "mine" : "theirs")">
-        <div style="word-wrap:break-word; white-space:pre-wrap;">@Text</div>
-        <div class="message-meta" style="display:flex; justify-content:flex-end; align-items:center; gap:4px;">
+        <div class="message-text">@Text</div>
+        <div class="message-meta">
             <span>@Timestamp.ToLocalTime().ToString("HH:mm")</span>
             @if (IsMine)
             {

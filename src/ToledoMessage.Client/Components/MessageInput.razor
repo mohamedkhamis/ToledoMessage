@@ -1,16 +1,14 @@
-<div class="chat-input-area" style="display:flex; gap:8px;">
+<div class="chat-input-area">
     <textarea @bind="messageText"
               @bind:event="oninput"
               @bind:after="HandleTyping"
               @onkeydown="HandleKeyDown"
               placeholder="Type a message..."
               rows="1"
-              style="flex:1; padding:10px 14px; border:1px solid var(--gray-300); border-radius:20px;
-                     resize:none; font-size:0.95em; outline:none; font-family:var(--font-family);" />
+              class="msg-textarea" />
     <button @onclick="SendMessage"
             disabled="@string.IsNullOrWhiteSpace(messageText)"
-            class="btn-primary"
-            style="border-radius:50%; width:42px; height:42px; padding:0; display:flex; align-items:center; justify-content:center;"
+            class="btn-primary send-btn"
             title="Send">
         &#10148;
     </button>

@@ -30,7 +30,7 @@
                 <label for="password">Password</label>
                 <input id="password" type="password" @bind="password" placeholder="Enter your password" />
             </div>
-            <button type="submit" class="btn-primary" style="width:100%;" disabled="@isLoading">
+            <button type="submit" class="btn-primary btn-full" disabled="@isLoading">
                 @(isLoading ? "Signing in..." : "Sign In")
             </button>
         </form>

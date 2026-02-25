@@ -1,20 +1,20 @@
 @inject NavigationManager Navigation
 
 <div class="conversation-item" @onclick="NavigateToChat">
-    <div style="flex:1; min-width:0;">
-        <div style="font-weight:600; margin-bottom:2px;">@DisplayName</div>
-        <div style="color:var(--gray-500); font-size:0.87em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+    <div class="conversation-item-content">
+        <div class="conversation-item-name">@DisplayName</div>
+        <div class="conversation-item-preview">
             @(LastMessage ?? "No messages yet")
         </div>
     </div>
-    <div style="text-align:right; margin-left:12px; flex-shrink:0;">
+    <div class="conversation-item-meta">
         @if (LastMessageTime.HasValue)
         {
-            <div style="color:var(--gray-500); font-size:0.8em; margin-bottom:4px;">@FormatRelativeTime(LastMessageTime.Value)</div>
+            <div class="conversation-item-time">@FormatRelativeTime(LastMessageTime.Value)</div>
         }
         @if (UnreadCount > 0)
         {
-            <span style="background:var(--primary); color:white; border-radius:12px; padding:2px 8px; font-size:0.78em; font-weight:600;">@UnreadCount</span>
+            <span class="conversation-item-badge">@UnreadCount</span>
         }
     </div>
 </div>

@@ -12,9 +12,9 @@
 
 <div class="chat-container">
     <div class="chat-header">
-        <a href="/chat" style="font-size:1.2em;">&larr;</a>
+        <a href="/chat" class="back-link">&larr;</a>
         <div>
-            <h3 style="margin:0;">
+            <h3 class="chat-header-title">
                 @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
                 {
                     @(conversationDetail.GroupName ?? "Group")
@@ -26,26 +26,26 @@
             </h3>
             @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
             {
-                <span style="color:#666; font-size:0.8em;">@participants.Count members</span>
+                <span class="chat-header-subtitle">@participants.Count members</span>
             }
         </div>
         @if (!string.IsNullOrEmpty(typingIndicator))
         {
-            <span style="color:#999; font-size:0.85em; font-style:italic;">@typingIndicator</span>
+            <span class="chat-typing-indicator">@typingIndicator</span>
         }
     </div>
 
     @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group && showParticipants)
     {
-        <div style="padding:8px 16px; background:var(--gray-100); border-bottom:1px solid var(--gray-300); max-height:150px; overflow-y:auto;">
-            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        <div class="participants-panel">
+            <div class="participants-list">
                 @foreach (var p in participants)
                 {
-                    <span style="padding:2px 8px; background:#e8e8e8; border-radius:12px; font-size:0.85em;">
+                    <span class="participant-tag">
                         @p.DisplayName
                         @if (p.Role == ParticipantRole.Admin)
                         {
-                            <span style="color:#1976d2; font-weight:bold; margin-left:4px;">Admin</span>
+                            <span class="participant-admin">Admin</span>
                         }
                     </span>
                 }
@@ -55,8 +55,8 @@
 
     @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
     {
-        <div style="padding:4px 16px; border-bottom:1px solid var(--gray-300);">
-            <button style="border:none; background:none; color:var(--primary); cursor:pointer; font-size:0.85em; padding:4px 0;"
+        <div class="toggle-participants-row">
+            <button class="toggle-participants-btn"
                     @onclick="() => showParticipants = !showParticipants">
                 @(showParticipants ? "Hide participants" : "Show participants")
             </button>
@@ -71,11 +71,11 @@
     <div class="chat-messages" @ref="messageContainer">
         @if (isLoading)
         {
-            <p style="text-align:center; color:#999;">Loading messages...</p>
+            <p class="chat-empty-state">Loading messages...</p>
         }
         else if (messages.Count == 0)
         {
-            <p style="text-align:center; color:#999;">No messages yet. Send the first message!</p>
+            <p class="chat-empty-state">No messages yet. Send the first message!</p>
         }
         else
         {

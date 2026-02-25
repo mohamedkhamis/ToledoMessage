@@ -1,19 +1,21 @@
 <!--
   Sync Impact Report
   ===================
-  Version change: 0.0.0 (template) → 1.0.0 (initial ratification)
-  Modified principles: N/A (all new)
-  Added sections:
-    - Core Principles (7 principles)
-    - Security Requirements
-    - Development Workflow & Quality Gates
-    - Governance
-  Removed sections: All template placeholders replaced
+  Version change: 1.0.0 → 1.0.1
+  Modified principles:
+    - III. Established Libraries Only: Added BouncyCastle.Cryptography as
+      approved library for classical crypto when targeting WASM platforms
+      where native libraries cannot load.
+    - V. .NET Ecosystem: Updated EF Core version reference to match
+      runtime version. Updated Blazor wording from "Blazor WebAssembly"
+      to "Blazor Web App (InteractiveWebAssembly for crypto components)".
+  Added sections: None
+  Removed sections: None
   Templates requiring updates:
-    - .specify/templates/plan-template.md: ✅ No changes needed (Constitution Check section is generic)
-    - .specify/templates/spec-template.md: ✅ No changes needed (structure compatible)
-    - .specify/templates/tasks-template.md: ✅ No changes needed (test-first flow compatible)
-    - .specify/templates/checklist-template.md: ✅ No changes needed (generic structure)
+    - .specify/templates/plan-template.md: ✅ No changes needed (generic Constitution Check)
+    - .specify/templates/spec-template.md: ✅ No changes needed (generic structure)
+    - .specify/templates/tasks-template.md: ✅ No changes needed (generic structure)
+    - CLAUDE.md: ✅ No changes needed (already references BouncyCastle)
   Follow-up TODOs: None
 -->
 
@@ -60,10 +62,21 @@ classical and post-quantum algorithms ("belt and suspenders").
 All cryptographic primitives MUST come from well-audited, established
 libraries. No custom cryptographic implementations are permitted.
 
-- Classical operations (X25519, Ed25519, AES-256-GCM): MUST use
-  libsodium via Sodium.Core bindings or System.Security.Cryptography.
-- Post-quantum operations (Kyber, Dilithium): MUST use
-  BouncyCastle.Cryptography.
+- Classical operations (X25519, Ed25519, AES-256-GCM): MUST use one
+  of the following approved libraries:
+  - **BouncyCastle.Cryptography** — pure managed C#, required when
+    targeting platforms where native libraries cannot load (e.g.,
+    Blazor WebAssembly in the browser).
+  - **libsodium via Sodium.Core** — native bindings, suitable for
+    server-side or desktop targets with native library support.
+  - **System.Security.Cryptography** — .NET built-in, suitable for
+    server-side or desktop targets with OS-level crypto providers.
+- Post-quantum operations (Kyber / ML-KEM, Dilithium / ML-DSA): MUST
+  use BouncyCastle.Cryptography.
+- When all crypto MUST execute in Blazor WebAssembly (per Principle I),
+  BouncyCastle.Cryptography is the required single library for both
+  classical and post-quantum operations, since native libraries
+  (libsodium, CNG, OpenSSL) cannot load in the browser WASM runtime.
 - Rolling custom crypto code (custom KEM, custom signatures, custom
   ciphers) is strictly prohibited. Wrapper and composition code is
   permitted; primitive reimplementation is not.
@@ -89,11 +102,14 @@ with hybrid post-quantum extensions.
 The project MUST use the .NET technology stack as defined below.
 Deviations require explicit justification and constitution amendment.
 
-- **Runtime**: .NET 8 (or latest LTS)
+- **Runtime**: .NET 8 or latest LTS (currently .NET 10)
 - **Backend API**: ASP.NET Core Web API
 - **Real-time transport**: SignalR (WebSocket-based)
-- **Client (web)**: Blazor WebAssembly (all crypto executes here)
-- **Data persistence**: SQL Server 2022 with Entity Framework Core 8
+- **Client (web)**: Blazor Web App template with
+  InteractiveWebAssembly render mode for crypto-heavy components
+  (all crypto executes in the browser WASM runtime)
+- **Data persistence**: SQL Server 2022 with Entity Framework Core
+  (version matching the target runtime, e.g., EF Core 10 for .NET 10)
 - **Cross-platform (future)**: .NET MAUI for mobile
 - **Testing**: xUnit with BenchmarkDotNet for performance profiling
 - Third-party dependencies MUST be NuGet packages with active
@@ -196,4 +212,4 @@ code), the constitution prevails.
   > IV (Signal Fidelity) > VI (Test-First) > V (.NET Ecosystem)
   > VII (Transparency).
 
-**Version**: 1.0.0 | **Ratified**: 2026-02-25 | **Last Amended**: 2026-02-25
+**Version**: 1.0.1 | **Ratified**: 2026-02-25 | **Last Amended**: 2026-02-25

@@ -142,6 +142,17 @@ function Assert-Prerequisites {
     }
     Import-Module IISAdministration
     Write-Ok "IISAdministration module loaded"
+
+    # Unlock IIS config sections needed by ASP.NET Core web.config
+    Write-Step "Unlocking IIS configuration sections..."
+    $sectionsToUnlock = @(
+        "system.webServer/handlers",
+        "system.webServer/modules"
+    )
+    foreach ($section in $sectionsToUnlock) {
+        & "$env:SystemRoot\System32\inetsrv\appcmd.exe" unlock config /section:$section 2>&1 | Out-Null
+    }
+    Write-Ok "IIS configuration sections unlocked"
 }
 
 function Find-FreePort {
@@ -206,7 +217,6 @@ function Write-WebConfig {
           <environmentVariable name="ASPNETCORE_ENVIRONMENT" value="$Env" />
         </environmentVariables>
       </aspNetCore>
-      <webSocket enabled="true" />
     </system.webServer>
   </location>
 </configuration>

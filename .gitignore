@@ -1,21 +1,70 @@
-﻿################################################################################
-# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
-################################################################################
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+packages/
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
 
-/.vs/SecureChat
-/src/SecureChat.Client/bin/Debug/net8.0
-/src/SecureChat.Client/obj/Debug/net8.0
-/src/SecureChat.Client/obj
-/src/SecureChat.Client/wwwroot/lib/bootstrap/dist
-/src/SecureChat.Crypto/obj
-/src/SecureChat.Server/bin/Debug/net8.0
-/src/SecureChat.Server/obj
-/src/SecureChat.Shared/bin/Debug/net8.0
-/src/SecureChat.Shared/obj
-/tests/SecureChat.Tests.Integration/bin/Debug/net8.0
-/tests/SecureChat.Tests.Integration/obj
-/tests/SecureChat.Tests.Unit/obj
-/tests/SecureChat.Tests.Unit/bin/Debug/net8.0
-/.vscode
-/src/SecureChat.Crypto/bin/Debug/net8.0
-*.config
+## Visual Studio
+.vs/
+*.rsuser
+*.sln.docstates
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+## Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+TestResults/
+
+## IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+## OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+## Environment
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+
+## Secrets
+*.pfx
+*.key
+*.pem

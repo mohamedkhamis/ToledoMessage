@@ -19,20 +19,20 @@
 
 **Purpose**: Create solution structure, all projects, NuGet packages, and project references per the implementation plan.
 
-- [ ] T001 Create solution file ToledoMessage.sln and directory structure (src/, tests/) at repository root
-- [ ] T002 Create Toledo.SharedKernel class library project at src/Toledo.SharedKernel/Toledo.SharedKernel.csproj targeting net10.0
-- [ ] T003 Implement DecimalTools.GetNewId() in src/Toledo.SharedKernel/Helpers/DecimalTools.cs (user-provided code, decimal(28,8) ID generation)
-- [ ] T004 [P] Create ToledoMessage server project at src/ToledoMessage/ToledoMessage.csproj using Blazor Web App template (dotnet new blazor) targeting net10.0
-- [ ] T005 [P] Create ToledoMessage.Client class library project at src/ToledoMessage.Client/ToledoMessage.Client.csproj targeting net10.0
-- [ ] T006 [P] Create ToledoMessage.Shared class library project at src/ToledoMessage.Shared/ToledoMessage.Shared.csproj targeting net10.0
-- [ ] T007 [P] Create ToledoMessage.Crypto class library project at src/ToledoMessage.Crypto/ToledoMessage.Crypto.csproj targeting net10.0
-- [ ] T008 [P] Create ToledoMessage.Crypto.Tests xUnit v3 test project at tests/ToledoMessage.Crypto.Tests/ToledoMessage.Crypto.Tests.csproj
-- [ ] T009 [P] Create ToledoMessage.Server.Tests xUnit v3 test project at tests/ToledoMessage.Server.Tests/ToledoMessage.Server.Tests.csproj
-- [ ] T010 [P] Create ToledoMessage.Client.Tests xUnit v3 test project at tests/ToledoMessage.Client.Tests/ToledoMessage.Client.Tests.csproj
-- [ ] T011 [P] Create ToledoMessage.Integration.Tests xUnit v3 test project at tests/ToledoMessage.Integration.Tests/ToledoMessage.Integration.Tests.csproj
-- [ ] T012 [P] Create ToledoMessage.Benchmarks console project at tests/ToledoMessage.Benchmarks/ToledoMessage.Benchmarks.csproj with BenchmarkDotNet 0.15.8
-- [ ] T013 Configure project references per dependency graph: SharedKernel ← Shared ← Server, SharedKernel ← Shared ← Client ← Crypto; add NuGet packages (BouncyCastle.Cryptography 2.6.2 to Crypto, EF Core SqlServer 10.0.3 + Identity.EF 10.0.3 to Server, SignalR.Client 10.0.3 to Client, xunit.v3 3.2.2 to all test projects)
-- [ ] T014 Configure appsettings.json and appsettings.Development.json with SQL Server connection string and JWT settings in src/ToledoMessage/
+- [x] T001 Create solution file ToledoMessage.sln and directory structure (src/, tests/) at repository root
+- [x] T002 Create Toledo.SharedKernel class library project at src/Toledo.SharedKernel/Toledo.SharedKernel.csproj targeting net10.0
+- [x] T003 Implement DecimalTools.GetNewId() in src/Toledo.SharedKernel/Helpers/DecimalTools.cs (user-provided code, decimal(28,8) ID generation)
+- [x] T004 [P] Create ToledoMessage server project at src/ToledoMessage/ToledoMessage.csproj using Blazor Web App template (dotnet new blazor) targeting net10.0
+- [x] T005 [P] Create ToledoMessage.Client class library project at src/ToledoMessage.Client/ToledoMessage.Client.csproj targeting net10.0
+- [x] T006 [P] Create ToledoMessage.Shared class library project at src/ToledoMessage.Shared/ToledoMessage.Shared.csproj targeting net10.0
+- [x] T007 [P] Create ToledoMessage.Crypto class library project at src/ToledoMessage.Crypto/ToledoMessage.Crypto.csproj targeting net10.0
+- [x] T008 [P] Create ToledoMessage.Crypto.Tests xUnit v3 test project at tests/ToledoMessage.Crypto.Tests/ToledoMessage.Crypto.Tests.csproj
+- [x] T009 [P] Create ToledoMessage.Server.Tests xUnit v3 test project at tests/ToledoMessage.Server.Tests/ToledoMessage.Server.Tests.csproj
+- [x] T010 [P] Create ToledoMessage.Client.Tests xUnit v3 test project at tests/ToledoMessage.Client.Tests/ToledoMessage.Client.Tests.csproj
+- [x] T011 [P] Create ToledoMessage.Integration.Tests xUnit v3 test project at tests/ToledoMessage.Integration.Tests/ToledoMessage.Integration.Tests.csproj
+- [x] T012 [P] Create ToledoMessage.Benchmarks console project at tests/ToledoMessage.Benchmarks/ToledoMessage.Benchmarks.csproj with BenchmarkDotNet 0.15.8
+- [x] T013 Configure project references per dependency graph: SharedKernel ← Shared ← Server, SharedKernel ← Shared ← Client ← Crypto; add NuGet packages (BouncyCastle.Cryptography 2.6.2 to Crypto, EF Core SqlServer 10.0.3 + Identity.EF 10.0.3 to Server, SignalR.Client 10.0.3 to Client, xunit.v3 3.2.2 to all test projects)
+- [x] T014 Configure appsettings.json and appsettings.Development.json with SQL Server connection string and JWT settings in src/ToledoMessage/
 
 **Checkpoint**: Solution builds with `dotnet build` — all projects compile, no code yet
 

@@ -115,8 +115,7 @@
 
             if (deviceIdBytes is null || tokenBytes is null)
             {
-                errorMessage = "Not authenticated. Please log in.";
-                isLoading = false;
+                Navigation.NavigateTo("/login", forceLoad: true);
                 return;
             }
 

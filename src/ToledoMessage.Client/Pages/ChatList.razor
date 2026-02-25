@@ -2,7 +2,14 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @using ToledoMessage.Client.Components
 @inject NavigationManager Navigation
+@inject LocalStorageService Storage
 
+@if (!isAuthenticated)
+{
+    <p class="centered-text"><span class="spinner"></span> Loading...</p>
+}
+else
+{
 <div class="page-header-spacer">
     <h2>Conversations</h2>
     <button class="btn-primary" @onclick="NavigateToNewConversation">
@@ -34,12 +41,21 @@
         </div>
     }
 </div>
+}
 
 @code {
+    private bool isAuthenticated;
     private List<ConversationSummary>? conversations;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        var tokenBytes = await Storage.GetAsync("auth.token");
+        if (tokenBytes is null)
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+            return;
+        }
+        isAuthenticated = true;
         conversations = [];
     }
 

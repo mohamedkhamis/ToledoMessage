@@ -3,17 +3,28 @@
 
 <nav class="app-nav" role="navigation" aria-label="Main navigation">
     <a href="/" class="brand">ToledoMessage</a>
-    <button class="nav-toggle" @onclick="ToggleNav" aria-label="Toggle navigation"
-            aria-expanded="@isOpen">
-        &#9776;
-    </button>
-    <div class="nav-links @(isOpen ? "open" : "")">
-        <a href="/chat" class="@ActiveClass("/chat")" @onclick="CloseNav"
-           aria-current="@(IsActive("/chat") ? "page" : null)">Chats</a>
-        <a href="/settings" class="@ActiveClass("/settings")" @onclick="CloseNav"
-           aria-current="@(IsActive("/settings") ? "page" : null)">Settings</a>
-        <button class="btn-logout" @onclick="HandleLogout">Logout</button>
-    </div>
+
+    @if (IsPublicPage())
+    {
+        <div class="nav-links">
+            <a href="/login" class="@ActiveClass("/login")">Sign In</a>
+            <a href="/register" class="@ActiveClass("/register")">Register</a>
+        </div>
+    }
+    else
+    {
+        <button class="nav-toggle" @onclick="ToggleNav" aria-label="Toggle navigation"
+                aria-expanded="@isOpen">
+            &#9776;
+        </button>
+        <div class="nav-links @(isOpen ? "open" : "")">
+            <a href="/chat" class="@ActiveClass("/chat")" @onclick="CloseNav"
+               aria-current="@(IsActive("/chat") ? "page" : null)">Chats</a>
+            <a href="/settings" class="@ActiveClass("/settings")" @onclick="CloseNav"
+               aria-current="@(IsActive("/settings") ? "page" : null)">Settings</a>
+            <button class="btn-logout" @onclick="HandleLogout">Logout</button>
+        </div>
+    }
 </nav>
 
 @if (isOpen)
@@ -22,6 +33,7 @@
 }
 
 @code {
+    private static readonly string[] PublicPaths = ["/", "/login", "/register"];
     private bool isOpen;
     private string currentUri = "";
 
@@ -36,6 +48,14 @@
         currentUri = e.Location;
         isOpen = false;
         InvokeAsync(StateHasChanged);
+    }
+
+    private bool IsPublicPage()
+    {
+        var path = new Uri(currentUri).AbsolutePath.TrimEnd('/');
+        if (string.IsNullOrEmpty(path)) path = "/";
+        return Array.Exists(PublicPaths, p =>
+            string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
     }
 
     private bool IsActive(string path)

@@ -2,7 +2,14 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject LocalStorageService Storage
 
+@if (!isAuthenticated)
+{
+    <p class="centered-text"><span class="spinner"></span> Loading...</p>
+}
+else
+{
 <div class="page-header">
     <a href="/chat" class="back-link">&larr;</a>
     <h2>New Conversation</h2>
@@ -50,8 +57,10 @@ else if (searchResults is not null && searchResults.Count == 0 && !string.IsNull
 {
     <p class="centered-text">No users found.</p>
 }
+}
 
 @code {
+    private bool isAuthenticated;
     private string searchQuery = "";
     private string? errorMessage;
     private bool isSearching;
@@ -59,6 +68,17 @@ else if (searchResults is not null && searchResults.Count == 0 && !string.IsNull
     private decimal? creatingUserId;
     private List<UserSearchResult>? searchResults;
     private CancellationTokenSource? _debounceCts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var tokenBytes = await Storage.GetAsync("auth.token");
+        if (tokenBytes is null)
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+            return;
+        }
+        isAuthenticated = true;
+    }
 
     private async Task OnSearchInputChanged()
     {

@@ -5,6 +5,7 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject LocalStorageService Storage
+@inject KeyGenerationService KeyGenService
 
 <div class="auth-page">
     <h2>Sign In</h2>
@@ -13,6 +14,11 @@
         @if (!string.IsNullOrEmpty(errorMessage))
         {
             <div class="alert alert-error">@errorMessage</div>
+        }
+
+        @if (!string.IsNullOrEmpty(statusMessage))
+        {
+            <div class="alert alert-info">@statusMessage</div>
         }
 
         <form @onsubmit="HandleLogin">
@@ -37,15 +43,18 @@
     private string displayName = "";
     private string password = "";
     private string? errorMessage;
+    private string? statusMessage;
     private bool isLoading;
 
     private async Task HandleLogin()
     {
         isLoading = true;
         errorMessage = null;
+        statusMessage = null;
 
         try
         {
+            // 1. Authenticate
             var request = new LoginRequest(displayName, password);
             var response = await Http.PostAsJsonAsync("/api/auth/login", request);
 
@@ -59,9 +68,38 @@
             Http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authResponse!.Token);
 
-            // Store auth token for later use
+            // 2. Store auth token
             await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse.Token));
 
+            // 3. Check if we already have a deviceId stored (returning to same browser)
+            var existingDeviceId = await Storage.GetAsync("local.deviceId");
+            if (existingDeviceId is not null)
+            {
+                // Already have a device registered on this browser
+                Navigation.NavigateTo("/chat");
+                return;
+            }
+
+            // 4. New device: generate crypto keys and register
+            statusMessage = "Generating encryption keys...";
+            StateHasChanged();
+
+            var deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+            var deviceResponse = await Http.PostAsJsonAsync("/api/devices", deviceRequest);
+
+            if (!deviceResponse.IsSuccessStatusCode)
+            {
+                errorMessage = "Device registration failed.";
+                return;
+            }
+
+            var deviceResult = await deviceResponse.Content.ReadFromJsonAsync<DeviceRegistrationResult>();
+            if (deviceResult is not null)
+            {
+                await Storage.StoreAsync("local.deviceId", Encoding.UTF8.GetBytes(deviceResult.DeviceId.ToString()));
+            }
+
+            // 5. Navigate to chat
             Navigation.NavigateTo("/chat");
         }
         catch (Exception ex)
@@ -73,4 +111,6 @@
             isLoading = false;
         }
     }
+
+    private sealed record DeviceRegistrationResult(decimal DeviceId);
 }

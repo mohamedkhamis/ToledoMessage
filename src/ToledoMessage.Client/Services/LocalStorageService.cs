@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.JSInterop;
 using Org.BouncyCastle.Crypto.Digests;
 using ToledoMessage.Crypto.Classical;
 using ToledoMessage.Crypto.Hybrid;
@@ -6,28 +7,30 @@ using ToledoMessage.Crypto.Hybrid;
 namespace ToledoMessage.Client.Services;
 
 /// <summary>
-/// In-memory store for client-side crypto state.
-/// Will be replaced with IndexedDB JS interop in a future iteration.
-/// Private keys stored here must never leave the browser.
-/// Supports optional encryption-at-rest: when a password is provided via
-/// <see cref="InitializeEncryption"/>, all values are AES-256-GCM encrypted
-/// before storage and decrypted on retrieval.
+/// Persistent browser localStorage backed service with optional encryption-at-rest.
+/// Uses JS interop to store base64-encoded byte arrays in the browser's localStorage,
+/// ensuring data survives page navigations and refreshes.
+/// An in-memory cache avoids repeated JS interop calls for frequently accessed keys.
 /// </summary>
 public class LocalStorageService
 {
-    private readonly Dictionary<string, byte[]> _store = new();
+    private readonly IJSRuntime _js;
+    private readonly Dictionary<string, byte[]> _cache = new();
     private byte[]? _encryptionKey;
+
+    public LocalStorageService(IJSRuntime js)
+    {
+        _js = js;
+    }
 
     /// <summary>
     /// Derives a 32-byte AES key from the given password and enables
     /// encryption-at-rest for all subsequent store/get operations.
-    /// Uses SHA-256 of the password bytes as IKM, then HKDF-SHA256 to derive the final key.
     /// </summary>
     public void InitializeEncryption(string password)
     {
         var passwordBytes = Encoding.UTF8.GetBytes(password);
 
-        // Hash the password to get a fixed-length IKM for HKDF
         var sha256 = new Sha256Digest();
         var ikm = new byte[sha256.GetDigestSize()];
         sha256.BlockUpdate(passwordBytes, 0, passwordBytes.Length);
@@ -38,50 +41,68 @@ public class LocalStorageService
         _encryptionKey = HybridKeyDerivation.DeriveKey(ikm, info, 32);
     }
 
-    public Task StoreAsync(string key, byte[] value)
+    public async Task StoreAsync(string key, byte[] value)
     {
+        byte[] toStore;
         if (_encryptionKey is not null)
         {
             var nonce = DeriveNonceFromKey(key);
-            _store[key] = AesGcmCipher.Encrypt(_encryptionKey, nonce, value);
+            toStore = AesGcmCipher.Encrypt(_encryptionKey, nonce, value);
         }
         else
         {
-            _store[key] = value;
+            toStore = value;
         }
 
-        return Task.CompletedTask;
+        _cache[key] = toStore;
+        var base64 = Convert.ToBase64String(toStore);
+        await _js.InvokeVoidAsync("toledoStorage.setItem", key, base64);
     }
 
-    public Task<byte[]?> GetAsync(string key)
+    public async Task<byte[]?> GetAsync(string key)
     {
-        if (!_store.TryGetValue(key, out var value))
-            return Task.FromResult<byte[]?>(null);
+        // Check in-memory cache first
+        if (_cache.TryGetValue(key, out var cached))
+        {
+            if (_encryptionKey is not null)
+            {
+                var nonce = DeriveNonceFromKey(key);
+                return AesGcmCipher.Decrypt(_encryptionKey, nonce, cached);
+            }
+            return cached;
+        }
+
+        // Fall back to browser localStorage
+        var base64 = await _js.InvokeAsync<string?>("toledoStorage.getItem", key);
+        if (base64 is null)
+            return null;
+
+        var stored = Convert.FromBase64String(base64);
+        _cache[key] = stored;
 
         if (_encryptionKey is not null)
         {
             var nonce = DeriveNonceFromKey(key);
-            return Task.FromResult<byte[]?>(AesGcmCipher.Decrypt(_encryptionKey, nonce, value));
+            return AesGcmCipher.Decrypt(_encryptionKey, nonce, stored);
         }
 
-        return Task.FromResult<byte[]?>(value);
+        return stored;
     }
 
-    public Task DeleteAsync(string key)
+    public async Task DeleteAsync(string key)
     {
-        _store.Remove(key);
-        return Task.CompletedTask;
+        _cache.Remove(key);
+        await _js.InvokeVoidAsync("toledoStorage.removeItem", key);
     }
 
-    public Task<bool> ContainsKeyAsync(string key)
+    public async Task<bool> ContainsKeyAsync(string key)
     {
-        return Task.FromResult(_store.ContainsKey(key));
+        if (_cache.ContainsKey(key))
+            return true;
+
+        return await _js.InvokeAsync<bool>("toledoStorage.containsKey", key);
     }
 
-    /// <summary>
-    /// Derives a 12-byte AES-GCM nonce from the storage key name.
-    /// Uses SHA-256 of the key name, truncated to 12 bytes.
-    /// </summary>
     private static byte[] DeriveNonceFromKey(string key)
     {
         var keyBytes = Encoding.UTF8.GetBytes(key);

@@ -134,14 +134,9 @@
             Http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
 
-            // Load conversation details
+            // Load conversation details and participants
             await LoadConversationDetails();
-
-            // If group, load participants
-            if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
-            {
-                await LoadParticipants();
-            }
+            await LoadParticipants();
 
             // Load pending messages from the server
             await LoadPendingMessages();
@@ -400,22 +395,35 @@
             }
             else
             {
-                // OneToOne message: encrypt for the single recipient
-                var ciphertext = await Crypto.EncryptMessageAsync(localDeviceId, text);
+                // OneToOne message: encrypt for all of the recipient's devices
+                var recipient = participants.FirstOrDefault(p => p.UserId != localUserId);
+                if (recipient is null)
+                {
+                    errorMessage = "Could not determine the recipient.";
+                    return;
+                }
 
-                var request = new SendMessageRequest(
-                    ConversationId,
-                    localDeviceId, // recipientDeviceId - the server will route appropriately
-                    ciphertext,
-                    MessageType.NormalMessage,
-                    ContentType.Text);
+                var deviceCiphertexts = await Crypto.EncryptMessageForAllDevicesAsync(recipient.UserId, text);
 
-                var result = await SignalR.SendMessageAsync(request);
+                SendMessageResult? lastResult = null;
+                foreach (var (deviceId, ciphertextBase64) in deviceCiphertexts)
+                {
+                    var request = new SendMessageRequest(
+                        ConversationId,
+                        deviceId,
+                        ciphertextBase64,
+                        MessageType.NormalMessage,
+                        ContentType.Text);
 
-                // Update the temporary message with server-assigned values
-                tempMessage.MessageId = result.MessageId;
-                tempMessage.Timestamp = result.ServerTimestamp;
-                tempMessage.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sent;
+                    lastResult = await SignalR.SendMessageAsync(request);
+                }
+
+                if (lastResult is not null)
+                {
+                    tempMessage.MessageId = lastResult.MessageId;
+                    tempMessage.Timestamp = lastResult.ServerTimestamp;
+                    tempMessage.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sent;
+                }
             }
         }
         catch (Exception ex)

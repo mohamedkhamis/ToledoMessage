@@ -400,7 +400,9 @@ function Invoke-Deploy {
     $existingPool = Get-IISAppPool -Name $SiteName -ErrorAction SilentlyContinue
     if ($existingPool -and $existingPool.State -eq "Started") {
         Write-Step "Stopping existing app pool '$SiteName'..."
-        $existingPool | Stop-IISAppPool -ErrorAction SilentlyContinue
+        $mgr = Get-IISServerManager
+        $mgr.ApplicationPools[$SiteName].Stop()
+        $mgr.CommitChanges()
         Start-Sleep -Seconds 2
     }
 

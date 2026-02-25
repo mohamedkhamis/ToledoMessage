@@ -31,7 +31,7 @@ public class HybridKeyExchangeTests
 
         // Bob decapsulates
         var bobSharedSecret = HybridKeyExchange.Decapsulate(
-            bobClassicalPrivateKey: bobClassicalPrivate,
+            classicalPrivateKey: bobClassicalPrivate,
             peerClassicalPublicKey: aliceClassicalPublic,
             pqPrivateKey: bobPqPrivate,
             kemCiphertext: kemCiphertext);

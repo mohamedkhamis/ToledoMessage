@@ -1,0 +1,85 @@
+@page "/register"
+@rendermode InteractiveWebAssembly
+@using ToledoMessage.Shared.DTOs
+@using ToledoMessage.Client.Services
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject KeyGenerationService KeyGenService
+
+<h2>Create Account</h2>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="error">@errorMessage</div>
+}
+
+<form @onsubmit="HandleRegister">
+    <div>
+        <label>Display Name</label>
+        <input @bind="displayName" />
+    </div>
+    <div>
+        <label>Password</label>
+        <input type="password" @bind="password" />
+    </div>
+    <button type="submit" disabled="@isLoading">
+        @(isLoading ? "Registering..." : "Register")
+    </button>
+</form>
+
+<p>Already have an account? <a href="/login">Login</a></p>
+
+@code {
+    private string displayName = "";
+    private string password = "";
+    private string? errorMessage;
+    private bool isLoading;
+
+    private async Task HandleRegister()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            // 1. Register account
+            var registerRequest = new RegisterRequest(displayName, password);
+            var response = await Http.PostAsJsonAsync("/api/auth/register", registerRequest);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage = response.StatusCode == System.Net.HttpStatusCode.Conflict
+                    ? "Display name already taken."
+                    : "Registration failed.";
+                return;
+            }
+
+            var authResponse = await response.Content.ReadFromJsonAsync<AuthResponse>();
+
+            // 2. Generate crypto keys
+            var deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+
+            // 3. Register device with pre-key bundle
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authResponse!.Token);
+            var deviceResponse = await Http.PostAsJsonAsync("/api/devices", deviceRequest);
+
+            if (!deviceResponse.IsSuccessStatusCode)
+            {
+                errorMessage = "Device registration failed.";
+                return;
+            }
+
+            // 4. Navigate to chat
+            Navigation.NavigateTo("/chat");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

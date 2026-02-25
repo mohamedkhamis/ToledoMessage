@@ -104,49 +104,49 @@
 
 ### Tests (TDD — write first, verify they fail)
 
-- [ ] T048 [P] Write X25519 key exchange tests (generate, agree, round-trip) in tests/ToledoMessage.Crypto.Tests/Classical/X25519KeyExchangeTests.cs
-- [ ] T049 [P] Write Ed25519 signer tests (sign, verify, reject tampered) in tests/ToledoMessage.Crypto.Tests/Classical/Ed25519SignerTests.cs
-- [ ] T050 [P] Write AES-256-GCM cipher tests (encrypt, decrypt, reject tampered, AAD) in tests/ToledoMessage.Crypto.Tests/Classical/AesGcmCipherTests.cs
-- [ ] T051 [P] Write ML-KEM-768 key exchange tests (generate, encapsulate, decapsulate) in tests/ToledoMessage.Crypto.Tests/PostQuantum/MlKemKeyExchangeTests.cs
-- [ ] T052 [P] Write ML-DSA-65 signer tests (sign, verify, reject tampered) in tests/ToledoMessage.Crypto.Tests/PostQuantum/MlDsaSignerTests.cs
-- [ ] T053 [P] Write hybrid key exchange tests (X25519 + ML-KEM combined KEM) in tests/ToledoMessage.Crypto.Tests/Hybrid/HybridKeyExchangeTests.cs
-- [ ] T054 [P] Write hybrid signer tests (Ed25519 + ML-DSA combined signatures) in tests/ToledoMessage.Crypto.Tests/Hybrid/HybridSignerTests.cs
-- [ ] T055 [P] Write HKDF-SHA256 key derivation tests (KDF, domain separation, output length) in tests/ToledoMessage.Crypto.Tests/Hybrid/HybridKeyDerivationTests.cs
-- [ ] T056 [P] Write X3DH protocol tests (initiator+responder full handshake with PQ extension) in tests/ToledoMessage.Crypto.Tests/Protocol/X3dhTests.cs
-- [ ] T057 [P] Write Double Ratchet tests (symmetric ratchet, DH ratchet, out-of-order messages) in tests/ToledoMessage.Crypto.Tests/Protocol/DoubleRatchetTests.cs
-- [ ] T058 [P] Write message key derivation tests (chain key → message key, index progression) in tests/ToledoMessage.Crypto.Tests/Protocol/MessageKeysTests.cs
+- [x] T048 [P] Write X25519 key exchange tests (generate, agree, round-trip) in tests/ToledoMessage.Crypto.Tests/Classical/X25519KeyExchangeTests.cs
+- [x] T049 [P] Write Ed25519 signer tests (sign, verify, reject tampered) in tests/ToledoMessage.Crypto.Tests/Classical/Ed25519SignerTests.cs
+- [x] T050 [P] Write AES-256-GCM cipher tests (encrypt, decrypt, reject tampered, AAD) in tests/ToledoMessage.Crypto.Tests/Classical/AesGcmCipherTests.cs
+- [x] T051 [P] Write ML-KEM-768 key exchange tests (generate, encapsulate, decapsulate) in tests/ToledoMessage.Crypto.Tests/PostQuantum/MlKemKeyExchangeTests.cs
+- [x] T052 [P] Write ML-DSA-65 signer tests (sign, verify, reject tampered) in tests/ToledoMessage.Crypto.Tests/PostQuantum/MlDsaSignerTests.cs
+- [x] T053 [P] Write hybrid key exchange tests (X25519 + ML-KEM combined KEM) in tests/ToledoMessage.Crypto.Tests/Hybrid/HybridKeyExchangeTests.cs
+- [x] T054 [P] Write hybrid signer tests (Ed25519 + ML-DSA combined signatures) in tests/ToledoMessage.Crypto.Tests/Hybrid/HybridSignerTests.cs
+- [x] T055 [P] Write HKDF-SHA256 key derivation tests (KDF, domain separation, output length) in tests/ToledoMessage.Crypto.Tests/Hybrid/HybridKeyDerivationTests.cs
+- [x] T056 [P] Write X3DH protocol tests (initiator+responder full handshake with PQ extension) in tests/ToledoMessage.Crypto.Tests/Protocol/X3dhTests.cs
+- [x] T057 [P] Write Double Ratchet tests (symmetric ratchet, DH ratchet, out-of-order messages) in tests/ToledoMessage.Crypto.Tests/Protocol/DoubleRatchetTests.cs
+- [x] T058 [P] Write message key derivation tests (chain key → message key, index progression) in tests/ToledoMessage.Crypto.Tests/Protocol/MessageKeysTests.cs
 
 ### Classical Primitives Implementation
 
-- [ ] T059 [P] Implement X25519 key exchange (generate keypair, compute shared secret) in src/ToledoMessage.Crypto/Classical/X25519KeyExchange.cs using BouncyCastle X25519Agreement
-- [ ] T060 [P] Implement Ed25519 signer (sign, verify) in src/ToledoMessage.Crypto/Classical/Ed25519Signer.cs using BouncyCastle Ed25519Signer
-- [ ] T061 [P] Implement AES-256-GCM cipher (encrypt, decrypt with nonce + AAD) in src/ToledoMessage.Crypto/Classical/AesGcmCipher.cs using BouncyCastle GcmBlockCipher
+- [x] T059 [P] Implement X25519 key exchange (generate keypair, compute shared secret) in src/ToledoMessage.Crypto/Classical/X25519KeyExchange.cs using BouncyCastle X25519Agreement
+- [x] T060 [P] Implement Ed25519 signer (sign, verify) in src/ToledoMessage.Crypto/Classical/Ed25519Signer.cs using BouncyCastle Ed25519Signer
+- [x] T061 [P] Implement AES-256-GCM cipher (encrypt, decrypt with nonce + AAD) in src/ToledoMessage.Crypto/Classical/AesGcmCipher.cs using BouncyCastle GcmBlockCipher
 
 ### Post-Quantum Primitives Implementation
 
-- [ ] T062 [P] Implement ML-KEM-768 key exchange (generate, encapsulate, decapsulate) in src/ToledoMessage.Crypto/PostQuantum/MlKemKeyExchange.cs using BouncyCastle MLKem
-- [ ] T063 [P] Implement ML-DSA-65 signer (sign, verify) in src/ToledoMessage.Crypto/PostQuantum/MlDsaSigner.cs using BouncyCastle MLDsa
+- [x] T062 [P] Implement ML-KEM-768 key exchange (generate, encapsulate, decapsulate) in src/ToledoMessage.Crypto/PostQuantum/MlKemKeyExchange.cs using BouncyCastle MLKem
+- [x] T063 [P] Implement ML-DSA-65 signer (sign, verify) in src/ToledoMessage.Crypto/PostQuantum/MlDsaSigner.cs using BouncyCastle MLDsa
 
 ### Hybrid Operations Implementation
 
-- [ ] T064 Implement hybrid key exchange (X25519 + ML-KEM-768 combined, HKDF to derive shared secret) in src/ToledoMessage.Crypto/Hybrid/HybridKeyExchange.cs (depends on T059, T062)
-- [ ] T065 [P] Implement hybrid signer (Ed25519 + ML-DSA-65 concatenated signatures) in src/ToledoMessage.Crypto/Hybrid/HybridSigner.cs (depends on T060, T063)
-- [ ] T066 [P] Implement HKDF-SHA256 key derivation with domain separation in src/ToledoMessage.Crypto/Hybrid/HybridKeyDerivation.cs using BouncyCastle HkdfBytesGenerator
+- [x] T064 Implement hybrid key exchange (X25519 + ML-KEM-768 combined, HKDF to derive shared secret) in src/ToledoMessage.Crypto/Hybrid/HybridKeyExchange.cs (depends on T059, T062)
+- [x] T065 [P] Implement hybrid signer (Ed25519 + ML-DSA-65 concatenated signatures) in src/ToledoMessage.Crypto/Hybrid/HybridSigner.cs (depends on T060, T063)
+- [x] T066 [P] Implement HKDF-SHA256 key derivation with domain separation in src/ToledoMessage.Crypto/Hybrid/HybridKeyDerivation.cs using BouncyCastle HkdfBytesGenerator
 
 ### Protocol Implementation
 
-- [ ] T067 Create PreKeyBundle data structure in src/ToledoMessage.Crypto/Protocol/PreKeyBundle.cs (identity keys, signed pre-key, Kyber pre-key, one-time pre-key)
-- [ ] T068 Implement RatchetState (serializable session state) in src/ToledoMessage.Crypto/Protocol/RatchetState.cs (root key, chain keys, indices, skipped message keys)
-- [ ] T069 Implement MessageKeys derivation (chain key → message key + next chain key) in src/ToledoMessage.Crypto/Protocol/MessageKeys.cs
-- [ ] T070 Implement X3DH initiator (Alice side — 4 DH + 1 KEM → shared secret via HKDF) in src/ToledoMessage.Crypto/Protocol/X3dhInitiator.cs (depends on T064, T066)
-- [ ] T071 Implement X3DH responder (Bob side — matching DH + KEM → same shared secret) in src/ToledoMessage.Crypto/Protocol/X3dhResponder.cs (depends on T064, T066)
-- [ ] T072 Implement Double Ratchet state machine (symmetric ratchet + DH ratchet + out-of-order handling) in src/ToledoMessage.Crypto/Protocol/DoubleRatchet.cs (depends on T059, T066, T068, T069)
+- [x] T067 Create PreKeyBundle data structure in src/ToledoMessage.Crypto/Protocol/PreKeyBundle.cs (identity keys, signed pre-key, Kyber pre-key, one-time pre-key)
+- [x] T068 Implement RatchetState (serializable session state) in src/ToledoMessage.Crypto/Protocol/RatchetState.cs (root key, chain keys, indices, skipped message keys)
+- [x] T069 Implement MessageKeys derivation (chain key → message key + next chain key) in src/ToledoMessage.Crypto/Protocol/MessageKeys.cs
+- [x] T070 Implement X3DH initiator (Alice side — 4 DH + 1 KEM → shared secret via HKDF) in src/ToledoMessage.Crypto/Protocol/X3dhInitiator.cs (depends on T064, T066)
+- [x] T071 Implement X3DH responder (Bob side — matching DH + KEM → same shared secret) in src/ToledoMessage.Crypto/Protocol/X3dhResponder.cs (depends on T064, T066)
+- [x] T072 Implement Double Ratchet state machine (symmetric ratchet + DH ratchet + out-of-order handling) in src/ToledoMessage.Crypto/Protocol/DoubleRatchet.cs (depends on T059, T066, T068, T069)
 
 ### Key Management Implementation
 
-- [ ] T073 [P] Implement identity key generator (hybrid Ed25519 + ML-DSA-65 keypair) in src/ToledoMessage.Crypto/KeyManagement/IdentityKeyGenerator.cs
-- [ ] T074 [P] Implement pre-key generator (signed pre-keys + one-time pre-keys + Kyber pre-keys with hybrid signatures) in src/ToledoMessage.Crypto/KeyManagement/PreKeyGenerator.cs
-- [ ] T075 [P] Implement fingerprint generator (safety number from identity key pairs) in src/ToledoMessage.Crypto/KeyManagement/FingerprintGenerator.cs
+- [x] T073 [P] Implement identity key generator (hybrid Ed25519 + ML-DSA-65 keypair) in src/ToledoMessage.Crypto/KeyManagement/IdentityKeyGenerator.cs
+- [x] T074 [P] Implement pre-key generator (signed pre-keys + one-time pre-keys + Kyber pre-keys with hybrid signatures) in src/ToledoMessage.Crypto/KeyManagement/PreKeyGenerator.cs
+- [x] T075 [P] Implement fingerprint generator (safety number from identity key pairs) in src/ToledoMessage.Crypto/KeyManagement/FingerprintGenerator.cs
 
 **Checkpoint**: All crypto tests pass with `dotnet test tests/ToledoMessage.Crypto.Tests`. Full crypto library ready for consumption by client services.
 

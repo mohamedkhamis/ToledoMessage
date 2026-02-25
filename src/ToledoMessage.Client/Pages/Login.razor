@@ -1,0 +1,67 @@
+@page "/login"
+@rendermode InteractiveWebAssembly
+@using ToledoMessage.Shared.DTOs
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<h2>Login</h2>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="error">@errorMessage</div>
+}
+
+<form @onsubmit="HandleLogin">
+    <div>
+        <label>Display Name</label>
+        <input @bind="displayName" />
+    </div>
+    <div>
+        <label>Password</label>
+        <input type="password" @bind="password" />
+    </div>
+    <button type="submit" disabled="@isLoading">
+        @(isLoading ? "Logging in..." : "Login")
+    </button>
+</form>
+
+<p>Don't have an account? <a href="/register">Register</a></p>
+
+@code {
+    private string displayName = "";
+    private string password = "";
+    private string? errorMessage;
+    private bool isLoading;
+
+    private async Task HandleLogin()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var request = new LoginRequest(displayName, password);
+            var response = await Http.PostAsJsonAsync("/api/auth/login", request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage = "Invalid credentials.";
+                return;
+            }
+
+            var authResponse = await response.Content.ReadFromJsonAsync<AuthResponse>();
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authResponse!.Token);
+
+            Navigation.NavigateTo("/chat");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

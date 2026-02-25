@@ -169,14 +169,14 @@
 
 ### Implementation for User Story 1
 
-- [ ] T080 [US1] Implement AuthController (POST /api/auth/register, POST /api/auth/login) with Identity + JWT in src/ToledoMessage/Controllers/AuthController.cs
-- [ ] T081 [US1] Implement DevicesController POST /api/devices (register device with pre-key bundle) in src/ToledoMessage/Controllers/DevicesController.cs
-- [ ] T082 [US1] Implement PreKeyService (store pre-key bundle, consume one-time pre-keys, count remaining) in src/ToledoMessage/Services/PreKeyService.cs
-- [ ] T083 [US1] Implement KeyGenerationService (orchestrate identity + pre-key generation using Crypto project) in src/ToledoMessage.Client/Services/KeyGenerationService.cs
-- [ ] T084 [US1] Implement LocalStorageService (IndexedDB JS interop wrapper for storing private keys, sessions, messages) in src/ToledoMessage.Client/Services/LocalStorageService.cs
-- [ ] T085 [P] [US1] Create Register.razor page (display name, password, auto key generation, pre-key upload) with @rendermode InteractiveWebAssembly in src/ToledoMessage.Client/Pages/Register.razor
-- [ ] T086 [P] [US1] Create Login.razor page (display name, password, JWT storage) with @rendermode InteractiveWebAssembly in src/ToledoMessage.Client/Pages/Login.razor
-- [ ] T087 [US1] Create Home.razor landing page (redirect to ChatList if authenticated, else show Register/Login) in src/ToledoMessage/Components/Pages/Home.razor
+- [x] T080 [US1] Implement AuthController (POST /api/auth/register, POST /api/auth/login) with Identity + JWT in src/ToledoMessage/Controllers/AuthController.cs
+- [x] T081 [US1] Implement DevicesController POST /api/devices (register device with pre-key bundle) in src/ToledoMessage/Controllers/DevicesController.cs
+- [x] T082 [US1] Implement PreKeyService (store pre-key bundle, consume one-time pre-keys, count remaining) in src/ToledoMessage/Services/PreKeyService.cs
+- [x] T083 [US1] Implement KeyGenerationService (orchestrate identity + pre-key generation using Crypto project) in src/ToledoMessage.Client/Services/KeyGenerationService.cs
+- [x] T084 [US1] Implement LocalStorageService (IndexedDB JS interop wrapper for storing private keys, sessions, messages) in src/ToledoMessage.Client/Services/LocalStorageService.cs
+- [x] T085 [P] [US1] Create Register.razor page (display name, password, auto key generation, pre-key upload) with @rendermode InteractiveWebAssembly in src/ToledoMessage.Client/Pages/Register.razor
+- [x] T086 [P] [US1] Create Login.razor page (display name, password, JWT storage) with @rendermode InteractiveWebAssembly in src/ToledoMessage.Client/Pages/Login.razor
+- [x] T087 [US1] Create Home.razor landing page (redirect to ChatList if authenticated, else show Register/Login) in src/ToledoMessage/Components/Pages/Home.razor
 
 **Checkpoint**: User can register, login, and the server holds their pre-key bundle. Client IndexedDB holds private keys. US1 is fully functional and testable.
 
@@ -199,15 +199,15 @@
 
 ### Implementation for User Story 2
 
-- [ ] T092 [US2] Implement UsersController (GET /api/users/search?q={displayName}) in src/ToledoMessage/Controllers/UsersController.cs
-- [ ] T093 [US2] Implement pre-key bundle fetch endpoint (GET /api/users/{userId}/prekey-bundle?deviceId={deviceId}) consuming one-time pre-key in src/ToledoMessage/Controllers/DevicesController.cs
-- [ ] T094 [US2] Implement ConversationsController (POST /api/conversations for OneToOne type) in src/ToledoMessage/Controllers/ConversationsController.cs
-- [ ] T095 [US2] Implement SessionService (X3DH session establishment — fetch bundle, run initiator, store session in IndexedDB) in src/ToledoMessage.Client/Services/SessionService.cs
-- [ ] T096 [US2] Implement CryptoService (orchestrate session establishment + message encrypt/decrypt, facade over Crypto project) in src/ToledoMessage.Client/Services/CryptoService.cs
-- [ ] T097 [US2] Implement MessageEncryptionService (encrypt plaintext → ciphertext using session, decrypt ciphertext → plaintext) in src/ToledoMessage.Client/Services/MessageEncryptionService.cs
-- [ ] T098 [US2] Create NewConversation.razor page (user search input, results list, initiate conversation button) with @rendermode InteractiveWebAssembly in src/ToledoMessage.Client/Pages/NewConversation.razor
-- [ ] T099 [US2] Create ChatList.razor page (list of conversations sorted by last message) with @rendermode InteractiveWebAssembly in src/ToledoMessage.Client/Pages/ChatList.razor
-- [ ] T100 [P] [US2] Create ConversationListItem.razor component (conversation summary, unread count, last message preview) in src/ToledoMessage.Client/Components/ConversationListItem.razor
+- [x] T092 [US2] Implement UsersController (GET /api/users/search?q={displayName}) in src/ToledoMessage/Controllers/UsersController.cs
+- [x] T093 [US2] Implement pre-key bundle fetch endpoint (GET /api/users/{userId}/prekey-bundle?deviceId={deviceId}) consuming one-time pre-key in src/ToledoMessage/Controllers/UsersController.cs
+- [x] T094 [US2] Implement ConversationsController (POST /api/conversations for OneToOne type) in src/ToledoMessage/Controllers/ConversationsController.cs
+- [x] T095 [US2] Implement SessionService (X3DH session establishment — fetch bundle, run initiator, store session in IndexedDB) in src/ToledoMessage.Client/Services/SessionService.cs
+- [x] T096 [US2] Implement CryptoService (orchestrate session establishment + message encrypt/decrypt, facade over Crypto project) in src/ToledoMessage.Client/Services/CryptoService.cs
+- [x] T097 [US2] Implement MessageEncryptionService (encrypt plaintext → ciphertext using session, decrypt ciphertext → plaintext) in src/ToledoMessage.Client/Services/MessageEncryptionService.cs
+- [x] T098 [US2] Create NewConversation.razor page (user search input, results list, initiate conversation button) with @rendermode InteractiveWebAssembly in src/ToledoMessage.Client/Pages/NewConversation.razor
+- [x] T099 [US2] Create ChatList.razor page (list of conversations sorted by last message) with @rendermode InteractiveWebAssembly in src/ToledoMessage.Client/Pages/ChatList.razor
+- [x] T100 [P] [US2] Create ConversationListItem.razor component (conversation summary, unread count, last message preview) in src/ToledoMessage.Client/Components/ConversationListItem.razor
 
 **Checkpoint**: Two users can establish a secure session via X3DH and exchange a first encrypted message. US2 is fully functional and testable.
 

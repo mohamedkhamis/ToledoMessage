@@ -163,6 +163,11 @@ public class DoubleRatchet
     }
 
     /// <summary>
+    /// Restores a DoubleRatchet session from a previously serialized <see cref="RatchetState"/>.
+    /// </summary>
+    public static DoubleRatchet FromState(RatchetState state) => new(state);
+
+    /// <summary>
     /// Returns the current ratchet state for serialization.
     /// </summary>
     public RatchetState GetState() => _state;

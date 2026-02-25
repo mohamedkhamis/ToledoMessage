@@ -1,10 +1,12 @@
 @page "/register"
 @rendermode InteractiveWebAssembly
+@using System.Text
 @using ToledoMessage.Shared.DTOs
 @using ToledoMessage.Client.Services
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject KeyGenerationService KeyGenService
+@inject LocalStorageService Storage
 
 <h2>Create Account</h2>
 
@@ -70,7 +72,17 @@
                 return;
             }
 
-            // 4. Navigate to chat
+            // 4. Extract deviceId from response
+            var deviceResult = await deviceResponse.Content.ReadFromJsonAsync<DeviceRegistrationResult>();
+
+            // 5. Store auth token and deviceId for later use
+            await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse!.Token));
+            if (deviceResult is not null)
+            {
+                await Storage.StoreAsync("local.deviceId", Encoding.UTF8.GetBytes(deviceResult.DeviceId.ToString()));
+            }
+
+            // 6. Navigate to chat
             Navigation.NavigateTo("/chat");
         }
         catch (Exception ex)
@@ -82,4 +94,6 @@
             isLoading = false;
         }
     }
+
+    private sealed record DeviceRegistrationResult(decimal DeviceId);
 }

@@ -1,0 +1,60 @@
+@inject NavigationManager Navigation
+
+<div class="conversation-item" @onclick="NavigateToChat" style="cursor:pointer; padding:12px; border-bottom:1px solid #e0e0e0;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div style="flex:1; min-width:0;">
+            <div style="font-weight:bold; margin-bottom:4px;">@DisplayName</div>
+            <div style="color:#666; font-size:0.9em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                @(LastMessage ?? "No messages yet")
+            </div>
+        </div>
+        <div style="text-align:right; margin-left:12px; flex-shrink:0;">
+            @if (LastMessageTime.HasValue)
+            {
+                <div style="color:#999; font-size:0.8em; margin-bottom:4px;">@FormatRelativeTime(LastMessageTime.Value)</div>
+            }
+            @if (UnreadCount > 0)
+            {
+                <span style="background:#007bff; color:white; border-radius:50%; padding:2px 8px; font-size:0.8em;">@UnreadCount</span>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public decimal ConversationId { get; set; }
+
+    [Parameter, EditorRequired]
+    public string DisplayName { get; set; } = "";
+
+    [Parameter]
+    public string? LastMessage { get; set; }
+
+    [Parameter]
+    public int UnreadCount { get; set; }
+
+    [Parameter]
+    public DateTimeOffset? LastMessageTime { get; set; }
+
+    private void NavigateToChat()
+    {
+        Navigation.NavigateTo($"/chat/{ConversationId}");
+    }
+
+    private static string FormatRelativeTime(DateTimeOffset time)
+    {
+        var diff = DateTimeOffset.UtcNow - time;
+
+        if (diff.TotalMinutes < 1)
+            return "just now";
+        if (diff.TotalMinutes < 60)
+            return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24)
+            return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7)
+            return $"{(int)diff.TotalDays}d ago";
+
+        return time.ToString("MMM d");
+    }
+}

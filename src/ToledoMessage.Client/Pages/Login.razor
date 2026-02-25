@@ -1,8 +1,10 @@
 @page "/login"
 @rendermode InteractiveWebAssembly
+@using System.Text
 @using ToledoMessage.Shared.DTOs
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject LocalStorageService Storage
 
 <h2>Login</h2>
 
@@ -52,6 +54,9 @@
             var authResponse = await response.Content.ReadFromJsonAsync<AuthResponse>();
             Http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authResponse!.Token);
+
+            // Store auth token for later use (e.g., SignalR connection)
+            await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse.Token));
 
             Navigation.NavigateTo("/chat");
         }

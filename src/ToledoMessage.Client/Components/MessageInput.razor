@@ -1,0 +1,48 @@
+<div class="message-input" style="display:flex; gap:8px; padding:8px; border-top:1px solid #e0e0e0;">
+    <textarea @bind="messageText"
+              @bind:event="oninput"
+              @bind:after="HandleTyping"
+              @onkeydown="HandleKeyDown"
+              placeholder="Type a message..."
+              rows="1"
+              style="flex:1; padding:8px; border:1px solid #ccc; border-radius:8px; resize:none; font-size:1em;" />
+    <button @onclick="SendMessage"
+            disabled="@string.IsNullOrWhiteSpace(messageText)"
+            style="padding:8px 20px; border:none; background:#007bff; color:white; border-radius:8px; cursor:pointer; font-size:1em;"
+            title="Send">
+        Send
+    </button>
+</div>
+
+@code {
+    private string messageText = "";
+
+    [Parameter]
+    public EventCallback<string> OnSend { get; set; }
+
+    [Parameter]
+    public EventCallback OnTyping { get; set; }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessage();
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        var text = messageText?.Trim();
+        if (string.IsNullOrEmpty(text))
+            return;
+
+        messageText = "";
+        await OnSend.InvokeAsync(text);
+    }
+
+    private async Task HandleTyping()
+    {
+        await OnTyping.InvokeAsync();
+    }
+}

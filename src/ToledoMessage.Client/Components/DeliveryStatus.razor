@@ -1,0 +1,22 @@
+@using ToledoMessage.Shared.Enums
+
+@switch (Status)
+{
+    case ToledoMessage.Shared.Enums.DeliveryStatus.Sending:
+        <span class="delivery-status delivery-sending" title="Sending">...</span>
+        break;
+    case ToledoMessage.Shared.Enums.DeliveryStatus.Sent:
+        <span class="delivery-status delivery-sent" title="Sent">&#x2713;</span>
+        break;
+    case ToledoMessage.Shared.Enums.DeliveryStatus.Delivered:
+        <span class="delivery-status delivery-delivered" title="Delivered">&#x2713;&#x2713;</span>
+        break;
+    case ToledoMessage.Shared.Enums.DeliveryStatus.Read:
+        <span class="delivery-status delivery-read" title="Read">&#x2713;&#x2713;</span>
+        break;
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public ToledoMessage.Shared.Enums.DeliveryStatus Status { get; set; }
+}

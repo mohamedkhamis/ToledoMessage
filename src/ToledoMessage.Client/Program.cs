@@ -8,5 +8,8 @@ builder.Services.AddScoped(_ =>
 
 builder.Services.AddSingleton<LocalStorageService>();
 builder.Services.AddScoped<KeyGenerationService>();
+builder.Services.AddScoped<SessionService>();
+builder.Services.AddScoped<CryptoService>();
+builder.Services.AddScoped<MessageEncryptionService>();
 
 await builder.Build().RunAsync();

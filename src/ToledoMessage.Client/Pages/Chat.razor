@@ -1,0 +1,336 @@
+@page "/chat/{ConversationId:decimal}"
+@rendermode InteractiveWebAssembly
+@using System.Text
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject CryptoService Crypto
+@inject SignalRService SignalR
+@inject LocalStorageService Storage
+@implements IAsyncDisposable
+
+<div style="display:flex; flex-direction:column; height:100vh;">
+    <div style="padding:12px 16px; border-bottom:1px solid #e0e0e0; display:flex; align-items:center; gap:12px;">
+        <a href="/chat" style="text-decoration:none; font-size:1.2em;">&larr;</a>
+        <h3 style="margin:0;">Conversation</h3>
+        @if (!string.IsNullOrEmpty(typingIndicator))
+        {
+            <span style="color:#999; font-size:0.85em; font-style:italic;">@typingIndicator</span>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div style="padding:8px 16px; background:#f8d7da; color:#721c24;">@errorMessage</div>
+    }
+
+    <div style="flex:1; overflow-y:auto; padding:16px;" @ref="messageContainer">
+        @if (isLoading)
+        {
+            <p style="text-align:center; color:#999;">Loading messages...</p>
+        }
+        else if (messages.Count == 0)
+        {
+            <p style="text-align:center; color:#999;">No messages yet. Send the first message!</p>
+        }
+        else
+        {
+            @foreach (var msg in messages)
+            {
+                <MessageBubble Text="@msg.Text"
+                               Timestamp="msg.Timestamp"
+                               IsMine="msg.IsMine"
+                               Status="msg.Status" />
+            }
+        }
+    </div>
+
+    <MessageInput OnSend="HandleSendMessage" OnTyping="HandleTyping" />
+</div>
+
+@code {
+    [Parameter]
+    public decimal ConversationId { get; set; }
+
+    private readonly List<ChatMessage> messages = [];
+    private ElementReference messageContainer;
+    private string? errorMessage;
+    private bool isLoading = true;
+    private string? typingIndicator;
+    private decimal localDeviceId;
+    private string? accessToken;
+    private System.Timers.Timer? typingTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Retrieve local deviceId and token from storage
+            var deviceIdBytes = await Storage.GetAsync("local.deviceId");
+            var tokenBytes = await Storage.GetAsync("auth.token");
+
+            if (deviceIdBytes is null || tokenBytes is null)
+            {
+                errorMessage = "Not authenticated. Please log in.";
+                isLoading = false;
+                return;
+            }
+
+            localDeviceId = decimal.Parse(Encoding.UTF8.GetString(deviceIdBytes));
+            accessToken = Encoding.UTF8.GetString(tokenBytes);
+
+            // Set auth header for HTTP requests
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+            // Load pending messages from the server
+            await LoadPendingMessages();
+
+            // Connect to SignalR hub
+            var hubUrl = Navigation.ToAbsoluteUri("/hubs/chat").ToString();
+            await SignalR.ConnectAsync(hubUrl, accessToken);
+            await SignalR.RegisterDeviceAsync(localDeviceId);
+
+            // Subscribe to real-time events
+            SignalR.OnMessageReceived += HandleMessageReceived;
+            SignalR.OnMessageDelivered += HandleMessageDelivered;
+            SignalR.OnMessageRead += HandleMessageRead;
+            SignalR.OnTypingIndicator += HandleTypingIndicator;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to initialize chat: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadPendingMessages()
+    {
+        try
+        {
+            var envelopes = await Http.GetFromJsonAsync<List<MessageEnvelope>>(
+                $"/api/messages/pending?deviceId={localDeviceId}");
+
+            if (envelopes is null)
+                return;
+
+            foreach (var envelope in envelopes.Where(e => e.ConversationId == ConversationId))
+            {
+                try
+                {
+                    var plaintext = await Crypto.DecryptMessageAsync(envelope.SenderDeviceId, envelope.Ciphertext);
+                    messages.Add(new ChatMessage
+                    {
+                        MessageId = envelope.MessageId,
+                        Text = plaintext,
+                        Timestamp = envelope.ServerTimestamp,
+                        IsMine = false,
+                        Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered
+                    });
+
+                    // Acknowledge delivery
+                    // Note: SignalR may not be connected yet, so we acknowledge via HTTP if needed
+                }
+                catch (Exception)
+                {
+                    messages.Add(new ChatMessage
+                    {
+                        MessageId = envelope.MessageId,
+                        Text = "[Unable to decrypt message]",
+                        Timestamp = envelope.ServerTimestamp,
+                        IsMine = false,
+                        Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load messages: {ex.Message}";
+        }
+    }
+
+    private async void HandleMessageReceived(MessageEnvelope envelope)
+    {
+        if (envelope.ConversationId != ConversationId)
+            return;
+
+        try
+        {
+            var plaintext = await Crypto.DecryptMessageAsync(envelope.SenderDeviceId, envelope.Ciphertext);
+
+            await InvokeAsync(() =>
+            {
+                messages.Add(new ChatMessage
+                {
+                    MessageId = envelope.MessageId,
+                    Text = plaintext,
+                    Timestamp = envelope.ServerTimestamp,
+                    IsMine = false,
+                    Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered
+                });
+                StateHasChanged();
+            });
+
+            // Acknowledge delivery
+            await SignalR.AcknowledgeDeliveryAsync(envelope.MessageId);
+        }
+        catch (Exception)
+        {
+            await InvokeAsync(() =>
+            {
+                messages.Add(new ChatMessage
+                {
+                    MessageId = envelope.MessageId,
+                    Text = "[Unable to decrypt message]",
+                    Timestamp = envelope.ServerTimestamp,
+                    IsMine = false,
+                    Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered
+                });
+                StateHasChanged();
+            });
+        }
+    }
+
+    private async void HandleMessageDelivered(decimal messageId)
+    {
+        await InvokeAsync(() =>
+        {
+            var msg = messages.FirstOrDefault(m => m.MessageId == messageId);
+            if (msg is not null)
+            {
+                msg.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered;
+                StateHasChanged();
+            }
+        });
+    }
+
+    private async void HandleMessageRead(decimal messageId)
+    {
+        await InvokeAsync(() =>
+        {
+            var msg = messages.FirstOrDefault(m => m.MessageId == messageId);
+            if (msg is not null)
+            {
+                msg.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Read;
+                StateHasChanged();
+            }
+        });
+    }
+
+    private async void HandleTypingIndicator(decimal conversationId, string displayName)
+    {
+        if (conversationId != ConversationId)
+            return;
+
+        await InvokeAsync(() =>
+        {
+            typingIndicator = $"{displayName} is typing...";
+            StateHasChanged();
+        });
+
+        // Clear typing indicator after 3 seconds
+        typingTimer?.Stop();
+        typingTimer?.Dispose();
+        typingTimer = new System.Timers.Timer(3000);
+        typingTimer.AutoReset = false;
+        typingTimer.Elapsed += async (_, _) =>
+        {
+            await InvokeAsync(() =>
+            {
+                typingIndicator = null;
+                StateHasChanged();
+            });
+        };
+        typingTimer.Start();
+    }
+
+    private async Task HandleSendMessage(string text)
+    {
+        // Add message with Sending status
+        var tempMessage = new ChatMessage
+        {
+            MessageId = 0, // temporary
+            Text = text,
+            Timestamp = DateTimeOffset.UtcNow,
+            IsMine = true,
+            Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sending
+        };
+        messages.Add(tempMessage);
+        StateHasChanged();
+
+        try
+        {
+            // Encrypt the message
+            // Note: recipientDeviceId is needed. For a 1:1 conversation we use the
+            // sender's device ID context. The server knows the recipient.
+            // For now we need the recipient's device ID from the conversation context.
+            // We'll use a placeholder approach: the server-side hub resolves routing.
+            // The ciphertext is encrypted for the recipient device.
+            var ciphertext = await Crypto.EncryptMessageAsync(localDeviceId, text);
+
+            var request = new SendMessageRequest(
+                ConversationId,
+                localDeviceId, // recipientDeviceId - the server will route appropriately
+                ciphertext,
+                MessageType.NormalMessage,
+                ContentType.Text);
+
+            var result = await SignalR.SendMessageAsync(request);
+
+            // Update the temporary message with server-assigned values
+            tempMessage.MessageId = result.MessageId;
+            tempMessage.Timestamp = result.ServerTimestamp;
+            tempMessage.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sent;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to send message: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task HandleTyping()
+    {
+        try
+        {
+            if (SignalR.IsConnected)
+            {
+                await SignalR.SendTypingIndicatorAsync(ConversationId);
+            }
+        }
+        catch
+        {
+            // Typing indicator failures are non-critical
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // Unsubscribe from events
+        SignalR.OnMessageReceived -= HandleMessageReceived;
+        SignalR.OnMessageDelivered -= HandleMessageDelivered;
+        SignalR.OnMessageRead -= HandleMessageRead;
+        SignalR.OnTypingIndicator -= HandleTypingIndicator;
+
+        typingTimer?.Stop();
+        typingTimer?.Dispose();
+
+        await SignalR.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Local view model for a chat message displayed in the UI.
+    /// </summary>
+    private sealed class ChatMessage
+    {
+        public decimal MessageId { get; set; }
+        public string Text { get; set; } = "";
+        public DateTimeOffset Timestamp { get; set; }
+        public bool IsMine { get; set; }
+        public ToledoMessage.Shared.Enums.DeliveryStatus Status { get; set; }
+    }
+}

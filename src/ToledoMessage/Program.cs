@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using ToledoMessage.Components;
 using ToledoMessage.Data;
 using ToledoMessage.Models;
+using ToledoMessage.Hubs;
 using ToledoMessage.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +20,7 @@ builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 
 // Application services
 builder.Services.AddScoped<PreKeyService>();
+builder.Services.AddScoped<MessageRelayService>();
 
 // JWT Bearer Authentication
 var jwtSection = builder.Configuration.GetSection("Jwt");
@@ -104,8 +106,7 @@ app.UseAuthorization();
 
 app.MapStaticAssets();
 app.MapControllers();
-// SignalR hub will be mapped here when ChatHub is implemented:
-// app.MapHub<ChatHub>("/hubs/chat");
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()

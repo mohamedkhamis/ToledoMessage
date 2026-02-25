@@ -1,0 +1,59 @@
+@page "/chat"
+@rendermode InteractiveWebAssembly
+@using ToledoMessage.Client.Components
+@inject NavigationManager Navigation
+
+<h2>Conversations</h2>
+
+<div style="margin-bottom:16px;">
+    <button @onclick="NavigateToNewConversation" style="padding:8px 20px; cursor:pointer;">
+        New Conversation
+    </button>
+</div>
+
+<div style="border:1px solid #e0e0e0; border-radius:4px;">
+    @if (conversations is not null && conversations.Count > 0)
+    {
+        @foreach (var conversation in conversations)
+        {
+            <ConversationListItem ConversationId="conversation.ConversationId"
+                                  DisplayName="@conversation.DisplayName"
+                                  LastMessage="@conversation.LastMessage"
+                                  UnreadCount="conversation.UnreadCount"
+                                  LastMessageTime="conversation.LastMessageTime" />
+        }
+    }
+    else
+    {
+        <p style="padding:24px; text-align:center; color:#999;">No conversations yet</p>
+    }
+</div>
+
+@code {
+    // Placeholder list; will be populated from the server in US3.
+    private List<ConversationSummary>? conversations;
+
+    protected override void OnInitialized()
+    {
+        // For now, initialize as empty. Will fetch from server in a future story.
+        conversations = [];
+    }
+
+    private void NavigateToNewConversation()
+    {
+        Navigation.NavigateTo("/new-conversation");
+    }
+
+    /// <summary>
+    /// Local view model for conversation list display.
+    /// Will be replaced with a proper DTO from the server in US3.
+    /// </summary>
+    private sealed class ConversationSummary
+    {
+        public decimal ConversationId { get; init; }
+        public string DisplayName { get; init; } = "";
+        public string? LastMessage { get; init; }
+        public int UnreadCount { get; init; }
+        public DateTimeOffset? LastMessageTime { get; init; }
+    }
+}

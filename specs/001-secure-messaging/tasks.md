@@ -46,51 +46,51 @@
 
 ### Shared Contracts (ToledoMessage.Shared)
 
-- [ ] T015 [P] Create MessageType enum (PreKeyMessage=0, NormalMessage=1) in src/ToledoMessage.Shared/Enums/MessageType.cs
-- [ ] T016 [P] Create ContentType enum (Text=0) in src/ToledoMessage.Shared/Enums/ContentType.cs
-- [ ] T017 [P] Create ConversationType enum (OneToOne=0, Group=1) in src/ToledoMessage.Shared/Enums/ConversationType.cs
-- [ ] T018 [P] Create DeliveryStatus enum (Sending=0, Sent=1, Delivered=2, Read=3) in src/ToledoMessage.Shared/Enums/DeliveryStatus.cs
-- [ ] T019 [P] Create ParticipantRole enum (Member=0, Admin=1) in src/ToledoMessage.Shared/Enums/ParticipantRole.cs
-- [ ] T020 [P] Create ProtocolConstants class (key sizes, batch sizes, limits) in src/ToledoMessage.Shared/Constants/ProtocolConstants.cs
-- [ ] T021 [P] Create RegisterRequest and LoginRequest DTOs in src/ToledoMessage.Shared/DTOs/RegisterRequest.cs and src/ToledoMessage.Shared/DTOs/LoginRequest.cs
-- [ ] T022 [P] Create AuthResponse DTO in src/ToledoMessage.Shared/DTOs/AuthResponse.cs
-- [ ] T023 [P] Create DeviceRegistrationRequest DTO in src/ToledoMessage.Shared/DTOs/DeviceRegistrationRequest.cs
-- [ ] T024 [P] Create PreKeyBundleResponse DTO in src/ToledoMessage.Shared/DTOs/PreKeyBundleResponse.cs
-- [ ] T025 [P] Create SendMessageRequest and SendMessageResult DTOs in src/ToledoMessage.Shared/DTOs/SendMessageRequest.cs and src/ToledoMessage.Shared/DTOs/SendMessageResult.cs
-- [ ] T026 [P] Create MessageEnvelope DTO in src/ToledoMessage.Shared/DTOs/MessageEnvelope.cs
-- [ ] T027 [P] Create UserSearchResult DTO in src/ToledoMessage.Shared/DTOs/UserSearchResult.cs
+- [x] T015 [P] Create MessageType enum (PreKeyMessage=0, NormalMessage=1) in src/ToledoMessage.Shared/Enums/MessageType.cs
+- [x] T016 [P] Create ContentType enum (Text=0) in src/ToledoMessage.Shared/Enums/ContentType.cs
+- [x] T017 [P] Create ConversationType enum (OneToOne=0, Group=1) in src/ToledoMessage.Shared/Enums/ConversationType.cs
+- [x] T018 [P] Create DeliveryStatus enum (Sending=0, Sent=1, Delivered=2, Read=3) in src/ToledoMessage.Shared/Enums/DeliveryStatus.cs
+- [x] T019 [P] Create ParticipantRole enum (Member=0, Admin=1) in src/ToledoMessage.Shared/Enums/ParticipantRole.cs
+- [x] T020 [P] Create ProtocolConstants class (key sizes, batch sizes, limits) in src/ToledoMessage.Shared/Constants/ProtocolConstants.cs
+- [x] T021 [P] Create RegisterRequest and LoginRequest DTOs in src/ToledoMessage.Shared/DTOs/RegisterRequest.cs and src/ToledoMessage.Shared/DTOs/LoginRequest.cs
+- [x] T022 [P] Create AuthResponse DTO in src/ToledoMessage.Shared/DTOs/AuthResponse.cs
+- [x] T023 [P] Create DeviceRegistrationRequest DTO in src/ToledoMessage.Shared/DTOs/DeviceRegistrationRequest.cs
+- [x] T024 [P] Create PreKeyBundleResponse DTO in src/ToledoMessage.Shared/DTOs/PreKeyBundleResponse.cs
+- [x] T025 [P] Create SendMessageRequest and SendMessageResult DTOs in src/ToledoMessage.Shared/DTOs/SendMessageRequest.cs and src/ToledoMessage.Shared/DTOs/SendMessageResult.cs
+- [x] T026 [P] Create MessageEnvelope DTO in src/ToledoMessage.Shared/DTOs/MessageEnvelope.cs
+- [x] T027 [P] Create UserSearchResult DTO in src/ToledoMessage.Shared/DTOs/UserSearchResult.cs
 
 ### Server Entity Models
 
-- [ ] T028 [P] Create User entity model in src/ToledoMessage/Models/User.cs (Id decimal(28,8), DisplayName, PasswordHash, CreatedAt, IsActive)
-- [ ] T029 [P] Create Device entity model in src/ToledoMessage/Models/Device.cs (Id decimal(28,8), UserId FK, identity keys, signed pre-key, Kyber pre-key, timestamps, IsActive)
-- [ ] T030 [P] Create OneTimePreKey entity model in src/ToledoMessage/Models/OneTimePreKey.cs (Id decimal(28,8), DeviceId FK, KeyId, PublicKey, IsUsed)
-- [ ] T031 [P] Create Conversation entity model in src/ToledoMessage/Models/Conversation.cs (Id decimal(28,8), Type, CreatedAt, DisappearingTimerSeconds)
-- [ ] T032 [P] Create ConversationParticipant entity model in src/ToledoMessage/Models/ConversationParticipant.cs (composite PK: ConversationId + UserId, JoinedAt, Role)
-- [ ] T033 [P] Create EncryptedMessage entity model in src/ToledoMessage/Models/EncryptedMessage.cs (Id decimal(28,8), ConversationId FK, SenderDeviceId FK, RecipientDeviceId FK, Ciphertext, MessageType, ContentType, SequenceNumber, ServerTimestamp, IsDelivered, DeliveredAt)
+- [x] T028 [P] Create User entity model in src/ToledoMessage/Models/User.cs (Id decimal(28,8), DisplayName, PasswordHash, CreatedAt, IsActive)
+- [x] T029 [P] Create Device entity model in src/ToledoMessage/Models/Device.cs (Id decimal(28,8), UserId FK, identity keys, signed pre-key, Kyber pre-key, timestamps, IsActive)
+- [x] T030 [P] Create OneTimePreKey entity model in src/ToledoMessage/Models/OneTimePreKey.cs (Id decimal(28,8), DeviceId FK, KeyId, PublicKey, IsUsed)
+- [x] T031 [P] Create Conversation entity model in src/ToledoMessage/Models/Conversation.cs (Id decimal(28,8), Type, CreatedAt, DisappearingTimerSeconds)
+- [x] T032 [P] Create ConversationParticipant entity model in src/ToledoMessage/Models/ConversationParticipant.cs (composite PK: ConversationId + UserId, JoinedAt, Role)
+- [x] T033 [P] Create EncryptedMessage entity model in src/ToledoMessage/Models/EncryptedMessage.cs (Id decimal(28,8), ConversationId FK, SenderDeviceId FK, RecipientDeviceId FK, Ciphertext, MessageType, ContentType, SequenceNumber, ServerTimestamp, IsDelivered, DeliveredAt)
 
 ### EF Core Configuration
 
-- [ ] T034 [P] Create UserConfiguration in src/ToledoMessage/Data/Configurations/UserConfiguration.cs (decimal(28,8) PK, unique DisplayName index)
-- [ ] T035 [P] Create DeviceConfiguration in src/ToledoMessage/Data/Configurations/DeviceConfiguration.cs (decimal(28,8) PK/FK, max 10 devices validation, UserId index)
-- [ ] T036 [P] Create OneTimePreKeyConfiguration in src/ToledoMessage/Data/Configurations/OneTimePreKeyConfiguration.cs (decimal(28,8) PK/FK, unique (DeviceId, KeyId) constraint)
-- [ ] T037 [P] Create ConversationConfiguration in src/ToledoMessage/Data/Configurations/ConversationConfiguration.cs (decimal(28,8) PK)
-- [ ] T038 [P] Create ConversationParticipantConfiguration in src/ToledoMessage/Data/Configurations/ConversationParticipantConfiguration.cs (composite PK, decimal(28,8) FKs)
-- [ ] T039 [P] Create EncryptedMessageConfiguration in src/ToledoMessage/Data/Configurations/EncryptedMessageConfiguration.cs (decimal(28,8) PK/FKs, (RecipientDeviceId, IsDelivered) index)
-- [ ] T040 Create ApplicationDbContext with all DbSets and configuration application in src/ToledoMessage/Data/ApplicationDbContext.cs
+- [x] T034 [P] Create UserConfiguration in src/ToledoMessage/Data/Configurations/UserConfiguration.cs (decimal(28,8) PK, unique DisplayName index)
+- [x] T035 [P] Create DeviceConfiguration in src/ToledoMessage/Data/Configurations/DeviceConfiguration.cs (decimal(28,8) PK/FK, max 10 devices validation, UserId index)
+- [x] T036 [P] Create OneTimePreKeyConfiguration in src/ToledoMessage/Data/Configurations/OneTimePreKeyConfiguration.cs (decimal(28,8) PK/FK, unique (DeviceId, KeyId) constraint)
+- [x] T037 [P] Create ConversationConfiguration in src/ToledoMessage/Data/Configurations/ConversationConfiguration.cs (decimal(28,8) PK)
+- [x] T038 [P] Create ConversationParticipantConfiguration in src/ToledoMessage/Data/Configurations/ConversationParticipantConfiguration.cs (composite PK, decimal(28,8) FKs)
+- [x] T039 [P] Create EncryptedMessageConfiguration in src/ToledoMessage/Data/Configurations/EncryptedMessageConfiguration.cs (decimal(28,8) PK/FKs, (RecipientDeviceId, IsDelivered) index)
+- [x] T040 Create ApplicationDbContext with all DbSets and configuration application in src/ToledoMessage/Data/ApplicationDbContext.cs
 
 ### Server Bootstrap
 
-- [ ] T041 Configure Program.cs with EF Core, ASP.NET Core Identity (JWT bearer), SignalR, CORS, and service registration in src/ToledoMessage/Program.cs
-- [ ] T042 Create initial EF Core migration by running `dotnet ef migrations add InitialCreate` in src/ToledoMessage/
+- [x] T041 Configure Program.cs with EF Core, ASP.NET Core Identity (JWT bearer), SignalR, CORS, and service registration in src/ToledoMessage/Program.cs
+- [x] T042 Create initial EF Core migration by running `dotnet ef migrations add InitialCreate` in src/ToledoMessage/
 
 ### Blazor Layout
 
-- [ ] T043 [P] Create App.razor (root component with HeadOutlet and Routes) in src/ToledoMessage/Components/App.razor
-- [ ] T044 [P] Create Routes.razor (Router component) in src/ToledoMessage/Components/Routes.razor
-- [ ] T045 [P] Create MainLayout.razor (base layout shell) in src/ToledoMessage/Components/Layout/MainLayout.razor
-- [ ] T046 [P] Create NavMenu.razor (navigation component) in src/ToledoMessage/Components/Layout/NavMenu.razor
-- [ ] T047 [P] Create _Imports.razor for client project in src/ToledoMessage.Client/_Imports.razor
+- [x] T043 [P] Create App.razor (root component with HeadOutlet and Routes) in src/ToledoMessage/Components/App.razor
+- [x] T044 [P] Create Routes.razor (Router component) in src/ToledoMessage/Components/Routes.razor
+- [x] T045 [P] Create MainLayout.razor (base layout shell) in src/ToledoMessage/Components/Layout/MainLayout.razor
+- [x] T046 [P] Create NavMenu.razor (navigation component) in src/ToledoMessage/Components/Layout/NavMenu.razor
+- [x] T047 [P] Create _Imports.razor for client project in src/ToledoMessage.Client/_Imports.razor
 
 **Checkpoint**: Foundation ready — `dotnet build` succeeds, `dotnet ef database update` applies migration, server starts with Identity auth. User story and crypto implementation can now begin.
 

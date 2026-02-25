@@ -1,5 +1,5 @@
 @page "/chat/{ConversationId:decimal}"
-@rendermode InteractiveWebAssembly
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @using System.Text
 @using System.Text.Json
 @inject HttpClient Http
@@ -10,9 +10,9 @@
 @inject PreKeyReplenishmentService PreKeyReplenishment
 @implements IAsyncDisposable
 
-<div style="display:flex; flex-direction:column; height:100vh;">
-    <div style="padding:12px 16px; border-bottom:1px solid #e0e0e0; display:flex; align-items:center; gap:12px;">
-        <a href="/chat" style="text-decoration:none; font-size:1.2em;">&larr;</a>
+<div class="chat-container">
+    <div class="chat-header">
+        <a href="/chat" style="font-size:1.2em;">&larr;</a>
         <div>
             <h3 style="margin:0;">
                 @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
@@ -37,7 +37,7 @@
 
     @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group && showParticipants)
     {
-        <div style="padding:8px 16px; background:#f5f5f5; border-bottom:1px solid #e0e0e0; max-height:150px; overflow-y:auto;">
+        <div style="padding:8px 16px; background:var(--gray-100); border-bottom:1px solid var(--gray-300); max-height:150px; overflow-y:auto;">
             <div style="display:flex; flex-wrap:wrap; gap:8px;">
                 @foreach (var p in participants)
                 {
@@ -55,8 +55,8 @@
 
     @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
     {
-        <div style="padding:4px 16px; border-bottom:1px solid #e0e0e0;">
-            <button style="border:none; background:none; color:#1976d2; cursor:pointer; font-size:0.85em;"
+        <div style="padding:4px 16px; border-bottom:1px solid var(--gray-300);">
+            <button style="border:none; background:none; color:var(--primary); cursor:pointer; font-size:0.85em; padding:4px 0;"
                     @onclick="() => showParticipants = !showParticipants">
                 @(showParticipants ? "Hide participants" : "Show participants")
             </button>
@@ -65,10 +65,10 @@
 
     @if (!string.IsNullOrEmpty(errorMessage))
     {
-        <div style="padding:8px 16px; background:#f8d7da; color:#721c24;">@errorMessage</div>
+        <div class="alert alert-error" style="margin:8px 16px;">@errorMessage</div>
     }
 
-    <div style="flex:1; overflow-y:auto; padding:16px;" @ref="messageContainer">
+    <div class="chat-messages" @ref="messageContainer">
         @if (isLoading)
         {
             <p style="text-align:center; color:#999;">Loading messages...</p>

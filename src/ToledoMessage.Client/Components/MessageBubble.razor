@@ -1,13 +1,9 @@
 @using ToledoMessage.Shared.Enums
 
-<div class="message-bubble @(IsMine ? "message-mine" : "message-theirs")"
-     style="display:flex; justify-content:@(IsMine ? "flex-end" : "flex-start"); margin-bottom:8px;">
-    <div style="max-width:70%; padding:8px 12px; border-radius:12px;
-                background:@(IsMine ? "#007bff" : "#e9ecef");
-                color:@(IsMine ? "white" : "#212529");">
+<div class="message-row @(IsMine ? "mine" : "")">
+    <div class="message-bubble @(IsMine ? "mine" : "theirs")">
         <div style="word-wrap:break-word; white-space:pre-wrap;">@Text</div>
-        <div style="display:flex; justify-content:flex-end; align-items:center; gap:4px; margin-top:4px;
-                    font-size:0.75em; opacity:0.8;">
+        <div class="message-meta" style="display:flex; justify-content:flex-end; align-items:center; gap:4px;">
             <span>@Timestamp.ToLocalTime().ToString("HH:mm")</span>
             @if (IsMine)
             {

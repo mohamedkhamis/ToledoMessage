@@ -1,33 +1,37 @@
 @page "/login"
-@rendermode InteractiveWebAssembly
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @using System.Text
 @using ToledoMessage.Shared.DTOs
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject LocalStorageService Storage
 
-<h2>Login</h2>
+<div class="auth-page">
+    <h2>Sign In</h2>
 
-@if (!string.IsNullOrEmpty(errorMessage))
-{
-    <div class="error">@errorMessage</div>
-}
+    <div class="card">
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-error">@errorMessage</div>
+        }
 
-<form @onsubmit="HandleLogin">
-    <div>
-        <label>Display Name</label>
-        <input @bind="displayName" />
+        <form @onsubmit="HandleLogin">
+            <div class="form-group">
+                <label for="displayName">Display Name</label>
+                <input id="displayName" @bind="displayName" placeholder="Enter your display name" />
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input id="password" type="password" @bind="password" placeholder="Enter your password" />
+            </div>
+            <button type="submit" class="btn-primary" style="width:100%;" disabled="@isLoading">
+                @(isLoading ? "Signing in..." : "Sign In")
+            </button>
+        </form>
     </div>
-    <div>
-        <label>Password</label>
-        <input type="password" @bind="password" />
-    </div>
-    <button type="submit" disabled="@isLoading">
-        @(isLoading ? "Logging in..." : "Login")
-    </button>
-</form>
 
-<p>Don't have an account? <a href="/register">Register</a></p>
+    <p class="auth-footer">Don't have an account? <a href="/register">Create one</a></p>
+</div>
 
 @code {
     private string displayName = "";
@@ -55,7 +59,7 @@
             Http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authResponse!.Token);
 
-            // Store auth token for later use (e.g., SignalR connection)
+            // Store auth token for later use
             await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse.Token));
 
             Navigation.NavigateTo("/chat");

@@ -1,5 +1,5 @@
 @page "/register"
-@rendermode InteractiveWebAssembly
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @using System.Text
 @using ToledoMessage.Shared.DTOs
 @using ToledoMessage.Client.Services
@@ -8,28 +8,32 @@
 @inject KeyGenerationService KeyGenService
 @inject LocalStorageService Storage
 
-<h2>Create Account</h2>
+<div class="auth-page">
+    <h2>Create Account</h2>
 
-@if (!string.IsNullOrEmpty(errorMessage))
-{
-    <div class="error">@errorMessage</div>
-}
+    <div class="card">
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-error">@errorMessage</div>
+        }
 
-<form @onsubmit="HandleRegister">
-    <div>
-        <label>Display Name</label>
-        <input @bind="displayName" />
+        <form @onsubmit="HandleRegister">
+            <div class="form-group">
+                <label for="displayName">Display Name</label>
+                <input id="displayName" @bind="displayName" placeholder="Choose a display name" />
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input id="password" type="password" @bind="password" placeholder="Minimum 8 characters" />
+            </div>
+            <button type="submit" class="btn-primary" style="width:100%;" disabled="@isLoading">
+                @(isLoading ? "Creating account..." : "Create Account")
+            </button>
+        </form>
     </div>
-    <div>
-        <label>Password</label>
-        <input type="password" @bind="password" />
-    </div>
-    <button type="submit" disabled="@isLoading">
-        @(isLoading ? "Registering..." : "Register")
-    </button>
-</form>
 
-<p>Already have an account? <a href="/login">Login</a></p>
+    <p class="auth-footer">Already have an account? <a href="/login">Sign in</a></p>
+</div>
 
 @code {
     private string displayName = "";
@@ -50,9 +54,10 @@
 
             if (!response.IsSuccessStatusCode)
             {
+                var body = await response.Content.ReadAsStringAsync();
                 errorMessage = response.StatusCode == System.Net.HttpStatusCode.Conflict
                     ? "Display name already taken."
-                    : "Registration failed.";
+                    : $"Registration failed: {body}";
                 return;
             }
 

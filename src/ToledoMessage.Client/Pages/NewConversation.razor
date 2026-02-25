@@ -1,41 +1,46 @@
 @page "/new-conversation"
-@rendermode InteractiveWebAssembly
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject HttpClient Http
 @inject NavigationManager Navigation
 
-<h2>New Conversation</h2>
+<div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+    <a href="/chat" style="font-size:1.2em;">&larr;</a>
+    <h2 style="margin:0;">New Conversation</h2>
+</div>
 
-<div style="margin-bottom:16px;">
-    <input placeholder="Search users..."
-           @bind="searchQuery"
-           @bind:event="oninput"
-           @bind:after="OnSearchInputChanged"
-           style="width:100%; padding:8px; font-size:1em;" />
+<div class="card" style="margin-bottom:16px;">
+    <div class="form-group" style="margin-bottom:0;">
+        <input placeholder="Search users by name..."
+               @bind="searchQuery"
+               @bind:event="oninput"
+               @bind:after="OnSearchInputChanged" />
+    </div>
 </div>
 
 @if (!string.IsNullOrEmpty(errorMessage))
 {
-    <div class="error" style="color:red; margin-bottom:12px;">@errorMessage</div>
+    <div class="alert alert-error">@errorMessage</div>
 }
 
 @if (isSearching)
 {
-    <p>Searching...</p>
+    <p style="text-align:center; color:var(--gray-500); padding:24px;">Searching...</p>
 }
 else if (searchResults is not null && searchResults.Count > 0)
 {
-    <div style="border:1px solid #e0e0e0; border-radius:4px;">
+    <div class="card" style="padding:0; overflow:hidden;">
         @foreach (var user in searchResults)
         {
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid #e0e0e0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid var(--gray-200);">
                 <div>
-                    <span style="font-weight:bold;">@user.DisplayName</span>
-                    <span style="color:#999; font-size:0.85em; margin-left:8px;">@user.DeviceCount device(s)</span>
+                    <span style="font-weight:600;">@user.DisplayName</span>
+                    <span style="color:var(--gray-500); font-size:0.85em; margin-left:8px;">@user.DeviceCount device(s)</span>
                 </div>
-                <button @onclick="() => StartConversation(user)"
+                <button class="btn-primary"
+                        @onclick="() => StartConversation(user)"
                         disabled="@isCreating"
-                        style="padding:6px 16px; cursor:pointer;">
-                    @(isCreating && creatingUserId == user.UserId ? "Creating..." : "Start Conversation")
+                        style="padding:8px 16px;">
+                    @(isCreating && creatingUserId == user.UserId ? "Creating..." : "Message")
                 </button>
             </div>
         }
@@ -43,12 +48,8 @@ else if (searchResults is not null && searchResults.Count > 0)
 }
 else if (searchResults is not null && searchResults.Count == 0 && !string.IsNullOrWhiteSpace(searchQuery))
 {
-    <p>No users found.</p>
+    <p style="text-align:center; color:var(--gray-500); padding:24px;">No users found.</p>
 }
-
-<div style="margin-top:16px;">
-    <a href="/chat">Back to conversations</a>
-</div>
 
 @code {
     private string searchQuery = "";
@@ -61,7 +62,6 @@ else if (searchResults is not null && searchResults.Count == 0 && !string.IsNull
 
     private async Task OnSearchInputChanged()
     {
-        // Cancel any pending debounced search
         _debounceCts?.Cancel();
         _debounceCts = new CancellationTokenSource();
         var token = _debounceCts.Token;
@@ -74,7 +74,6 @@ else if (searchResults is not null && searchResults.Count == 0 && !string.IsNull
 
         try
         {
-            // Debounce: wait 300ms before searching
             await Task.Delay(300, token);
 
             if (token.IsCancellationRequested)
@@ -94,7 +93,7 @@ else if (searchResults is not null && searchResults.Count == 0 && !string.IsNull
         }
         catch (OperationCanceledException)
         {
-            // Debounce cancelled, ignore
+            // Debounce cancelled
         }
         catch (Exception ex)
         {

@@ -1,8 +1,25 @@
 @page "/"
 
-<h1>ToledoMessage</h1>
-<p>Hybrid post-quantum secure messaging.</p>
-<div>
-    <a href="/register">Register</a>
-    <a href="/login">Login</a>
+<div class="hero">
+    <h1>ToledoMessage</h1>
+    <p>Hybrid post-quantum secure messaging. End-to-end encrypted with X25519 + ML-KEM-768 for quantum-resistant security.</p>
+    <div class="hero-actions">
+        <a href="/register" class="cta-primary">Get Started</a>
+        <a href="/login" class="cta-secondary">Sign In</a>
+    </div>
+
+    <div class="features">
+        <div class="feature-item">
+            <h3>Post-Quantum Safe</h3>
+            <p>ML-KEM-768 + X25519 hybrid encryption protects against future quantum computers</p>
+        </div>
+        <div class="feature-item">
+            <h3>End-to-End Encrypted</h3>
+            <p>Signal Protocol with Double Ratchet ensures only you and your recipient can read messages</p>
+        </div>
+        <div class="feature-item">
+            <h3>Zero-Trust Server</h3>
+            <p>All cryptography runs in your browser. The server never sees your plaintext or private keys</p>
+        </div>
+    </div>
 </div>

@@ -66,14 +66,14 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-# ── Colours ──────────────────────────────────────────────────────────────────
+# -- Colours ---------------------------------------------------------------
 function Write-Step   { param([string]$Msg) Write-Host "[*] $Msg" -ForegroundColor Cyan }
 function Write-Ok     { param([string]$Msg) Write-Host "[+] $Msg" -ForegroundColor Green }
 function Write-Warn   { param([string]$Msg) Write-Host "[!] $Msg" -ForegroundColor Yellow }
 function Write-Err    { param([string]$Msg) Write-Host "[-] $Msg" -ForegroundColor Red }
 function Write-Info   { param([string]$Msg) Write-Host "    $Msg" -ForegroundColor Gray }
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+# -- Helpers ---------------------------------------------------------------
 
 function Assert-Admin {
     $id = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -123,7 +123,7 @@ function Assert-Prerequisites {
         Write-Ok "IIS WebSocket Protocol enabled"
     }
 
-    # ASP.NET Core Hosting Bundle — check for aspnetcorev2 module or handler
+    # ASP.NET Core Hosting Bundle - check for aspnetcorev2 module or handler
     $ancmPath = Join-Path $env:ProgramFiles "IIS\Asp.Net Core Module\V2\aspnetcorev2.dll"
     $ancmPath2 = Join-Path ${env:ProgramFiles(x86)} "IIS\Asp.Net Core Module\V2\aspnetcorev2.dll" 2>$null
     $ancmInSystem = Join-Path $env:SystemRoot "System32\inetsrv\aspnetcorev2.dll"
@@ -254,7 +254,7 @@ function Setup-AppPool {
     $pool = $mgr.ApplicationPools[$Name]
 
     if ($pool) {
-        Write-Warn "App pool '$Name' already exists — updating settings"
+        Write-Warn "App pool '$Name' already exists - updating settings"
     } else {
         Write-Step "Creating app pool '$Name'..."
         $pool = $mgr.ApplicationPools.Add($Name)
@@ -281,7 +281,7 @@ function Setup-Site {
     $site = $mgr.Sites[$Name]
 
     if ($site) {
-        Write-Warn "Site '$Name' already exists — updating"
+        Write-Warn "Site '$Name' already exists - updating"
         $mgr.Sites.Remove($site)
         $mgr.CommitChanges()
         $mgr = Get-IISServerManager
@@ -339,7 +339,7 @@ function Start-IISSite {
     Write-Ok "App pool and site started"
 }
 
-# ── Actions ──────────────────────────────────────────────────────────────────
+# -- Actions ---------------------------------------------------------------
 
 function Invoke-Deploy {
     Assert-Admin
@@ -385,7 +385,7 @@ function Invoke-Deploy {
     if (-not $Force) {
         Write-Host ""
         Write-Host "  Deployment Summary" -ForegroundColor White
-        Write-Host "  ──────────────────────────────────────"
+        Write-Host "  --------------------------------------"
         Write-Info "  Site Name:    $SiteName"
         Write-Info "  Port:         $selectedPort"
         Write-Info "  Publish Path: $PublishPath"
@@ -438,7 +438,7 @@ function Invoke-Deploy {
     Write-Host ""
 
     # SQL Server instructions
-    Write-Host "  ── SQL Server Setup ──────────────────────────" -ForegroundColor Yellow
+    Write-Host "  -- SQL Server Setup --------------------------" -ForegroundColor Yellow
     Write-Host ""
     Write-Info "  If using Windows Authentication (Trusted_Connection=True),"
     Write-Info "  grant the IIS app pool identity access to SQL Server:"
@@ -521,23 +521,23 @@ function Invoke-Status {
 
     Write-Host ""
     Write-Host "  ToledoMessage IIS Status" -ForegroundColor White
-    Write-Host "  ──────────────────────────────────────"
+    Write-Host "  --------------------------------------"
 
     # App Pool
     $pool = Get-IISAppPool -Name $SiteName -ErrorAction SilentlyContinue
     if ($pool) {
-        $poolColor = if ($pool.State -eq "Started") { "Green" } else { "Red" }
-        Write-Host "  App Pool:  $SiteName — $($pool.State)" -ForegroundColor $poolColor
+        $poolColor = "Red"; if ($pool.State -eq "Started") { $poolColor = "Green" }
+        Write-Host "  App Pool:  $SiteName - $($pool.State)" -ForegroundColor $poolColor
     } else {
-        Write-Host "  App Pool:  $SiteName — NOT FOUND" -ForegroundColor Red
+        Write-Host "  App Pool:  $SiteName - NOT FOUND" -ForegroundColor Red
     }
 
     # Site
     $mgr = Get-IISServerManager
     $site = $mgr.Sites[$SiteName]
     if ($site) {
-        $siteColor = if ($site.State -eq "Started") { "Green" } else { "Red" }
-        Write-Host "  Site:      $SiteName — $($site.State)" -ForegroundColor $siteColor
+        $siteColor = "Red"; if ($site.State -eq "Started") { $siteColor = "Green" }
+        Write-Host "  Site:      $SiteName - $($site.State)" -ForegroundColor $siteColor
 
         foreach ($binding in $site.Bindings) {
             $info = $binding.BindingInformation   # e.g. "*:8080:"
@@ -545,7 +545,7 @@ function Invoke-Status {
             Write-Host "  URL:       http://localhost:$bPort" -ForegroundColor Cyan
         }
     } else {
-        Write-Host "  Site:      $SiteName — NOT FOUND" -ForegroundColor Red
+        Write-Host "  Site:      $SiteName - NOT FOUND" -ForegroundColor Red
     }
 
     # Publish path
@@ -559,7 +559,7 @@ function Invoke-Status {
             Write-Host "  Published: $PublishPath (DLL not found)" -ForegroundColor Yellow
         }
     } else {
-        Write-Host "  Published: $PublishPath — NOT FOUND" -ForegroundColor Red
+        Write-Host "  Published: $PublishPath - NOT FOUND" -ForegroundColor Red
     }
 
     # Recent logs
@@ -579,7 +579,7 @@ function Invoke-Status {
     Write-Host ""
 }
 
-# ── Main ─────────────────────────────────────────────────────────────────────
+# -- Main ------------------------------------------------------------------
 
 switch ($Action) {
     "Deploy"    { Invoke-Deploy }

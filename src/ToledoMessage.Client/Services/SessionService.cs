@@ -23,14 +23,15 @@ public class SessionService
     }
 
     /// <summary>
-    /// Establishes a new encrypted session with the specified remote device.
+    /// Establishes a new encrypted session with the specified remote device (initiator side).
     /// Fetches the pre-key bundle from the server, performs X3DH, and initializes
     /// the Double Ratchet. Persists the resulting session state locally.
+    /// Returns the X3DH InitiationResult so the caller can embed it in a PreKeyMessage.
     /// </summary>
     /// <param name="userId">The remote user's ID (used for the API route).</param>
     /// <param name="deviceId">The remote device's ID.</param>
-    /// <returns>A ready-to-use <see cref="DoubleRatchet"/> session.</returns>
-    public async Task<DoubleRatchet> EstablishSessionAsync(decimal userId, decimal deviceId)
+    /// <returns>A tuple of the ready-to-use <see cref="DoubleRatchet"/> session and the X3DH initiation result.</returns>
+    public async Task<(DoubleRatchet session, X3dhInitiator.InitiationResult initiationResult)> EstablishSessionAsync(decimal userId, decimal deviceId)
     {
         // 1. Fetch pre-key bundle from server
         var bundleResponse = await _http.GetFromJsonAsync<PreKeyBundleResponse>(
@@ -54,6 +55,61 @@ public class SessionService
         // 6. Store the remote device's identity public key for safety number verification
         var remoteIdentityKey = Convert.FromBase64String(bundleResponse.IdentityPublicKeyClassical);
         await _storage.StoreAsync($"remote.identity.{deviceId}", remoteIdentityKey);
+
+        return (session, result);
+    }
+
+    /// <summary>
+    /// Establishes a session as the responder (Bob) when receiving a PreKeyMessage.
+    /// Loads local private keys, runs X3DH responder, initializes Double Ratchet as responder,
+    /// and persists the resulting session state.
+    /// </summary>
+    /// <param name="ephemeralPublicKey">Alice's ephemeral X25519 public key from the PreKeyHeader.</param>
+    /// <param name="kemCiphertext">Alice's ML-KEM ciphertext from the PreKeyHeader.</param>
+    /// <param name="usedOneTimePreKeyId">The ID of the consumed one-time pre-key, or null.</param>
+    /// <param name="senderDeviceId">The sender's device ID (used as the session key).</param>
+    /// <returns>A ready-to-use <see cref="DoubleRatchet"/> session.</returns>
+    public async Task<DoubleRatchet> EstablishSessionAsResponderAsync(
+        byte[] ephemeralPublicKey,
+        byte[] kemCiphertext,
+        int? usedOneTimePreKeyId,
+        decimal senderDeviceId)
+    {
+        // 1. Load private keys from local storage
+        var signedPreKeyPrivate = await _storage.GetAsync("signedPreKey.private")
+            ?? throw new InvalidOperationException("Signed pre-key private key not found in local storage.");
+        var signedPreKeyPublic = await _storage.GetAsync("signedPreKey.public")
+            ?? throw new InvalidOperationException("Signed pre-key public key not found in local storage.");
+        var kyberPreKeyPrivate = await _storage.GetAsync("kyberPreKey.private")
+            ?? throw new InvalidOperationException("Kyber pre-key private key not found in local storage.");
+
+        byte[]? oneTimePreKeyPrivate = null;
+        if (usedOneTimePreKeyId.HasValue)
+        {
+            oneTimePreKeyPrivate = await _storage.GetAsync($"otpk.{usedOneTimePreKeyId.Value}");
+        }
+
+        // 2. Run X3DH responder protocol
+        var (rootKey, chainKey) = X3dhResponder.Respond(
+            signedPreKeyPrivate,
+            kyberPreKeyPrivate,
+            oneTimePreKeyPrivate,
+            ephemeralPublicKey,
+            kemCiphertext);
+
+        // 3. Initialize Double Ratchet as responder
+        //    Bob's signed pre-key serves as the initial ratchet key pair.
+        var session = DoubleRatchet.InitializeAsResponder(
+            rootKey, signedPreKeyPrivate, signedPreKeyPublic);
+
+        // 4. Persist session state
+        await SaveSessionAsync(senderDeviceId, session.GetState());
+
+        // 5. Delete consumed one-time pre-key
+        if (usedOneTimePreKeyId.HasValue)
+        {
+            await _storage.DeleteAsync($"otpk.{usedOneTimePreKeyId.Value}");
+        }
 
         return session;
     }

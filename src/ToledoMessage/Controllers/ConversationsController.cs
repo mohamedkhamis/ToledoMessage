@@ -23,6 +23,87 @@ public class ConversationsController : ControllerBase
     }
 
     /// <summary>
+    /// List all conversations the current user participates in.
+    /// Returns conversation metadata with display names, last message time, and unread counts.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> ListConversations()
+    {
+        var userId = GetUserId();
+
+        // Get all conversation IDs where the user is a participant
+        var conversationIds = await _db.ConversationParticipants
+            .Where(p => p.UserId == userId)
+            .Select(p => p.ConversationId)
+            .ToListAsync();
+
+        if (conversationIds.Count == 0)
+            return Ok(Array.Empty<ConversationListItemResponse>());
+
+        // Get the user's device IDs for unread count calculation
+        var userDeviceIds = await _db.Devices
+            .Where(d => d.UserId == userId && d.IsActive)
+            .Select(d => d.Id)
+            .ToListAsync();
+
+        var results = new List<ConversationListItemResponse>();
+
+        foreach (var conversationId in conversationIds)
+        {
+            var conversation = await _db.Conversations
+                .Include(c => c.Participants)
+                    .ThenInclude(p => p.User)
+                .FirstOrDefaultAsync(c => c.Id == conversationId);
+
+            if (conversation is null) continue;
+
+            // Determine display name
+            string displayName;
+            if (conversation.Type == ConversationType.Group)
+            {
+                displayName = conversation.GroupName ?? "Group";
+            }
+            else
+            {
+                var otherParticipant = conversation.Participants
+                    .FirstOrDefault(p => p.UserId != userId);
+                displayName = otherParticipant?.User.DisplayName ?? "Unknown";
+            }
+
+            // Get last message timestamp for this conversation
+            var lastMessageTime = await _db.EncryptedMessages
+                .Where(m => m.ConversationId == conversationId)
+                .OrderByDescending(m => m.ServerTimestamp)
+                .Select(m => (DateTimeOffset?)m.ServerTimestamp)
+                .FirstOrDefaultAsync();
+
+            // Count unread messages (not delivered to any of user's devices)
+            var unreadCount = userDeviceIds.Count > 0
+                ? await _db.EncryptedMessages
+                    .Where(m => m.ConversationId == conversationId
+                        && userDeviceIds.Contains(m.RecipientDeviceId)
+                        && !m.IsDelivered)
+                    .CountAsync()
+                : 0;
+
+            results.Add(new ConversationListItemResponse(
+                conversationId,
+                conversation.Type,
+                displayName,
+                lastMessageTime,
+                unreadCount));
+        }
+
+        // Order by last message time descending, conversations with no messages last
+        results = results
+            .OrderByDescending(r => r.LastMessageTime.HasValue)
+            .ThenByDescending(r => r.LastMessageTime)
+            .ToList();
+
+        return Ok(results);
+    }
+
+    /// <summary>
     /// Create a one-to-one conversation between the requesting user and another user.
     /// Returns the existing conversation if one already exists.
     /// </summary>

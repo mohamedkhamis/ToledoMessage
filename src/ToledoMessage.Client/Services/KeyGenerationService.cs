@@ -42,6 +42,7 @@ public class KeyGenerationService
         await _storage.StoreAsync("identity.pq.private", identity.PostQuantumPrivateKey);
         await _storage.StoreAsync("identity.pq.public", identity.PostQuantumPublicKey);
         await _storage.StoreAsync("signedPreKey.private", signedPreKey.PrivateKey);
+        await _storage.StoreAsync("signedPreKey.public", signedPreKey.PublicKey);
         await _storage.StoreAsync("kyberPreKey.private", kyberPreKey.PrivateKey);
 
         foreach (var otpk in oneTimePreKeys)

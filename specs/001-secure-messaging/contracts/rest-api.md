@@ -58,6 +58,67 @@ Authenticate and receive JWT token.
 
 ---
 
+### POST /api/auth/refresh
+
+Refresh an expired access token using a valid refresh token.
+
+**Request**:
+```json
+{
+  "accessToken": "string (expired JWT)",
+  "refreshToken": "string"
+}
+```
+
+**Response 200**:
+```json
+{
+  "token": "string (new JWT)",
+  "refreshToken": "string (rotated)"
+}
+```
+
+**Errors**: 401 (invalid/expired refresh token)
+
+---
+
+### DELETE /api/auth/account
+
+Initiate account deletion with 7-day grace period.
+
+**Response 200**:
+```json
+{
+  "deletionScheduledAt": "ISO 8601",
+  "gracePeriodEndsAt": "ISO 8601"
+}
+```
+
+**Notes**: Logging in during the grace period automatically cancels
+the pending deletion and re-activates the account. After 7 days,
+the account is permanently deactivated, all device keys are revoked,
+and contacts see a key change warning.
+
+**Errors**: 401 (not authenticated)
+
+---
+
+## Health (Public)
+
+### GET /health
+
+Server health check endpoint for uptime monitoring.
+
+**Response 200**:
+```json
+{
+  "status": "Healthy",
+  "timestamp": "ISO 8601"
+}
+```
+
+---
+
 ## Devices (Authorized)
 
 ### POST /api/devices

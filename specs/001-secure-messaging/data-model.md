@@ -15,6 +15,7 @@
 │ PasswordHash     │       │ DeviceName            │
 │ CreatedAt        │       │ IdentityPubClassical  │
 │ IsActive         │       │ IdentityPubPQ         │
+│ DeletionReqAt    │       │                       │
 │                  │       │ SignedPreKeyPublic    │
 │                  │       │ SignedPreKeySignature │
 │                  │       │ SignedPreKeyId        │
@@ -76,6 +77,7 @@
 | PasswordHash | string | Required | Hashed via ASP.NET Core `IPasswordHasher<User>` |
 | CreatedAt | DateTimeOffset | Required, default: now | Registration timestamp |
 | IsActive | bool | Required, default: true | Soft-delete flag |
+| DeletionRequestedAt | DateTimeOffset? | Optional, nullable | Set when user initiates account deletion |
 
 **Relationships**: Has many `Devices`, has many `ConversationParticipants`
 
@@ -84,7 +86,7 @@
 - Password: minimum 12 characters (per spec), hashed before storage
 - IsActive=false prevents login and message delivery
 
-**State transitions**: Active → Deactivated (no recovery per constitution)
+**State transitions**: Active → PendingDeletion (7-day grace period; login re-activates) → Deactivated (permanent, keys revoked, no recovery per constitution)
 
 ---
 
@@ -182,7 +184,7 @@ below 10 (threshold from ProtocolConstants).
 | ConversationId | decimal | FK → Conversation, required | |
 | SenderDeviceId | decimal | FK → Device, required | Sending device |
 | RecipientDeviceId | decimal | FK → Device, required | Target device |
-| Ciphertext | byte[] | Required | Encrypted payload (AES-256-GCM) |
+| Ciphertext | byte[] | Required, max ~66 KB (64 KB plaintext + overhead) | Encrypted payload (AES-256-GCM) |
 | MessageType | MessageType | Required | PreKeyMessage (0) or NormalMessage (1) |
 | ContentType | ContentType | Required | Text (0); extensible |
 | SequenceNumber | long | Required | Per-conversation auto-increment |
@@ -214,6 +216,7 @@ ciphertext.
 | ConversationType | OneToOne (0), Group (1) | Conversation type discriminator |
 | DeliveryStatus | Sending (0), Sent (1), Delivered (2), Read (3) | Client-side UI state |
 | ParticipantRole | Member (0), Admin (1) | Group permission level |
+| UserStatus | Active (0), PendingDeletion (1), Deactivated (2) | Account lifecycle state |
 
 ## Client-Side Data (IndexedDB)
 
@@ -227,6 +230,7 @@ never sent to the server:
 | one_time_pre_keys | OTP private keys (keyed by KeyId) | Session establishment |
 | sessions | RatchetState per remote device | Double Ratchet state |
 | messages | Decrypted message content | Chat history display |
+| preferences | User settings (theme, notification permission) | UI preferences |
 
 ## Protocol Constants
 
@@ -249,6 +253,8 @@ never sent to the server:
 | Max Group Participants | 100 | |
 | Message Rate Limit | 60/minute | |
 | Search Rate Limit | 10/minute | |
+| Max Message Size | 65,536 bytes (64 KB) | Plaintext limit before encryption |
+| Account Deletion Grace Period | 7 days | Login re-activates during grace period |
 | HKDF Info - Root Key | `ToledoMessage_RootKey` | Domain separation |
 | HKDF Info - Chain Key | `ToledoMessage_ChainKey` | Domain separation |
 | HKDF Info - Message Key | `ToledoMessage_MessageKey` | Domain separation |

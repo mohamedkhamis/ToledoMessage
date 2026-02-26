@@ -22,9 +22,9 @@
 - [ ] T001 Create solution file and project structure with 5 source projects (ToledoMessage, ToledoMessage.Client, ToledoMessage.Crypto, ToledoMessage.Shared, Toledo.SharedKernel) and 4 test projects (ToledoMessage.Crypto.Tests, ToledoMessage.Client.Tests, ToledoMessage.Server.Tests, ToledoMessage.Integration.Tests) plus ToledoMessage.Benchmarks
 - [ ] T002 [P] Configure NuGet dependencies: BouncyCastle.Cryptography 2.6.2 in src/ToledoMessage.Crypto/ToledoMessage.Crypto.csproj, EF Core 10 + Identity + JWT Bearer in src/ToledoMessage/ToledoMessage.csproj, SignalR Client in src/ToledoMessage.Client/ToledoMessage.Client.csproj
 - [ ] T003 [P] Configure xUnit + BenchmarkDotNet in test projects: tests/ToledoMessage.Crypto.Tests/ToledoMessage.Crypto.Tests.csproj, tests/ToledoMessage.Benchmarks/ToledoMessage.Benchmarks.csproj
-- [ ] T004 [P] Define protocol constants (key sizes, batch sizes, rate limits, HKDF info strings) in src/ToledoMessage.Shared/Constants/ProtocolConstants.cs
-- [ ] T005 [P] Define enums (MessageType, ContentType, ConversationType, DeliveryStatus, ParticipantRole) in src/ToledoMessage.Shared/Enums/
-- [ ] T006 [P] Define all shared DTOs (RegisterRequest, LoginRequest, AuthResponse, DeviceRegistrationRequest, SendMessageRequest, MessageEnvelope, PreKeyBundleResponse, UserSearchResult, etc.) in src/ToledoMessage.Shared/DTOs/
+- [ ] T004 [P] Define protocol constants (key sizes, batch sizes, rate limits, HKDF info strings, max message size 64 KB, account deletion grace period 7 days) in src/ToledoMessage.Shared/Constants/ProtocolConstants.cs
+- [ ] T005 [P] Define enums (MessageType, ContentType, ConversationType, DeliveryStatus, ParticipantRole, UserStatus) in src/ToledoMessage.Shared/Enums/
+- [ ] T006 [P] Define all shared DTOs (RegisterRequest, LoginRequest, AuthResponse, RefreshTokenRequest, RefreshTokenResponse, AccountDeletionResponse, DeviceRegistrationRequest, SendMessageRequest, MessageEnvelope, PreKeyBundleResponse, UserSearchResult, etc.) in src/ToledoMessage.Shared/DTOs/
 - [ ] T007 [P] Create DecimalTools helper for snowflake-style ID generation in src/Toledo.SharedKernel/Helpers/DecimalTools.cs
 
 ---
@@ -92,18 +92,18 @@
 
 ## Phase 3: Foundational — Server Infrastructure (Blocking Prerequisites)
 
-**Purpose**: Database, authentication, middleware, and real-time hub setup.
+**Purpose**: Database, authentication, middleware, real-time hub, observability, and core services.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
 ### Data Model & Migrations
 
-- [ ] T038 [P] Implement User entity (Id, DisplayName, PasswordHash, CreatedAt, IsActive) in src/ToledoMessage/Models/User.cs
+- [ ] T038 [P] Implement User entity (Id, DisplayName, PasswordHash, CreatedAt, IsActive, DeletionRequestedAt) in src/ToledoMessage/Models/User.cs
 - [ ] T039 [P] Implement Device entity (Id, UserId, DeviceName, all key fields, timestamps, IsActive) in src/ToledoMessage/Models/Device.cs
 - [ ] T040 [P] Implement OneTimePreKey entity (Id, DeviceId, KeyId, PublicKey, IsUsed) in src/ToledoMessage/Models/OneTimePreKey.cs
 - [ ] T041 [P] Implement Conversation entity (Id, Type, GroupName, CreatedAt, DisappearingTimerSeconds) in src/ToledoMessage/Models/Conversation.cs
 - [ ] T042 [P] Implement ConversationParticipant entity (composite PK, JoinedAt, Role) in src/ToledoMessage/Models/ConversationParticipant.cs
-- [ ] T043 [P] Implement EncryptedMessage entity (Id, ConversationId, SenderDeviceId, RecipientDeviceId, Ciphertext, MessageType, ContentType, SequenceNumber, ServerTimestamp, IsDelivered, DeliveredAt) in src/ToledoMessage/Models/EncryptedMessage.cs
+- [ ] T043 [P] Implement EncryptedMessage entity (Id, ConversationId, SenderDeviceId, RecipientDeviceId, Ciphertext max ~66KB, MessageType, ContentType, SequenceNumber, ServerTimestamp, IsDelivered, DeliveredAt) in src/ToledoMessage/Models/EncryptedMessage.cs
 - [ ] T044 Implement ApplicationDbContext with DbSets and configure entity relationships in src/ToledoMessage/Data/ApplicationDbContext.cs (depends on T038-T043)
 - [ ] T045 [P] Implement EF Core Fluent API configurations (UserConfiguration, DeviceConfiguration, OneTimePreKeyConfiguration, ConversationConfiguration, ConversationParticipantConfiguration, EncryptedMessageConfiguration) in src/ToledoMessage/Data/Configurations/
 - [ ] T046 Create and apply initial EF Core migration in src/ToledoMessage/Migrations/
@@ -118,16 +118,21 @@
 
 - [ ] T050 [P] Implement PreKeyService (store, consume, count one-time pre-keys) in src/ToledoMessage/Services/PreKeyService.cs
 - [ ] T051 [P] Implement MessageRelayService (store message with auto-incrementing sequence number, relay via SignalR to online recipient, get pending messages, acknowledge delivery) in src/ToledoMessage/Services/MessageRelayService.cs
+- [ ] T052 [P] Implement AccountDeletionService (initiate deletion with 7-day grace period, cancel pending deletion on login, background hosted service to scan and permanently deactivate expired accounts, revoke device keys on deactivation) in src/ToledoMessage/Services/AccountDeletionService.cs
+
+### Observability
+
+- [ ] T053 [P] Configure Serilog structured logging (console + file sinks, request logging middleware, error tracking, ensure no plaintext message content or private key material in logs per NFR-011) and map /health endpoint with SQL Server connectivity check in src/ToledoMessage/Program.cs
 
 ### SignalR Hub
 
-- [ ] T052 Implement ChatHub with RegisterDevice (join device/user groups), connection lifecycle management in src/ToledoMessage/Hubs/ChatHub.cs (depends on T047)
+- [ ] T054 Implement ChatHub with RegisterDevice (join device/user groups), connection lifecycle management in src/ToledoMessage/Hubs/ChatHub.cs (depends on T047)
 
 ### DI Registration
 
-- [ ] T053 Register all server services (PreKeyService, MessageRelayService, RateLimitService, MessageCleanupHostedService), configure CORS, map controllers, map SignalR hub (/hubs/chat), map Blazor components in src/ToledoMessage/Program.cs (depends on T047-T052)
+- [ ] T055 Register all server services (PreKeyService, MessageRelayService, RateLimitService, AccountDeletionService, MessageCleanupHostedService), configure Serilog, configure CORS, map controllers, map SignalR hub (/hubs/chat), map Blazor components in src/ToledoMessage/Program.cs (depends on T047-T054)
 
-**Checkpoint**: Server infrastructure ready. Database created. JWT auth works. SignalR hub accepts connections.
+**Checkpoint**: Server infrastructure ready. Database created. JWT auth works. SignalR hub accepts connections. /health endpoint responds. Serilog logging active.
 
 ---
 
@@ -139,32 +144,33 @@
 
 ### Tests (write FIRST, verify they FAIL)
 
-- [ ] T054 [P] [US1] Write integration test: successful registration creates account and returns JWT in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
-- [ ] T055 [P] [US1] Write integration test: duplicate display name rejected in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
-- [ ] T056 [P] [US1] Write integration test: weak password (<12 chars) rejected in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
+- [ ] T056 [P] [US1] Write integration test: successful registration creates account and returns JWT in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
+- [ ] T057 [P] [US1] Write integration test: duplicate display name rejected in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
+- [ ] T058 [P] [US1] Write integration test: weak password (<12 chars) rejected in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
 
 ### Server Implementation
 
-- [ ] T057 [US1] Implement AuthController POST /api/auth/register (validate display name 3-32 chars ^[a-zA-Z0-9_-]+$ case-insensitive uniqueness, password min 12 chars, hash password, create user, return JWT) in src/ToledoMessage/Controllers/AuthController.cs
-- [ ] T058 [US1] Implement AuthController POST /api/auth/login (validate credentials, return JWT) in src/ToledoMessage/Controllers/AuthController.cs
-- [ ] T059 [US1] Implement DevicesController POST /api/devices (register device with key material, store OTPs, enforce max 10 devices) in src/ToledoMessage/Controllers/DevicesController.cs
-- [ ] T060 [US1] Implement DevicesController GET /api/devices (list active devices for authenticated user) in src/ToledoMessage/Controllers/DevicesController.cs
+- [ ] T059 [US1] Implement AuthController POST /api/auth/register (validate display name 3-32 chars ^[a-zA-Z0-9_-]+$ case-insensitive uniqueness, password min 12 chars, hash password, create user, return JWT) in src/ToledoMessage/Controllers/AuthController.cs
+- [ ] T060 [US1] Implement AuthController POST /api/auth/login (validate credentials, cancel pending deletion if account in PendingDeletion state via AccountDeletionService, return JWT) in src/ToledoMessage/Controllers/AuthController.cs
+- [ ] T061 [US1] Implement AuthController DELETE /api/auth/account (initiate account deletion with 7-day grace period via AccountDeletionService, return deletionScheduledAt and gracePeriodEndsAt) in src/ToledoMessage/Controllers/AuthController.cs (depends on T052)
+- [ ] T062 [US1] Implement DevicesController POST /api/devices (register device with key material, store OTPs, enforce max 10 devices) in src/ToledoMessage/Controllers/DevicesController.cs
+- [ ] T063 [US1] Implement DevicesController GET /api/devices (list active devices for authenticated user) in src/ToledoMessage/Controllers/DevicesController.cs
 
 ### Client Implementation
 
-- [ ] T061 [US1] Implement KeyGenerationService (generate X25519+Ed25519 classical keys, ML-KEM-768+ML-DSA-65 PQ keys, signed pre-key with hybrid signature, batch of 100 OTPs) in src/ToledoMessage.Client/Services/KeyGenerationService.cs
-- [ ] T062 [US1] Implement LocalStorageService (IndexedDB wrapper for storing/retrieving private keys, ratchet state, messages) in src/ToledoMessage.Client/Services/LocalStorageService.cs
-- [ ] T063 [US1] Implement Register page (display name input, password input with min 12 char validation, register button, on success: generate keys via KeyGenerationService, register device via POST /api/devices, store private keys in IndexedDB, navigate to chat list) in src/ToledoMessage.Client/Pages/Register.razor
-- [ ] T064 [US1] Implement Login page (display name + password inputs, login button, on success: store JWT, navigate to chat list) in src/ToledoMessage.Client/Pages/Login.razor
-- [ ] T065 [US1] Configure client-side HttpClient with base address and JWT auth header, register all services in DI in src/ToledoMessage.Client/Program.cs
+- [ ] T064 [US1] Implement KeyGenerationService (generate X25519+Ed25519 classical keys, ML-KEM-768+ML-DSA-65 PQ keys, signed pre-key with hybrid signature, batch of 100 OTPs) in src/ToledoMessage.Client/Services/KeyGenerationService.cs
+- [ ] T065 [US1] Implement LocalStorageService (IndexedDB wrapper for storing/retrieving private keys, ratchet state, messages, user preferences) in src/ToledoMessage.Client/Services/LocalStorageService.cs
+- [ ] T066 [US1] Implement Register page (display name input, password input with min 12 char validation, register button, on success: generate keys via KeyGenerationService, register device via POST /api/devices, store private keys in IndexedDB, navigate to chat list) in src/ToledoMessage.Client/Pages/Register.razor
+- [ ] T067 [US1] Implement Login page (display name + password inputs, login button, on success: store JWT, navigate to chat list) in src/ToledoMessage.Client/Pages/Login.razor
+- [ ] T068 [US1] Configure client-side HttpClient with base address and JWT auth header, register all services in DI in src/ToledoMessage.Client/Program.cs
 
 ### Refresh Token Support
 
-- [ ] T066 [US1] Implement RefreshToken entity (Id, UserId FK, Token, DeviceId FK, ExpiresAt, CreatedAt, IsRevoked) and add EF Core configuration in src/ToledoMessage/Models/RefreshToken.cs and src/ToledoMessage/Data/Configurations/RefreshTokenConfiguration.cs
-- [ ] T067 [US1] Implement POST /api/auth/refresh endpoint (accept expired access token + refresh token, validate, issue new token pair, rotate refresh token) in src/ToledoMessage/Controllers/AuthController.cs (depends on T066)
-- [ ] T068 [US1] Implement client-side token refresh interceptor (detect 401 responses, auto-refresh via POST /api/auth/refresh, retry original request, redirect to login on refresh failure) in src/ToledoMessage.Client/Services/AuthTokenHandler.cs
+- [ ] T069 [US1] Implement RefreshToken entity (Id, UserId FK, Token, DeviceId FK, ExpiresAt, CreatedAt, IsRevoked) and add EF Core configuration in src/ToledoMessage/Models/RefreshToken.cs and src/ToledoMessage/Data/Configurations/RefreshTokenConfiguration.cs
+- [ ] T070 [US1] Implement POST /api/auth/refresh endpoint (accept expired access token + refresh token, validate, issue new token pair, rotate refresh token) in src/ToledoMessage/Controllers/AuthController.cs (depends on T069)
+- [ ] T071 [US1] Implement client-side token refresh interceptor (detect 401 responses, auto-refresh via POST /api/auth/refresh, retry original request, redirect to login on refresh failure) in src/ToledoMessage.Client/Services/AuthTokenHandler.cs
 
-**Checkpoint**: User can register, login, and has cryptographic identity. Pre-key bundle on server. Token refresh works.
+**Checkpoint**: User can register, login, and has cryptographic identity. Pre-key bundle on server. Token refresh works. Account deletion initiable.
 
 ---
 
@@ -176,22 +182,22 @@
 
 ### Tests (write FIRST, verify they FAIL)
 
-- [ ] T069 [P] [US2] Write integration test: two users establish session via X3DH and exchange first encrypted message in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
-- [ ] T070 [P] [US2] Write integration test: message to offline user is queued and delivered on reconnect in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
+- [ ] T072 [P] [US2] Write integration test: two users establish session via X3DH and exchange first encrypted message in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
+- [ ] T073 [P] [US2] Write integration test: message to offline user is queued and delivered on reconnect in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
 
 ### Server Implementation
 
-- [ ] T071 [US2] Implement UsersController GET /api/users/search (case-insensitive partial match on display name, rate limited 10/min) in src/ToledoMessage/Controllers/UsersController.cs
-- [ ] T072 [US2] Implement UsersController GET /api/users/{userId}/prekey-bundle (fetch device's pre-key bundle, consume one OTP, return all public keys) in src/ToledoMessage/Controllers/UsersController.cs
-- [ ] T073 [US2] Implement UsersController GET /api/users/{userId}/devices (list active devices for fan-out) in src/ToledoMessage/Controllers/UsersController.cs
-- [ ] T074 [US2] Implement ConversationsController POST /api/conversations (create 1:1 conversation or return existing, add both users as participants) in src/ToledoMessage/Controllers/ConversationsController.cs
+- [ ] T074 [US2] Implement UsersController GET /api/users/search (case-insensitive partial match on display name, rate limited 10/min) in src/ToledoMessage/Controllers/UsersController.cs
+- [ ] T075 [US2] Implement UsersController GET /api/users/{userId}/prekey-bundle (fetch device's pre-key bundle, consume one OTP, return all public keys) in src/ToledoMessage/Controllers/UsersController.cs
+- [ ] T076 [US2] Implement UsersController GET /api/users/{userId}/devices (list active devices for fan-out) in src/ToledoMessage/Controllers/UsersController.cs
+- [ ] T077 [US2] Implement ConversationsController POST /api/conversations (create 1:1 conversation or return existing, add both users as participants) in src/ToledoMessage/Controllers/ConversationsController.cs
 
 ### Client Implementation
 
-- [ ] T075 [US2] Implement SessionService (fetch pre-key bundle via API, execute X3DH initiator, initialize Double Ratchet, persist RatchetState to IndexedDB) in src/ToledoMessage.Client/Services/SessionService.cs
-- [ ] T076 [US2] Implement CryptoService (orchestrate session establishment + encryption: check for existing session, establish if needed, cache X3DH InitiationResult for PreKeyMessage, encrypt message via Double Ratchet, persist updated ratchet state) in src/ToledoMessage.Client/Services/CryptoService.cs
-- [ ] T077 [US2] Implement MessageEncryptionService (encrypt: serialize plaintext + MessageHeader, AES-256-GCM encrypt with message key from ratchet, return ciphertext; decrypt: AES-256-GCM decrypt, deserialize, advance ratchet) in src/ToledoMessage.Client/Services/MessageEncryptionService.cs
-- [ ] T078 [US2] Implement NewConversation page (search input with API call to /api/users/search, display results, select user, create conversation via API, navigate to chat) in src/ToledoMessage.Client/Pages/NewConversation.razor
+- [ ] T078 [US2] Implement SessionService (fetch pre-key bundle via API, execute X3DH initiator, initialize Double Ratchet, persist RatchetState to IndexedDB) in src/ToledoMessage.Client/Services/SessionService.cs
+- [ ] T079 [US2] Implement CryptoService (orchestrate session establishment + encryption: check for existing session, establish if needed, cache X3DH InitiationResult for PreKeyMessage, encrypt message via Double Ratchet, persist updated ratchet state) in src/ToledoMessage.Client/Services/CryptoService.cs
+- [ ] T080 [US2] Implement MessageEncryptionService (encrypt: serialize plaintext + MessageHeader, AES-256-GCM encrypt with message key from ratchet, return ciphertext; decrypt: AES-256-GCM decrypt, deserialize, advance ratchet) in src/ToledoMessage.Client/Services/MessageEncryptionService.cs
+- [ ] T081 [US2] Implement NewConversation page (search input with API call to /api/users/search, display results, select user, create conversation via API, navigate to chat) in src/ToledoMessage.Client/Pages/NewConversation.razor
 
 **Checkpoint**: Two users can establish a secure session and exchange their first end-to-end encrypted message.
 
@@ -199,36 +205,38 @@
 
 ## Phase 6: User Story 3 — Real-Time Message Exchange (P1)
 
-**Goal**: Two users exchange messages in real-time via SignalR with delivery status, message ordering, and offline queueing.
+**Goal**: Two users exchange messages in real-time via SignalR with delivery status, message ordering, offline queueing, browser notifications, and tab coordination.
 
 **Independent Test**: Two users exchange 10+ messages rapidly → all arrive in order, each encrypted with distinct key, delivery status updates in real-time.
 
 ### Tests (write FIRST, verify they FAIL)
 
-- [ ] T079 [P] [US3] Write integration test: real-time message exchange with delivery status (sent → delivered → read) in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
-- [ ] T080 [P] [US3] Write integration test: messages maintain correct ordering via sequence numbers in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
+- [ ] T082 [P] [US3] Write integration test: real-time message exchange with delivery status (sent → delivered → read) in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
+- [ ] T083 [P] [US3] Write integration test: messages maintain correct ordering via sequence numbers in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
 
 ### Server Implementation
 
-- [ ] T081 [US3] Implement ChatHub SendMessage (validate sender, store via MessageRelayService, relay to recipient device group, return SendMessageResult with messageId + sequenceNumber + serverTimestamp) in src/ToledoMessage/Hubs/ChatHub.cs
-- [ ] T082 [US3] Implement ChatHub AcknowledgeDelivery and AcknowledgeRead (update message status, broadcast MessageDelivered/MessageRead to sender's device group) in src/ToledoMessage/Hubs/ChatHub.cs
-- [ ] T083 [US3] Implement ChatHub TypingIndicator (broadcast UserTyping to all other conversation participants' user groups) in src/ToledoMessage/Hubs/ChatHub.cs
-- [ ] T084 [US3] Implement MessagesController POST /api/messages (REST fallback for sending when SignalR unavailable) in src/ToledoMessage/Controllers/MessagesController.cs
-- [ ] T085 [US3] Implement MessagesController GET /api/messages/pending (retrieve undelivered messages for device, ordered by sequence number) in src/ToledoMessage/Controllers/MessagesController.cs
-- [ ] T086 [US3] Implement MessagesController POST /api/messages/{messageId}/acknowledge (mark delivered) in src/ToledoMessage/Controllers/MessagesController.cs
+- [ ] T084 [US3] Implement ChatHub SendMessage (validate sender, validate message size ≤64 KB per FR-019, store via MessageRelayService, relay to recipient device group, return SendMessageResult with messageId + sequenceNumber + serverTimestamp) in src/ToledoMessage/Hubs/ChatHub.cs
+- [ ] T085 [US3] Implement ChatHub AcknowledgeDelivery and AcknowledgeRead (update message status, broadcast MessageDelivered/MessageRead to sender's device group) in src/ToledoMessage/Hubs/ChatHub.cs
+- [ ] T086 [US3] Implement ChatHub TypingIndicator (broadcast UserTyping to all other conversation participants' user groups) in src/ToledoMessage/Hubs/ChatHub.cs
+- [ ] T087 [US3] Implement MessagesController POST /api/messages (REST fallback for sending when SignalR unavailable, validate message size ≤64 KB per FR-019) in src/ToledoMessage/Controllers/MessagesController.cs
+- [ ] T088 [US3] Implement MessagesController GET /api/messages/pending (retrieve undelivered messages for device, ordered by sequence number) in src/ToledoMessage/Controllers/MessagesController.cs
+- [ ] T089 [US3] Implement MessagesController POST /api/messages/{messageId}/acknowledge (mark delivered) in src/ToledoMessage/Controllers/MessagesController.cs
 
 ### Client Implementation
 
-- [ ] T087 [US3] Implement SignalRService (connect to /hubs/chat with JWT, register device, handle ReceiveMessage/MessageDelivered/MessageRead/UserTyping events, auto-reconnect on disconnect, fetch pending messages on reconnect) in src/ToledoMessage.Client/Services/SignalRService.cs
-- [ ] T088 [US3] Implement Chat page (message list with chronological ordering, auto-scroll, send message: encrypt via CryptoService → send via SignalR, receive message: decrypt via CryptoService → display, delivery status indicators per message) in src/ToledoMessage.Client/Pages/Chat.razor
-- [ ] T089 [US3] Implement ConversationsController GET /api/conversations (list all user's conversations with metadata: last message timestamp, participant count, disappearing timer, type) in src/ToledoMessage/Controllers/ConversationsController.cs
-- [ ] T090 [US3] Implement ChatList page (list all conversations with last message preview, unread count, sort by most recent activity, navigate to Chat on select, navigate to NewConversation on FAB) in src/ToledoMessage.Client/Pages/ChatList.razor (depends on T089)
-- [ ] T091 [P] [US3] Implement MessageBubble component (sender/recipient alignment, timestamp, delivery status icon) in src/ToledoMessage.Client/Components/MessageBubble.razor
-- [ ] T092 [P] [US3] Implement MessageInput component (text input, send button, typing indicator trigger) in src/ToledoMessage.Client/Components/MessageInput.razor
-- [ ] T093 [P] [US3] Implement DeliveryStatus component (sending/sent/delivered/read icons) in src/ToledoMessage.Client/Components/DeliveryStatus.razor
-- [ ] T094 [P] [US3] Implement ConversationListItem component (display name, last message preview, timestamp, unread badge) in src/ToledoMessage.Client/Components/ConversationListItem.razor
+- [ ] T090 [US3] Implement TabLeaderService (BroadcastChannel API leader election, periodic heartbeat, automatic leader promotion when leader tab closes, coordinate SignalR connection and IndexedDB write ownership per FR-022) in src/ToledoMessage.Client/Services/TabLeaderService.cs
+- [ ] T091 [US3] Implement SignalRService (connect to /hubs/chat with JWT only when leader tab per TabLeaderService, register device, handle ReceiveMessage/MessageDelivered/MessageRead/UserTyping events, auto-reconnect on disconnect, fetch pending messages on reconnect, broadcast received messages to follower tabs via BroadcastChannel) in src/ToledoMessage.Client/Services/SignalRService.cs (depends on T090)
+- [ ] T092 [P] [US3] Implement NotificationService (Browser Notification API, request user permission, show desktop notification with sender name only when tab unfocused per FR-021, integrate with SignalRService message events) in src/ToledoMessage.Client/Services/NotificationService.cs
+- [ ] T093 [US3] Implement Chat page (message list with chronological ordering, auto-scroll, send message: validate size ≤64 KB per FR-019 → encrypt via CryptoService → send via SignalR, receive message: decrypt via CryptoService → display, delivery status indicators per message) in src/ToledoMessage.Client/Pages/Chat.razor
+- [ ] T094 [US3] Implement ConversationsController GET /api/conversations (list all user's conversations with metadata: last message timestamp, participant count, disappearing timer, type) in src/ToledoMessage/Controllers/ConversationsController.cs
+- [ ] T095 [US3] Implement ChatList page (list all conversations with last message preview, unread count, sort by most recent activity, navigate to Chat on select, navigate to NewConversation on FAB) in src/ToledoMessage.Client/Pages/ChatList.razor (depends on T094)
+- [ ] T096 [P] [US3] Implement MessageBubble component (sender/recipient alignment, timestamp, delivery status icon) in src/ToledoMessage.Client/Components/MessageBubble.razor
+- [ ] T097 [P] [US3] Implement MessageInput component (text input, send button, typing indicator trigger, validate message size ≤64 KB with user-facing error per FR-019) in src/ToledoMessage.Client/Components/MessageInput.razor
+- [ ] T098 [P] [US3] Implement DeliveryStatus component (sending/sent/delivered/read icons) in src/ToledoMessage.Client/Components/DeliveryStatus.razor
+- [ ] T099 [P] [US3] Implement ConversationListItem component (display name, last message preview, timestamp, unread badge) in src/ToledoMessage.Client/Components/ConversationListItem.razor
 
-**Checkpoint**: Users can exchange messages in real-time with delivery/read status. Offline messages are queued and delivered on reconnect. US1+US2+US3 form a complete MVP.
+**Checkpoint**: Users can exchange messages in real-time with delivery/read status. Offline messages are queued and delivered on reconnect. Browser notifications for unfocused tabs. Tab coordination via leader election. US1+US2+US3 form a complete MVP.
 
 ---
 
@@ -240,14 +248,14 @@
 
 ### Tests (write FIRST, verify they FAIL)
 
-- [ ] T095 [P] [US4] Write unit test: fingerprint generation produces identical output for both users given same identity keys in tests/ToledoMessage.Crypto.Tests/KeyManagement/KeyManagementTests.cs
-- [ ] T096 [P] [US4] Write unit test: fingerprint changes when identity key changes in tests/ToledoMessage.Crypto.Tests/KeyManagement/KeyManagementTests.cs
+- [ ] T100 [P] [US4] Write unit test: fingerprint generation produces identical output for both users given same identity keys in tests/ToledoMessage.Crypto.Tests/KeyManagement/KeyManagementTests.cs
+- [ ] T101 [P] [US4] Write unit test: fingerprint changes when identity key changes in tests/ToledoMessage.Crypto.Tests/KeyManagement/KeyManagementTests.cs
 
 ### Client Implementation
 
-- [ ] T097 [US4] Implement FingerprintService (derive safety number from both users' classical + PQ identity public keys, format as human-readable groups, detect key changes by comparing stored vs. current fingerprint) in src/ToledoMessage.Client/Services/FingerprintService.cs
-- [ ] T098 [US4] Implement SecurityInfo page (display fingerprint for current conversation, show both users' identity key hashes, verified/unverified status, button to mark as verified, persist verification state in IndexedDB) in src/ToledoMessage.Client/Pages/SecurityInfo.razor
-- [ ] T099 [US4] Implement KeyChangeWarning component (prominent warning banner when a contact's identity key changes, mark conversation as unverified, require re-verification) in src/ToledoMessage.Client/Components/KeyChangeWarning.razor
+- [ ] T102 [US4] Implement FingerprintService (derive safety number from both users' classical + PQ identity public keys, format as human-readable groups, detect key changes by comparing stored vs. current fingerprint) in src/ToledoMessage.Client/Services/FingerprintService.cs
+- [ ] T103 [US4] Implement SecurityInfo page (display fingerprint for current conversation, show both users' identity key hashes, verified/unverified status, button to mark as verified, persist verification state in IndexedDB) in src/ToledoMessage.Client/Pages/SecurityInfo.razor
+- [ ] T104 [US4] Implement KeyChangeWarning component (prominent warning banner when a contact's identity key changes, mark conversation as unverified, require re-verification) in src/ToledoMessage.Client/Components/KeyChangeWarning.razor
 
 **Checkpoint**: Users can verify identities via fingerprints. Key change warnings protect against MITM.
 
@@ -261,22 +269,23 @@
 
 ### Tests (write FIRST, verify they FAIL)
 
-- [ ] T100 [P] [US5] Write integration test: two devices receive and independently decrypt the same message in tests/ToledoMessage.Integration.Tests/MultiDeviceTests.cs
-- [ ] T101 [P] [US5] Write integration test: revoked device no longer receives messages in tests/ToledoMessage.Integration.Tests/MultiDeviceTests.cs
+- [ ] T105 [P] [US5] Write integration test: two devices receive and independently decrypt the same message in tests/ToledoMessage.Integration.Tests/MultiDeviceTests.cs
+- [ ] T106 [P] [US5] Write integration test: revoked device no longer receives messages in tests/ToledoMessage.Integration.Tests/MultiDeviceTests.cs
 
 ### Server Implementation
 
-- [ ] T102 [US5] Implement DevicesController DELETE /api/devices/{deviceId} (deactivate device, revoke keys, remove from SignalR groups) in src/ToledoMessage/Controllers/DevicesController.cs
-- [ ] T103 [US5] Implement DevicesController GET /api/devices/{deviceId}/prekeys/count (count remaining unused OTPs for a device) in src/ToledoMessage/Controllers/DevicesController.cs
-- [ ] T104 [US5] Implement DevicesController POST /api/devices/{deviceId}/prekeys (upload additional OTPs for replenishment) in src/ToledoMessage/Controllers/DevicesController.cs
+- [ ] T107 [US5] Implement DevicesController DELETE /api/devices/{deviceId} (deactivate device, revoke keys, remove from SignalR groups) in src/ToledoMessage/Controllers/DevicesController.cs
+- [ ] T108 [US5] Implement DevicesController GET /api/devices/{deviceId}/prekeys/count (count remaining unused OTPs for a device) in src/ToledoMessage/Controllers/DevicesController.cs
+- [ ] T109 [US5] Implement DevicesController POST /api/devices/{deviceId}/prekeys (upload additional OTPs for replenishment) in src/ToledoMessage/Controllers/DevicesController.cs
 
 ### Client Implementation
 
-- [ ] T105 [US5] Implement fan-out encryption in CryptoService (for each recipient user: fetch all active devices, establish session per device if needed, encrypt message independently for each device) in src/ToledoMessage.Client/Services/CryptoService.cs
-- [ ] T106 [US5] Implement PreKeyReplenishmentService (periodically check OTP count via API, replenish when below threshold of 10, generate and upload new batch of OTPs) in src/ToledoMessage.Client/Services/PreKeyReplenishmentService.cs
-- [ ] T107 [US5] Implement device management section in Settings page (list linked devices, add device button, remove device button with confirmation) in src/ToledoMessage.Client/Pages/Settings.razor
+- [ ] T110 [US5] Implement fan-out encryption in CryptoService (for each recipient user: fetch all active devices, establish session per device if needed, encrypt message independently for each device) in src/ToledoMessage.Client/Services/CryptoService.cs
+- [ ] T111 [US5] Implement PreKeyReplenishmentService (periodically check OTP count via API, replenish when below threshold of 10, generate and upload new batch of OTPs) in src/ToledoMessage.Client/Services/PreKeyReplenishmentService.cs
+- [ ] T112 [US5] Implement device management section in Settings page (list linked devices, add device button, remove device button with confirmation) in src/ToledoMessage.Client/Pages/Settings.razor
+- [ ] T113 [US5] Add account deletion section to Settings page (delete account button, confirmation dialog with 7-day grace period warning, call DELETE /api/auth/account, show scheduled deletion date, option to cancel during grace period by logging in) in src/ToledoMessage.Client/Pages/Settings.razor
 
-**Checkpoint**: Multi-device messaging works. Each device has independent crypto state. Revoked devices stop receiving.
+**Checkpoint**: Multi-device messaging works. Each device has independent crypto state. Revoked devices stop receiving. Account deletion accessible from Settings.
 
 ---
 
@@ -288,21 +297,21 @@
 
 ### Tests (write FIRST, verify they FAIL)
 
-- [ ] T108 [P] [US6] Write integration test: group of 3 users can exchange encrypted messages in tests/ToledoMessage.Integration.Tests/GroupMessagingTests.cs
-- [ ] T109 [P] [US6] Write integration test: added member reads new messages but not history in tests/ToledoMessage.Integration.Tests/GroupMessagingTests.cs
-- [ ] T110 [P] [US6] Write integration test: removed member cannot decrypt new messages (key rotation) in tests/ToledoMessage.Integration.Tests/GroupMessagingTests.cs
+- [ ] T114 [P] [US6] Write integration test: group of 3 users can exchange encrypted messages in tests/ToledoMessage.Integration.Tests/GroupMessagingTests.cs
+- [ ] T115 [P] [US6] Write integration test: added member reads new messages but not history in tests/ToledoMessage.Integration.Tests/GroupMessagingTests.cs
+- [ ] T116 [P] [US6] Write integration test: removed member cannot decrypt new messages (key rotation) in tests/ToledoMessage.Integration.Tests/GroupMessagingTests.cs
 
 ### Server Implementation
 
-- [ ] T111 [US6] Implement ConversationsController POST /api/conversations/group (create group with name and 2-100 participants, creator gets Admin role) in src/ToledoMessage/Controllers/ConversationsController.cs
-- [ ] T112 [US6] Implement ConversationsController GET /api/conversations/{id} and GET /api/conversations/{id}/participants (return group details with participant list and roles) in src/ToledoMessage/Controllers/ConversationsController.cs
-- [ ] T113 [US6] Implement ConversationsController POST /api/conversations/{id}/participants (Admin adds participant) and DELETE /api/conversations/{id}/participants/{userId} (Admin removes or self-leave) in src/ToledoMessage/Controllers/ConversationsController.cs
+- [ ] T117 [US6] Implement ConversationsController POST /api/conversations/group (create group with name and 2-100 participants, creator gets Admin role) in src/ToledoMessage/Controllers/ConversationsController.cs
+- [ ] T118 [US6] Implement ConversationsController GET /api/conversations/{id} and GET /api/conversations/{id}/participants (return group details with participant list and roles) in src/ToledoMessage/Controllers/ConversationsController.cs
+- [ ] T119 [US6] Implement ConversationsController POST /api/conversations/{id}/participants (Admin adds participant) and DELETE /api/conversations/{id}/participants/{userId} (Admin removes or self-leave) in src/ToledoMessage/Controllers/ConversationsController.cs
 
 ### Client Implementation
 
-- [ ] T114 [US6] Implement Sender Keys client-side protocol: generate sender key, distribute to all group members via pairwise encrypted sessions, encrypt group messages with sender key O(1), rotate sender key on membership change in src/ToledoMessage.Client/Services/CryptoService.cs
-- [ ] T115 [US6] Extend Chat page to support group conversations: display group name, participant list, admin controls (add/remove member), group message send/receive using Sender Keys in src/ToledoMessage.Client/Pages/Chat.razor
-- [ ] T116 [US6] Extend NewConversation page to support group creation: multi-select participants, group name input, create group via POST /api/conversations/group in src/ToledoMessage.Client/Pages/NewConversation.razor
+- [ ] T120 [US6] Implement Sender Keys client-side protocol: generate sender key, distribute to all group members via pairwise encrypted sessions, encrypt group messages with sender key O(1), rotate sender key on membership change in src/ToledoMessage.Client/Services/CryptoService.cs
+- [ ] T121 [US6] Extend Chat page to support group conversations: display group name, participant list, admin controls (add/remove member), group message send/receive using Sender Keys in src/ToledoMessage.Client/Pages/Chat.razor
+- [ ] T122 [US6] Extend NewConversation page to support group creation: multi-select participants, group name input, create group via POST /api/conversations/group in src/ToledoMessage.Client/Pages/NewConversation.razor
 
 **Checkpoint**: Group messaging works with Sender Keys. Key rotation on membership change protects forward secrecy.
 
@@ -316,18 +325,18 @@
 
 ### Tests (write FIRST, verify they FAIL)
 
-- [ ] T117 [P] [US7] Write integration test: messages auto-deleted after timer expires in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
+- [ ] T123 [P] [US7] Write integration test: messages auto-deleted after timer expires in tests/ToledoMessage.Integration.Tests/TwoUserMessagingTests.cs
 
 ### Server Implementation
 
-- [ ] T118 [US7] Implement ConversationsController PUT /api/conversations/{id}/timer (set or disable disappearing timer, validate positive int or null) in src/ToledoMessage/Controllers/ConversationsController.cs
-- [ ] T119 [US7] Implement MessageCleanupHostedService (background service: periodically scan for expired messages based on conversation timer and 90-day undelivered retention, delete expired rows) in src/ToledoMessage/Services/MessageCleanupHostedService.cs
+- [ ] T124 [US7] Implement ConversationsController PUT /api/conversations/{id}/timer (set or disable disappearing timer, validate positive int or null) in src/ToledoMessage/Controllers/ConversationsController.cs
+- [ ] T125 [US7] Implement MessageCleanupHostedService (background service: periodically scan for expired messages based on conversation timer and 90-day undelivered retention, delete expired rows) in src/ToledoMessage/Services/MessageCleanupHostedService.cs
 
 ### Client Implementation
 
-- [ ] T120 [US7] Implement MessageExpiryService (client-side timer management: track message timestamps, auto-delete from IndexedDB when timer expires, trigger UI refresh) in src/ToledoMessage.Client/Services/MessageExpiryService.cs
-- [ ] T121 [US7] Implement DisappearingTimerConfig component (timer duration selector: off, 1 hour, 24 hours, 7 days, 30 days; update via API, display active timer in chat header) in src/ToledoMessage.Client/Components/DisappearingTimerConfig.razor
-- [ ] T122 [US7] Add manual message deletion to Chat page (long-press/right-click on message → delete from local device only, confirm dialog) in src/ToledoMessage.Client/Pages/Chat.razor
+- [ ] T126 [US7] Implement MessageExpiryService (client-side timer management: track message timestamps, auto-delete from IndexedDB when timer expires, trigger UI refresh) in src/ToledoMessage.Client/Services/MessageExpiryService.cs
+- [ ] T127 [US7] Implement DisappearingTimerConfig component (timer duration selector: off, 1 hour, 24 hours, 7 days, 30 days; update via API, display active timer in chat header) in src/ToledoMessage.Client/Components/DisappearingTimerConfig.razor
+- [ ] T128 [US7] Add manual message deletion to Chat page (long-press/right-click on message → delete from local device only, confirm dialog) in src/ToledoMessage.Client/Pages/Chat.razor
 
 **Checkpoint**: Disappearing messages work. Server purges expired and 90-day undelivered messages.
 
@@ -337,14 +346,14 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T120 [P] Implement ThemeService (dark/light mode toggle, persist preference in IndexedDB) in src/ToledoMessage.Client/Services/ThemeService.cs
-- [ ] T121 [P] Implement Blazor server-side shell: App.razor, MainLayout.razor, NavMenu.razor (navigation between pages, auth-aware menu items) in src/ToledoMessage/Components/
-- [ ] T122 [P] Implement Error and NotFound pages in src/ToledoMessage/Components/Pages/Error.razor and src/ToledoMessage/Components/Pages/NotFound.razor
-- [ ] T123 Security hardening: validate all API inputs against ProtocolConstants (key sizes, display name format, password length), ensure no plaintext logging (Constitution security requirement), validate JWT claims on all authorized endpoints
-- [ ] T124 Implement load testing with NBomber or k6: target 10K concurrent SignalR connections, validate NFR latency targets (<500ms key exchange, <50ms message encrypt) in tests/ToledoMessage.Benchmarks/LoadTests/
-- [ ] T125 Validate code coverage meets thresholds: >=80% overall, >=90% crypto library (ToledoMessage.Crypto). Run `dotnet test --collect:"XPlat Code Coverage"` and verify with ReportGenerator
-- [ ] T126 Run quickstart.md validation: follow all steps in specs/001-secure-messaging/quickstart.md from scratch and verify successful end-to-end flow
-- [ ] T127 Run full test suite and verify all tests pass: `dotnet test` across all test projects
+- [ ] T129 [P] Implement ThemeService (dark/light mode toggle, persist preference in IndexedDB) in src/ToledoMessage.Client/Services/ThemeService.cs
+- [ ] T130 [P] Implement Blazor server-side shell: App.razor, MainLayout.razor, NavMenu.razor (navigation between pages, auth-aware menu items) in src/ToledoMessage/Components/
+- [ ] T131 [P] Implement Error and NotFound pages in src/ToledoMessage/Components/Pages/Error.razor and src/ToledoMessage/Components/Pages/NotFound.razor
+- [ ] T132 Security hardening: validate all API inputs against ProtocolConstants (key sizes, display name format, password length, message size 64 KB), ensure no plaintext logging (Constitution security requirement), validate JWT claims on all authorized endpoints
+- [ ] T133 Implement load testing with NBomber or k6: target 10K concurrent SignalR connections, validate NFR latency targets (<500ms key exchange, <50ms message encrypt) in tests/ToledoMessage.Benchmarks/LoadTests/
+- [ ] T134 Validate code coverage meets thresholds: >=80% overall, >=90% crypto library (ToledoMessage.Crypto). Run `dotnet test --collect:"XPlat Code Coverage"` and verify with ReportGenerator
+- [ ] T135 Run quickstart.md validation: follow all steps in specs/001-secure-messaging/quickstart.md from scratch and verify successful end-to-end flow
+- [ ] T136 Run full test suite and verify all tests pass: `dotnet test` across all test projects
 
 ---
 
@@ -379,10 +388,13 @@
 
 Within phases, all tasks marked [P] can run in parallel:
 - Phase 2: All 12 test tasks (T008-T019) in parallel, then all 3 classical primitives (T020-T022), both PQ primitives (T023-T024)
-- Phase 3: All 6 entity models (T038-T043) in parallel
-- Phase 4: All 3 test tasks (T054-T056) in parallel
-- Phase 6: All 4 UI components (T087-T090) in parallel
-- Phase 9: All 3 test tasks (T104-T106) in parallel
+- Phase 3: All 6 entity models (T038-T043) in parallel, services T050-T053 in parallel
+- Phase 4: All 3 test tasks (T056-T058) in parallel
+- Phase 5: Both test tasks (T072-T073) in parallel
+- Phase 6: All 4 UI components (T096-T099) in parallel, NotificationService (T092) in parallel with UI components
+- Phase 7: Both test tasks (T100-T101) in parallel
+- Phase 8: Both test tasks (T105-T106) in parallel
+- Phase 9: All 3 test tasks (T114-T116) in parallel
 
 ---
 
@@ -409,6 +421,28 @@ T035 (MessageKeys ← T026), T036 (DoubleRatchet ← T025+T026+T035)
 
 ---
 
+## Parallel Example: Phase 3 (Server Infrastructure)
+
+```text
+# Parallel: entity models
+T038, T039, T040, T041, T042, T043
+
+# Sequential: DbContext depends on entities
+T044 (DbContext ← T038-T043), T045 (Configurations), T046 (Migration)
+
+# Parallel: auth + middleware
+T047 (JWT auth), T048 (RateLimitService)
+T049 (RateLimitMiddleware ← T048)
+
+# Parallel: server services
+T050 (PreKeyService), T051 (MessageRelayService), T052 (AccountDeletionService), T053 (Serilog + /health)
+
+# Sequential: hub + DI
+T054 (ChatHub ← T047), T055 (DI Registration ← T047-T054)
+```
+
+---
+
 ## Implementation Strategy
 
 ### MVP First (US1 + US2 + US3)
@@ -429,7 +463,7 @@ T035 (MessageKeys ← T026), T036 (DoubleRatchet ← T025+T026+T035)
 3. US2 → Secure messaging works → Verify
 4. US3 → Real-time exchange works → Deploy/Demo (MVP!)
 5. US4 → Security verification → Deploy
-6. US5 → Multi-device → Deploy
+6. US5 → Multi-device + account management → Deploy
 7. US6 → Group messaging → Deploy
 8. US7 → Disappearing messages → Deploy
 9. Polish → Final release

@@ -204,7 +204,60 @@ initiations even under burst conditions.
   to generate keys, defeating the asynchronous session initiation
   model.
 
+### 11. Server Observability
+
+**Decision**: Serilog structured logging + ASP.NET Core `/health` endpoint
+
+**Rationale**: Serilog provides structured logging with configurable sinks
+(Console, File, Seq), integrates natively with ASP.NET Core's logging
+pipeline, and supports enrichment (request ID, user ID). The built-in
+ASP.NET Core health check middleware (`Microsoft.Extensions.Diagnostics.
+HealthChecks`) provides `/health` with SQL Server connectivity check.
+No full metrics/tracing stack (Prometheus, OpenTelemetry) for MVP.
+
+**Alternatives considered**:
+- NLog: Viable but Serilog has stronger structured logging and richer
+  sink ecosystem.
+- OpenTelemetry: Deferred — adds tracing/metrics infrastructure beyond
+  MVP needs. Can be added later without breaking changes.
+- Application Insights: Rejected — Azure-specific, adds vendor lock-in.
+
+### 12. Browser Tab Coordination
+
+**Decision**: BroadcastChannel API for leader election
+
+**Rationale**: The BroadcastChannel API is a browser-native mechanism for
+inter-tab communication with no external dependencies. A leader-follower
+pattern ensures only one tab owns the SignalR connection and all crypto/
+IndexedDB write operations, preventing ratchet state corruption from
+concurrent writes. If the leader tab closes, followers detect the loss
+via heartbeat messages and one promotes itself to leader.
+
+**Alternatives considered**:
+- SharedWorker: Rejected — limited browser support (no Safari), more
+  complex lifecycle management.
+- Service Worker: Rejected — designed for push notifications and caching,
+  not inter-tab coordination. Deferred for push notification support.
+- No coordination: Rejected — concurrent IndexedDB writes from multiple
+  tabs would corrupt ratchet state.
+
+### 13. Browser Notifications
+
+**Decision**: Browser Notification API (not Push API)
+
+**Rationale**: The Notification API is synchronous, requires the page to
+be loaded (but can be unfocused), and only needs user permission. It's
+straightforward to integrate from Blazor WASM via JS interop. Sufficient
+for MVP where the user has the app open. Push notifications via Service
+Worker are deferred post-MVP.
+
+**Alternatives considered**:
+- Push API + Service Worker: Deferred — requires VAPID key management,
+  push subscription storage, and server-side push delivery. Significantly
+  more complex.
+- No notifications: Rejected — messaging apps require notification
+  support for basic usability.
+
 ## Unresolved Items
 
-None — all technical decisions are resolved. The existing codebase
-implements the research decisions above. Proceed to Phase 1 design.
+None — all technical decisions are resolved. Proceed to Phase 1 design.

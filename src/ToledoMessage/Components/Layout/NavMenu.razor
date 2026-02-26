@@ -73,7 +73,7 @@
     private void HandleLogout()
     {
         CloseNav();
-        Navigation.NavigateTo("/login", forceLoad: true);
+        Navigation.NavigateTo("/login?logout=true", forceLoad: true);
     }
 
     public void Dispose()

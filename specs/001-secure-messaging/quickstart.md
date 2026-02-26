@@ -125,3 +125,4 @@ dotnet run --project tests/ToledoMessage.Benchmarks -c Release
 | `/settings` | User settings |
 | `/hubs/chat` | SignalR hub (WebSocket) |
 | `/api/*` | REST API endpoints |
+| `/health` | Server health check |

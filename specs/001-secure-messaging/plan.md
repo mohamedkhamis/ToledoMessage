@@ -1,53 +1,39 @@
 # Implementation Plan: Hybrid Post-Quantum Secure Messaging
 
-**Branch**: `001-secure-messaging` | **Date**: 2026-02-26 | **Spec**: [spec.md](spec.md)
+**Branch**: `001-secure-messaging` | **Date**: 2026-02-26 | **Spec**: `specs/001-secure-messaging/spec.md`
 **Input**: Feature specification from `/specs/001-secure-messaging/spec.md`
 
 ## Summary
 
-End-to-end encrypted messaging application using a hybrid cryptographic
-approach that combines classical algorithms (X25519, Ed25519, AES-256-GCM)
-with NIST-standardized post-quantum algorithms (ML-KEM-768, ML-DSA-65) to
-protect conversations against both current and future quantum computing
-threats. The system implements the Signal Protocol (X3DH + Double Ratchet)
-with post-quantum extensions, delivering real-time messaging via SignalR,
-multi-device support (up to 10), group messaging via Sender Keys, and
-disappearing messages — all with a zero-trust server model where the server
-never sees plaintext.
+Build a secure messaging application using hybrid post-quantum cryptography (classical X25519/Ed25519 + post-quantum ML-KEM-768/ML-DSA-65) to protect conversations against current and future quantum computing threats. The system implements the Signal Protocol (X3DH + Double Ratchet) with hybrid extensions, Sender Keys for groups, and a zero-trust server model where all crypto executes client-side in Blazor WebAssembly via BouncyCastle.Cryptography.
 
 ## Technical Context
 
 **Language/Version**: C# / .NET 10 (LTS)
-**Primary Dependencies**: BouncyCastle.Cryptography 2.6.2, ASP.NET Core
-Identity, EF Core 10.0.3, SignalR, JWT Bearer Authentication
-**Storage**: SQL Server 2022 (server-side via EF Core Code First) +
-Browser IndexedDB (client-side via LocalStorageService)
-**Testing**: xUnit + BenchmarkDotNet
-**Target Platform**: Web — Blazor WebAssembly (client) + ASP.NET Core
-(server), Windows/Linux server hosting
-**Project Type**: Web application (real-time encrypted messaging)
-**Performance Goals**: Key exchange <500ms, message encrypt/decrypt <50ms,
-<1KB hybrid overhead per message, <2s delivery, 10K concurrent users
-**Constraints**: All crypto client-side only (zero-trust), hybrid PQ +
-classical mandatory, 99.5% uptime (single-server MVP)
-**Scale/Scope**: 10K concurrent users, 100 max group participants,
-10 devices per user, 90-day undelivered message retention
+**Primary Dependencies**: BouncyCastle.Cryptography 2.6.2, ASP.NET Core Identity, SignalR, EF Core 10, Serilog
+**Storage**: SQL Server 2022 (server-side via EF Core Code First) + Browser IndexedDB (client-side)
+**Testing**: xUnit + BenchmarkDotNet + NBomber/k6 (load testing)
+**Target Platform**: Web (Blazor WebAssembly), future: .NET MAUI mobile
+**Project Type**: Web application (ASP.NET Core API + Blazor WASM client)
+**Performance Goals**: Key exchange <500ms, message encrypt/decrypt <50ms, <1KB hybrid overhead, <2s message delivery, 10K concurrent users
+**Constraints**: All crypto client-side only (zero-trust), BouncyCastle only (WASM-compatible), 64 KB max message size, 99.5% uptime
+**Scale/Scope**: 10K concurrent users, up to 10 devices/user, up to 100 group participants, 90-day undelivered message retention
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-| # | Principle | Status | Evidence |
-|---|-----------|--------|----------|
-| I | Zero-Trust Server | ✅ PASS | All crypto in `ToledoMessage.Crypto` + `ToledoMessage.Client`. Server stores only encrypted ciphertext, public keys, pre-key bundles. No private keys or plaintext on server. 90-day auto-purge for undelivered messages. |
-| II | Hybrid Cryptography | ✅ PASS | X25519 + ML-KEM-768 for key exchange, Ed25519 + ML-DSA-65 for signatures, AES-256-GCM for symmetric encryption, HKDF-SHA256 with domain separation (`ToledoMessage_RootKey`, `ToledoMessage_ChainKey`, `ToledoMessage_MessageKey`). |
-| III | Established Libraries Only | ✅ PASS | BouncyCastle.Cryptography 2.6.2 is the sole crypto library (required for WASM). No custom primitives — only wrapper/composition code. |
-| IV | Signal Protocol Fidelity | ✅ PASS | X3DH with PQ KEM extension (`X3dhInitiator`/`X3dhResponder`), Double Ratchet (`DoubleRatchet`), pre-key bundles (`PreKeyBundle`/`PreKeyGenerator`), Sender Keys for groups (spec-level). |
-| V | .NET Ecosystem | ✅ PASS | .NET 10, ASP.NET Core Web API, SignalR, Blazor WASM (InteractiveWebAssembly), EF Core 10 + SQL Server 2022, xUnit + BenchmarkDotNet. All deps via NuGet. |
-| VI | Test-First Development | ✅ PASS | Crypto unit tests (classical, PQ, hybrid, protocol), integration tests (two-user, multi-device, group), performance benchmarks. |
-| VII | Open-Source Transparency | ✅ PASS | All source public. Security from algorithm strength, not obscurity. Bilingual docs (English/Arabic). |
+| # | Principle | Status | Notes |
+|---|-----------|--------|-------|
+| I | Zero-Trust Server | ✅ PASS | All crypto client-side in Blazor WASM. Server stores only ciphertext, public keys, pre-key bundles. 90-day auto-purge. No plaintext logging (Serilog configured). |
+| II | Hybrid Cryptography | ✅ PASS | X25519 + ML-KEM-768 for KEM, Ed25519 + ML-DSA-65 for signatures, AES-256-GCM for AEAD, HKDF-SHA256 for KDF. Both layers must be broken for compromise. |
+| III | Established Libraries Only | ✅ PASS | BouncyCastle.Cryptography 2.6.2 for all crypto (classical + PQ). No custom primitives. Single library for WASM compatibility. |
+| IV | Signal Protocol Fidelity | ✅ PASS | X3DH + Double Ratchet with hybrid PQ extensions. Sender Keys for groups with membership-change rotation. |
+| V | .NET Ecosystem | ✅ PASS | .NET 10 LTS, ASP.NET Core, SignalR, Blazor WASM (InteractiveWebAssembly), EF Core 10, SQL Server 2022, xUnit. |
+| VI | Test-First Development | ✅ PASS | TDD (red-green-refactor). >=80% coverage, >=90% crypto. Dedicated crypto test suites. Integration tests for E2E flow. |
+| VII | Open-Source Transparency | ✅ PASS | All source code and protocol documentation public. Security from algorithm strength, not obscurity. |
 
-**Gate result: ALL PASS** — proceed to Phase 0.
+All gates PASS. No violations to justify.
 
 ## Project Structure
 
@@ -56,134 +42,135 @@ classical mandatory, 99.5% uptime (single-server MVP)
 ```text
 specs/001-secure-messaging/
 ├── plan.md              # This file
-├── research.md          # Phase 0 output — technology decisions
-├── data-model.md        # Phase 1 output — entity model
-├── quickstart.md        # Phase 1 output — getting started guide
-├── contracts/           # Phase 1 output — API & SignalR contracts
-│   ├── rest-api.md
-│   └── signalr-hub.md
-└── tasks.md             # Phase 2 output (/speckit.tasks command)
+├── research.md          # Phase 0: Technology decisions
+├── data-model.md        # Phase 1: Entity definitions
+├── quickstart.md        # Phase 1: Getting started guide
+├── contracts/
+│   ├── rest-api.md      # Phase 1: REST API contracts
+│   └── signalr-hub.md   # Phase 1: SignalR hub contracts
+└── tasks.md             # Phase 2: Implementation tasks (130 tasks)
 ```
 
 ### Source Code (repository root)
 
 ```text
 src/
-├── Toledo.SharedKernel/           # Cross-cutting utilities
-│   └── Helpers/
-│       └── DecimalTools.cs
-├── ToledoMessage/                 # ASP.NET Core server (Blazor host)
-│   ├── Controllers/               # REST API endpoints
-│   │   ├── AuthController.cs      #   /api/auth (register, login)
-│   │   ├── ConversationsController.cs  # /api/conversations (CRUD, groups)
-│   │   ├── DevicesController.cs   #   /api/devices (register, revoke, pre-keys)
-│   │   ├── MessagesController.cs  #   /api/messages (store, pending, ack)
-│   │   └── UsersController.cs     #   /api/users (search, pre-key bundles)
-│   ├── Data/
-│   │   ├── ApplicationDbContext.cs
-│   │   └── Configurations/        # EF Core Fluent API configurations
+├── ToledoMessage/                    # ASP.NET Core server (API + SignalR + Blazor host)
+│   ├── Controllers/
+│   │   ├── AuthController.cs         # POST /api/auth/register, /login, /refresh
+│   │   ├── DevicesController.cs      # POST/GET/DELETE /api/devices, pre-key endpoints
+│   │   ├── UsersController.cs        # GET /api/users/search, pre-key bundle, devices
+│   │   ├── ConversationsController.cs # GET/POST /api/conversations, group, participants, timer
+│   │   └── MessagesController.cs     # POST/GET /api/messages, pending, acknowledge
 │   ├── Hubs/
-│   │   └── ChatHub.cs             # SignalR real-time messaging hub
-│   ├── Middleware/
-│   │   └── RateLimitMiddleware.cs  # Global rate limiting
-│   ├── Migrations/                # EF Core Code First migrations
-│   ├── Models/                    # EF Core entities
-│   │   ├── User.cs
-│   │   ├── Device.cs
-│   │   ├── OneTimePreKey.cs
-│   │   ├── Conversation.cs
-│   │   ├── ConversationParticipant.cs
-│   │   └── EncryptedMessage.cs
+│   │   └── ChatHub.cs                # SignalR: SendMessage, ReceiveMessage, delivery/read acks
+│   ├── Models/
+│   │   ├── User.cs                   # User entity (Active/PendingDeletion/Deactivated states)
+│   │   ├── Device.cs                 # Device entity with crypto key fields
+│   │   ├── OneTimePreKey.cs          # One-time pre-key entity
+│   │   ├── Conversation.cs           # Conversation entity
+│   │   ├── ConversationParticipant.cs # Join table with roles
+│   │   ├── EncryptedMessage.cs       # Encrypted message entity
+│   │   └── RefreshToken.cs           # Refresh token entity
+│   ├── Data/
+│   │   ├── ApplicationDbContext.cs   # EF Core DbContext
+│   │   └── Configurations/          # Fluent API entity configurations
 │   ├── Services/
-│   │   ├── MessageCleanupHostedService.cs  # Background message purge
-│   │   ├── MessageRelayService.cs          # Store + relay messages
-│   │   ├── PreKeyService.cs                # Pre-key management
-│   │   └── RateLimitService.cs             # Rate limit enforcement
-│   ├── Components/                # Blazor server-side shell
-│   └── Program.cs                 # DI, middleware, JWT config
-├── ToledoMessage.Client/          # Blazor WebAssembly client
-│   ├── Pages/                     # UI pages
-│   │   ├── Register.razor
-│   │   ├── Login.razor
-│   │   ├── ChatList.razor
-│   │   ├── Chat.razor
-│   │   ├── NewConversation.razor
-│   │   ├── SecurityInfo.razor
-│   │   └── Settings.razor
-│   ├── Components/                # Reusable UI components
-│   │   ├── ConversationListItem.razor
-│   │   ├── DeliveryStatus.razor
-│   │   ├── DisappearingTimerConfig.razor
-│   │   ├── KeyChangeWarning.razor
-│   │   ├── MessageBubble.razor
-│   │   └── MessageInput.razor
-│   ├── Services/                  # Client-side services
-│   │   ├── CryptoService.cs       #   Orchestrates session + encryption
-│   │   ├── FingerprintService.cs  #   Safety number generation
-│   │   ├── KeyGenerationService.cs #  Identity + pre-key generation
-│   │   ├── LocalStorageService.cs #   IndexedDB persistence
-│   │   ├── MessageEncryptionService.cs # Double Ratchet encrypt/decrypt
-│   │   ├── MessageExpiryService.cs #   Disappearing message timers
+│   │   ├── PreKeyService.cs          # Pre-key store/consume/count
+│   │   ├── MessageRelayService.cs    # Message store/relay/acknowledge
+│   │   ├── RateLimitService.cs       # Per-IP and per-user rate tracking
+│   │   ├── AccountDeletionService.cs # 7-day grace period account deactivation
+│   │   └── MessageCleanupHostedService.cs # Background: purge expired/90-day messages
+│   ├── Middleware/
+│   │   └── RateLimitMiddleware.cs    # Rate limit enforcement
+│   ├── Components/                   # Blazor server-side shell
+│   │   ├── App.razor
+│   │   ├── MainLayout.razor
+│   │   └── Pages/
+│   └── Program.cs                    # DI, auth, CORS, SignalR, Serilog, health endpoint
+│
+├── ToledoMessage.Client/             # Blazor WebAssembly client (UI + crypto)
+│   ├── Services/
+│   │   ├── KeyGenerationService.cs   # Identity key + pre-key generation
+│   │   ├── LocalStorageService.cs    # IndexedDB wrapper for private keys/state
+│   │   ├── SessionService.cs         # X3DH session establishment
+│   │   ├── CryptoService.cs          # Orchestrate sessions + encrypt/decrypt + Sender Keys
+│   │   ├── MessageEncryptionService.cs # AES-256-GCM message encrypt/decrypt
+│   │   ├── SignalRService.cs         # Hub connection + event handling + reconnect
+│   │   ├── FingerprintService.cs     # Safety number derivation
 │   │   ├── PreKeyReplenishmentService.cs # Auto-replenish OTPs
-│   │   ├── SessionService.cs      #   X3DH session establishment
-│   │   ├── SignalRService.cs      #   Real-time connection management
-│   │   └── ThemeService.cs        #   UI theming
-│   └── Program.cs                 # Client DI registration
-├── ToledoMessage.Crypto/          # Cryptographic library (pure C#)
+│   │   ├── MessageExpiryService.cs   # Client-side disappearing message timer
+│   │   ├── ThemeService.cs           # Dark/light mode
+│   │   ├── AuthTokenHandler.cs       # JWT refresh interceptor
+│   │   ├── TabLeaderService.cs       # BroadcastChannel leader election
+│   │   └── NotificationService.cs    # Browser Notification API
+│   ├── Pages/
+│   │   ├── Register.razor            # Account creation + key generation
+│   │   ├── Login.razor               # Authentication
+│   │   ├── ChatList.razor            # Conversation list
+│   │   ├── Chat.razor                # Active chat view
+│   │   ├── NewConversation.razor     # User search + conversation creation
+│   │   ├── SecurityInfo.razor        # Fingerprint verification
+│   │   └── Settings.razor            # Device management + account deletion + notification prefs
+│   ├── Components/
+│   │   ├── MessageBubble.razor
+│   │   ├── MessageInput.razor
+│   │   ├── DeliveryStatus.razor
+│   │   ├── ConversationListItem.razor
+│   │   ├── KeyChangeWarning.razor
+│   │   └── DisappearingTimerConfig.razor
+│   └── Program.cs                    # Client DI + HttpClient + auth
+│
+├── ToledoMessage.Crypto/             # Cryptographic library (BouncyCastle)
 │   ├── Classical/
-│   │   ├── AesGcmCipher.cs        #   AES-256-GCM encrypt/decrypt
-│   │   ├── Ed25519Signer.cs       #   Ed25519 sign/verify
-│   │   └── X25519KeyExchange.cs   #   X25519 Diffie-Hellman
+│   │   ├── AesGcmCipher.cs           # AES-256-GCM encrypt/decrypt
+│   │   ├── Ed25519Signer.cs          # Ed25519 sign/verify
+│   │   └── X25519KeyExchange.cs      # X25519 DH key exchange
+│   ├── PostQuantum/
+│   │   ├── MlKemKeyExchange.cs       # ML-KEM-768 encapsulate/decapsulate
+│   │   └── MlDsaSigner.cs           # ML-DSA-65 sign/verify
 │   ├── Hybrid/
-│   │   ├── HybridKeyDerivation.cs #   HKDF-SHA256 with domain separation
-│   │   ├── HybridKeyExchange.cs   #   X25519 + ML-KEM combined exchange
-│   │   └── HybridSigner.cs        #   Ed25519 + ML-DSA combined signing
+│   │   ├── HybridKeyExchange.cs      # X25519 + ML-KEM combined
+│   │   ├── HybridKeyDerivation.cs    # HKDF-SHA256 with domain separation
+│   │   └── HybridSigner.cs          # Ed25519 + ML-DSA combined
 │   ├── KeyManagement/
-│   │   ├── FingerprintGenerator.cs #   Safety number derivation
-│   │   ├── IdentityKeyGenerator.cs #   Classical + PQ identity keys
-│   │   └── PreKeyGenerator.cs     #   Signed + one-time pre-keys
+│   │   ├── IdentityKeyGenerator.cs   # Classical + PQ identity key pairs
+│   │   ├── PreKeyGenerator.cs        # Signed pre-key + OTP batch
+│   │   └── FingerprintGenerator.cs   # Safety number derivation
 │   └── Protocol/
-│       ├── DoubleRatchet.cs       #   Double Ratchet algorithm
-│       ├── MessageKeys.cs         #   Per-message key derivation
-│       ├── PreKeyBundle.cs        #   Bundle data structure
-│       ├── RatchetState.cs        #   Ratchet state management
-│       ├── X3dhInitiator.cs       #   X3DH initiator (Alice)
-│       └── X3dhResponder.cs       #   X3DH responder (Bob)
-└── ToledoMessage.Shared/          # Shared DTOs, enums, constants
-    ├── Constants/
-    │   └── ProtocolConstants.cs   #   Key sizes, limits, HKDF info strings
-    ├── DTOs/                      #   Request/response models
-    └── Enums/                     #   MessageType, ContentType, etc.
+│       ├── RatchetState.cs           # Double Ratchet state structure
+│       ├── PreKeyBundle.cs           # Pre-key bundle structure
+│       ├── X3dhInitiator.cs          # X3DH initiator (4 DH + PQ KEM)
+│       ├── X3dhResponder.cs          # X3DH responder
+│       ├── MessageKeys.cs            # Chain key → message key derivation
+│       └── DoubleRatchet.cs          # Double Ratchet algorithm
+│
+├── ToledoMessage.Shared/             # Shared DTOs, enums, constants
+│   ├── Constants/
+│   │   └── ProtocolConstants.cs      # Key sizes, limits, HKDF info strings
+│   ├── Enums/                        # MessageType, ContentType, etc.
+│   └── DTOs/                         # Request/response DTOs
+│
+└── Toledo.SharedKernel/              # Cross-cutting utilities
+    └── Helpers/
+        └── DecimalTools.cs           # Snowflake-style ID generation
 
 tests/
-├── ToledoMessage.Benchmarks/      # BenchmarkDotNet performance tests
-├── ToledoMessage.Client.Tests/    # Client unit tests (scaffold)
-├── ToledoMessage.Crypto.Tests/    # Comprehensive crypto tests
-│   ├── Classical/                 #   AES-GCM, Ed25519, X25519
-│   ├── Hybrid/                   #   Hybrid KDF, KX, signer
-│   ├── KeyManagement/            #   Key generation tests
-│   └── Protocol/                 #   Double Ratchet, X3DH, message keys
-├── ToledoMessage.Integration.Tests/ # End-to-end integration tests
-│   ├── TwoUserMessagingTests.cs
-│   ├── MultiDeviceTests.cs
-│   └── GroupMessagingTests.cs
-└── ToledoMessage.Server.Tests/    # Server unit tests (scaffold)
+├── ToledoMessage.Crypto.Tests/       # Crypto unit tests (classical, PQ, hybrid, protocol)
+├── ToledoMessage.Client.Tests/       # Client service unit tests
+├── ToledoMessage.Server.Tests/       # Server controller/service tests
+├── ToledoMessage.Integration.Tests/  # End-to-end integration tests
+└── ToledoMessage.Benchmarks/         # Performance benchmarks + load tests
 ```
 
-**Structure Decision**: Web application pattern with 5 source projects
-(server host, WASM client, crypto library, shared DTOs, shared kernel)
-and 4 test projects (crypto unit, client unit, server unit, integration)
-plus benchmarks. This structure enforces the zero-trust boundary: the
-`ToledoMessage.Crypto` library is referenced only by the client, never
-by the server.
+**Structure Decision**: Multi-project solution with 5 source projects and 5 test projects. The Crypto library is isolated for independent testing and potential reuse. Shared DTOs/constants prevent duplication between server and client. The Blazor WASM client runs all crypto operations client-side per zero-trust model.
 
 ## Complexity Tracking
 
-> No constitution violations detected. All complexity is justified by
-> the core security requirements (hybrid crypto, Signal Protocol).
+No constitution violations to justify. All architectural decisions align with the 7 principles.
 
-| Decision | Why Needed | Simpler Alternative Rejected Because |
-|----------|------------|-------------------------------------|
-| 5 source projects | Enforces zero-trust boundary (crypto never on server) | Fewer projects would risk server referencing crypto internals |
-| Hybrid key exchange | Constitution Principle II (NON-NEGOTIABLE) | Classical-only would not protect against quantum threats |
-| Double Ratchet + X3DH | Constitution Principle IV (Signal Protocol) | Simpler key exchange would lack forward/post-compromise secrecy |
+| Decision | Justification | Simpler Alternative Rejected |
+|----------|--------------|------------------------------|
+| 5 source projects | Crypto isolation for independent testing + reuse; Shared DTOs prevent duplication; Client/Server separation enforces zero-trust boundary | Single project would mix server and client crypto code, violating zero-trust boundary |
+| Leader election (BroadcastChannel) | Prevents ratchet state corruption from concurrent IndexedDB writes across tabs | No tab handling would cause duplicate SignalR connections and potential crypto state corruption |
+| Account deletion grace period | 7-day window prevents accidental permanent data loss while maintaining security (permanent deactivation after grace) | Immediate deletion is simpler but provides no recourse for accidental clicks |

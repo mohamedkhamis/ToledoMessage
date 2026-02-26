@@ -23,6 +23,14 @@
 - Q: What is the target availability for the messaging service? → A: 99.5% uptime (~44 hrs downtime/year). Single-server deployment with monitoring and automated restarts for MVP.
 - Q: Which group encryption protocol should be used? → A: Sender Keys (Signal-style). Each member generates a sender key distributed via pairwise sessions. O(1) encrypt per send, key rotation on membership change.
 
+### Session 2026-02-26 (2)
+
+- Q: What level of server observability is required? → A: Standard — `/health` endpoint, structured request logging via Serilog, and basic error tracking. No full metrics/tracing stack for MVP.
+- Q: What is the maximum plaintext message size? → A: 64 KB (~16,000 words). Server and client MUST validate and reject messages exceeding this limit.
+- Q: How can a user voluntarily deactivate their account? → A: Deactivation with 7-day grace period. User initiates deletion in Settings, confirms. Account enters pending-deletion state for 7 days (login re-activates). After 7 days, account is permanently deactivated, keys revoked, contacts see key change warning.
+- Q: Should the app send browser notifications for new messages? → A: Yes, via Browser Notification API. Show desktop notifications when tab is unfocused/minimized (requires user permission). No service worker push notifications when browser is closed — that is deferred post-MVP.
+- Q: How should the app handle multiple browser tabs open simultaneously? → A: Leader election via BroadcastChannel API. One tab owns the SignalR connection and crypto state (IndexedDB writes). Other tabs receive message updates via BroadcastChannel. If the leader tab closes, another tab promotes itself to leader.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Account Registration and Key Generation (Priority: P1)
@@ -145,6 +153,7 @@ A user sets a disappearing message timer on a conversation (e.g., 24 hours, 7 da
 - What happens when a user attempts to message a deactivated account? The system informs the sender that the recipient is no longer available and prevents message delivery.
 - What happens when a user loses all their devices? The user must create a new account and new identity. There is no server-side account recovery. Contacts are notified via a key change warning when the user re-registers, and previous message history is permanently lost.
 - What happens when a user sends messages too rapidly or a bot spams registrations? The server enforces rate limits per IP (registration) and per user (message sending, search). Requests exceeding the limit receive an error response and are temporarily throttled.
+- What happens when the same user opens multiple browser tabs? Leader election via BroadcastChannel API ensures only one tab owns the SignalR connection and crypto state. Other tabs act as followers receiving updates. If the leader tab closes, a follower promotes itself to leader automatically.
 
 ## Requirements *(mandatory)*
 
@@ -156,6 +165,10 @@ A user sets a disappearing message timer on a conversation (e.g., 24 hours, 7 da
 - **FR-004**: System MUST perform a hybrid key exchange combining classical Diffie-Hellman operations with a post-quantum key encapsulation mechanism when establishing a new session between two users.
 - **FR-005**: System MUST encrypt every message individually using authenticated encryption with a unique per-message key derived from a forward-secret ratcheting mechanism.
 - **FR-018**: System MUST support text messages for MVP. The message format MUST be extensible to accommodate future content types (images, audio, files) without requiring protocol changes.
+- **FR-019**: System MUST enforce a maximum plaintext message size of 64 KB. Both client and server MUST validate and reject messages exceeding this limit before encryption or storage.
+- **FR-020**: System MUST allow users to self-deactivate their account via Settings. Upon initiating deletion, the account enters a pending-deletion state with a 7-day grace period. Logging in during the grace period re-activates the account. After 7 days, the account is permanently deactivated: all device keys are revoked, the user cannot log in, and contacts see a key change warning.
+- **FR-021**: System MUST use the Browser Notification API to show desktop notifications for incoming messages when the application tab is unfocused or minimized. Notification display MUST require explicit user permission. Notification content MUST show sender name and a generic alert (not decrypted message preview) to protect privacy.
+- **FR-022**: System MUST implement leader election via BroadcastChannel API for multiple browser tabs. One leader tab owns the SignalR connection and all crypto/IndexedDB write operations. Follower tabs receive message updates via BroadcastChannel. If the leader tab closes, a follower MUST promote itself to leader and establish a new SignalR connection.
 - **FR-006**: System MUST support real-time message delivery between online users with delivery and read status indicators.
 - **FR-007**: System MUST queue and deliver messages for offline recipients when they reconnect, preserving message ordering. Undelivered messages MUST be automatically purged after 90 days.
 - **FR-008**: System MUST perform all encryption and decryption operations exclusively on the client device; the server MUST never have access to plaintext messages or private keys.
@@ -181,14 +194,15 @@ A user sets a disappearing message timer on a conversation (e.g., 24 hours, 7 da
 - **NFR-008**: The system MUST be open-source with transparent, auditable security implementation.
 - **NFR-009**: The server MUST enforce rate limits on registration (per IP), message sending (per user per minute), and user search queries to prevent abuse and denial-of-service.
 - **NFR-010**: The system MUST target 99.5% uptime (~44 hours downtime/year). MVP uses a single-server deployment with health monitoring and automated restarts.
+- **NFR-011**: The server MUST expose a `/health` endpoint for uptime monitoring, use structured logging (Serilog) for all request/error tracking, and provide basic error tracking. No plaintext message content or private key material may appear in logs (per constitution security requirement).
 
 ### Key Entities
 
-- **User**: A registered individual with a unique display name (3–32 characters, alphanumeric/underscores/hyphens, case-insensitive uniqueness), password hash, and cryptographic identity. Has one or more linked devices. Can participate in conversations.
+- **User**: A registered individual with a unique display name (3–32 characters, alphanumeric/underscores/hyphens, case-insensitive uniqueness), password hash, and cryptographic identity. Has one or more linked devices. Can participate in conversations. State transitions: Active → PendingDeletion (7-day grace period, login re-activates) → Deactivated (permanent, keys revoked).
 - **Identity Key Pair**: A long-term key pair (both classical and post-quantum variants) that uniquely identifies a user/device. Used for authentication and as a root of trust.
 - **Pre-Key Bundle**: A published set containing the identity public key, a signed pre-key, and a collection of one-time pre-keys. Used by other users to initiate sessions asynchronously.
 - **Session**: A secure communication channel between two users/devices, established via hybrid key exchange. Contains ratchet state for deriving per-message keys.
-- **Message**: An encrypted payload sent within a session. Contains ciphertext, authentication tag, sender identifier, timestamp, and sequence number. Plaintext is never stored on the server.
+- **Message**: An encrypted payload sent within a session. Contains ciphertext, authentication tag, sender identifier, timestamp, and sequence number. Plaintext is never stored on the server. Maximum plaintext size: 64 KB.
 - **Conversation**: A logical grouping of messages between two users (1:1) or among multiple users (group). Has associated metadata like disappearing timer settings and verification status.
 - **Device**: A user's registered client (web, desktop, or mobile). Each device has its own key material and maintains independent session/ratchet state. A user may link up to 10 devices.
 - **Group**: A multi-participant conversation using Sender Keys protocol. Each member holds a sender key distributed via pairwise encrypted sessions for O(1) message encryption. Membership changes trigger sender key rotation.
@@ -216,6 +230,7 @@ A user sets a disappearing message timer on a conversation (e.g., 24 hours, 7 da
 - Contact list management or phone number-based discovery
 - Message search across conversations
 - User profile pictures or status updates
+- Push notifications via service worker (when browser is fully closed)
 - Read-only message archival or export
 
 ## Assumptions

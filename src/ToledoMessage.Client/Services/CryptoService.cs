@@ -169,7 +169,7 @@ public class CryptoService
     /// Encrypts a plaintext message for all participants in a group conversation.
     /// </summary>
     public async Task<List<SendMessageRequest>> EncryptGroupMessageAsync(
-        decimal conversationId, decimal selfUserId, string plaintext)
+        decimal conversationId, decimal selfUserId, decimal senderDeviceId, string plaintext)
     {
         var participants = await _http.GetFromJsonAsync<List<ParticipantResponse>>(
             $"/api/conversations/{conversationId}/participants")
@@ -186,6 +186,7 @@ public class CryptoService
             {
                 requests.Add(new SendMessageRequest(
                     conversationId,
+                    senderDeviceId,
                     deviceId,
                     ciphertextBase64,
                     messageType,

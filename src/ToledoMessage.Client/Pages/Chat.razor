@@ -379,7 +379,7 @@
             if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
             {
                 // Group message: encrypt for all participants' devices
-                var requests = await Crypto.EncryptGroupMessageAsync(ConversationId, localUserId, text);
+                var requests = await Crypto.EncryptGroupMessageAsync(ConversationId, localUserId, localDeviceId, text);
 
                 SendMessageResult? lastResult = null;
                 foreach (var request in requests)
@@ -411,6 +411,7 @@
                 {
                     var request = new SendMessageRequest(
                         ConversationId,
+                        localDeviceId,
                         deviceId,
                         ciphertextBase64,
                         messageType,

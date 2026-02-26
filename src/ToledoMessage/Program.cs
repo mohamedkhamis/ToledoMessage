@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
 using ToledoMessage.Components;
 using ToledoMessage.Data;
 using ToledoMessage.Models;
@@ -11,6 +12,17 @@ using ToledoMessage.Middleware;
 using ToledoMessage.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Serilog structured logging (NFR-011)
+builder.Host.UseSerilog((context, loggerConfiguration) =>
+{
+    loggerConfiguration
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext()
+        .Enrich.WithProperty("Application", "ToledoMessage")
+        .WriteTo.Console()
+        .WriteTo.File("logs/toledomessage-.log", rollingInterval: RollingInterval.Day);
+});
 
 // EF Core with SQL Server
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -22,8 +34,14 @@ builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 // Application services
 builder.Services.AddScoped<PreKeyService>();
 builder.Services.AddScoped<MessageRelayService>();
+builder.Services.AddScoped<AccountDeletionService>();
 builder.Services.AddHostedService<MessageCleanupHostedService>();
+builder.Services.AddHostedService<AccountDeletionHostedService>();
 builder.Services.AddSingleton<RateLimitService>();
+
+// Health checks
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<ApplicationDbContext>("sql-server");
 
 // JWT Bearer Authentication
 var jwtSection = builder.Configuration.GetSection("Jwt");
@@ -108,9 +126,18 @@ app.UseAuthentication();
 app.UseMiddleware<RateLimitMiddleware>();
 app.UseAuthorization();
 
+app.UseSerilogRequestLogging(options =>
+{
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value ?? "unknown");
+    };
+});
+
 app.MapStaticAssets();
 app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
+app.MapHealthChecks("/health");
 
 app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()

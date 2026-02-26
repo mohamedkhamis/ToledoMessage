@@ -26,6 +26,16 @@ public static class ProtocolConstants
     public const int MessageRateLimitPerMinute = 60;
     public const int SearchRateLimitPerMinute = 10;
 
+    // Message limits
+    public const int MaxMessageSizeBytes = 65_536; // 64 KB plaintext limit
+    public const int MaxCiphertextSizeBytes = 67_584; // ~66 KB (64 KB plaintext + encryption overhead)
+
+    // Account lifecycle
+    public const int AccountDeletionGracePeriodDays = 7;
+
+    // Message retention
+    public const int UndeliveredMessageRetentionDays = 90;
+
     // HKDF info strings for domain separation
     public const string HkdfInfoRootKey = "ToledoMessage_RootKey";
     public const string HkdfInfoChainKey = "ToledoMessage_ChainKey";

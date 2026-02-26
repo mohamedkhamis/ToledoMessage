@@ -93,6 +93,48 @@
             QR code scanning will be available in a future update.
         </p>
     </div>
+
+    <h3 class="section-title mt-lg danger-text">Account Deletion</h3>
+
+    @if (deletionPending)
+    {
+        <div class="alert alert-warning" role="status">
+            <p>Account deletion is scheduled. Your account will be permanently deactivated
+               on <strong>@deletionEndsAt?.ToString("MMM dd, yyyy HH:mm") UTC</strong>.</p>
+            <p>Log in again to cancel the deletion.</p>
+        </div>
+    }
+    else
+    {
+        <div class="danger-zone">
+            @if (!showDeleteConfirmation)
+            {
+                <p class="danger-description">
+                    Permanently delete your account and all associated data.
+                    You will have a 7-day grace period to cancel by logging in.
+                </p>
+                <button class="btn-danger" @onclick="() => showDeleteConfirmation = true">
+                    Delete Account
+                </button>
+            }
+            else
+            {
+                <p class="danger-description">
+                    Are you sure? This action will begin a 7-day deletion countdown.
+                    All your devices, keys, and messages will be permanently removed.
+                </p>
+                <div class="danger-actions">
+                    <button class="btn-danger" @onclick="DeleteAccount" disabled="@isDeletingAccount">
+                        @(isDeletingAccount ? "Deleting..." : "Yes, Delete My Account")
+                    </button>
+                    <button class="btn-secondary" @onclick="() => showDeleteConfirmation = false"
+                            disabled="@isDeletingAccount">
+                        Cancel
+                    </button>
+                </div>
+            }
+        </div>
+    }
 </div>
 
 @code {
@@ -103,6 +145,10 @@
     private string? successMessage;
     private decimal? unlinkingDeviceId;
     private string currentTheme = "default";
+    private bool showDeleteConfirmation;
+    private bool isDeletingAccount;
+    private bool deletionPending;
+    private DateTimeOffset? deletionEndsAt;
 
     protected override async Task OnInitializedAsync()
     {
@@ -146,6 +192,43 @@
     private async Task LoadDevices()
     {
         devices = await Http.GetFromJsonAsync<List<DeviceInfoResponse>>("/api/devices") ?? [];
+    }
+
+    private async Task DeleteAccount()
+    {
+        errorMessage = null;
+        successMessage = null;
+        isDeletingAccount = true;
+
+        try
+        {
+            var response = await Http.DeleteAsync("/api/auth/account");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content
+                    .ReadFromJsonAsync<AccountDeletionResponse>();
+                if (result is not null)
+                {
+                    deletionPending = true;
+                    deletionEndsAt = result.GracePeriodEndsAt;
+                    showDeleteConfirmation = false;
+                    successMessage = "Account deletion scheduled. Log in again within 7 days to cancel.";
+                }
+            }
+            else
+            {
+                errorMessage = "Failed to initiate account deletion.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting account: {ex.Message}";
+        }
+        finally
+        {
+            isDeletingAccount = false;
+        }
     }
 
     private async Task UnlinkDevice(decimal deviceId)

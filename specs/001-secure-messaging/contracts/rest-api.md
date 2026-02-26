@@ -282,6 +282,7 @@ Store an encrypted message (REST fallback when SignalR unavailable).
 ```json
 {
   "conversationId": "decimal",
+  "senderDeviceId": "decimal",
   "recipientDeviceId": "decimal",
   "ciphertext": "base64",
   "messageType": "int (0=PreKey, 1=Normal)",

@@ -207,6 +207,27 @@ message to a user with 3 devices, 3 EncryptedMessage rows are created,
 each with different RecipientDeviceId and independently encrypted
 ciphertext.
 
+### RefreshToken
+
+| Field | Type | Constraints | Notes |
+|-------|------|-------------|-------|
+| Id | decimal | PK, auto-generated | |
+| UserId | decimal | FK → User, required | Owning user |
+| Token | string | Required, unique | Opaque refresh token value |
+| DeviceId | decimal | FK → Device, required | Token is per-device |
+| ExpiresAt | DateTimeOffset | Required | Token expiration |
+| CreatedAt | DateTimeOffset | Required | Issuance timestamp |
+| IsRevoked | bool | Required, default: false | Revoked on rotation or logout |
+
+**Relationships**: Belongs to `User`, belongs to `Device`
+
+**Lifecycle**:
+1. Created on login/registration (one per device)
+2. Rotated on each refresh (old token revoked, new token issued)
+3. Revoked on logout or device removal
+
+---
+
 ## Enums
 
 | Enum | Values | Usage |

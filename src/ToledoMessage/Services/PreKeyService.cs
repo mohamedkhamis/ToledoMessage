@@ -34,8 +34,33 @@ public class PreKeyService
     }
 
     /// <summary>Consume one unused one-time pre-key for a device. Returns null if exhausted.</summary>
+    /// <remarks>
+    /// Uses raw SQL with OUTPUT clause for atomic claim to prevent race conditions
+    /// where two concurrent requests could consume the same one-time pre-key.
+    /// Falls back to EF-based approach for in-memory provider (testing).
+    /// </remarks>
     public async Task<OneTimePreKey?> ConsumeOneTimePreKey(decimal deviceId)
     {
+        if (_db.Database.IsRelational())
+        {
+            // Atomic: claim the lowest-KeyId unused pre-key in a single UPDATE+OUTPUT statement.
+            // This prevents two concurrent requests from consuming the same key.
+            var claimed = await _db.Database.SqlQueryRaw<decimal>(
+                """
+                UPDATE TOP(1) OneTimePreKeys
+                SET IsUsed = 1
+                OUTPUT inserted.Id
+                WHERE DeviceId = {0} AND IsUsed = 0
+                """,
+                deviceId).ToListAsync();
+
+            if (claimed.Count == 0)
+                return null;
+
+            return await _db.OneTimePreKeys.FirstAsync(k => k.Id == claimed[0]);
+        }
+
+        // Fallback for in-memory provider (unit tests)
         var key = await _db.OneTimePreKeys
             .Where(k => k.DeviceId == deviceId && !k.IsUsed)
             .OrderBy(k => k.KeyId)

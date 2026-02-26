@@ -1,103 +1,127 @@
 # Quickstart: ToledoMessage
 
-**Branch**: `001-secure-messaging` | **Date**: 2026-02-25
+**Branch**: `001-secure-messaging` | **Date**: 2026-02-26
 
 ## Prerequisites
 
-- .NET 10 SDK
-- SQL Server 2022 (or SQL Server Express / LocalDB)
-- Node.js (for optional front-end tooling)
+- .NET 10 SDK (LTS) — [download](https://dotnet.microsoft.com/download)
+- SQL Server 2022 (LocalDB, Express, or full instance)
 - A modern web browser (Chrome, Edge, Firefox)
+- Git
 
-## Setup
-
-### 1. Clone and checkout
+## 1. Clone and Checkout
 
 ```bash
-git clone <repo-url>
+git clone <repository-url>
 cd ToledoMessage
 git checkout 001-secure-messaging
 ```
 
-### 2. Restore dependencies
+## 2. Configure Database Connection
 
-```bash
-dotnet restore
-```
-
-### 3. Configure database
-
-Update the connection string in `src/ToledoMessage/appsettings.Development.json`:
+Edit `src/ToledoMessage/appsettings.Development.json`:
 
 ```json
 {
   "ConnectionStrings": {
     "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=ToledoMessage;Trusted_Connection=True;MultipleActiveResultSets=true"
+  },
+  "Jwt": {
+    "SecretKey": "your-development-secret-key-at-least-32-characters-long",
+    "Issuer": "ToledoMessage",
+    "Audience": "ToledoMessage",
+    "ExpiryMinutes": 60
   }
 }
 ```
 
-### 4. Apply migrations
+> **Security note**: Use environment variables or user-secrets for
+> production. Never commit real secrets to the repository.
+
+## 3. Apply Database Migrations
 
 ```bash
 cd src/ToledoMessage
 dotnet ef database update
 ```
 
-### 5. Run the application
+This creates the database with all tables: Users, Devices,
+OneTimePreKeys, Conversations, ConversationParticipants,
+EncryptedMessages.
+
+## 4. Build and Run
 
 ```bash
+# From repository root
+dotnet build
 dotnet run --project src/ToledoMessage
 ```
 
-The server starts and serves both the API and the Blazor Web App. Open `https://localhost:5001` in a browser.
+The server starts on `https://localhost:5001` (HTTPS) and
+`http://localhost:5000` (HTTP).
 
-### 6. Test with two users
+Open `https://localhost:5001` in your browser to access the
+Blazor WebAssembly client.
 
-1. Open two browser tabs (or one regular + one incognito window)
-2. Register "alice" in tab 1
-3. Register "bob" in tab 2
-4. In tab 1, search for "bob" and start a conversation
-5. Send a message — it should appear instantly in tab 2
+## 5. Test the Application
 
-## Running Tests
+### Register Two Users
+
+1. Navigate to the Register page
+2. Create User A with a display name and password (min 12 chars)
+3. Open a second browser (or incognito window)
+4. Create User B
+
+### Send a Message
+
+1. As User A, go to New Conversation
+2. Search for User B's display name
+3. Select User B and send a message
+4. Switch to User B's browser — the message appears in real-time
+
+### Verify Security
+
+1. Open Security Info on either user's conversation
+2. Compare the displayed fingerprint (safety number) between both users
+3. Mark the conversation as verified
+
+## 6. Run Tests
 
 ```bash
-# All tests
-dotnet test
-
-# Crypto tests only
+# Unit tests (crypto library)
 dotnet test tests/ToledoMessage.Crypto.Tests
 
-# With coverage
-dotnet test --collect:"XPlat Code Coverage"
+# Integration tests (requires SQL Server)
+dotnet test tests/ToledoMessage.Integration.Tests
+
+# All tests
+dotnet test
 
 # Performance benchmarks
 dotnet run --project tests/ToledoMessage.Benchmarks -c Release
 ```
 
-## Project Structure
+## 7. Project Structure Overview
 
-```
-ToledoMessage.sln
-src/
-  Toledo.SharedKernel/        # Shared utilities (DecimalTools ID generation)
-  ToledoMessage/              # ASP.NET Core server (host + API + SignalR)
-  ToledoMessage.Client/       # Blazor WASM client (crypto + UI)
-  ToledoMessage.Shared/       # Shared DTOs and contracts
-  ToledoMessage.Crypto/       # Cryptographic library (BouncyCastle wrappers)
-tests/
-  ToledoMessage.Crypto.Tests/ # Crypto unit tests
-  ToledoMessage.Server.Tests/ # API and SignalR hub tests
-  ToledoMessage.Client.Tests/ # Client component tests
-  ToledoMessage.Integration.Tests/ # End-to-end tests
-  ToledoMessage.Benchmarks/   # Performance benchmarks
-```
+| Project | Purpose |
+|---------|---------|
+| `src/ToledoMessage` | ASP.NET Core server (API + SignalR + Blazor host) |
+| `src/ToledoMessage.Client` | Blazor WebAssembly client (UI + crypto) |
+| `src/ToledoMessage.Crypto` | Cryptographic library (BouncyCastle) |
+| `src/ToledoMessage.Shared` | Shared DTOs, enums, constants |
+| `src/Toledo.SharedKernel` | Cross-cutting utilities |
 
-## Key Architectural Rules
+## Key URLs
 
-1. **ALL crypto runs client-side** — the server is an untrusted relay
-2. **BouncyCastle.Cryptography** is the single crypto library (pure managed C#, works in WASM)
-3. **Hybrid crypto** — every key exchange combines X25519 + ML-KEM-768
-4. **Never log plaintext** — server logs contain only message IDs, timestamps, error codes
-5. **All primary keys** use `decimal(28,8)` via `Toledo.SharedKernel.Helpers.DecimalTools.GetNewId()` — no Guids
+| URL | Purpose |
+|-----|---------|
+| `/` | Home page |
+| `/register` | Account registration |
+| `/login` | Login |
+| `/chats` | Conversation list |
+| `/chat/{id}` | Active chat |
+| `/new-conversation` | Start new conversation |
+| `/security-info/{id}` | Fingerprint verification |
+| `/settings` | User settings |
+| `/hubs/chat` | SignalR hub (WebSocket) |
+| `/api/*` | REST API endpoints |

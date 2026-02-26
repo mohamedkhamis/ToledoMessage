@@ -68,3 +68,4 @@ appsettings.*.local.json
 *.pfx
 *.key
 *.pem
+/publish-output/

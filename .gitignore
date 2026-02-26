@@ -69,3 +69,8 @@ appsettings.*.local.json
 *.key
 *.pem
 /publish-output/
+/publish-output/*
+/publish-output/wwwroot/*
+/publish-output/wwwroot/
+/publish-output/wwwroot/_framework/dotnet.js.br
+/publish-output/wwwroot/_framework/dotnet.js.gz

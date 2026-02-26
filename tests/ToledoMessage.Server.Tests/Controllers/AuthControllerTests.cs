@@ -125,7 +125,7 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public async Task Login_DeactivatedUser_ReturnsUnauthorized()
+    public async Task Login_DeactivatedUser_ReturnsUnauthorized_WithGenericError()
     {
         var (controller, db) = CreateController();
 
@@ -137,7 +137,8 @@ public class AuthControllerTests
 
         var result = await controller.Login(new LoginRequest("deactuser", "MySecurePass12"));
         var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result);
-        Assert.Contains("deactivated", unauthorized.Value!.ToString());
+        // Should return the same generic error to prevent user enumeration
+        Assert.Contains("Invalid display name or password", unauthorized.Value!.ToString());
     }
 
     [Fact]
@@ -249,5 +250,99 @@ public class AuthControllerTests
 
         var result = await controller.DeleteAccount();
         Assert.IsType<UnauthorizedResult>(result);
+    }
+
+    // --- User Enumeration Prevention ---
+
+    [Fact]
+    public async Task Login_NonExistentUser_ReturnsSameErrorAsWrongPassword()
+    {
+        var (controller, _) = CreateController();
+        await controller.Register(new RegisterRequest("realuser", "MySecurePass12"));
+
+        var nonExistentResult = await controller.Login(new LoginRequest("fakeuser", "MySecurePass12"));
+        var wrongPasswordResult = await controller.Login(new LoginRequest("realuser", "WrongPassword1"));
+
+        var nonExistentError = Assert.IsType<UnauthorizedObjectResult>(nonExistentResult);
+        var wrongPasswordError = Assert.IsType<UnauthorizedObjectResult>(wrongPasswordResult);
+
+        // Both should return the exact same generic error message
+        Assert.Equal(nonExistentError.Value!.ToString(), wrongPasswordError.Value!.ToString());
+    }
+
+    // --- Logout ---
+
+    [Fact]
+    public async Task Logout_ValidRefreshToken_RevokesIt()
+    {
+        var (controller, db) = CreateController();
+
+        var registerResult = await controller.Register(new RegisterRequest("logoutuser", "MySecurePass12"));
+        var created = Assert.IsType<CreatedResult>(registerResult);
+        var authResponse = Assert.IsType<AuthResponse>(created.Value);
+
+        TestDbContextFactory.SetUser(controller, authResponse.UserId, "logoutuser");
+
+        var result = await controller.Logout(new ToledoMessage.Shared.DTOs.LogoutRequest(authResponse.RefreshToken!));
+        Assert.IsType<NoContentResult>(result);
+
+        // Verify the token is revoked
+        var token = db.RefreshTokens.First(rt => rt.Token == authResponse.RefreshToken);
+        Assert.True(token.IsRevoked);
+    }
+
+    [Fact]
+    public async Task LogoutAll_RevokesAllTokens()
+    {
+        var (controller, db) = CreateController();
+
+        var registerResult = await controller.Register(new RegisterRequest("logoutalluser", "MySecurePass12"));
+        var created = Assert.IsType<CreatedResult>(registerResult);
+        var authResponse = Assert.IsType<AuthResponse>(created.Value);
+
+        // Login again to create a second token
+        await controller.Login(new LoginRequest("logoutalluser", "MySecurePass12"));
+
+        TestDbContextFactory.SetUser(controller, authResponse.UserId, "logoutalluser");
+
+        var result = await controller.LogoutAll();
+        Assert.IsType<NoContentResult>(result);
+
+        // All refresh tokens should be revoked
+        var activeTokens = db.RefreshTokens
+            .Where(rt => rt.UserId == authResponse.UserId && !rt.IsRevoked)
+            .Count();
+        Assert.Equal(0, activeTokens);
+    }
+
+    // --- Refresh Token Cleanup on Rotation ---
+
+    [Fact]
+    public async Task Refresh_CleansUpExpiredTokens()
+    {
+        var (controller, db) = CreateController();
+
+        // Register to get tokens
+        var registerResult = await controller.Register(new RegisterRequest("cleanuprfuser", "MySecurePass12"));
+        var created = Assert.IsType<CreatedResult>(registerResult);
+        var authResponse = Assert.IsType<AuthResponse>(created.Value);
+
+        // Manually add an expired token for this user
+        db.RefreshTokens.Add(new RefreshToken
+        {
+            Id = 999m,
+            UserId = authResponse.UserId,
+            Token = "expired-token",
+            ExpiresAt = DateTimeOffset.UtcNow.AddDays(-1), // Already expired
+            CreatedAt = DateTimeOffset.UtcNow.AddDays(-31),
+            IsRevoked = false
+        });
+        await db.SaveChangesAsync();
+
+        // Refresh should clean up the expired token
+        await controller.Refresh(new RefreshTokenRequest(authResponse.Token, authResponse.RefreshToken!));
+
+        var expiredToken = db.RefreshTokens.First(rt => rt.Token == "expired-token");
+        Assert.True(expiredToken.IsRevoked);
     }
 }

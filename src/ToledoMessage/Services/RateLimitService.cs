@@ -4,10 +4,13 @@ namespace ToledoMessage.Services;
 
 /// <summary>
 /// Simple in-memory rate limiter that tracks request counts per key within sliding time windows.
+/// Includes periodic cleanup of stale entries to prevent unbounded memory growth.
 /// </summary>
 public class RateLimitService
 {
     private readonly ConcurrentDictionary<string, (int Count, DateTime WindowStart)> _clients = new();
+    private DateTime _lastCleanup = DateTime.UtcNow;
+    private static readonly TimeSpan CleanupInterval = TimeSpan.FromMinutes(5);
 
     /// <summary>
     /// Check if the given key has exceeded the allowed number of requests within the specified time window.
@@ -20,6 +23,13 @@ public class RateLimitService
     public bool IsRateLimited(string key, int maxRequests, TimeSpan window)
     {
         var now = DateTime.UtcNow;
+
+        // Periodically clean up stale entries to prevent unbounded memory growth
+        if (now - _lastCleanup >= CleanupInterval)
+        {
+            CleanupStaleEntries(now);
+            _lastCleanup = now;
+        }
 
         var entry = _clients.AddOrUpdate(
             key,
@@ -39,5 +49,20 @@ public class RateLimitService
             });
 
         return entry.Count > maxRequests;
+    }
+
+    /// <summary>
+    /// Removes entries that have been inactive for more than 10 minutes.
+    /// </summary>
+    private void CleanupStaleEntries(DateTime now)
+    {
+        var staleThreshold = TimeSpan.FromMinutes(10);
+        foreach (var kvp in _clients)
+        {
+            if (now - kvp.Value.WindowStart >= staleThreshold)
+            {
+                _clients.TryRemove(kvp.Key, out _);
+            }
+        }
     }
 }

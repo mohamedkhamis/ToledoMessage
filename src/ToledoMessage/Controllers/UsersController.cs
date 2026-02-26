@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +10,7 @@ namespace ToledoMessage.Controllers;
 [ApiController]
 [Route("api/users")]
 [Authorize]
-public class UsersController : ControllerBase
+public class UsersController : BaseApiController
 {
     private readonly ApplicationDbContext _db;
     private readonly PreKeyService _preKeyService;
@@ -24,18 +23,25 @@ public class UsersController : ControllerBase
 
     /// <summary>
     /// Search users by display name (case-insensitive contains).
-    /// Excludes the requesting user from results.
+    /// Excludes the requesting user from results. Results bounded to 50.
     /// </summary>
     [HttpGet("search")]
-    public async Task<IActionResult> Search([FromQuery] string? q)
+    public async Task<IActionResult> Search([FromQuery] string? q, [FromQuery] int skip = 0, [FromQuery] int take = 50)
     {
         if (string.IsNullOrWhiteSpace(q))
             return Ok(new UserSearchResponse([]));
+
+        // Clamp take to a maximum of 50
+        take = Math.Clamp(take, 1, 50);
+        skip = Math.Max(skip, 0);
 
         var userId = GetUserId();
 
         var users = await _db.Users
             .Where(u => u.IsActive && u.Id != userId && u.DisplayName.Contains(q))
+            .OrderBy(u => u.DisplayName)
+            .Skip(skip)
+            .Take(take)
             .Select(u => new UserSearchResult(
                 u.Id,
                 u.DisplayName,
@@ -91,10 +97,4 @@ public class UsersController : ControllerBase
         return Ok(devices);
     }
 
-    private decimal GetUserId()
-    {
-        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue("sub");
-        return decimal.Parse(sub!);
-    }
 }

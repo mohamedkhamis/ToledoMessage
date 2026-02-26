@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +10,7 @@ namespace ToledoMessage.Controllers;
 [ApiController]
 [Route("api/messages")]
 [Authorize]
-public class MessagesController : ControllerBase
+public class MessagesController : BaseApiController
 {
     private readonly ApplicationDbContext _db;
     private readonly MessageRelayService _relayService;
@@ -30,22 +29,24 @@ public class MessagesController : ControllerBase
     {
         var userId = GetUserId();
 
+        // Validate Base64 ciphertext before processing
+        if (!MessageRelayService.IsValidBase64(request.Ciphertext, out _))
+            return BadRequest("Invalid Base64 ciphertext.");
+
         // Validate sender is a participant in the conversation
         var isParticipant = await _db.ConversationParticipants
             .AnyAsync(cp => cp.ConversationId == request.ConversationId && cp.UserId == userId);
         if (!isParticipant)
             return Forbid();
 
-        // Find an active sender device for this user
-        var senderDeviceId = await _db.Devices
-            .Where(d => d.UserId == userId && d.IsActive)
-            .Select(d => d.Id)
-            .FirstOrDefaultAsync();
-        if (senderDeviceId == 0)
-            return BadRequest("No active device found for the current user.");
+        // Verify the SenderDeviceId belongs to the calling user
+        var senderDeviceOwned = await _db.Devices
+            .AnyAsync(d => d.Id == request.SenderDeviceId && d.UserId == userId && d.IsActive);
+        if (!senderDeviceOwned)
+            return BadRequest("Sender device not found or does not belong to the current user.");
 
         // Store the message
-        var message = await _relayService.StoreMessage(senderDeviceId, request);
+        var message = await _relayService.StoreMessage(request.SenderDeviceId, request);
 
         // Try to relay to online recipient via SignalR
         await _relayService.TryRelayToOnlineRecipient(message);
@@ -108,10 +109,4 @@ public class MessagesController : ControllerBase
         return Ok(new { messageId, deliveredAt = acknowledged.DeliveredAt });
     }
 
-    private decimal GetUserId()
-    {
-        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue("sub");
-        return decimal.Parse(sub!);
-    }
 }

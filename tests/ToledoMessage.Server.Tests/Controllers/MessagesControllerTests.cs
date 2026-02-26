@@ -159,4 +159,32 @@ public class MessagesControllerTests
         var result = await controller.AcknowledgeDelivery(999m);
         Assert.IsType<NotFoundObjectResult>(result);
     }
+
+    // --- Base64 Validation ---
+
+    [Fact]
+    public async Task SendMessage_InvalidBase64Ciphertext_ReturnsBadRequest()
+    {
+        var (controller, db) = CreateController();
+        await SeedMessagingContext(db);
+
+        var request = new SendMessageRequest(100m, 10m, 20m,
+            "not-valid-base64!!!", MessageType.NormalMessage, ContentType.Text);
+
+        var result = await controller.SendMessage(request);
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task SendMessage_EmptyCiphertext_ReturnsBadRequest()
+    {
+        var (controller, db) = CreateController();
+        await SeedMessagingContext(db);
+
+        var request = new SendMessageRequest(100m, 10m, 20m,
+            "", MessageType.NormalMessage, ContentType.Text);
+
+        var result = await controller.SendMessage(request);
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
 }

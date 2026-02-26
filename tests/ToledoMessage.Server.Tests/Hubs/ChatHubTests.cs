@@ -224,19 +224,20 @@ public class ChatHubTests
     }
 
     [Fact]
-    public async Task SendMessage_NoActiveDevice_ThrowsHubException()
+    public async Task SendMessage_DeviceNotOwnedBySender_ThrowsHubException()
     {
         var (hub, db, _, _) = CreateHub();
         await TestDbContextFactory.SeedUser(db, 1m, "sender");
-        // No device seeded for user 1
+        await TestDbContextFactory.SeedUser(db, 2m, "other");
+        await TestDbContextFactory.SeedDevice(db, 20m, 2m, "OtherDevice"); // Device belongs to user 2
         await TestDbContextFactory.SeedConversation(db, 100m);
         await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
 
-        var request = new SendMessageRequest(100m, 0m, 20m,
+        var request = new SendMessageRequest(100m, 20m, 30m,
             Convert.ToBase64String(new byte[] { 1 }), MessageType.NormalMessage, ContentType.Text);
 
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.SendMessage(request));
-        Assert.Contains("No active device", ex.Message);
+        Assert.Contains("Sender device not found", ex.Message);
     }
 
     // --- AcknowledgeDelivery ---
@@ -280,6 +281,8 @@ public class ChatHubTests
     public async Task AcknowledgeRead_ValidMessage_NotifiesSenderDevice()
     {
         var (hub, db, _, clients) = CreateHub();
+        await TestDbContextFactory.SeedUser(db, 1m, "user1");
+        await TestDbContextFactory.SeedDevice(db, 10m, 1m); // Recipient device belongs to hub user
 
         db.EncryptedMessages.Add(new EncryptedMessage
         {
@@ -326,6 +329,72 @@ public class ChatHubTests
         Assert.False(clients.SentToGroups.ContainsKey("user_1"));
         Assert.Contains(clients.SentToGroups["user_2"], s => s.method == "UserTyping");
         Assert.Contains(clients.SentToGroups["user_3"], s => s.method == "UserTyping");
+    }
+
+    // --- Ownership verification tests ---
+
+    [Fact]
+    public async Task SendMessage_OtherUsersDevice_ThrowsHubException()
+    {
+        var (hub, db, _, _) = CreateHub(); // userId = 1
+        await TestDbContextFactory.SeedUser(db, 1m, "sender");
+        await TestDbContextFactory.SeedUser(db, 2m, "other");
+        await TestDbContextFactory.SeedDevice(db, 10m, 1m, "MyDevice");
+        await TestDbContextFactory.SeedDevice(db, 20m, 2m, "OtherDevice");
+        await TestDbContextFactory.SeedConversation(db, 100m);
+        await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
+        await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
+
+        // Try to send from user 2's device as user 1
+        var request = new SendMessageRequest(100m, 20m, 10m,
+            Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType.NormalMessage, ContentType.Text);
+
+        var ex = await Assert.ThrowsAsync<HubException>(() => hub.SendMessage(request));
+        Assert.Contains("Sender device not found", ex.Message);
+    }
+
+    [Fact]
+    public async Task AcknowledgeDelivery_OtherUsersMessage_ThrowsHubException()
+    {
+        var (hub, db, _, _) = CreateHub(); // userId = 1
+        await TestDbContextFactory.SeedUser(db, 1m, "user1");
+        await TestDbContextFactory.SeedUser(db, 2m, "user2");
+        await TestDbContextFactory.SeedDevice(db, 10m, 1m);
+        await TestDbContextFactory.SeedDevice(db, 20m, 2m); // Belongs to user 2
+
+        db.EncryptedMessages.Add(new EncryptedMessage
+        {
+            Id = 500m, ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m,
+            Ciphertext = [1, 2], SequenceNumber = 1, ServerTimestamp = DateTimeOffset.UtcNow,
+            IsDelivered = false
+        });
+        await db.SaveChangesAsync();
+
+        // User 1 tries to acknowledge a message destined for user 2's device
+        var ex = await Assert.ThrowsAsync<HubException>(() => hub.AcknowledgeDelivery(500m));
+        Assert.Contains("does not belong", ex.Message);
+    }
+
+    [Fact]
+    public async Task AcknowledgeRead_OtherUsersMessage_ThrowsHubException()
+    {
+        var (hub, db, _, _) = CreateHub(); // userId = 1
+        await TestDbContextFactory.SeedUser(db, 1m, "user1");
+        await TestDbContextFactory.SeedUser(db, 2m, "user2");
+        await TestDbContextFactory.SeedDevice(db, 10m, 1m);
+        await TestDbContextFactory.SeedDevice(db, 20m, 2m); // Belongs to user 2
+
+        db.EncryptedMessages.Add(new EncryptedMessage
+        {
+            Id = 500m, ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m,
+            Ciphertext = [1, 2], SequenceNumber = 1, ServerTimestamp = DateTimeOffset.UtcNow,
+            IsDelivered = true
+        });
+        await db.SaveChangesAsync();
+
+        // User 1 tries to mark as read a message destined for user 2's device
+        var ex = await Assert.ThrowsAsync<HubException>(() => hub.AcknowledgeRead(500m));
+        Assert.Contains("does not belong", ex.Message);
     }
 
     // --- OnDisconnectedAsync ---

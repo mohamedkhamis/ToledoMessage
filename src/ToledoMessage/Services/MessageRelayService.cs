@@ -21,6 +21,8 @@ public class MessageRelayService
 
     /// <summary>
     /// Store an encrypted message in the database with an auto-incremented sequence number per conversation.
+    /// Uses atomic SQL to prevent race conditions where concurrent messages get the same sequence number.
+    /// Falls back to EF-based approach for in-memory provider (testing).
     /// </summary>
     public async Task<EncryptedMessage> StoreMessage(
         decimal senderDeviceId,
@@ -28,19 +30,40 @@ public class MessageRelayService
     {
         var now = DateTimeOffset.UtcNow;
 
-        // Auto-increment sequence number per conversation
+        if (!IsValidBase64(request.Ciphertext, out var ciphertext))
+            throw new ArgumentException("Invalid Base64 ciphertext.");
+
+        var messageId = DecimalTools.GetNewId();
+
+        if (_db.Database.IsRelational())
+        {
+            // Atomic: INSERT with subquery that computes MAX+1 in a single statement.
+            // This prevents two concurrent messages from getting the same sequence number.
+            await _db.Database.ExecuteSqlRawAsync(
+                """
+                INSERT INTO EncryptedMessages (Id, ConversationId, SenderDeviceId, RecipientDeviceId, Ciphertext, MessageType, ContentType, SequenceNumber, ServerTimestamp, IsDelivered)
+                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, ISNULL((SELECT MAX(SequenceNumber) FROM EncryptedMessages WITH (UPDLOCK) WHERE ConversationId = {1}), 0) + 1, {7}, 0)
+                """,
+                messageId, request.ConversationId, senderDeviceId, request.RecipientDeviceId,
+                ciphertext, (int)request.MessageType, (int)request.ContentType, now);
+
+            var message = await _db.EncryptedMessages.FirstAsync(m => m.Id == messageId);
+            return message;
+        }
+
+        // Fallback for in-memory provider (unit tests)
         var maxSequence = await _db.EncryptedMessages
             .Where(m => m.ConversationId == request.ConversationId)
             .Select(m => (long?)m.SequenceNumber)
             .MaxAsync() ?? 0;
 
-        var message = new EncryptedMessage
+        var msg = new EncryptedMessage
         {
-            Id = DecimalTools.GetNewId(),
+            Id = messageId,
             ConversationId = request.ConversationId,
             SenderDeviceId = senderDeviceId,
             RecipientDeviceId = request.RecipientDeviceId,
-            Ciphertext = Convert.FromBase64String(request.Ciphertext),
+            Ciphertext = ciphertext,
             MessageType = request.MessageType,
             ContentType = request.ContentType,
             SequenceNumber = maxSequence + 1,
@@ -48,11 +71,28 @@ public class MessageRelayService
             IsDelivered = false
         };
 
-        _db.EncryptedMessages.Add(message);
+        _db.EncryptedMessages.Add(msg);
         await _db.SaveChangesAsync();
 
-        return message;
+        return msg;
     }
+
+    /// <summary>
+    /// Validates a Base64 string and decodes it.
+    /// </summary>
+    public static bool IsValidBase64(string input, out byte[] result)
+    {
+        result = [];
+        if (string.IsNullOrEmpty(input))
+            return false;
+
+        var buffer = new Span<byte>(new byte[GetMaxBase64DecodedLength(input.Length)]);
+        return Convert.TryFromBase64String(input, buffer, out var bytesWritten)
+            && ((result = buffer[..bytesWritten].ToArray()) is not null);
+    }
+
+    private static int GetMaxBase64DecodedLength(int base64Length)
+        => (base64Length * 3 + 3) / 4;
 
     /// <summary>
     /// Try to relay a message to the recipient if they are connected via SignalR.
@@ -105,11 +145,36 @@ public class MessageRelayService
     /// <summary>
     /// Delete expired messages that have already been delivered and whose conversation
     /// has a disappearing timer set. Returns the count of deleted messages.
+    /// Uses batched deletion to avoid loading all expired messages into memory at once.
+    /// Falls back to EF-based approach for in-memory provider (testing).
     /// </summary>
     public async Task<int> CleanupExpiredMessages()
     {
         var now = DateTimeOffset.UtcNow;
 
+        if (_db.Database.IsRelational())
+        {
+            // Batched deletion: delete up to 1000 rows at a time to avoid memory pressure
+            int totalDeleted = 0;
+            int batchDeleted;
+            do
+            {
+                batchDeleted = await _db.Database.ExecuteSqlRawAsync(
+                    """
+                    DELETE TOP(1000) em
+                    FROM EncryptedMessages em
+                    INNER JOIN Conversations c ON em.ConversationId = c.Id
+                    WHERE em.IsDelivered = 1
+                      AND c.DisappearingTimerSeconds IS NOT NULL
+                      AND DATEADD(SECOND, c.DisappearingTimerSeconds, em.ServerTimestamp) < {0}
+                    """, now);
+                totalDeleted += batchDeleted;
+            } while (batchDeleted == 1000);
+
+            return totalDeleted;
+        }
+
+        // Fallback for in-memory provider (unit tests)
         var expiredMessages = await _db.EncryptedMessages
             .Include(m => m.Conversation)
             .Where(m => m.IsDelivered)

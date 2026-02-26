@@ -15,17 +15,27 @@ public class PreKeyService
         _db = db;
     }
 
-    /// <summary>Store one-time pre-keys for a device.</summary>
+    /// <summary>Store one-time pre-keys for a device. Validates Base64 input.</summary>
     public async Task StoreOneTimePreKeys(decimal deviceId, List<OneTimePreKeyDto> preKeys)
     {
         foreach (var pk in preKeys)
         {
+            byte[] publicKeyBytes;
+            try
+            {
+                publicKeyBytes = Convert.FromBase64String(pk.PublicKey);
+            }
+            catch (FormatException)
+            {
+                throw new ArgumentException($"Invalid Base64 in one-time pre-key {pk.KeyId}.");
+            }
+
             _db.OneTimePreKeys.Add(new OneTimePreKey
             {
                 Id = DecimalTools.GetNewId(),
                 DeviceId = deviceId,
                 KeyId = pk.KeyId,
-                PublicKey = Convert.FromBase64String(pk.PublicKey),
+                PublicKey = publicKeyBytes,
                 IsUsed = false
             });
         }

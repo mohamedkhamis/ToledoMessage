@@ -18,7 +18,7 @@ namespace ToledoMessage.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController : ControllerBase
+public class AuthController : BaseApiController
 {
     private static readonly Regex DisplayNameRegex = new("^[a-zA-Z0-9_-]+$", RegexOptions.Compiled);
 
@@ -80,17 +80,19 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
+        const string genericError = "Invalid display name or password.";
+
         var user = await _db.Users.FirstOrDefaultAsync(
             u => u.DisplayName == request.DisplayName);
         if (user == null)
-            return Unauthorized("Invalid display name or password.");
+            return Unauthorized(genericError);
 
         if (!user.IsActive)
-            return Unauthorized("This account has been deactivated.");
+            return Unauthorized(genericError);
 
         var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
         if (result == PasswordVerificationResult.Failed)
-            return Unauthorized("Invalid display name or password.");
+            return Unauthorized(genericError);
 
         // Cancel pending deletion on successful login (FR-020 grace period)
         if (user.DeletionRequestedAt is not null)
@@ -126,6 +128,13 @@ public class AuthController : ControllerBase
         // Revoke the old refresh token (rotation)
         storedToken.IsRevoked = true;
 
+        // Clean up expired tokens for this user to prevent accumulation
+        var expiredTokens = await _db.RefreshTokens
+            .Where(rt => rt.UserId == userId && rt.ExpiresAt <= DateTimeOffset.UtcNow && !rt.IsRevoked)
+            .ToListAsync();
+        foreach (var expired in expiredTokens)
+            expired.IsRevoked = true;
+
         var user = await _db.Users.FindAsync(userId);
         if (user == null || !user.IsActive)
             return Unauthorized("User account not found or deactivated.");
@@ -136,13 +145,53 @@ public class AuthController : ControllerBase
         return Ok(new RefreshTokenResponse(newAccessToken, newRefreshToken));
     }
 
+    /// <summary>
+    /// Logout: revokes the provided refresh token.
+    /// </summary>
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] LogoutRequest request)
+    {
+        var userId = GetUserId();
+
+        var token = await _db.RefreshTokens
+            .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken && rt.UserId == userId && !rt.IsRevoked);
+
+        if (token != null)
+        {
+            token.IsRevoked = true;
+            await _db.SaveChangesAsync();
+        }
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Logout from all devices: revokes all refresh tokens for the user.
+    /// </summary>
+    [Authorize]
+    [HttpPost("logout-all")]
+    public async Task<IActionResult> LogoutAll()
+    {
+        var userId = GetUserId();
+
+        var tokens = await _db.RefreshTokens
+            .Where(rt => rt.UserId == userId && !rt.IsRevoked)
+            .ToListAsync();
+
+        foreach (var token in tokens)
+            token.IsRevoked = true;
+
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
     [Authorize]
     [HttpDelete("account")]
     public async Task<IActionResult> DeleteAccount()
     {
-        var userIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)
-                          ?? User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !decimal.TryParse(userIdClaim.Value, out var userId))
+        if (!TryGetUserId(out var userId))
             return Unauthorized();
 
         var deletionRequestedAt = await _accountDeletionService.InitiateDeletionAsync(userId);

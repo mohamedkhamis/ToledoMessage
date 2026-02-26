@@ -68,6 +68,8 @@ public class RateLimitMiddleware
 
     private static string? BuildKey(HttpContext context, string path, bool byUser)
     {
+        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
         if (byUser)
         {
             var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -77,11 +79,11 @@ public class RateLimitMiddleware
             if (string.IsNullOrEmpty(userId))
                 return null;
 
-            return $"user:{userId}:{path}";
+            // Combine IP + UserId to rate-limit per user-IP pair
+            return $"user:{userId}:ip:{ip}:{path}";
         }
 
         // Rate-limit by IP address for anonymous endpoints
-        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         return $"ip:{ip}:{path}";
     }
 }

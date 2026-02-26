@@ -49,16 +49,14 @@ public class ChatHub : Hub
         if (!isParticipant)
             throw new HubException("You are not a participant in this conversation.");
 
-        // Retrieve a sender device belonging to this user (for the SenderDeviceId on the stored message)
-        var senderDevice = await _db.Devices
-            .Where(d => d.UserId == userId && d.IsActive)
-            .Select(d => d.Id)
-            .FirstOrDefaultAsync();
-        if (senderDevice == 0)
-            throw new HubException("No active device found for the current user.");
+        // Verify the SenderDeviceId belongs to the calling user
+        var senderDeviceOwned = await _db.Devices
+            .AnyAsync(d => d.Id == request.SenderDeviceId && d.UserId == userId && d.IsActive);
+        if (!senderDeviceOwned)
+            throw new HubException("Sender device not found or does not belong to the current user.");
 
         // Store the message
-        var message = await _relayService.StoreMessage(senderDevice, request);
+        var message = await _relayService.StoreMessage(request.SenderDeviceId, request);
 
         // Try to relay to online recipient
         await _relayService.TryRelayToOnlineRecipient(message);
@@ -71,6 +69,16 @@ public class ChatHub : Hub
     /// </summary>
     public async Task AcknowledgeDelivery(decimal messageId)
     {
+        var userId = GetUserId();
+
+        var msg = await _db.EncryptedMessages
+            .Include(m => m.RecipientDevice)
+            .FirstOrDefaultAsync(m => m.Id == messageId);
+        if (msg == null)
+            throw new HubException("Message not found.");
+        if (msg.RecipientDevice.UserId != userId)
+            throw new HubException("Message does not belong to the current user.");
+
         var message = await _relayService.AcknowledgeDelivery(messageId);
         if (message == null)
             throw new HubException("Message not found.");
@@ -85,9 +93,15 @@ public class ChatHub : Hub
     /// </summary>
     public async Task AcknowledgeRead(decimal messageId)
     {
-        var message = await _db.EncryptedMessages.FindAsync(messageId);
+        var userId = GetUserId();
+
+        var message = await _db.EncryptedMessages
+            .Include(m => m.RecipientDevice)
+            .FirstOrDefaultAsync(m => m.Id == messageId);
         if (message == null)
             throw new HubException("Message not found.");
+        if (message.RecipientDevice.UserId != userId)
+            throw new HubException("Message does not belong to the current user.");
 
         // Notify the sender's device that the message was read
         await Clients.Group($"device_{message.SenderDeviceId}")
@@ -126,6 +140,8 @@ public class ChatHub : Hub
     {
         var sub = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? Context.User?.FindFirstValue("sub");
-        return decimal.Parse(sub!);
+        if (string.IsNullOrEmpty(sub) || !decimal.TryParse(sub, out var userId))
+            throw new HubException("Authentication required.");
+        return userId;
     }
 }

@@ -136,4 +136,58 @@ public class UsersControllerTests
         Assert.Single(devices);
         Assert.Equal("Active", devices[0].DeviceName);
     }
+
+    // --- Bounded Search Results ---
+
+    [Fact]
+    public async Task Search_ResultsAreBoundedByDefault()
+    {
+        var (controller, db) = CreateController();
+        await TestDbContextFactory.SeedUser(db, 1m, "currentuser");
+
+        // Create 60 users matching "testuser"
+        for (int i = 2; i <= 61; i++)
+        {
+            await TestDbContextFactory.SeedUser(db, (decimal)i, $"testuser{i:D3}");
+        }
+
+        var result = await controller.Search("testuser");
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<UserSearchResponse>(ok.Value);
+
+        // Default take is 50
+        Assert.Equal(50, response.Users.Count);
+    }
+
+    [Fact]
+    public async Task Search_TakeLimitIsEnforced()
+    {
+        var (controller, db) = CreateController();
+        await TestDbContextFactory.SeedUser(db, 1m, "currentuser");
+        await TestDbContextFactory.SeedUser(db, 2m, "alice1");
+        await TestDbContextFactory.SeedUser(db, 3m, "alice2");
+        await TestDbContextFactory.SeedUser(db, 4m, "alice3");
+
+        var result = await controller.Search("alice", take: 2);
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<UserSearchResponse>(ok.Value);
+
+        Assert.Equal(2, response.Users.Count);
+    }
+
+    [Fact]
+    public async Task Search_SkipPaginationWorks()
+    {
+        var (controller, db) = CreateController();
+        await TestDbContextFactory.SeedUser(db, 1m, "currentuser");
+        await TestDbContextFactory.SeedUser(db, 2m, "alice1");
+        await TestDbContextFactory.SeedUser(db, 3m, "alice2");
+        await TestDbContextFactory.SeedUser(db, 4m, "alice3");
+
+        var result = await controller.Search("alice", skip: 1, take: 10);
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<UserSearchResponse>(ok.Value);
+
+        Assert.Equal(2, response.Users.Count); // 3 total alice, skip 1, take 2 remaining
+    }
 }

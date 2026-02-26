@@ -364,4 +364,30 @@ public class ConversationsControllerTests
         var ok = Assert.IsType<OkObjectResult>(result);
         Assert.Empty((System.Collections.IEnumerable)ok.Value!);
     }
+
+    // --- 1:1 Conversation Deduplication ---
+
+    [Fact]
+    public async Task Create_ConcurrentCalls_ReturnsSameConversation()
+    {
+        var (controller, db) = CreateController();
+        await TestDbContextFactory.SeedUser(db, 1m, "user1");
+        await TestDbContextFactory.SeedUser(db, 2m, "user2");
+
+        // Two sequential create calls should produce the same conversation
+        var result1 = await controller.Create(new CreateConversationRequest(2m));
+        var result2 = await controller.Create(new CreateConversationRequest(2m));
+
+        // First should be Created, second should be Ok (existing)
+        var created = Assert.IsType<CreatedResult>(result1);
+        var response1 = Assert.IsType<ConversationResponse>(created.Value);
+
+        var ok = Assert.IsType<OkObjectResult>(result2);
+        var response2 = Assert.IsType<ConversationResponse>(ok.Value);
+
+        // Same conversation ID
+        Assert.Equal(response1.ConversationId, response2.ConversationId);
+        Assert.True(response1.IsNew);
+        Assert.False(response2.IsNew);
+    }
 }

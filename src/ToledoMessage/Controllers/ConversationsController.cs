@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +12,7 @@ namespace ToledoMessage.Controllers;
 [ApiController]
 [Route("api/conversations")]
 [Authorize]
-public class ConversationsController : ControllerBase
+public class ConversationsController : BaseApiController
 {
     private readonly ApplicationDbContext _db;
 
@@ -25,20 +24,12 @@ public class ConversationsController : ControllerBase
     /// <summary>
     /// List all conversations the current user participates in.
     /// Returns conversation metadata with display names, last message time, and unread counts.
+    /// Uses a single query to avoid N+1 performance issues.
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> ListConversations()
     {
         var userId = GetUserId();
-
-        // Get all conversation IDs where the user is a participant
-        var conversationIds = await _db.ConversationParticipants
-            .Where(p => p.UserId == userId)
-            .Select(p => p.ConversationId)
-            .ToListAsync();
-
-        if (conversationIds.Count == 0)
-            return Ok(Array.Empty<ConversationListItemResponse>());
 
         // Get the user's device IDs for unread count calculation
         var userDeviceIds = await _db.Devices
@@ -46,18 +37,42 @@ public class ConversationsController : ControllerBase
             .Select(d => d.Id)
             .ToListAsync();
 
-        var results = new List<ConversationListItemResponse>();
+        // Single query: join conversations with participants, messages for last-message-time,
+        // and unread counts — avoids the previous N+1 loop
+        var conversationIds = await _db.ConversationParticipants
+            .Where(p => p.UserId == userId)
+            .Select(p => p.ConversationId)
+            .ToListAsync();
 
-        foreach (var conversationId in conversationIds)
+        var conversations = await _db.Conversations
+            .Where(c => conversationIds.Contains(c.Id))
+            .Include(c => c.Participants)
+                .ThenInclude(p => p.User)
+            .ToListAsync();
+
+        if (conversations.Count == 0)
+            return Ok(Array.Empty<ConversationListItemResponse>());
+
+        // Batch: get last message timestamps per conversation
+        var lastMessageTimes = await _db.EncryptedMessages
+            .Where(m => conversationIds.Contains(m.ConversationId))
+            .GroupBy(m => m.ConversationId)
+            .Select(g => new { ConversationId = g.Key, LastMessageTime = g.Max(m => m.ServerTimestamp) })
+            .ToDictionaryAsync(x => x.ConversationId, x => (DateTimeOffset?)x.LastMessageTime);
+
+        // Batch: get unread counts per conversation
+        var unreadCounts = userDeviceIds.Count > 0
+            ? await _db.EncryptedMessages
+                .Where(m => conversationIds.Contains(m.ConversationId)
+                    && userDeviceIds.Contains(m.RecipientDeviceId)
+                    && !m.IsDelivered)
+                .GroupBy(m => m.ConversationId)
+                .Select(g => new { ConversationId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.ConversationId, x => x.Count)
+            : new Dictionary<decimal, int>();
+
+        var results = conversations.Select(conversation =>
         {
-            var conversation = await _db.Conversations
-                .Include(c => c.Participants)
-                    .ThenInclude(p => p.User)
-                .FirstOrDefaultAsync(c => c.Id == conversationId);
-
-            if (conversation is null) continue;
-
-            // Determine display name
             string displayName;
             if (conversation.Type == ConversationType.Group)
             {
@@ -70,35 +85,19 @@ public class ConversationsController : ControllerBase
                 displayName = otherParticipant?.User.DisplayName ?? "Unknown";
             }
 
-            // Get last message timestamp for this conversation
-            var lastMessageTime = await _db.EncryptedMessages
-                .Where(m => m.ConversationId == conversationId)
-                .OrderByDescending(m => m.ServerTimestamp)
-                .Select(m => (DateTimeOffset?)m.ServerTimestamp)
-                .FirstOrDefaultAsync();
+            lastMessageTimes.TryGetValue(conversation.Id, out var lastMessageTime);
+            unreadCounts.TryGetValue(conversation.Id, out var unreadCount);
 
-            // Count unread messages (not delivered to any of user's devices)
-            var unreadCount = userDeviceIds.Count > 0
-                ? await _db.EncryptedMessages
-                    .Where(m => m.ConversationId == conversationId
-                        && userDeviceIds.Contains(m.RecipientDeviceId)
-                        && !m.IsDelivered)
-                    .CountAsync()
-                : 0;
-
-            results.Add(new ConversationListItemResponse(
-                conversationId,
+            return new ConversationListItemResponse(
+                conversation.Id,
                 conversation.Type,
                 displayName,
                 lastMessageTime,
-                unreadCount));
-        }
-
-        // Order by last message time descending, conversations with no messages last
-        results = results
-            .OrderByDescending(r => r.LastMessageTime.HasValue)
-            .ThenByDescending(r => r.LastMessageTime)
-            .ToList();
+                unreadCount);
+        })
+        .OrderByDescending(r => r.LastMessageTime.HasValue)
+        .ThenByDescending(r => r.LastMessageTime)
+        .ToList();
 
         return Ok(results);
     }
@@ -106,6 +105,8 @@ public class ConversationsController : ControllerBase
     /// <summary>
     /// Create a one-to-one conversation between the requesting user and another user.
     /// Returns the existing conversation if one already exists.
+    /// Uses a transaction to prevent TOCTOU race conditions where concurrent requests
+    /// could create duplicate conversations.
     /// </summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateConversationRequest request)
@@ -119,49 +120,75 @@ public class ConversationsController : ControllerBase
         if (!participantExists)
             return NotFound("Participant user not found.");
 
-        // Check for an existing OneToOne conversation between these two users
-        var existingConversationId = await _db.Conversations
-            .Where(c => c.Type == ConversationType.OneToOne)
-            .Where(c => c.Participants.Any(p => p.UserId == userId))
-            .Where(c => c.Participants.Any(p => p.UserId == request.ParticipantUserId))
-            .Select(c => (decimal?)c.Id)
-            .FirstOrDefaultAsync();
-
-        if (existingConversationId.HasValue)
-            return Ok(new ConversationResponse(existingConversationId.Value, false));
-
-        // Create new conversation
-        var conversationId = DecimalTools.GetNewId();
-        var now = DateTimeOffset.UtcNow;
-
-        var conversation = new Conversation
+        // Use a transaction to atomically check-then-create
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        try
         {
-            Id = conversationId,
-            Type = ConversationType.OneToOne,
-            CreatedAt = now
-        };
+            // Check for an existing OneToOne conversation between these two users
+            var existingConversationId = await _db.Conversations
+                .Where(c => c.Type == ConversationType.OneToOne)
+                .Where(c => c.Participants.Any(p => p.UserId == userId))
+                .Where(c => c.Participants.Any(p => p.UserId == request.ParticipantUserId))
+                .Select(c => (decimal?)c.Id)
+                .FirstOrDefaultAsync();
 
-        _db.Conversations.Add(conversation);
+            if (existingConversationId.HasValue)
+            {
+                await transaction.CommitAsync();
+                return Ok(new ConversationResponse(existingConversationId.Value, false));
+            }
 
-        _db.ConversationParticipants.Add(new ConversationParticipant
+            // Create new conversation
+            var conversationId = DecimalTools.GetNewId();
+            var now = DateTimeOffset.UtcNow;
+
+            var conversation = new Conversation
+            {
+                Id = conversationId,
+                Type = ConversationType.OneToOne,
+                CreatedAt = now
+            };
+
+            _db.Conversations.Add(conversation);
+
+            _db.ConversationParticipants.Add(new ConversationParticipant
+            {
+                ConversationId = conversationId,
+                UserId = userId,
+                JoinedAt = now,
+                Role = ParticipantRole.Member
+            });
+
+            _db.ConversationParticipants.Add(new ConversationParticipant
+            {
+                ConversationId = conversationId,
+                UserId = request.ParticipantUserId,
+                JoinedAt = now,
+                Role = ParticipantRole.Member
+            });
+
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return Created(string.Empty, new ConversationResponse(conversationId, true));
+        }
+        catch
         {
-            ConversationId = conversationId,
-            UserId = userId,
-            JoinedAt = now,
-            Role = ParticipantRole.Member
-        });
+            await transaction.RollbackAsync();
 
-        _db.ConversationParticipants.Add(new ConversationParticipant
-        {
-            ConversationId = conversationId,
-            UserId = request.ParticipantUserId,
-            JoinedAt = now,
-            Role = ParticipantRole.Member
-        });
+            // If we hit a race condition, the other request won — return the existing conversation
+            var existingId = await _db.Conversations
+                .Where(c => c.Type == ConversationType.OneToOne)
+                .Where(c => c.Participants.Any(p => p.UserId == userId))
+                .Where(c => c.Participants.Any(p => p.UserId == request.ParticipantUserId))
+                .Select(c => (decimal?)c.Id)
+                .FirstOrDefaultAsync();
 
-        await _db.SaveChangesAsync();
+            if (existingId.HasValue)
+                return Ok(new ConversationResponse(existingId.Value, false));
 
-        return Created(string.Empty, new ConversationResponse(conversationId, true));
+            throw;
+        }
     }
 
     /// <summary>
@@ -415,10 +442,4 @@ public class ConversationsController : ControllerBase
         return NoContent();
     }
 
-    private decimal GetUserId()
-    {
-        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue("sub");
-        return decimal.Parse(sub!);
-    }
 }

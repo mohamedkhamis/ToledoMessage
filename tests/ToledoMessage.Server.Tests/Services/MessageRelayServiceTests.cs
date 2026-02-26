@@ -195,6 +195,44 @@ public class MessageRelayServiceTests
     }
 
     [Fact]
+    public async Task StoreMessage_SequenceNumbersAreUniquePerConversation()
+    {
+        var (db, service) = CreateService();
+        await TestDbContextFactory.SeedUser(db, 1m);
+        await TestDbContextFactory.SeedDevice(db, 10m, 1m);
+        await TestDbContextFactory.SeedConversation(db, 100m);
+        await TestDbContextFactory.SeedConversation(db, 200m);
+
+        var request100 = new SendMessageRequest(100m, 10m, 20m,
+            Convert.ToBase64String(new byte[] { 1 }), MessageType.NormalMessage, ContentType.Text);
+        var request200 = new SendMessageRequest(200m, 10m, 20m,
+            Convert.ToBase64String(new byte[] { 1 }), MessageType.NormalMessage, ContentType.Text);
+
+        // Messages in conversation 100
+        var msg1 = await service.StoreMessage(10m, request100);
+        var msg2 = await service.StoreMessage(10m, request100);
+
+        // Messages in conversation 200
+        var msg3 = await service.StoreMessage(10m, request200);
+
+        // Sequence numbers are per-conversation
+        Assert.Equal(1, msg1.SequenceNumber);
+        Assert.Equal(2, msg2.SequenceNumber);
+        Assert.Equal(1, msg3.SequenceNumber); // Independent sequence for conversation 200
+    }
+
+    [Fact]
+    public async Task StoreMessage_InvalidBase64_ThrowsArgumentException()
+    {
+        var (db, service) = CreateService();
+
+        var request = new SendMessageRequest(100m, 10m, 20m,
+            "not-valid-base64!!!", MessageType.NormalMessage, ContentType.Text);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.StoreMessage(10m, request));
+    }
+
+    [Fact]
     public async Task CleanupExpiredMessages_SkipsUndeliveredMessages()
     {
         var (db, service) = CreateService();

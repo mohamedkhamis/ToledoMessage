@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using ToledoMessage.Data;
 using ToledoMessage.Shared.Constants;
@@ -52,6 +53,14 @@ public class AccountDeletionService
         foreach (var user in expiredUsers)
         {
             user.IsActive = false;
+
+            // Anonymize PII so deleted accounts don't retain plaintext display names
+            var hash = Convert.ToHexString(
+                SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(user.Id.ToString())))
+                [..16].ToLowerInvariant();
+            user.DisplayName = $"deleted_{hash}";
+            user.PasswordHash = string.Empty;
+
             foreach (var device in user.Devices)
             {
                 device.IsActive = false;
@@ -66,7 +75,7 @@ public class AccountDeletionService
                 token.IsRevoked = true;
             }
 
-            _logger.LogInformation("Account permanently deactivated for user {UserId}. All device keys revoked.", user.Id);
+            _logger.LogInformation("Account permanently deactivated and anonymized for user {UserId}.", user.Id);
         }
 
         if (expiredUsers.Count > 0)

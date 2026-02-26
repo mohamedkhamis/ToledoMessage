@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+
 namespace ToledoMessage.Services;
 
 /// <summary>
@@ -41,10 +43,21 @@ public class MessageCleanupHostedService : BackgroundService
                 {
                     _logger.LogInformation("Cleaned up {Count} expired disappearing message(s).", deletedCount);
                 }
+
+                // Also clean up expired/revoked refresh tokens
+                var db = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
+                var expiredTokenCount = await db.RefreshTokens
+                    .Where(rt => rt.IsRevoked || rt.ExpiresAt <= DateTimeOffset.UtcNow)
+                    .ExecuteDeleteAsync(stoppingToken);
+
+                if (expiredTokenCount > 0)
+                {
+                    _logger.LogInformation("Cleaned up {Count} expired/revoked refresh token(s).", expiredTokenCount);
+                }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogError(ex, "Error during expired message cleanup.");
+                _logger.LogError(ex, "Error during cleanup.");
             }
         }
 

@@ -1,21 +1,23 @@
 <!--
   Sync Impact Report
   ===================
-  Version change: 1.0.0 → 1.0.1
+  Version change: 1.0.1 → 1.1.0
   Modified principles:
-    - III. Established Libraries Only: Added BouncyCastle.Cryptography as
-      approved library for classical crypto when targeting WASM platforms
-      where native libraries cannot load.
-    - V. .NET Ecosystem: Updated EF Core version reference to match
-      runtime version. Updated Blazor wording from "Blazor WebAssembly"
-      to "Blazor Web App (InteractiveWebAssembly for crypto components)".
+    - I. Zero-Trust Server: Added server-side data retention policy —
+      undelivered encrypted messages MUST be purged after 90 days.
+      Codifies the data lifecycle boundary for server-stored ciphertext.
+    - IV. Signal Protocol Fidelity: Added Sender Keys protocol requirement
+      for group messaging. Each member generates a sender key distributed
+      via pairwise sessions; O(1) encrypt per send; key rotation on
+      membership change.
   Added sections: None
   Removed sections: None
   Templates requiring updates:
     - .specify/templates/plan-template.md: ✅ No changes needed (generic Constitution Check)
     - .specify/templates/spec-template.md: ✅ No changes needed (generic structure)
     - .specify/templates/tasks-template.md: ✅ No changes needed (generic structure)
-    - CLAUDE.md: ✅ No changes needed (already references BouncyCastle)
+    - CLAUDE.md: ✅ No changes needed (no constitution references to update)
+    - docs/contribution_explained_simple.md: ✅ No changes needed (general overview doc)
   Follow-up TODOs: None
 -->
 
@@ -33,6 +35,9 @@ verification — MUST execute exclusively on the client device.
   private keys, session keys, or ratchet state.
 - The server MUST store only: encrypted ciphertext blobs, public keys,
   and pre-key bundles.
+- Undelivered encrypted messages queued for offline recipients MUST be
+  automatically purged after 90 days. No server-side data MUST persist
+  beyond its defined retention window.
 - A full server compromise MUST NOT reveal any message content or
   enable decryption of past or future messages.
 - This principle is absolute. No feature, optimization, or convenience
@@ -94,6 +99,11 @@ with hybrid post-quantum extensions.
   providing forward secrecy and post-compromise security.
 - Pre-key bundles (identity key, signed pre-key, one-time pre-keys)
   MUST be published and managed per the Signal specification.
+- Group messaging MUST use the Sender Keys protocol (Signal-style).
+  Each group member generates a sender key and distributes it to all
+  other members via existing pairwise encrypted sessions. Messages
+  are encrypted O(1) per send. Sender keys MUST be rotated when
+  group membership changes (member added or removed).
 - Deviations from the Signal Protocol MUST be documented with
   security rationale and limited to the hybrid extension points.
 
@@ -212,4 +222,4 @@ code), the constitution prevails.
   > IV (Signal Fidelity) > VI (Test-First) > V (.NET Ecosystem)
   > VII (Transparency).
 
-**Version**: 1.0.1 | **Ratified**: 2026-02-25 | **Last Amended**: 2026-02-25
+**Version**: 1.1.0 | **Ratified**: 2026-02-25 | **Last Amended**: 2026-02-26

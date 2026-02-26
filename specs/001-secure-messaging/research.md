@@ -1,136 +1,210 @@
 # Research: Hybrid Post-Quantum Secure Messaging
 
-**Branch**: `001-secure-messaging` | **Date**: 2026-02-25
+**Phase**: 0 — Outline & Research
+**Date**: 2026-02-26
+**Status**: Complete (all unknowns resolved)
 
-## R1: Cryptographic Library Selection for Blazor WASM
+## Technology Decisions
 
-**Decision**: Use **BouncyCastle.Cryptography 2.6.2** as the single cryptographic library for ALL operations (classical + post-quantum).
+### 1. Post-Quantum KEM Algorithm
 
-**Rationale**: All cryptographic operations must execute client-side in Blazor WebAssembly (Constitution Principle I: Zero-Trust Server). This constrains library choices to pure managed C# — native libraries (libsodium, OpenSSL, Windows CNG) cannot load in the browser WASM runtime.
+**Decision**: ML-KEM-768 (CRYSTALS-Kyber) via BouncyCastle.Cryptography
 
-- **BouncyCastle.Cryptography** is pure managed C#, works in Blazor WASM, and provides every primitive we need:
-  - X25519 key agreement (`Org.BouncyCastle.Crypto.Agreement.X25519Agreement`)
-  - Ed25519 signatures (`Org.BouncyCastle.Crypto.Signers.Ed25519Signer`)
-  - AES-256-GCM (`Org.BouncyCastle.Crypto.Modes.GcmBlockCipher`)
-  - ML-KEM / Kyber-768 (`Org.BouncyCastle.Pqc.Crypto.MLKem.*`)
-  - ML-DSA / Dilithium-3 (`Org.BouncyCastle.Pqc.Crypto.MLDsa.*`)
-  - HKDF-SHA256 (`Org.BouncyCastle.Crypto.Generators.HkdfBytesGenerator`)
-
-**Alternatives considered**:
-
-| Alternative | Why Rejected |
-|-------------|-------------|
-| .NET 10 native `System.Security.Cryptography.MLKem` / `MLDsa` | Platform-specific backends (CNG, OpenSSL) — will not work in browser WASM |
-| NSec.Cryptography 25.4.0 | Wraps native libsodium — will not load in browser WASM |
-| Sodium.Core 1.4.0 | Wraps native libsodium — will not load in browser WASM |
-| Native `AesGcm` + BouncyCastle for PQ only | Mixed library strategy adds complexity; BouncyCastle's AES-GCM is adequate for messaging workloads |
-
-**Constitution note**: Principle III specifies "libsodium via Sodium.Core or System.Security.Cryptography" for classical operations. Since neither works in WASM, using BouncyCastle for all operations is a justified deviation. A constitution PATCH amendment (v1.0.1) should update Principle III to reflect the WASM constraint.
-
-## R2: .NET 10 and Blazor Web App Template
-
-**Decision**: Use .NET 10 with the Blazor Web App template (`dotnet new blazor -int Auto`).
-
-**Rationale**: .NET 10 is the upcoming LTS release (Nov 2026). The Blazor Web App template provides a hybrid rendering model where crypto-heavy components use `@rendermode InteractiveWebAssembly` (runs in browser) while non-interactive pages use Static SSR (fast initial loads).
-
-**Key architecture implication**: The template generates two projects:
-- **Server project** (`ToledoMessage`): ASP.NET Core host, API endpoints, SignalR hubs, EF Core data access
-- **Client project** (`ToledoMessage.Client`): Blazor WASM, all crypto operations, interactive UI
-
-Components using `InteractiveWebAssembly` MUST live in the `.Client` project. All crypto code MUST be in the `.Client` project or a library it references.
-
-## R3: Data Persistence — EF Core 10 Code First with SQL Server
-
-**Decision**: Use **Microsoft.EntityFrameworkCore.SqlServer 10.0.3** with Code First migrations.
-
-**Rationale**: User specified SQL Server Code First. EF Core 10 ships with .NET 10, supports named query filters (useful for soft deletes), JSON column types, and improved parameterized queries.
-
-**Server stores only**:
-- User accounts (display name, password hash)
-- Device registrations and public keys
-- Pre-key bundles (public keys only)
-- Encrypted message envelopes (ciphertext blobs)
-- Conversation metadata
-
-**Server NEVER stores**: Private keys, session state, ratchet state, plaintext messages, decrypted content.
-
-**Client-side storage**: Browser IndexedDB (via a JS interop wrapper or Blazored.LocalStorage) for local session state, ratchet keys, and decrypted message history.
-
-## R4: Real-Time Transport — SignalR
-
-**Decision**: Use ASP.NET Core SignalR (built-in) with `Microsoft.AspNetCore.SignalR.Client 10.0.3` in the client project.
-
-**Rationale**: SignalR ships with ASP.NET Core — no extra server package needed. The client package installs in the `.Client` project. SignalR provides WebSocket-based bidirectional communication for real-time message delivery and status updates.
-
-**Key pattern**: SignalR components MUST use `@rendermode InteractiveWebAssembly` to avoid server-to-self connections (port exhaustion issue).
-
-## R5: Testing Framework
-
-**Decision**: Use **xUnit v3 3.2.2** for unit/integration tests and **BenchmarkDotNet 0.15.8** for performance benchmarks.
-
-**Rationale**: xUnit v3 is the recommended version for new .NET 10 projects with native Microsoft Testing Platform integration. BenchmarkDotNet 0.15.8 has explicit .NET 10 runtime monikers (`RuntimeMoniker.Net10`).
-
-## R6: Signal Protocol Implementation Approach
-
-**Decision**: Implement X3DH + Double Ratchet from scratch using BouncyCastle primitives, following the Signal Protocol specification with hybrid PQ extensions.
-
-**Rationale**: No existing .NET library implements the Signal Protocol with post-quantum extensions. The protocol is well-documented (Signal Foundation specifications + PQXDH paper) and consists of composing established primitives:
-
-1. **X3DH (with PQ extension)**: 4 classical DH operations (X25519) + 1 KEM operation (ML-KEM-768) → combined shared secret via HKDF
-2. **Double Ratchet**: Symmetric-key ratchet (HKDF) + DH ratchet (X25519) → per-message keys
-3. **Message encryption**: AES-256-GCM with derived per-message key
-
-This is **composition code** (permitted by Constitution Principle III), not primitive reimplementation.
-
-## R7: Client-Side Storage for Crypto State
-
-**Decision**: Use browser **IndexedDB** via JS interop for client-side persistent storage of crypto state, session data, and decrypted messages.
-
-**Rationale**: Ratchet state, session keys, and plaintext messages must persist across browser sessions but MUST never leave the client. IndexedDB is the only browser storage API with sufficient capacity (no 5MB limit like localStorage) and supports structured data. Access will be through a thin JS interop wrapper.
+**Rationale**: ML-KEM (formerly CRYSTALS-Kyber) is the NIST-standardized
+post-quantum key encapsulation mechanism (FIPS 203, August 2024). The
+768 parameter set provides NIST Security Level 3 (equivalent to AES-192),
+balancing security and performance. BouncyCastle.Cryptography 2.6.2
+provides a production-ready, pure managed C# implementation that runs
+in Blazor WebAssembly without native dependencies.
 
 **Alternatives considered**:
+- ML-KEM-512 (Level 1): Rejected — insufficient security margin for
+  long-term protection of messaging keys.
+- ML-KEM-1024 (Level 5): Rejected — larger keys (1568B public key)
+  and ciphertext increase bandwidth overhead beyond the <1KB target
+  for per-message hybrid overhead. Reserve for future high-assurance
+  mode.
+- NTRU (ntruhrss701): Rejected — not selected as NIST primary standard;
+  smaller community and audit surface than ML-KEM.
+- FrodoKEM: Rejected — significantly larger keys and ciphertexts, lower
+  performance, not standardized by NIST.
 
-| Alternative | Why Rejected |
-|-------------|-------------|
-| localStorage | 5MB limit; string-only; insufficient for key material + message history |
-| Cache API | Designed for HTTP responses, not structured data |
-| WebSQL | Deprecated |
-| OPFS (Origin Private File System) | Limited browser support; more complex API |
+### 2. Post-Quantum Signature Algorithm
 
-## R8: Primary Key Strategy — DecimalTools.GetNewId()
+**Decision**: ML-DSA-65 (CRYSTALS-Dilithium) via BouncyCastle.Cryptography
 
-**Decision**: ALL entity primary keys use `decimal(28,8)` generated by `Toledo.SharedKernel.Helpers.DecimalTools.GetNewId()`. No Guids are used for primary keys anywhere in the system.
-
-**Rationale**: User-specified requirement. The `DecimalTools.GetNewId()` method generates unique decimal IDs by combining `DateTime.Now.Ticks` (integer part) with a GUID-derived 8-digit fractional part. This produces:
-
-- **Time-ordered** IDs: The ticks-based integer part provides natural chronological ordering, beneficial for SQL Server clustered index performance (no page splits like random Guids).
-- **Uniqueness**: The GUID-derived fractional part ensures uniqueness even for concurrent requests. The collision-avoidance loop guarantees no two calls return the same value.
-- **Thread-safe**: Lock-based synchronization prevents duplicates under concurrent access.
-- **SQL Server column type**: `decimal(28,8)` — 28 total digits, 8 fractional. Fits the ticks-based integer (~19 digits) + 8-digit fractional.
-
-**Architecture implications**:
-- `Toledo.SharedKernel` project contains `DecimalTools` and is referenced by Server, Client, and Shared projects.
-- All entity `Id` fields, foreign keys, and API payloads use `decimal` instead of `Guid`.
-- Client-side IDs (IndexedDB) also use `decimal` for consistency with server IDs.
-- EF Core entity configurations use `.HasColumnType("decimal(28,8)")` and `.HasPrecision(28, 8)`.
+**Rationale**: ML-DSA (formerly CRYSTALS-Dilithium) is the NIST-standardized
+post-quantum digital signature algorithm (FIPS 204, August 2024). The
+65 parameter set provides Security Level 3, matching ML-KEM-768. Used
+for signing pre-keys and identity verification in the hybrid signature
+scheme alongside Ed25519.
 
 **Alternatives considered**:
+- ML-DSA-44 (Level 2): Rejected — does not match KEM security level.
+- ML-DSA-87 (Level 5): Rejected — 2592B signatures significantly
+  increase pre-key bundle size; overkill for messaging use case.
+- SPHINCS+ (SLH-DSA): Rejected — hash-based signatures are much larger
+  (up to 49KB) and slower, unsuitable for the bandwidth constraints.
+- FALCON: Rejected — not yet finalized as NIST standard (pending FIPS
+  206); complex floating-point arithmetic complicates WASM execution.
 
-| Alternative | Why Rejected |
-|-------------|-------------|
-| Guid (System.Guid) | User explicitly required decimal IDs via DecimalTools |
-| long / bigint | Insufficient precision for the ticks + fractional pattern |
-| Snowflake IDs | Requires distributed coordination; DecimalTools is self-contained |
+### 3. Classical Cryptography Suite
 
-## Package Version Summary
+**Decision**: X25519 (DH), Ed25519 (signatures), AES-256-GCM (AEAD),
+HKDF-SHA256 (KDF) — all via BouncyCastle.Cryptography
 
-| Package | NuGet ID | Version |
-|---------|----------|---------|
-| BouncyCastle | `BouncyCastle.Cryptography` | 2.6.2 |
-| EF Core SQL Server | `Microsoft.EntityFrameworkCore.SqlServer` | 10.0.3 |
-| EF Core Design | `Microsoft.EntityFrameworkCore.Design` | 10.0.3 |
-| EF Core Tools | `Microsoft.EntityFrameworkCore.Tools` | 10.0.3 |
-| SignalR Client | `Microsoft.AspNetCore.SignalR.Client` | 10.0.3 |
-| xUnit v3 | `xunit.v3` | 3.2.2 |
-| BenchmarkDotNet | `BenchmarkDotNet` | 0.15.8 |
-| ASP.NET Core Identity | `Microsoft.AspNetCore.Identity.EntityFrameworkCore` | 10.0.3 |
+**Rationale**: Standard Signal Protocol primitives. X25519 and Ed25519
+are the de facto standard for modern messaging protocols (Signal,
+WhatsApp, Wire). AES-256-GCM provides authenticated encryption. Using
+BouncyCastle for all primitives (including classical) ensures a single
+crypto library dependency that works uniformly in Blazor WebAssembly,
+eliminating the need for native interop.
+
+**Alternatives considered**:
+- libsodium (Sodium.Core): Rejected for client — native library cannot
+  load in Blazor WASM. Acceptable for server-side, but constitution
+  requires consistency; using a single library simplifies auditing.
+- System.Security.Cryptography: Rejected for client — relies on OS
+  crypto providers (CNG/OpenSSL) unavailable in WASM. Acceptable
+  server-side but adds inconsistency.
+
+### 4. Messaging Protocol
+
+**Decision**: Signal Protocol (X3DH + Double Ratchet) with hybrid
+post-quantum extensions
+
+**Rationale**: The Signal Protocol is the most widely deployed and
+audited end-to-end encryption protocol (used by Signal, WhatsApp,
+Facebook Messenger). It provides forward secrecy (past messages stay
+secret even if long-term keys are compromised) and post-compromise
+security (future messages become secure again after ratchet advance).
+The hybrid extension adds a ML-KEM KEM step alongside each X25519 DH
+operation, combining shared secrets via HKDF with domain separation.
+
+**Alternatives considered**:
+- Matrix/Olm protocol: Rejected — less mature, known weaknesses in
+  group key management, smaller audit surface.
+- MLS (RFC 9420): Rejected for MVP — more complex tree-based key
+  agreement, better suited for large groups but adds significant
+  implementation complexity. May be reconsidered post-MVP for groups.
+- Custom protocol: Rejected — Constitution Principle III prohibits
+  custom cryptographic implementations.
+
+### 5. Group Messaging Protocol
+
+**Decision**: Sender Keys (Signal-style)
+
+**Rationale**: Each group member generates a sender key and distributes
+it to all other members via existing pairwise encrypted sessions.
+Messages are encrypted O(1) per send (single symmetric encryption)
+rather than O(n) per recipient. Key rotation occurs on membership
+change. This is the proven approach used by Signal and WhatsApp,
+well-documented, and aligns with the existing pairwise session
+infrastructure.
+
+**Alternatives considered**:
+- Pairwise fan-out: Rejected — O(n) encryption per message scales
+  poorly with 100-member groups and 10 devices per user (up to 1000
+  encryptions per send).
+- MLS (RFC 9420): Rejected for MVP — tree-based key agreement is more
+  efficient at scale but adds significant protocol complexity (tree
+  management, commit/welcome messages, epoch tracking).
+
+### 6. Server Framework & Real-Time Transport
+
+**Decision**: ASP.NET Core Web API + SignalR (WebSocket-based)
+
+**Rationale**: ASP.NET Core provides a mature, high-performance web
+framework with built-in support for JWT authentication, dependency
+injection, and Entity Framework Core. SignalR provides real-time
+bidirectional communication via WebSockets with automatic fallback
+to long-polling, connection management, and group-based broadcasting.
+The combination supports both REST endpoints (offline message retrieval,
+account management) and real-time messaging.
+
+**Alternatives considered**:
+- gRPC: Rejected — limited browser support without gRPC-Web proxy;
+  SignalR has native Blazor WASM integration.
+- Raw WebSockets: Rejected — would require reimplementing connection
+  management, reconnection, group broadcasting, and authentication
+  token propagation that SignalR provides out of the box.
+
+### 7. Client Framework
+
+**Decision**: Blazor Web App (InteractiveWebAssembly render mode)
+
+**Rationale**: Blazor WebAssembly runs C# directly in the browser
+via WASM, enabling the crypto library (BouncyCastle.Cryptography) to
+execute client-side without JavaScript interop or transpilation. This
+is critical for the zero-trust model: all crypto operations happen in
+the browser runtime. The InteractiveWebAssembly render mode allows
+server-side prerendering with client-side interactivity for crypto.
+
+**Alternatives considered**:
+- React/Angular with JavaScript crypto: Rejected — would require
+  JavaScript crypto libraries (or WASM crypto compiled from C/Rust),
+  duplicating the crypto implementation and breaking the single-library
+  constraint.
+- .NET MAUI: Deferred to post-MVP — will be added for native mobile
+  (iOS/Android) support using the same crypto library.
+
+### 8. Data Persistence
+
+**Decision**: SQL Server 2022 (server) + Browser IndexedDB (client)
+
+**Rationale**: SQL Server provides ACID transactions, robust querying
+(for user search, message retrieval), and scales to the 10K concurrent
+user target. EF Core Code First migrations manage schema evolution.
+Client-side IndexedDB (via LocalStorageService) stores private keys,
+ratchet state, and decrypted messages — data that must never leave the
+device per the zero-trust model.
+
+**Alternatives considered**:
+- PostgreSQL: Viable but SQL Server is specified in constitution
+  (Principle V).
+- SQLite (server): Rejected — concurrent write limitations at 10K
+  users.
+- SQLite (client, via sql.js): Considered for client — IndexedDB
+  is simpler for key-value storage of crypto material.
+
+### 9. Authentication Mechanism
+
+**Decision**: JWT with short-lived access tokens (15 min) + refresh
+tokens, per-device token pairs
+
+**Rationale**: JWTs are stateless (no server-side session store),
+support multi-device scenarios (each device holds its own token pair),
+and integrate with SignalR via query string token propagation. Short
+access token lifetime (15 min) limits the window of a stolen token.
+ASP.NET Core has built-in JWT Bearer middleware.
+
+**Alternatives considered**:
+- Server-side sessions with cookies: Rejected — requires session store,
+  does not naturally support multi-device, cookie-based auth is
+  problematic for native mobile clients.
+- Opaque bearer tokens (DB-backed): Rejected — requires DB lookup per
+  request, negating the stateless benefit.
+
+### 10. Pre-Key Management Strategy
+
+**Decision**: Batch of 100 one-time pre-keys per device, replenish
+at threshold of 10 remaining
+
+**Rationale**: Signal's approach — upload 100 OTPs at registration,
+monitor count, replenish when low. The batch size balances storage
+(100 keys x ~32 bytes = ~3.2KB per device) against replenishment
+frequency. Threshold of 10 ensures keys are available for new session
+initiations even under burst conditions.
+
+**Alternatives considered**:
+- Larger batches (500+): Rejected — unnecessary storage overhead for
+  most users; most users won't have 100 new contacts initiating in
+  quick succession.
+- On-demand generation: Rejected — requires the device to be online
+  to generate keys, defeating the asynchronous session initiation
+  model.
+
+## Unresolved Items
+
+None — all technical decisions are resolved. The existing codebase
+implements the research decisions above. Proceed to Phase 1 design.

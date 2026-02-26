@@ -15,6 +15,14 @@
 - Q: Are there rate limits or abuse prevention measures? → A: Yes. Server-enforced rate limits on registration (per IP), message sending (per user/minute), and search queries. Standard practice for production messaging services.
 - Q: What is the maximum number of linked devices per user? → A: Maximum 10 linked devices. Each message is encrypted once per recipient device, so this caps fan-out at 10x per recipient.
 
+### Session 2026-02-26
+
+- Q: How long should the server retain undelivered encrypted messages for offline recipients? → A: 90 days, then auto-delete. Messages queued for offline users are purged after 90 days if still undelivered.
+- Q: What authentication token mechanism should the server use for API requests? → A: JWT with short-lived access tokens (15 min) + refresh tokens. Each device holds its own token pair; stateless validation on the server.
+- Q: What are the display name format constraints? → A: 3–32 characters, alphanumeric plus underscores and hyphens, case-insensitive uniqueness.
+- Q: What is the target availability for the messaging service? → A: 99.5% uptime (~44 hrs downtime/year). Single-server deployment with monitoring and automated restarts for MVP.
+- Q: Which group encryption protocol should be used? → A: Sender Keys (Signal-style). Each member generates a sender key distributed via pairwise sessions. O(1) encrypt per send, key rotation on membership change.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Account Registration and Key Generation (Priority: P1)
@@ -142,19 +150,19 @@ A user sets a disappearing message timer on a conversation (e.g., 24 hours, 7 da
 
 ### Functional Requirements
 
-- **FR-001**: System MUST allow users to create accounts with a display name and password, generating all required cryptographic identity material upon registration.
+- **FR-001**: System MUST allow users to create accounts with a display name and password, generating all required cryptographic identity material upon registration. Authentication MUST use JWT with short-lived access tokens (15-minute expiry) and refresh tokens. Each linked device maintains its own token pair independently.
 - **FR-002**: System MUST generate a hybrid identity consisting of both classical (curve-based) and post-quantum key pairs for each user at registration time.
 - **FR-003**: System MUST publish pre-key bundles (identity key, signed pre-key, and a set of one-time pre-keys) to the server for each registered user.
 - **FR-004**: System MUST perform a hybrid key exchange combining classical Diffie-Hellman operations with a post-quantum key encapsulation mechanism when establishing a new session between two users.
 - **FR-005**: System MUST encrypt every message individually using authenticated encryption with a unique per-message key derived from a forward-secret ratcheting mechanism.
 - **FR-018**: System MUST support text messages for MVP. The message format MUST be extensible to accommodate future content types (images, audio, files) without requiring protocol changes.
 - **FR-006**: System MUST support real-time message delivery between online users with delivery and read status indicators.
-- **FR-007**: System MUST queue and deliver messages for offline recipients when they reconnect, preserving message ordering.
+- **FR-007**: System MUST queue and deliver messages for offline recipients when they reconnect, preserving message ordering. Undelivered messages MUST be automatically purged after 90 days.
 - **FR-008**: System MUST perform all encryption and decryption operations exclusively on the client device; the server MUST never have access to plaintext messages or private keys.
 - **FR-009**: System MUST provide a security fingerprint (safety number) for each conversation that both participants can compare for identity verification.
 - **FR-010**: System MUST warn users when a contact's identity key changes, indicating a potential security event.
 - **FR-011**: System MUST support linking up to 10 devices to a single account, with each device maintaining independent key material and ratchet state.
-- **FR-012**: System MUST support group conversations with end-to-end encryption and automatic key rotation when membership changes.
+- **FR-012**: System MUST support group conversations with end-to-end encryption using the Sender Keys protocol (Signal-style). Each group member generates a sender key distributed to other members via pairwise encrypted sessions. Messages are encrypted O(1) per send. Group key MUST be rotated when membership changes.
 - **FR-013**: System MUST support disappearing messages with configurable timers per conversation.
 - **FR-014**: System MUST allow users to search for other registered users by display name to initiate conversations.
 - **FR-015**: System MUST automatically replenish one-time pre-keys when the supply on the server runs low.
@@ -172,17 +180,18 @@ A user sets a disappearing message timer on a conversation (e.g., 24 hours, 7 da
 - **NFR-007**: All cryptographic operations MUST use well-audited, established libraries — no custom cryptographic primitives.
 - **NFR-008**: The system MUST be open-source with transparent, auditable security implementation.
 - **NFR-009**: The server MUST enforce rate limits on registration (per IP), message sending (per user per minute), and user search queries to prevent abuse and denial-of-service.
+- **NFR-010**: The system MUST target 99.5% uptime (~44 hours downtime/year). MVP uses a single-server deployment with health monitoring and automated restarts.
 
 ### Key Entities
 
-- **User**: A registered individual with a unique display name, password hash, and cryptographic identity. Has one or more linked devices. Can participate in conversations.
+- **User**: A registered individual with a unique display name (3–32 characters, alphanumeric/underscores/hyphens, case-insensitive uniqueness), password hash, and cryptographic identity. Has one or more linked devices. Can participate in conversations.
 - **Identity Key Pair**: A long-term key pair (both classical and post-quantum variants) that uniquely identifies a user/device. Used for authentication and as a root of trust.
 - **Pre-Key Bundle**: A published set containing the identity public key, a signed pre-key, and a collection of one-time pre-keys. Used by other users to initiate sessions asynchronously.
 - **Session**: A secure communication channel between two users/devices, established via hybrid key exchange. Contains ratchet state for deriving per-message keys.
 - **Message**: An encrypted payload sent within a session. Contains ciphertext, authentication tag, sender identifier, timestamp, and sequence number. Plaintext is never stored on the server.
 - **Conversation**: A logical grouping of messages between two users (1:1) or among multiple users (group). Has associated metadata like disappearing timer settings and verification status.
 - **Device**: A user's registered client (web, desktop, or mobile). Each device has its own key material and maintains independent session/ratchet state. A user may link up to 10 devices.
-- **Group**: A multi-participant conversation with a shared encryption key distributed via pairwise channels. Membership changes trigger key rotation.
+- **Group**: A multi-participant conversation using Sender Keys protocol. Each member holds a sender key distributed via pairwise encrypted sessions for O(1) message encryption. Membership changes trigger sender key rotation.
 
 ## Success Criteria *(mandatory)*
 
@@ -217,5 +226,5 @@ A user sets a disappearing message timer on a conversation (e.g., 24 hours, 7 da
 - Classical cryptographic algorithms (X25519, Ed25519, AES-256-GCM) are currently secure and will remain so for the near term.
 - NIST-standardized post-quantum algorithms (CRYSTALS-Kyber / ML-KEM, CRYSTALS-Dilithium / ML-DSA) provide adequate protection against future quantum attacks based on current academic consensus.
 - Users are willing to complete a one-time registration process before messaging.
-- Display names are unique across the system for user discovery purposes.
+- Display names are unique across the system (case-insensitive) for user discovery purposes. Names must be 3–32 characters, containing only alphanumeric characters, underscores, and hyphens.
 - The "belt and suspenders" hybrid approach means both classical and post-quantum layers must be independently broken for total compromise — if either remains secure, message confidentiality is preserved.

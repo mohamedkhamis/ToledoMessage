@@ -2,20 +2,21 @@ using ToledoMessage.Crypto.Hybrid;
 
 namespace ToledoMessage.Crypto.Tests.Hybrid;
 
+[TestClass]
 public class HybridKeyExchangeTests
 {
-    [Fact]
+    [TestMethod]
     public void GenerateKeyPair_ReturnsBothClassicalAndPqKeys()
     {
         var (classicalPublic, classicalPrivate, pqPublic, pqPrivate) = HybridKeyExchange.GenerateKeyPair();
 
-        Assert.NotEmpty(classicalPublic);
-        Assert.NotEmpty(classicalPrivate);
-        Assert.NotEmpty(pqPublic);
-        Assert.NotEmpty(pqPrivate);
+        Assert.IsTrue(classicalPublic.Length > 0);
+        Assert.IsTrue(classicalPrivate.Length > 0);
+        Assert.IsTrue(pqPublic.Length > 0);
+        Assert.IsTrue(pqPrivate.Length > 0);
     }
 
-    [Fact]
+    [TestMethod]
     public void Encapsulate_Decapsulate_ProduceSameSharedSecret()
     {
         var (aliceClassicalPublic, aliceClassicalPrivate, alicePqPublic, alicePqPrivate) =
@@ -36,12 +37,12 @@ public class HybridKeyExchangeTests
             pqPrivateKey: bobPqPrivate,
             kemCiphertext: kemCiphertext);
 
-        Assert.Equal(32, aliceSharedSecret.Length);
-        Assert.Equal(32, bobSharedSecret.Length);
-        Assert.Equal(aliceSharedSecret, bobSharedSecret);
+        Assert.AreEqual(32, aliceSharedSecret.Length);
+        Assert.AreEqual(32, bobSharedSecret.Length);
+        CollectionAssert.AreEqual(aliceSharedSecret, bobSharedSecret);
     }
 
-    [Fact]
+    [TestMethod]
     public void DifferentKeyPairs_ProduceDifferentSharedSecrets()
     {
         var (aliceClassicalPublic, aliceClassicalPrivate, alicePqPublic, alicePqPrivate) =
@@ -63,6 +64,6 @@ public class HybridKeyExchangeTests
             charlieClassicalPublic,
             charliePqPublic);
 
-        Assert.NotEqual(aliceBobSecret, aliceCharlieSecret);
+        CollectionAssert.AreNotEqual(aliceBobSecret, aliceCharlieSecret);
     }
 }

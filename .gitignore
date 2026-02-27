@@ -75,3 +75,6 @@ appsettings.*.local.json
 /publish-output/wwwroot/_framework/dotnet.js.br
 /publish-output/wwwroot/_framework/dotnet.js.gz
 /publish
+/coverage-report
+/coverage-results
+/coverage-report-server

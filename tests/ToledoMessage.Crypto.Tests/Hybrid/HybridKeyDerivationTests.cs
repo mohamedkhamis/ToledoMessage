@@ -2,9 +2,10 @@ using ToledoMessage.Crypto.Hybrid;
 
 namespace ToledoMessage.Crypto.Tests.Hybrid;
 
+[TestClass]
 public class HybridKeyDerivationTests
 {
-    [Fact]
+    [TestMethod]
     public void DeriveKey_ProducesRequestedLength()
     {
         var ikm = new byte[32];
@@ -13,10 +14,10 @@ public class HybridKeyDerivationTests
 
         var result = HybridKeyDerivation.DeriveKey(ikm, info, 64);
 
-        Assert.Equal(64, result.Length);
+        Assert.AreEqual(64, result.Length);
     }
 
-    [Fact]
+    [TestMethod]
     public void DeriveKey_SameInputProducesSameOutput()
     {
         var ikm = new byte[32];
@@ -26,10 +27,10 @@ public class HybridKeyDerivationTests
         var result1 = HybridKeyDerivation.DeriveKey(ikm, info, 32);
         var result2 = HybridKeyDerivation.DeriveKey(ikm, info, 32);
 
-        Assert.Equal(result1, result2);
+        CollectionAssert.AreEqual(result1, result2);
     }
 
-    [Fact]
+    [TestMethod]
     public void DeriveKey_DifferentInfoProducesDifferentOutput()
     {
         var ikm = new byte[32];
@@ -40,10 +41,10 @@ public class HybridKeyDerivationTests
         var result1 = HybridKeyDerivation.DeriveKey(ikm, info1, 32);
         var result2 = HybridKeyDerivation.DeriveKey(ikm, info2, 32);
 
-        Assert.NotEqual(result1, result2);
+        CollectionAssert.AreNotEqual(result1, result2);
     }
 
-    [Fact]
+    [TestMethod]
     public void DeriveKey_DifferentIkmProducesDifferentOutput()
     {
         var ikm1 = new byte[32];
@@ -55,10 +56,10 @@ public class HybridKeyDerivationTests
         var result1 = HybridKeyDerivation.DeriveKey(ikm1, info, 32);
         var result2 = HybridKeyDerivation.DeriveKey(ikm2, info, 32);
 
-        Assert.NotEqual(result1, result2);
+        CollectionAssert.AreNotEqual(result1, result2);
     }
 
-    [Fact]
+    [TestMethod]
     public void DeriveKey_WithAndWithoutSalt_ProduceDifferentOutput()
     {
         var ikm = new byte[32];
@@ -70,6 +71,6 @@ public class HybridKeyDerivationTests
         var withSalt = HybridKeyDerivation.DeriveKey(ikm, salt, info, 32);
         var withoutSalt = HybridKeyDerivation.DeriveKey(ikm, info, 32);
 
-        Assert.NotEqual(withSalt, withoutSalt);
+        CollectionAssert.AreNotEqual(withSalt, withoutSalt);
     }
 }

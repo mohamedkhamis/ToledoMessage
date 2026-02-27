@@ -203,6 +203,9 @@ public class ConversationsController : BaseApiController
         if (string.IsNullOrWhiteSpace(request.GroupName))
             return BadRequest("Group name is required.");
 
+        if (request.GroupName.Trim().Length > Shared.Constants.ProtocolConstants.MaxGroupNameLength)
+            return BadRequest($"Group name must not exceed {Shared.Constants.ProtocolConstants.MaxGroupNameLength} characters.");
+
         if (request.ParticipantUserIds is null || request.ParticipantUserIds.Count < 2)
             return BadRequest("At least 2 participant user IDs are required.");
 
@@ -428,9 +431,12 @@ public class ConversationsController : BaseApiController
         if (!isParticipant)
             return NotFound("Conversation not found.");
 
-        // Validate timer value: null (disable) or positive integer
+        // Validate timer value: null (disable) or positive integer within allowed range
         if (request.TimerSeconds.HasValue && request.TimerSeconds.Value <= 0)
             return BadRequest("Timer must be a positive number of seconds, or null to disable.");
+
+        if (request.TimerSeconds.HasValue && request.TimerSeconds.Value > Shared.Constants.ProtocolConstants.MaxTimerSeconds)
+            return BadRequest($"Timer cannot exceed {Shared.Constants.ProtocolConstants.MaxTimerSeconds} seconds (1 year).");
 
         var conversation = await _db.Conversations.FindAsync(conversationId);
         if (conversation == null)

@@ -31,6 +31,9 @@ public class UsersController : BaseApiController
         if (string.IsNullOrWhiteSpace(q))
             return Ok(new UserSearchResponse([]));
 
+        if (q.Length > Shared.Constants.ProtocolConstants.MaxSearchQueryLength)
+            return BadRequest($"Search query must not exceed {Shared.Constants.ProtocolConstants.MaxSearchQueryLength} characters.");
+
         // Clamp take to a maximum of 50
         take = Math.Clamp(take, 1, 50);
         skip = Math.Max(skip, 0);

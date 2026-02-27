@@ -9,6 +9,7 @@ using ToledoMessage.Shared.DTOs;
 
 namespace ToledoMessage.Server.Tests.Controllers;
 
+[TestClass]
 public class AuthControllerTests
 {
     private static (AuthController controller, Data.ApplicationDbContext db) CreateController()
@@ -29,7 +30,7 @@ public class AuthControllerTests
         return (controller, db);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Register_ValidRequest_ReturnsCreated()
     {
         var (controller, _) = CreateController();
@@ -37,59 +38,64 @@ public class AuthControllerTests
 
         var result = await controller.Register(request);
 
-        var created = Assert.IsType<CreatedResult>(result);
-        var response = Assert.IsType<AuthResponse>(created.Value);
-        Assert.Equal("testuser01", response.DisplayName);
-        Assert.NotNull(response.Token);
-        Assert.NotNull(response.RefreshToken);
+        Assert.IsInstanceOfType<CreatedResult>(result);
+        var created = (CreatedResult)result;
+        Assert.IsInstanceOfType<AuthResponse>(created.Value);
+        var response = (AuthResponse)created.Value!;
+        Assert.AreEqual("testuser01", response.DisplayName);
+        Assert.IsNotNull(response.Token);
+        Assert.IsNotNull(response.RefreshToken);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Register_EmptyDisplayName_ReturnsBadRequest()
     {
         var (controller, _) = CreateController();
         var result = await controller.Register(new RegisterRequest("", "MySecurePass12"));
-        Assert.IsType<BadRequestObjectResult>(result);
+        Assert.IsInstanceOfType<BadRequestObjectResult>(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Register_ShortDisplayName_ReturnsBadRequest()
     {
         var (controller, _) = CreateController();
         var result = await controller.Register(new RegisterRequest("ab", "MySecurePass12"));
-        var bad = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.Contains("3 and 32", bad.Value!.ToString());
+        Assert.IsInstanceOfType<BadRequestObjectResult>(result);
+        var bad = (BadRequestObjectResult)result;
+        StringAssert.Contains(bad.Value!.ToString()!, "3 and 32");
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Register_InvalidDisplayNameChars_ReturnsBadRequest()
     {
         var (controller, _) = CreateController();
         var result = await controller.Register(new RegisterRequest("test user!", "MySecurePass12"));
-        var bad = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.Contains("letters, digits", bad.Value!.ToString());
+        Assert.IsInstanceOfType<BadRequestObjectResult>(result);
+        var bad = (BadRequestObjectResult)result;
+        StringAssert.Contains(bad.Value!.ToString()!, "letters, digits");
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Register_ShortPassword_ReturnsBadRequest()
     {
         var (controller, _) = CreateController();
         var result = await controller.Register(new RegisterRequest("validuser", "short"));
-        var bad = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.Contains("12 characters", bad.Value!.ToString());
+        Assert.IsInstanceOfType<BadRequestObjectResult>(result);
+        var bad = (BadRequestObjectResult)result;
+        StringAssert.Contains(bad.Value!.ToString()!, "12 characters");
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Register_DuplicateDisplayName_ReturnsConflict()
     {
         var (controller, db) = CreateController();
         await TestDbContextFactory.SeedUser(db, 1m, "existing");
 
         var result = await controller.Register(new RegisterRequest("existing", "MySecurePass12"));
-        Assert.IsType<ConflictObjectResult>(result);
+        Assert.IsInstanceOfType<ConflictObjectResult>(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Login_ValidCredentials_ReturnsOk()
     {
         var (controller, _) = CreateController();
@@ -99,32 +105,34 @@ public class AuthControllerTests
 
         var result = await controller.Login(new LoginRequest("loginuser", "MySecurePass12"));
 
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<AuthResponse>(ok.Value);
-        Assert.Equal("loginuser", response.DisplayName);
-        Assert.NotNull(response.Token);
-        Assert.NotNull(response.RefreshToken);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
+        Assert.IsInstanceOfType<AuthResponse>(ok.Value);
+        var response = (AuthResponse)ok.Value!;
+        Assert.AreEqual("loginuser", response.DisplayName);
+        Assert.IsNotNull(response.Token);
+        Assert.IsNotNull(response.RefreshToken);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Login_WrongPassword_ReturnsUnauthorized()
     {
         var (controller, _) = CreateController();
         await controller.Register(new RegisterRequest("wrongpw", "MySecurePass12"));
 
         var result = await controller.Login(new LoginRequest("wrongpw", "WrongPassword1"));
-        Assert.IsType<UnauthorizedObjectResult>(result);
+        Assert.IsInstanceOfType<UnauthorizedObjectResult>(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Login_NonExistentUser_ReturnsUnauthorized()
     {
         var (controller, _) = CreateController();
         var result = await controller.Login(new LoginRequest("nonexistent", "MySecurePass12"));
-        Assert.IsType<UnauthorizedObjectResult>(result);
+        Assert.IsInstanceOfType<UnauthorizedObjectResult>(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Login_DeactivatedUser_ReturnsUnauthorized_WithGenericError()
     {
         var (controller, db) = CreateController();
@@ -136,12 +144,13 @@ public class AuthControllerTests
         await db.SaveChangesAsync();
 
         var result = await controller.Login(new LoginRequest("deactuser", "MySecurePass12"));
-        var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result);
+        Assert.IsInstanceOfType<UnauthorizedObjectResult>(result);
+        var unauthorized = (UnauthorizedObjectResult)result;
         // Should return the same generic error to prevent user enumeration
-        Assert.Contains("Invalid display name or password", unauthorized.Value!.ToString());
+        StringAssert.Contains(unauthorized.Value!.ToString()!, "Invalid display name or password");
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Login_CancelsPendingDeletion()
     {
         var (controller, db) = CreateController();
@@ -154,30 +163,34 @@ public class AuthControllerTests
         await controller.Login(new LoginRequest("deluser", "MySecurePass12"));
 
         var refreshedUser = db.Users.First(u => u.DisplayName == "deluser");
-        Assert.Null(refreshedUser.DeletionRequestedAt);
+        Assert.IsNull(refreshedUser.DeletionRequestedAt);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Refresh_ValidTokens_ReturnsNewTokenPair()
     {
         var (controller, db) = CreateController();
 
         // Register to get tokens
         var registerResult = await controller.Register(new RegisterRequest("refreshuser", "MySecurePass12"));
-        var created = Assert.IsType<CreatedResult>(registerResult);
-        var authResponse = Assert.IsType<AuthResponse>(created.Value);
+        Assert.IsInstanceOfType<CreatedResult>(registerResult);
+        var created = (CreatedResult)registerResult;
+        Assert.IsInstanceOfType<AuthResponse>(created.Value);
+        var authResponse = (AuthResponse)created.Value!;
 
         var refreshResult = await controller.Refresh(
             new RefreshTokenRequest(authResponse.Token, authResponse.RefreshToken!));
 
-        var ok = Assert.IsType<OkObjectResult>(refreshResult);
-        var response = Assert.IsType<RefreshTokenResponse>(ok.Value);
-        Assert.NotNull(response.Token);
-        Assert.NotNull(response.RefreshToken);
-        Assert.NotEqual(authResponse.RefreshToken, response.RefreshToken); // Rotated
+        Assert.IsInstanceOfType<OkObjectResult>(refreshResult);
+        var ok = (OkObjectResult)refreshResult;
+        Assert.IsInstanceOfType<RefreshTokenResponse>(ok.Value);
+        var response = (RefreshTokenResponse)ok.Value!;
+        Assert.IsNotNull(response.Token);
+        Assert.IsNotNull(response.RefreshToken);
+        Assert.AreNotEqual(authResponse.RefreshToken, response.RefreshToken); // Rotated
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Refresh_InvalidAccessToken_ReturnsUnauthorized()
     {
         var (controller, _) = CreateController();
@@ -185,32 +198,36 @@ public class AuthControllerTests
         var result = await controller.Refresh(
             new RefreshTokenRequest("invalid-jwt", "some-refresh-token"));
 
-        Assert.IsType<UnauthorizedObjectResult>(result);
+        Assert.IsInstanceOfType<UnauthorizedObjectResult>(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Refresh_InvalidRefreshToken_ReturnsUnauthorized()
     {
         var (controller, _) = CreateController();
 
         var registerResult = await controller.Register(new RegisterRequest("rftestuser", "MySecurePass12"));
-        var created = Assert.IsType<CreatedResult>(registerResult);
-        var authResponse = Assert.IsType<AuthResponse>(created.Value);
+        Assert.IsInstanceOfType<CreatedResult>(registerResult);
+        var created = (CreatedResult)registerResult;
+        Assert.IsInstanceOfType<AuthResponse>(created.Value);
+        var authResponse = (AuthResponse)created.Value!;
 
         var result = await controller.Refresh(
             new RefreshTokenRequest(authResponse.Token, "wrong-refresh-token"));
 
-        Assert.IsType<UnauthorizedObjectResult>(result);
+        Assert.IsInstanceOfType<UnauthorizedObjectResult>(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Refresh_RevokedRefreshToken_ReturnsUnauthorized()
     {
         var (controller, db) = CreateController();
 
         var registerResult = await controller.Register(new RegisterRequest("revoketest", "MySecurePass12"));
-        var created = Assert.IsType<CreatedResult>(registerResult);
-        var authResponse = Assert.IsType<AuthResponse>(created.Value);
+        Assert.IsInstanceOfType<CreatedResult>(registerResult);
+        var created = (CreatedResult)registerResult;
+        Assert.IsInstanceOfType<AuthResponse>(created.Value);
+        var authResponse = (AuthResponse)created.Value!;
 
         // Revoke all tokens
         foreach (var token in db.RefreshTokens) token.IsRevoked = true;
@@ -219,10 +236,10 @@ public class AuthControllerTests
         var result = await controller.Refresh(
             new RefreshTokenRequest(authResponse.Token, authResponse.RefreshToken!));
 
-        Assert.IsType<UnauthorizedObjectResult>(result);
+        Assert.IsInstanceOfType<UnauthorizedObjectResult>(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task DeleteAccount_Authenticated_ReturnsOk()
     {
         var (controller, db) = CreateController();
@@ -231,15 +248,17 @@ public class AuthControllerTests
 
         var result = await controller.DeleteAccount();
 
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<AccountDeletionResponse>(ok.Value);
-        Assert.True(response.GracePeriodEndsAt > response.DeletionScheduledAt);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
+        Assert.IsInstanceOfType<AccountDeletionResponse>(ok.Value);
+        var response = (AccountDeletionResponse)ok.Value!;
+        Assert.IsTrue(response.GracePeriodEndsAt > response.DeletionScheduledAt);
 
         var user = await db.Users.FindAsync(42m);
-        Assert.NotNull(user!.DeletionRequestedAt);
+        Assert.IsNotNull(user!.DeletionRequestedAt);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task DeleteAccount_NoUserClaim_ReturnsUnauthorized()
     {
         var (controller, _) = CreateController();
@@ -249,12 +268,12 @@ public class AuthControllerTests
         };
 
         var result = await controller.DeleteAccount();
-        Assert.IsType<UnauthorizedResult>(result);
+        Assert.IsInstanceOfType<UnauthorizedResult>(result);
     }
 
     // --- User Enumeration Prevention ---
 
-    [Fact]
+    [TestMethod]
     public async Task Login_NonExistentUser_ReturnsSameErrorAsWrongPassword()
     {
         var (controller, _) = CreateController();
@@ -263,42 +282,48 @@ public class AuthControllerTests
         var nonExistentResult = await controller.Login(new LoginRequest("fakeuser", "MySecurePass12"));
         var wrongPasswordResult = await controller.Login(new LoginRequest("realuser", "WrongPassword1"));
 
-        var nonExistentError = Assert.IsType<UnauthorizedObjectResult>(nonExistentResult);
-        var wrongPasswordError = Assert.IsType<UnauthorizedObjectResult>(wrongPasswordResult);
+        Assert.IsInstanceOfType<UnauthorizedObjectResult>(nonExistentResult);
+        var nonExistentError = (UnauthorizedObjectResult)nonExistentResult;
+        Assert.IsInstanceOfType<UnauthorizedObjectResult>(wrongPasswordResult);
+        var wrongPasswordError = (UnauthorizedObjectResult)wrongPasswordResult;
 
         // Both should return the exact same generic error message
-        Assert.Equal(nonExistentError.Value!.ToString(), wrongPasswordError.Value!.ToString());
+        Assert.AreEqual(nonExistentError.Value!.ToString(), wrongPasswordError.Value!.ToString());
     }
 
     // --- Logout ---
 
-    [Fact]
+    [TestMethod]
     public async Task Logout_ValidRefreshToken_RevokesIt()
     {
         var (controller, db) = CreateController();
 
         var registerResult = await controller.Register(new RegisterRequest("logoutuser", "MySecurePass12"));
-        var created = Assert.IsType<CreatedResult>(registerResult);
-        var authResponse = Assert.IsType<AuthResponse>(created.Value);
+        Assert.IsInstanceOfType<CreatedResult>(registerResult);
+        var created = (CreatedResult)registerResult;
+        Assert.IsInstanceOfType<AuthResponse>(created.Value);
+        var authResponse = (AuthResponse)created.Value!;
 
         TestDbContextFactory.SetUser(controller, authResponse.UserId, "logoutuser");
 
         var result = await controller.Logout(new ToledoMessage.Shared.DTOs.LogoutRequest(authResponse.RefreshToken!));
-        Assert.IsType<NoContentResult>(result);
+        Assert.IsInstanceOfType<NoContentResult>(result);
 
         // Verify the token is revoked
         var token = db.RefreshTokens.First(rt => rt.Token == authResponse.RefreshToken);
-        Assert.True(token.IsRevoked);
+        Assert.IsTrue(token.IsRevoked);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task LogoutAll_RevokesAllTokens()
     {
         var (controller, db) = CreateController();
 
         var registerResult = await controller.Register(new RegisterRequest("logoutalluser", "MySecurePass12"));
-        var created = Assert.IsType<CreatedResult>(registerResult);
-        var authResponse = Assert.IsType<AuthResponse>(created.Value);
+        Assert.IsInstanceOfType<CreatedResult>(registerResult);
+        var created = (CreatedResult)registerResult;
+        Assert.IsInstanceOfType<AuthResponse>(created.Value);
+        var authResponse = (AuthResponse)created.Value!;
 
         // Login again to create a second token
         await controller.Login(new LoginRequest("logoutalluser", "MySecurePass12"));
@@ -306,26 +331,28 @@ public class AuthControllerTests
         TestDbContextFactory.SetUser(controller, authResponse.UserId, "logoutalluser");
 
         var result = await controller.LogoutAll();
-        Assert.IsType<NoContentResult>(result);
+        Assert.IsInstanceOfType<NoContentResult>(result);
 
         // All refresh tokens should be revoked
         var activeTokens = db.RefreshTokens
             .Where(rt => rt.UserId == authResponse.UserId && !rt.IsRevoked)
             .Count();
-        Assert.Equal(0, activeTokens);
+        Assert.AreEqual(0, activeTokens);
     }
 
     // --- Refresh Token Cleanup on Rotation ---
 
-    [Fact]
+    [TestMethod]
     public async Task Refresh_CleansUpExpiredTokens()
     {
         var (controller, db) = CreateController();
 
         // Register to get tokens
         var registerResult = await controller.Register(new RegisterRequest("cleanuprfuser", "MySecurePass12"));
-        var created = Assert.IsType<CreatedResult>(registerResult);
-        var authResponse = Assert.IsType<AuthResponse>(created.Value);
+        Assert.IsInstanceOfType<CreatedResult>(registerResult);
+        var created = (CreatedResult)registerResult;
+        Assert.IsInstanceOfType<AuthResponse>(created.Value);
+        var authResponse = (AuthResponse)created.Value!;
 
         // Manually add an expired token for this user
         db.RefreshTokens.Add(new RefreshToken
@@ -343,6 +370,6 @@ public class AuthControllerTests
         await controller.Refresh(new RefreshTokenRequest(authResponse.Token, authResponse.RefreshToken!));
 
         var expiredToken = db.RefreshTokens.First(rt => rt.Token == "expired-token");
-        Assert.True(expiredToken.IsRevoked);
+        Assert.IsTrue(expiredToken.IsRevoked);
     }
 }

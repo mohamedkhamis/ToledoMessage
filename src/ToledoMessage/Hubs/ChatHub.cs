@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using ToledoMessage.Data;
 using ToledoMessage.Services;
+using ToledoMessage.Shared.Constants;
 using ToledoMessage.Shared.DTOs;
 
 namespace ToledoMessage.Hubs;
@@ -43,6 +44,12 @@ public class ChatHub : Hub
     {
         var userId = GetUserId();
 
+        // Validate ciphertext size (FR-019: max 64 KB plaintext, ~66 KB ciphertext)
+        if (!MessageRelayService.IsValidBase64(request.Ciphertext, out var ciphertextBytes))
+            throw new HubException("Invalid Base64 ciphertext.");
+        if (ciphertextBytes.Length > ProtocolConstants.MaxCiphertextSizeBytes)
+            throw new HubException("Message exceeds the maximum allowed size.");
+
         // Validate sender is a participant in the conversation
         var isParticipant = await _db.ConversationParticipants
             .AnyAsync(cp => cp.ConversationId == request.ConversationId && cp.UserId == userId);
@@ -54,6 +61,13 @@ public class ChatHub : Hub
             .AnyAsync(d => d.Id == request.SenderDeviceId && d.UserId == userId && d.IsActive);
         if (!senderDeviceOwned)
             throw new HubException("Sender device not found or does not belong to the current user.");
+
+        // Validate recipient device is active and recipient user is not deactivated
+        var recipientDevice = await _db.Devices
+            .Include(d => d.User)
+            .FirstOrDefaultAsync(d => d.Id == request.RecipientDeviceId && d.IsActive);
+        if (recipientDevice == null || !recipientDevice.User.IsActive)
+            throw new HubException("Recipient device is not available.");
 
         // Store the message
         var message = await _relayService.StoreMessage(request.SenderDeviceId, request);

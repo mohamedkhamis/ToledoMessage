@@ -2,23 +2,24 @@ using Toledo.SharedKernel.Helpers;
 
 namespace ToledoMessage.Server.Tests.Helpers;
 
+[TestClass]
 public class DecimalToolsTests
 {
-    [Fact]
+    [TestMethod]
     public void GetNewId_ReturnsNonZero()
     {
         var id = DecimalTools.GetNewId();
-        Assert.NotEqual(0m, id);
+        Assert.AreNotEqual(0m, id);
     }
 
-    [Fact]
+    [TestMethod]
     public void GetNewId_ReturnsPositive()
     {
         var id = DecimalTools.GetNewId();
-        Assert.True(id > 0);
+        Assert.IsTrue(id > 0);
     }
 
-    [Fact]
+    [TestMethod]
     public void GetNewId_ReturnsUniqueIds()
     {
         var ids = new HashSet<decimal>();
@@ -26,10 +27,10 @@ public class DecimalToolsTests
         {
             ids.Add(DecimalTools.GetNewId());
         }
-        Assert.Equal(1000, ids.Count);
+        Assert.AreEqual(1000, ids.Count);
     }
 
-    [Fact]
+    [TestMethod]
     public void GetNewId_IsThreadSafe()
     {
         var ids = new System.Collections.Concurrent.ConcurrentBag<decimal>();
@@ -43,6 +44,6 @@ public class DecimalToolsTests
 
         Task.WaitAll(tasks.ToArray());
 
-        Assert.Equal(1000, ids.Distinct().Count());
+        Assert.AreEqual(1000, ids.Distinct().Count());
     }
 }

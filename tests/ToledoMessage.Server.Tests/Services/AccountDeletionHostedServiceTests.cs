@@ -4,6 +4,7 @@ using ToledoMessage.Services;
 
 namespace ToledoMessage.Server.Tests.Services;
 
+[TestClass]
 public class AccountDeletionHostedServiceTests
 {
     private static AccountDeletionHostedService CreateService()
@@ -21,7 +22,7 @@ public class AccountDeletionHostedServiceTests
         return new AccountDeletionHostedService(scopeFactory, NullLogger<AccountDeletionHostedService>.Instance);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ExecuteAsync_StopsOnCancellation()
     {
         var service = CreateService();
@@ -31,10 +32,10 @@ public class AccountDeletionHostedServiceTests
         await Task.Delay(200);
         await service.StopAsync(CancellationToken.None);
 
-        Assert.True(true);
+        Assert.IsTrue(true);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ExecuteAsync_DoesNotThrowOnImmediateCancel()
     {
         var service = CreateService();
@@ -44,6 +45,6 @@ public class AccountDeletionHostedServiceTests
         cts.Cancel();
         await service.StopAsync(CancellationToken.None);
 
-        Assert.True(true);
+        Assert.IsTrue(true);
     }
 }

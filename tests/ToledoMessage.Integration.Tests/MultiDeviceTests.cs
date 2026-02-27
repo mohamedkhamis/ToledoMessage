@@ -4,9 +4,10 @@ using ToledoMessage.Crypto.Protocol;
 
 namespace ToledoMessage.Integration.Tests;
 
+[TestClass]
 public class MultiDeviceTests
 {
-    [Fact]
+    [TestMethod]
     public void FanOutEncryption_MultipleDevices_AllDecryptCorrectly()
     {
         // ================================================================
@@ -58,8 +59,8 @@ public class MultiDeviceTests
         };
 
         var initResultDevice1 = X3dhInitiator.Initiate(bobDevice1Bundle);
-        Assert.NotNull(initResultDevice1.RootKey);
-        Assert.NotNull(initResultDevice1.ChainKey);
+        Assert.IsNotNull(initResultDevice1.RootKey);
+        Assert.IsNotNull(initResultDevice1.ChainKey);
 
         // ================================================================
         // 5. Alice performs X3DH with Bob's Device2 -> session2
@@ -78,11 +79,11 @@ public class MultiDeviceTests
         };
 
         var initResultDevice2 = X3dhInitiator.Initiate(bobDevice2Bundle);
-        Assert.NotNull(initResultDevice2.RootKey);
-        Assert.NotNull(initResultDevice2.ChainKey);
+        Assert.IsNotNull(initResultDevice2.RootKey);
+        Assert.IsNotNull(initResultDevice2.ChainKey);
 
         // Verify the two sessions have different root keys (different key material)
-        Assert.NotEqual(initResultDevice1.RootKey, initResultDevice2.RootKey);
+        CollectionAssert.AreNotEqual(initResultDevice1.RootKey, initResultDevice2.RootKey);
 
         // ================================================================
         // Bob's Device1 responds to X3DH
@@ -94,8 +95,8 @@ public class MultiDeviceTests
             aliceEphemeralPublicKey: initResultDevice1.EphemeralPublicKey,
             kemCiphertext: initResultDevice1.KemCiphertext);
 
-        Assert.Equal(initResultDevice1.RootKey, bobD1RootKey);
-        Assert.Equal(initResultDevice1.ChainKey, bobD1ChainKey);
+        CollectionAssert.AreEqual(initResultDevice1.RootKey, bobD1RootKey);
+        CollectionAssert.AreEqual(initResultDevice1.ChainKey, bobD1ChainKey);
 
         // ================================================================
         // Bob's Device2 responds to X3DH
@@ -107,8 +108,8 @@ public class MultiDeviceTests
             aliceEphemeralPublicKey: initResultDevice2.EphemeralPublicKey,
             kemCiphertext: initResultDevice2.KemCiphertext);
 
-        Assert.Equal(initResultDevice2.RootKey, bobD2RootKey);
-        Assert.Equal(initResultDevice2.ChainKey, bobD2ChainKey);
+        CollectionAssert.AreEqual(initResultDevice2.RootKey, bobD2RootKey);
+        CollectionAssert.AreEqual(initResultDevice2.ChainKey, bobD2ChainKey);
 
         // ================================================================
         // 6. Initialize Double Ratchet sessions for both devices
@@ -136,22 +137,22 @@ public class MultiDeviceTests
         // 8. Bob's Device1 decrypts its ciphertext -> verify matches
         // ================================================================
         var decryptedD1 = bobD1Ratchet.Decrypt(ciphertextD1, headerD1);
-        Assert.Equal(messageText, Encoding.UTF8.GetString(decryptedD1));
+        Assert.AreEqual(messageText, Encoding.UTF8.GetString(decryptedD1));
 
         // ================================================================
         // 9. Bob's Device2 decrypts its ciphertext -> verify matches
         // ================================================================
         var decryptedD2 = bobD2Ratchet.Decrypt(ciphertextD2, headerD2);
-        Assert.Equal(messageText, Encoding.UTF8.GetString(decryptedD2));
+        Assert.AreEqual(messageText, Encoding.UTF8.GetString(decryptedD2));
 
         // ================================================================
         // 10. Verify the two ciphertexts are DIFFERENT
         //     (different sessions, different keys)
         // ================================================================
-        Assert.NotEqual(ciphertextD1, ciphertextD2);
+        CollectionAssert.AreNotEqual(ciphertextD1, ciphertextD2);
     }
 
-    [Fact]
+    [TestMethod]
     public void FanOutEncryption_DevicesCanReplyIndependently()
     {
         // Tests that each device can independently reply to Alice
@@ -213,22 +214,22 @@ public class MultiDeviceTests
         var (ct1, h1) = aliceToD1.Encrypt(msg);
         var (ct2, h2) = aliceToD2.Encrypt(msg);
 
-        Assert.Equal("Fan-out hello", Encoding.UTF8.GetString(bobD1Ratchet.Decrypt(ct1, h1)));
-        Assert.Equal("Fan-out hello", Encoding.UTF8.GetString(bobD2Ratchet.Decrypt(ct2, h2)));
+        Assert.AreEqual("Fan-out hello", Encoding.UTF8.GetString(bobD1Ratchet.Decrypt(ct1, h1)));
+        Assert.AreEqual("Fan-out hello", Encoding.UTF8.GetString(bobD2Ratchet.Decrypt(ct2, h2)));
 
         // Device1 replies to Alice
         var d1Reply = Encoding.UTF8.GetBytes("Reply from Device 1");
         var (ctReply1, hReply1) = bobD1Ratchet.Encrypt(d1Reply);
         var decryptedReply1 = aliceToD1.Decrypt(ctReply1, hReply1);
-        Assert.Equal("Reply from Device 1", Encoding.UTF8.GetString(decryptedReply1));
+        Assert.AreEqual("Reply from Device 1", Encoding.UTF8.GetString(decryptedReply1));
 
         // Device2 replies to Alice independently
         var d2Reply = Encoding.UTF8.GetBytes("Reply from Device 2");
         var (ctReply2, hReply2) = bobD2Ratchet.Encrypt(d2Reply);
         var decryptedReply2 = aliceToD2.Decrypt(ctReply2, hReply2);
-        Assert.Equal("Reply from Device 2", Encoding.UTF8.GetString(decryptedReply2));
+        Assert.AreEqual("Reply from Device 2", Encoding.UTF8.GetString(decryptedReply2));
 
         // Verify the replies are different ciphertexts
-        Assert.NotEqual(ctReply1, ctReply2);
+        CollectionAssert.AreNotEqual(ctReply1, ctReply2);
     }
 }

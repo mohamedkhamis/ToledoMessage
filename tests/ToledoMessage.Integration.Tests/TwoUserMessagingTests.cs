@@ -4,9 +4,10 @@ using ToledoMessage.Crypto.Protocol;
 
 namespace ToledoMessage.Integration.Tests;
 
+[TestClass]
 public class TwoUserMessagingTests
 {
-    [Fact]
+    [TestMethod]
     public void FullTwoUserMessagingFlow()
     {
         // ================================================================
@@ -50,13 +51,13 @@ public class TwoUserMessagingTests
         // ================================================================
         var initResult = X3dhInitiator.Initiate(bobBundle);
 
-        Assert.NotNull(initResult.RootKey);
-        Assert.NotNull(initResult.ChainKey);
-        Assert.NotNull(initResult.EphemeralPublicKey);
-        Assert.NotNull(initResult.KemCiphertext);
-        Assert.Equal(32, initResult.RootKey.Length);
-        Assert.Equal(32, initResult.ChainKey.Length);
-        Assert.Equal(bobOneTimePreKeys[0].KeyId, initResult.UsedOneTimePreKeyId);
+        Assert.IsNotNull(initResult.RootKey);
+        Assert.IsNotNull(initResult.ChainKey);
+        Assert.IsNotNull(initResult.EphemeralPublicKey);
+        Assert.IsNotNull(initResult.KemCiphertext);
+        Assert.AreEqual(32, initResult.RootKey.Length);
+        Assert.AreEqual(32, initResult.ChainKey.Length);
+        Assert.AreEqual(bobOneTimePreKeys[0].KeyId, initResult.UsedOneTimePreKeyId);
 
         // ================================================================
         // 5. Bob responds to X3DH (using data Alice sent)
@@ -68,12 +69,12 @@ public class TwoUserMessagingTests
             aliceEphemeralPublicKey: initResult.EphemeralPublicKey,
             kemCiphertext: initResult.KemCiphertext);
 
-        Assert.Equal(32, bobRootKey.Length);
-        Assert.Equal(32, bobChainKey.Length);
+        Assert.AreEqual(32, bobRootKey.Length);
+        Assert.AreEqual(32, bobChainKey.Length);
 
         // Verify both sides derived the same root and chain keys
-        Assert.Equal(initResult.RootKey, bobRootKey);
-        Assert.Equal(initResult.ChainKey, bobChainKey);
+        CollectionAssert.AreEqual(initResult.RootKey, bobRootKey);
+        CollectionAssert.AreEqual(initResult.ChainKey, bobChainKey);
 
         // ================================================================
         // 6. Both initialize Double Ratchet sessions
@@ -95,11 +96,11 @@ public class TwoUserMessagingTests
         var aliceMessage1 = Encoding.UTF8.GetBytes("Hello Bob");
         var (ciphertext1, header1) = aliceRatchet.Encrypt(aliceMessage1);
 
-        Assert.NotNull(ciphertext1);
-        Assert.NotEqual(aliceMessage1, ciphertext1); // ciphertext differs from plaintext
+        Assert.IsNotNull(ciphertext1);
+        CollectionAssert.AreNotEqual(aliceMessage1, ciphertext1); // ciphertext differs from plaintext
 
         var decrypted1 = bobRatchet.Decrypt(ciphertext1, header1);
-        Assert.Equal("Hello Bob", Encoding.UTF8.GetString(decrypted1));
+        Assert.AreEqual("Hello Bob", Encoding.UTF8.GetString(decrypted1));
 
         // ================================================================
         // 8. Bob encrypts "Hello Alice" -> Alice decrypts -> assert
@@ -107,11 +108,11 @@ public class TwoUserMessagingTests
         var bobMessage1 = Encoding.UTF8.GetBytes("Hello Alice");
         var (ciphertext2, header2) = bobRatchet.Encrypt(bobMessage1);
 
-        Assert.NotNull(ciphertext2);
-        Assert.NotEqual(bobMessage1, ciphertext2);
+        Assert.IsNotNull(ciphertext2);
+        CollectionAssert.AreNotEqual(bobMessage1, ciphertext2);
 
         var decrypted2 = aliceRatchet.Decrypt(ciphertext2, header2);
-        Assert.Equal("Hello Alice", Encoding.UTF8.GetString(decrypted2));
+        Assert.AreEqual("Hello Alice", Encoding.UTF8.GetString(decrypted2));
 
         // ================================================================
         // 9. Exchange 10 more messages alternating sender
@@ -147,14 +148,14 @@ public class TwoUserMessagingTests
             // ================================================================
             // 10. Verify all messages decrypt correctly
             // ================================================================
-            Assert.Equal(messageText, Encoding.UTF8.GetString(decrypted));
+            Assert.AreEqual(messageText, Encoding.UTF8.GetString(decrypted));
         }
 
         // Final assertion: we exchanged the expected number of messages
-        Assert.Equal(10, expectedMessages.Count);
+        Assert.AreEqual(10, expectedMessages.Count);
     }
 
-    [Fact]
+    [TestMethod]
     public void FullTwoUserMessagingFlow_WithoutOneTimePreKey()
     {
         // Tests the flow when no one-time pre-key is available (all consumed)
@@ -185,7 +186,7 @@ public class TwoUserMessagingTests
 
         // 4. Alice initiates X3DH
         var initResult = X3dhInitiator.Initiate(bobBundle);
-        Assert.Null(initResult.UsedOneTimePreKeyId);
+        Assert.IsNull(initResult.UsedOneTimePreKeyId);
 
         // 5. Bob responds
         var (bobRootKey, bobChainKey) = X3dhResponder.Respond(
@@ -196,8 +197,8 @@ public class TwoUserMessagingTests
             initResult.KemCiphertext);
 
         // Both derive same keys
-        Assert.Equal(initResult.RootKey, bobRootKey);
-        Assert.Equal(initResult.ChainKey, bobChainKey);
+        CollectionAssert.AreEqual(initResult.RootKey, bobRootKey);
+        CollectionAssert.AreEqual(initResult.ChainKey, bobChainKey);
 
         // 6. Initialize Double Ratchet sessions
         var bobRatchet = DoubleRatchet.InitializeAsResponder(
@@ -208,14 +209,14 @@ public class TwoUserMessagingTests
         // 7. Exchange messages
         var (ct, hdr) = aliceRatchet.Encrypt(Encoding.UTF8.GetBytes("Without OPK"));
         var decrypted = bobRatchet.Decrypt(ct, hdr);
-        Assert.Equal("Without OPK", Encoding.UTF8.GetString(decrypted));
+        Assert.AreEqual("Without OPK", Encoding.UTF8.GetString(decrypted));
 
         var (ct2, hdr2) = bobRatchet.Encrypt(Encoding.UTF8.GetBytes("Reply without OPK"));
         var decrypted2 = aliceRatchet.Decrypt(ct2, hdr2);
-        Assert.Equal("Reply without OPK", Encoding.UTF8.GetString(decrypted2));
+        Assert.AreEqual("Reply without OPK", Encoding.UTF8.GetString(decrypted2));
     }
 
-    [Fact]
+    [TestMethod]
     public void ConsecutiveMessagesSameSender_DecryptCorrectly()
     {
         // Tests multiple messages from the same sender before the other replies
@@ -266,7 +267,7 @@ public class TwoUserMessagingTests
         for (int i = 0; i < 5; i++)
         {
             var decrypted = bobRatchet.Decrypt(aliceMessages[i].ciphertext, aliceMessages[i].header);
-            Assert.Equal($"Alice burst message {i}", Encoding.UTF8.GetString(decrypted));
+            Assert.AreEqual($"Alice burst message {i}", Encoding.UTF8.GetString(decrypted));
         }
 
         // Now Bob sends 3 messages in a row
@@ -281,11 +282,11 @@ public class TwoUserMessagingTests
         for (int i = 0; i < 3; i++)
         {
             var decrypted = aliceRatchet.Decrypt(bobMessages[i].ciphertext, bobMessages[i].header);
-            Assert.Equal($"Bob burst message {i}", Encoding.UTF8.GetString(decrypted));
+            Assert.AreEqual($"Bob burst message {i}", Encoding.UTF8.GetString(decrypted));
         }
     }
 
-    [Fact]
+    [TestMethod]
     public void FingerprintVerification_BothSidesMatch()
     {
         // Tests that fingerprint generation produces the same result for both parties
@@ -299,16 +300,16 @@ public class TwoUserMessagingTests
         var fingerprintBobSees = FingerprintGenerator.GenerateFingerprint(
             bobIdentity.ClassicalPublicKey, aliceIdentity.ClassicalPublicKey);
 
-        Assert.Equal(fingerprintAliceSees, fingerprintBobSees);
+        Assert.AreEqual(fingerprintAliceSees, fingerprintBobSees);
 
         // Verify format: 6 groups of 5 digits separated by spaces (35 chars total)
-        Assert.Equal(35, fingerprintAliceSees.Length);
+        Assert.AreEqual(35, fingerprintAliceSees.Length);
         var groups = fingerprintAliceSees.Split(' ');
-        Assert.Equal(6, groups.Length);
+        Assert.AreEqual(6, groups.Length);
         foreach (var group in groups)
         {
-            Assert.Equal(5, group.Length);
-            Assert.True(long.TryParse(group, out _), $"Group '{group}' should be numeric");
+            Assert.AreEqual(5, group.Length);
+            Assert.IsTrue(long.TryParse(group, out _), $"Group '{group}' should be numeric");
         }
     }
 }

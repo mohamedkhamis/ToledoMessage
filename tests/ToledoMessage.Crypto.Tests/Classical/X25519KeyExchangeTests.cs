@@ -2,18 +2,19 @@ using ToledoMessage.Crypto.Classical;
 
 namespace ToledoMessage.Crypto.Tests.Classical;
 
+[TestClass]
 public class X25519KeyExchangeTests
 {
-    [Fact]
+    [TestMethod]
     public void GenerateKeyPair_ReturnsValidKeys()
     {
         var (publicKey, privateKey) = X25519KeyExchange.GenerateKeyPair();
 
-        Assert.Equal(32, publicKey.Length);
-        Assert.Equal(32, privateKey.Length);
+        Assert.AreEqual(32, publicKey.Length);
+        Assert.AreEqual(32, privateKey.Length);
     }
 
-    [Fact]
+    [TestMethod]
     public void ComputeSharedSecret_BothSidesAgree()
     {
         var (alicePublic, alicePrivate) = X25519KeyExchange.GenerateKeyPair();
@@ -22,16 +23,16 @@ public class X25519KeyExchangeTests
         var aliceShared = X25519KeyExchange.ComputeSharedSecret(alicePrivate, bobPublic);
         var bobShared = X25519KeyExchange.ComputeSharedSecret(bobPrivate, alicePublic);
 
-        Assert.Equal(32, aliceShared.Length);
-        Assert.Equal(aliceShared, bobShared);
+        Assert.AreEqual(32, aliceShared.Length);
+        CollectionAssert.AreEqual(aliceShared, bobShared);
     }
 
-    [Fact]
+    [TestMethod]
     public void DifferentKeyPairs_ProduceDifferentPublicKeys()
     {
         var (publicKey1, _) = X25519KeyExchange.GenerateKeyPair();
         var (publicKey2, _) = X25519KeyExchange.GenerateKeyPair();
 
-        Assert.NotEqual(publicKey1, publicKey2);
+        CollectionAssert.AreNotEqual(publicKey1, publicKey2);
     }
 }

@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using ToledoMessage.Controllers;
 using ToledoMessage.Services;
+using ToledoMessage.Shared.Constants;
 using ToledoMessage.Shared.DTOs;
 
 namespace ToledoMessage.Server.Tests.Controllers;
 
+[TestClass]
 public class DevicesControllerTests
 {
     private static (DevicesController controller, Data.ApplicationDbContext db) CreateController(decimal userId = 1m)
@@ -16,7 +18,7 @@ public class DevicesControllerTests
         return (controller, db);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task RegisterDevice_ValidRequest_ReturnsCreated()
     {
         var (controller, db) = CreateController();
@@ -24,20 +26,20 @@ public class DevicesControllerTests
 
         var request = new DeviceRegistrationRequest(
             "MyPhone",
-            Convert.ToBase64String(new byte[32]),
-            Convert.ToBase64String(new byte[1184]),
-            Convert.ToBase64String(new byte[32]),
-            Convert.ToBase64String(new byte[64]),
+            Convert.ToBase64String(new byte[ProtocolConstants.Ed25519PublicKeySize]),
+            Convert.ToBase64String(new byte[ProtocolConstants.MlDsa65PublicKeySize]),
+            Convert.ToBase64String(new byte[ProtocolConstants.X25519PublicKeySize]),
+            Convert.ToBase64String(new byte[ProtocolConstants.HybridSignatureSize]),
             1,
-            Convert.ToBase64String(new byte[1184]),
-            Convert.ToBase64String(new byte[64]),
-            [new OneTimePreKeyDto(1, Convert.ToBase64String(new byte[32]))]);
+            Convert.ToBase64String(new byte[ProtocolConstants.MlKem768PublicKeySize]),
+            Convert.ToBase64String(new byte[ProtocolConstants.HybridSignatureSize]),
+            [new OneTimePreKeyDto(1, Convert.ToBase64String(new byte[ProtocolConstants.X25519PublicKeySize]))]);
 
         var result = await controller.RegisterDevice(request);
-        Assert.IsType<CreatedResult>(result);
+        Assert.IsInstanceOfType<CreatedResult>(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task RegisterDevice_MaxDevicesReached_ReturnsForbidden()
     {
         var (controller, db) = CreateController();
@@ -61,11 +63,12 @@ public class DevicesControllerTests
             null);
 
         var result = await controller.RegisterDevice(request);
-        var status = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(403, status.StatusCode);
+        Assert.IsInstanceOfType<ObjectResult>(result);
+        var status = (ObjectResult)result;
+        Assert.AreEqual(403, status.StatusCode);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ListDevices_ReturnsActiveDevicesOnly()
     {
         var (controller, db) = CreateController();
@@ -77,13 +80,15 @@ public class DevicesControllerTests
 
         var result = await controller.ListDevices();
 
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var devices = Assert.IsAssignableFrom<List<DeviceInfoResponse>>(ok.Value);
-        Assert.Single(devices);
-        Assert.Equal("Active", devices[0].DeviceName);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
+        Assert.IsInstanceOfType<List<DeviceInfoResponse>>(ok.Value);
+        var devices = (List<DeviceInfoResponse>)ok.Value!;
+        Assert.AreEqual(1, devices.Count);
+        Assert.AreEqual("Active", devices[0].DeviceName);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ListDevices_OtherUsersDevices_NotReturned()
     {
         var (controller, db) = CreateController();
@@ -94,13 +99,15 @@ public class DevicesControllerTests
 
         var result = await controller.ListDevices();
 
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var devices = Assert.IsAssignableFrom<List<DeviceInfoResponse>>(ok.Value);
-        Assert.Single(devices);
-        Assert.Equal("MyDevice", devices[0].DeviceName);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
+        Assert.IsInstanceOfType<List<DeviceInfoResponse>>(ok.Value);
+        var devices = (List<DeviceInfoResponse>)ok.Value!;
+        Assert.AreEqual(1, devices.Count);
+        Assert.AreEqual("MyDevice", devices[0].DeviceName);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task RevokeDevice_OwnDevice_ReturnsNoContent()
     {
         var (controller, db) = CreateController();
@@ -109,12 +116,12 @@ public class DevicesControllerTests
 
         var result = await controller.RevokeDevice(10m);
 
-        Assert.IsType<NoContentResult>(result);
+        Assert.IsInstanceOfType<NoContentResult>(result);
         var device = await db.Devices.FindAsync(10m);
-        Assert.False(device!.IsActive);
+        Assert.IsFalse(device!.IsActive);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task RevokeDevice_OtherUsersDevice_ReturnsNotFound()
     {
         var (controller, db) = CreateController();
@@ -123,18 +130,18 @@ public class DevicesControllerTests
         await TestDbContextFactory.SeedDevice(db, 20m, 2m);
 
         var result = await controller.RevokeDevice(20m);
-        Assert.IsType<NotFoundObjectResult>(result);
+        Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task RevokeDevice_NonExistent_ReturnsNotFound()
     {
         var (controller, _) = CreateController();
         var result = await controller.RevokeDevice(999m);
-        Assert.IsType<NotFoundObjectResult>(result);
+        Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task GetPreKeyCount_OwnDevice_ReturnsCount()
     {
         var (controller, db) = CreateController();
@@ -149,12 +156,13 @@ public class DevicesControllerTests
 
         var result = await controller.GetPreKeyCount(10m);
 
-        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
         dynamic value = ok.Value!;
-        Assert.Equal(2, (int)value.GetType().GetProperty("count")!.GetValue(value));
+        Assert.AreEqual(2, (int)value.GetType().GetProperty("count")!.GetValue(value));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task GetPreKeyCount_OtherUsersDevice_ReturnsNotFound()
     {
         var (controller, db) = CreateController();
@@ -163,10 +171,10 @@ public class DevicesControllerTests
         await TestDbContextFactory.SeedDevice(db, 20m, 2m);
 
         var result = await controller.GetPreKeyCount(20m);
-        Assert.IsType<NotFoundObjectResult>(result);
+        Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ReplenishPreKeys_ValidRequest_ReturnsNoContent()
     {
         var (controller, db) = CreateController();
@@ -181,11 +189,11 @@ public class DevicesControllerTests
 
         var result = await controller.ReplenishPreKeys(10m, preKeys);
 
-        Assert.IsType<NoContentResult>(result);
-        Assert.Equal(2, db.OneTimePreKeys.Count());
+        Assert.IsInstanceOfType<NoContentResult>(result);
+        Assert.AreEqual(2, db.OneTimePreKeys.Count());
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ReplenishPreKeys_OtherUsersDevice_ReturnsNotFound()
     {
         var (controller, db) = CreateController();
@@ -194,6 +202,6 @@ public class DevicesControllerTests
         await TestDbContextFactory.SeedDevice(db, 20m, 2m);
 
         var result = await controller.ReplenishPreKeys(20m, [new(1, Convert.ToBase64String(new byte[32]))]);
-        Assert.IsType<NotFoundObjectResult>(result);
+        Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 }

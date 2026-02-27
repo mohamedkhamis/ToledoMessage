@@ -96,7 +96,7 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
     {
         var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-            ?? [builder.Environment.IsDevelopment() ? "https://localhost:7256" : ""];
+            ?? [builder.Environment.IsDevelopment() ? "https://localhost:7159" : ""];
 
         policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
@@ -128,9 +128,13 @@ app.UseStaticFiles();
 // Serilog request logging must be early to capture all requests and errors
 app.UseSerilogRequestLogging(options =>
 {
+    // Explicit template — avoids accidentally including sensitive URL params, headers, or bodies
+    options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
     options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
     {
         diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value ?? "unknown");
+        // Intentionally omit Authorization header and request body from diagnostic context
+        // to prevent leaking tokens or credentials into structured log sinks (NFR-011)
     };
 });
 

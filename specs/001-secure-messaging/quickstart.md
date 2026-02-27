@@ -47,7 +47,7 @@ dotnet ef database update
 
 This creates the database with all tables: Users, Devices,
 OneTimePreKeys, Conversations, ConversationParticipants,
-EncryptedMessages.
+EncryptedMessages, RefreshTokens.
 
 ## 4. Build and Run
 
@@ -57,10 +57,10 @@ dotnet build
 dotnet run --project src/ToledoMessage
 ```
 
-The server starts on `https://localhost:5001` (HTTPS) and
-`http://localhost:5000` (HTTP).
+The server starts on `https://localhost:7159` (HTTPS) and
+`http://localhost:5005` (HTTP).
 
-Open `https://localhost:5001` in your browser to access the
+Open `https://localhost:7159` in your browser to access the
 Blazor WebAssembly client.
 
 ## 5. Test the Application
@@ -118,10 +118,10 @@ dotnet run --project tests/ToledoMessage.Benchmarks -c Release
 | `/` | Home page |
 | `/register` | Account registration |
 | `/login` | Login |
-| `/chats` | Conversation list |
+| `/chat` | Conversation list |
 | `/chat/{id}` | Active chat |
 | `/new-conversation` | Start new conversation |
-| `/security-info/{id}` | Fingerprint verification |
+| `/security/{id}` | Fingerprint verification |
 | `/settings` | User settings |
 | `/hubs/chat` | SignalR hub (WebSocket) |
 | `/api/*` | REST API endpoints |

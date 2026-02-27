@@ -5,6 +5,7 @@ using ToledoMessage.Crypto.Protocol;
 
 namespace ToledoMessage.Crypto.Tests.Protocol;
 
+[TestClass]
 public class X3dhTests
 {
     /// <summary>
@@ -57,7 +58,7 @@ public class X3dhTests
         return (bundle, spkPriv, kyberPriv, otpkPriv);
     }
 
-    [Fact]
+    [TestMethod]
     public void Initiate_Respond_WithOtpk_ProduceSameKeys()
     {
         var (bundle, spkPriv, kyberPriv, otpkPriv) = CreateBobBundle(includeOneTimePreKey: true);
@@ -71,12 +72,12 @@ public class X3dhTests
             result.EphemeralPublicKey,
             result.KemCiphertext);
 
-        Assert.Equal(result.RootKey, bobRootKey);
-        Assert.Equal(result.ChainKey, bobChainKey);
-        Assert.Equal(42, result.UsedOneTimePreKeyId);
+        CollectionAssert.AreEqual(result.RootKey, bobRootKey);
+        CollectionAssert.AreEqual(result.ChainKey, bobChainKey);
+        Assert.AreEqual(42, result.UsedOneTimePreKeyId);
     }
 
-    [Fact]
+    [TestMethod]
     public void Initiate_Respond_WithoutOtpk_ProduceSameKeys()
     {
         var (bundle, spkPriv, kyberPriv, _) = CreateBobBundle(includeOneTimePreKey: false);
@@ -90,12 +91,12 @@ public class X3dhTests
             result.EphemeralPublicKey,
             result.KemCiphertext);
 
-        Assert.Equal(result.RootKey, bobRootKey);
-        Assert.Equal(result.ChainKey, bobChainKey);
-        Assert.Null(result.UsedOneTimePreKeyId);
+        CollectionAssert.AreEqual(result.RootKey, bobRootKey);
+        CollectionAssert.AreEqual(result.ChainKey, bobChainKey);
+        Assert.IsNull(result.UsedOneTimePreKeyId);
     }
 
-    [Fact]
+    [TestMethod]
     public void Initiate_InvalidSignedPreKeySignature_Throws()
     {
         var (bundle, _, _, _) = CreateBobBundle(includeOneTimePreKey: true);
@@ -118,10 +119,10 @@ public class X3dhTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => X3dhInitiator.Initiate(tamperedBundle));
-        Assert.Contains("Signed pre-key", ex.Message);
+        StringAssert.Contains(ex.Message, "Signed pre-key");
     }
 
-    [Fact]
+    [TestMethod]
     public void Initiate_InvalidKyberPreKeySignature_Throws()
     {
         var (bundle, _, _, _) = CreateBobBundle(includeOneTimePreKey: true);
@@ -144,29 +145,29 @@ public class X3dhTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => X3dhInitiator.Initiate(tamperedBundle));
-        Assert.Contains("Kyber", ex.Message);
+        StringAssert.Contains(ex.Message, "Kyber");
     }
 
-    [Fact]
+    [TestMethod]
     public void Initiate_ReturnsNonEmptyResults()
     {
         var (bundle, _, _, _) = CreateBobBundle(includeOneTimePreKey: true);
 
         var result = X3dhInitiator.Initiate(bundle);
 
-        Assert.NotNull(result.RootKey);
-        Assert.Equal(32, result.RootKey.Length);
+        Assert.IsNotNull(result.RootKey);
+        Assert.AreEqual(32, result.RootKey.Length);
 
-        Assert.NotNull(result.ChainKey);
-        Assert.Equal(32, result.ChainKey.Length);
+        Assert.IsNotNull(result.ChainKey);
+        Assert.AreEqual(32, result.ChainKey.Length);
 
-        Assert.NotNull(result.EphemeralPublicKey);
-        Assert.Equal(32, result.EphemeralPublicKey.Length);
+        Assert.IsNotNull(result.EphemeralPublicKey);
+        Assert.AreEqual(32, result.EphemeralPublicKey.Length);
 
-        Assert.NotNull(result.KemCiphertext);
-        Assert.NotEmpty(result.KemCiphertext);
+        Assert.IsNotNull(result.KemCiphertext);
+        Assert.IsTrue(result.KemCiphertext.Length > 0);
 
         // RootKey and ChainKey should be different
-        Assert.NotEqual(result.RootKey, result.ChainKey);
+        CollectionAssert.AreNotEqual(result.RootKey, result.ChainKey);
     }
 }

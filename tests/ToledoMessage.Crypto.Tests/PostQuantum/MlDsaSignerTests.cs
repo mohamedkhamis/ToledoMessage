@@ -3,18 +3,19 @@ using ToledoMessage.Crypto.PostQuantum;
 
 namespace ToledoMessage.Crypto.Tests.PostQuantum;
 
+[TestClass]
 public class MlDsaSignerTests
 {
-    [Fact]
+    [TestMethod]
     public void GenerateKeyPair_ReturnsValidKeys()
     {
         var (publicKey, privateKey) = MlDsaSigner.GenerateKeyPair();
 
-        Assert.NotEmpty(publicKey);
-        Assert.NotEmpty(privateKey);
+        Assert.IsTrue(publicKey.Length > 0);
+        Assert.IsTrue(privateKey.Length > 0);
     }
 
-    [Fact]
+    [TestMethod]
     public void Sign_ProducesValidSignature()
     {
         var (publicKey, privateKey) = MlDsaSigner.GenerateKeyPair();
@@ -22,10 +23,10 @@ public class MlDsaSignerTests
 
         var signature = MlDsaSigner.Sign(privateKey, message);
 
-        Assert.True(MlDsaSigner.Verify(publicKey, message, signature));
+        Assert.IsTrue(MlDsaSigner.Verify(publicKey, message, signature));
     }
 
-    [Fact]
+    [TestMethod]
     public void Verify_RejectsTamperedMessage()
     {
         var (publicKey, privateKey) = MlDsaSigner.GenerateKeyPair();
@@ -34,10 +35,10 @@ public class MlDsaSignerTests
         var signature = MlDsaSigner.Sign(privateKey, message);
         var tamperedMessage = Encoding.UTF8.GetBytes("Tampered message");
 
-        Assert.False(MlDsaSigner.Verify(publicKey, tamperedMessage, signature));
+        Assert.IsFalse(MlDsaSigner.Verify(publicKey, tamperedMessage, signature));
     }
 
-    [Fact]
+    [TestMethod]
     public void Verify_RejectsTamperedSignature()
     {
         var (publicKey, privateKey) = MlDsaSigner.GenerateKeyPair();
@@ -46,6 +47,6 @@ public class MlDsaSignerTests
         var signature = MlDsaSigner.Sign(privateKey, message);
         signature[0] ^= 0xFF;
 
-        Assert.False(MlDsaSigner.Verify(publicKey, message, signature));
+        Assert.IsFalse(MlDsaSigner.Verify(publicKey, message, signature));
     }
 }

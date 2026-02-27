@@ -54,6 +54,9 @@ public class AuthController : BaseApiController
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 12)
             return BadRequest("Password must be at least 12 characters.");
 
+        if (request.Password.Length > Shared.Constants.ProtocolConstants.MaxPasswordLength)
+            return BadRequest($"Password must not exceed {Shared.Constants.ProtocolConstants.MaxPasswordLength} characters.");
+
         var exists = await _db.Users.AnyAsync(u => u.DisplayName == request.DisplayName);
         if (exists)
             return Conflict("A user with this display name already exists.");

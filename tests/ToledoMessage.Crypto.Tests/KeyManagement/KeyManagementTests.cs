@@ -5,25 +5,26 @@ using ToledoMessage.Crypto.PostQuantum;
 
 namespace ToledoMessage.Crypto.Tests.KeyManagement;
 
+[TestClass]
 public class IdentityKeyGeneratorTests
 {
-    [Fact]
+    [TestMethod]
     public void Generate_ReturnsValidKeyPair()
     {
         var identity = IdentityKeyGenerator.Generate();
 
-        Assert.NotNull(identity.ClassicalPublicKey);
-        Assert.NotNull(identity.ClassicalPrivateKey);
-        Assert.NotNull(identity.PostQuantumPublicKey);
-        Assert.NotNull(identity.PostQuantumPrivateKey);
+        Assert.IsNotNull(identity.ClassicalPublicKey);
+        Assert.IsNotNull(identity.ClassicalPrivateKey);
+        Assert.IsNotNull(identity.PostQuantumPublicKey);
+        Assert.IsNotNull(identity.PostQuantumPrivateKey);
 
-        Assert.Equal(32, identity.ClassicalPublicKey.Length);
-        Assert.Equal(32, identity.ClassicalPrivateKey.Length);
-        Assert.NotEmpty(identity.PostQuantumPublicKey);
-        Assert.NotEmpty(identity.PostQuantumPrivateKey);
+        Assert.AreEqual(32, identity.ClassicalPublicKey.Length);
+        Assert.AreEqual(32, identity.ClassicalPrivateKey.Length);
+        Assert.IsTrue(identity.PostQuantumPublicKey.Length > 0);
+        Assert.IsTrue(identity.PostQuantumPrivateKey.Length > 0);
     }
 
-    [Fact]
+    [TestMethod]
     public void Generate_CanSignAndVerify()
     {
         var identity = IdentityKeyGenerator.Generate();
@@ -40,23 +41,24 @@ public class IdentityKeyGeneratorTests
             message,
             signature);
 
-        Assert.True(isValid);
+        Assert.IsTrue(isValid);
     }
 
-    [Fact]
+    [TestMethod]
     public void Generate_TwoCallsProduceDifferentKeys()
     {
         var id1 = IdentityKeyGenerator.Generate();
         var id2 = IdentityKeyGenerator.Generate();
 
-        Assert.NotEqual(id1.ClassicalPublicKey, id2.ClassicalPublicKey);
-        Assert.NotEqual(id1.ClassicalPrivateKey, id2.ClassicalPrivateKey);
+        CollectionAssert.AreNotEqual(id1.ClassicalPublicKey, id2.ClassicalPublicKey);
+        CollectionAssert.AreNotEqual(id1.ClassicalPrivateKey, id2.ClassicalPrivateKey);
     }
 }
 
+[TestClass]
 public class PreKeyGeneratorTests
 {
-    [Fact]
+    [TestMethod]
     public void GenerateSignedPreKey_ReturnsValidKey()
     {
         var identity = IdentityKeyGenerator.Generate();
@@ -66,13 +68,13 @@ public class PreKeyGeneratorTests
             identity.ClassicalPrivateKey,
             identity.PostQuantumPrivateKey);
 
-        Assert.Equal(1, spk.KeyId);
-        Assert.Equal(32, spk.PublicKey.Length);
-        Assert.Equal(32, spk.PrivateKey.Length);
-        Assert.NotEmpty(spk.Signature);
+        Assert.AreEqual(1, spk.KeyId);
+        Assert.AreEqual(32, spk.PublicKey.Length);
+        Assert.AreEqual(32, spk.PrivateKey.Length);
+        Assert.IsTrue(spk.Signature.Length > 0);
     }
 
-    [Fact]
+    [TestMethod]
     public void GenerateSignedPreKey_SignatureIsValid()
     {
         var identity = IdentityKeyGenerator.Generate();
@@ -88,10 +90,10 @@ public class PreKeyGeneratorTests
             spk.PublicKey,
             spk.Signature);
 
-        Assert.True(isValid);
+        Assert.IsTrue(isValid);
     }
 
-    [Fact]
+    [TestMethod]
     public void GenerateKyberPreKey_ReturnsValidKey()
     {
         var identity = IdentityKeyGenerator.Generate();
@@ -100,12 +102,12 @@ public class PreKeyGeneratorTests
             identity.ClassicalPrivateKey,
             identity.PostQuantumPrivateKey);
 
-        Assert.NotEmpty(kpk.PublicKey);
-        Assert.NotEmpty(kpk.PrivateKey);
-        Assert.NotEmpty(kpk.Signature);
+        Assert.IsTrue(kpk.PublicKey.Length > 0);
+        Assert.IsTrue(kpk.PrivateKey.Length > 0);
+        Assert.IsTrue(kpk.Signature.Length > 0);
     }
 
-    [Fact]
+    [TestMethod]
     public void GenerateKyberPreKey_SignatureIsValid()
     {
         var identity = IdentityKeyGenerator.Generate();
@@ -120,10 +122,10 @@ public class PreKeyGeneratorTests
             kpk.PublicKey,
             kpk.Signature);
 
-        Assert.True(isValid);
+        Assert.IsTrue(isValid);
     }
 
-    [Fact]
+    [TestMethod]
     public void GenerateKyberPreKey_CanEncapsulateAndDecapsulate()
     {
         var identity = IdentityKeyGenerator.Generate();
@@ -135,67 +137,68 @@ public class PreKeyGeneratorTests
         var (ciphertext, sharedSecret1) = MlKemKeyExchange.Encapsulate(kpk.PublicKey);
         var sharedSecret2 = MlKemKeyExchange.Decapsulate(kpk.PrivateKey, ciphertext);
 
-        Assert.Equal(sharedSecret1, sharedSecret2);
+        CollectionAssert.AreEqual(sharedSecret1, sharedSecret2);
     }
 
-    [Fact]
+    [TestMethod]
     public void GenerateOneTimePreKeys_ReturnsCorrectCount()
     {
         var keys = PreKeyGenerator.GenerateOneTimePreKeys(10, 5);
 
-        Assert.Equal(5, keys.Count);
+        Assert.AreEqual(5, keys.Count);
     }
 
-    [Fact]
+    [TestMethod]
     public void GenerateOneTimePreKeys_HasSequentialIds()
     {
         var keys = PreKeyGenerator.GenerateOneTimePreKeys(10, 5);
 
         for (int i = 0; i < 5; i++)
         {
-            Assert.Equal(10 + i, keys[i].KeyId);
+            Assert.AreEqual(10 + i, keys[i].KeyId);
         }
     }
 
-    [Fact]
+    [TestMethod]
     public void GenerateOneTimePreKeys_AllKeysAreUnique()
     {
         var keys = PreKeyGenerator.GenerateOneTimePreKeys(1, 10);
 
         var publicKeys = keys.Select(k => Convert.ToBase64String(k.PublicKey)).ToList();
-        Assert.Equal(publicKeys.Count, publicKeys.Distinct().Count());
+        Assert.AreEqual(publicKeys.Count, publicKeys.Distinct().Count());
     }
 
-    [Fact]
+    [TestMethod]
     public void GenerateOneTimePreKeys_KeysAreValidX25519()
     {
         var keys = PreKeyGenerator.GenerateOneTimePreKeys(1, 3);
 
         foreach (var key in keys)
         {
-            Assert.Equal(32, key.PublicKey.Length);
-            Assert.Equal(32, key.PrivateKey.Length);
+            Assert.AreEqual(32, key.PublicKey.Length);
+            Assert.AreEqual(32, key.PrivateKey.Length);
 
             // Verify that DH works with these keys
             var (otherPub, otherPriv) = X25519KeyExchange.GenerateKeyPair();
             var ss1 = X25519KeyExchange.ComputeSharedSecret(key.PrivateKey, otherPub);
             var ss2 = X25519KeyExchange.ComputeSharedSecret(otherPriv, key.PublicKey);
-            Assert.Equal(ss1, ss2);
+            CollectionAssert.AreEqual(ss1, ss2);
         }
     }
 
-    [Fact]
+    [TestMethod]
     public void GenerateOneTimePreKeys_ZeroCount_ReturnsEmptyList()
     {
         var keys = PreKeyGenerator.GenerateOneTimePreKeys(1, 0);
 
-        Assert.Empty(keys);
+        Assert.IsFalse(keys.Any());
     }
 }
 
+[TestClass]
 public class FingerprintGeneratorTests
 {
-    [Fact]
+    [TestMethod]
     public void GenerateFingerprint_ReturnsCorrectFormat()
     {
         var key1 = new byte[32];
@@ -207,15 +210,15 @@ public class FingerprintGeneratorTests
 
         // 30 digits in 6 groups of 5, separated by spaces
         var groups = fingerprint.Split(' ');
-        Assert.Equal(6, groups.Length);
+        Assert.AreEqual(6, groups.Length);
         foreach (var group in groups)
         {
-            Assert.Equal(5, group.Length);
-            Assert.True(group.All(char.IsDigit), $"Group '{group}' contains non-digit characters");
+            Assert.AreEqual(5, group.Length);
+            Assert.IsTrue(group.All(char.IsDigit), $"Group '{group}' contains non-digit characters");
         }
     }
 
-    [Fact]
+    [TestMethod]
     public void GenerateFingerprint_SameResultRegardlessOfOrder()
     {
         var key1 = new byte[32];
@@ -226,10 +229,10 @@ public class FingerprintGeneratorTests
         var fp1 = FingerprintGenerator.GenerateFingerprint(key1, key2);
         var fp2 = FingerprintGenerator.GenerateFingerprint(key2, key1);
 
-        Assert.Equal(fp1, fp2);
+        Assert.AreEqual(fp1, fp2);
     }
 
-    [Fact]
+    [TestMethod]
     public void GenerateFingerprint_DifferentKeysProduceDifferentFingerprints()
     {
         var key1 = new byte[32];
@@ -242,10 +245,10 @@ public class FingerprintGeneratorTests
         var fp12 = FingerprintGenerator.GenerateFingerprint(key1, key2);
         var fp13 = FingerprintGenerator.GenerateFingerprint(key1, key3);
 
-        Assert.NotEqual(fp12, fp13);
+        Assert.AreNotEqual(fp12, fp13);
     }
 
-    [Fact]
+    [TestMethod]
     public void GenerateFingerprint_IsDeterministic()
     {
         var key1 = new byte[32];
@@ -256,6 +259,6 @@ public class FingerprintGeneratorTests
         var fp1 = FingerprintGenerator.GenerateFingerprint(key1, key2);
         var fp2 = FingerprintGenerator.GenerateFingerprint(key1, key2);
 
-        Assert.Equal(fp1, fp2);
+        Assert.AreEqual(fp1, fp2);
     }
 }

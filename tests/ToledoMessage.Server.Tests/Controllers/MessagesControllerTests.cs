@@ -10,6 +10,7 @@ using ToledoMessage.Server.Tests.Services;
 
 namespace ToledoMessage.Server.Tests.Controllers;
 
+[TestClass]
 public class MessagesControllerTests
 {
     private static (MessagesController controller, Data.ApplicationDbContext db) CreateController(decimal userId = 1m)
@@ -33,7 +34,7 @@ public class MessagesControllerTests
         await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task SendMessage_ValidRequest_ReturnsOk()
     {
         var (controller, db) = CreateController();
@@ -44,13 +45,15 @@ public class MessagesControllerTests
 
         var result = await controller.SendMessage(request);
 
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<SendMessageResult>(ok.Value);
-        Assert.NotEqual(0m, response.MessageId);
-        Assert.Equal(1, response.SequenceNumber);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
+        Assert.IsInstanceOfType<SendMessageResult>(ok.Value);
+        var response = (SendMessageResult)ok.Value!;
+        Assert.AreNotEqual(0m, response.MessageId);
+        Assert.AreEqual(1, response.SequenceNumber);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task SendMessage_NotParticipant_ReturnsForbid()
     {
         var (controller, db) = CreateController(3m); // user 3 is not a participant
@@ -62,10 +65,10 @@ public class MessagesControllerTests
             Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType.NormalMessage, ContentType.Text);
 
         var result = await controller.SendMessage(request);
-        Assert.IsType<ForbidResult>(result);
+        Assert.IsInstanceOfType<ForbidResult>(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task SendMessage_NoActiveDevice_ReturnsBadRequest()
     {
         var (controller, db) = CreateController(3m);
@@ -77,10 +80,10 @@ public class MessagesControllerTests
             Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType.NormalMessage, ContentType.Text);
 
         var result = await controller.SendMessage(request);
-        Assert.IsType<BadRequestObjectResult>(result);
+        Assert.IsInstanceOfType<BadRequestObjectResult>(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task GetPendingMessages_OwnDevice_ReturnsPending()
     {
         var (controller, db) = CreateController();
@@ -97,22 +100,24 @@ public class MessagesControllerTests
 
         var result = await controller.GetPendingMessages(10m);
 
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var envelopes = Assert.IsAssignableFrom<List<MessageEnvelope>>(ok.Value);
-        Assert.Single(envelopes);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
+        Assert.IsInstanceOfType<List<MessageEnvelope>>(ok.Value);
+        var envelopes = (List<MessageEnvelope>)ok.Value!;
+        Assert.AreEqual(1, envelopes.Count);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task GetPendingMessages_OtherUsersDevice_ReturnsNotFound()
     {
         var (controller, db) = CreateController();
         await SeedMessagingContext(db);
 
         var result = await controller.GetPendingMessages(20m); // device 20 belongs to user 2
-        Assert.IsType<NotFoundObjectResult>(result);
+        Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task AcknowledgeDelivery_ValidMessage_ReturnsOk()
     {
         var (controller, db) = CreateController();
@@ -128,12 +133,12 @@ public class MessagesControllerTests
 
         var result = await controller.AcknowledgeDelivery(500m);
 
-        Assert.IsType<OkObjectResult>(result);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
         var msg = await db.EncryptedMessages.FindAsync(500m);
-        Assert.True(msg!.IsDelivered);
+        Assert.IsTrue(msg!.IsDelivered);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task AcknowledgeDelivery_NotRecipient_ReturnsForbid()
     {
         var (controller, db) = CreateController();
@@ -149,20 +154,20 @@ public class MessagesControllerTests
         await db.SaveChangesAsync();
 
         var result = await controller.AcknowledgeDelivery(500m);
-        Assert.IsType<ForbidResult>(result);
+        Assert.IsInstanceOfType<ForbidResult>(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task AcknowledgeDelivery_MessageNotFound_ReturnsNotFound()
     {
         var (controller, _) = CreateController();
         var result = await controller.AcknowledgeDelivery(999m);
-        Assert.IsType<NotFoundObjectResult>(result);
+        Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 
     // --- Base64 Validation ---
 
-    [Fact]
+    [TestMethod]
     public async Task SendMessage_InvalidBase64Ciphertext_ReturnsBadRequest()
     {
         var (controller, db) = CreateController();
@@ -172,10 +177,10 @@ public class MessagesControllerTests
             "not-valid-base64!!!", MessageType.NormalMessage, ContentType.Text);
 
         var result = await controller.SendMessage(request);
-        Assert.IsType<BadRequestObjectResult>(result);
+        Assert.IsInstanceOfType<BadRequestObjectResult>(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task SendMessage_EmptyCiphertext_ReturnsBadRequest()
     {
         var (controller, db) = CreateController();
@@ -185,6 +190,6 @@ public class MessagesControllerTests
             "", MessageType.NormalMessage, ContentType.Text);
 
         var result = await controller.SendMessage(request);
-        Assert.IsType<BadRequestObjectResult>(result);
+        Assert.IsInstanceOfType<BadRequestObjectResult>(result);
     }
 }

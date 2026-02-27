@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ToledoMessage.Data;
 using ToledoMessage.Services;
+using ToledoMessage.Shared.Constants;
 using ToledoMessage.Shared.DTOs;
 
 namespace ToledoMessage.Controllers;
@@ -30,8 +31,12 @@ public class MessagesController : BaseApiController
         var userId = GetUserId();
 
         // Validate Base64 ciphertext before processing
-        if (!MessageRelayService.IsValidBase64(request.Ciphertext, out _))
+        if (!MessageRelayService.IsValidBase64(request.Ciphertext, out var ciphertextBytes))
             return BadRequest("Invalid Base64 ciphertext.");
+
+        // Enforce maximum ciphertext size (FR-019)
+        if (ciphertextBytes.Length > ProtocolConstants.MaxCiphertextSizeBytes)
+            return BadRequest($"Message ciphertext exceeds the maximum allowed size of {ProtocolConstants.MaxCiphertextSizeBytes} bytes.");
 
         // Validate sender is a participant in the conversation
         var isParticipant = await _db.ConversationParticipants
@@ -44,6 +49,13 @@ public class MessagesController : BaseApiController
             .AnyAsync(d => d.Id == request.SenderDeviceId && d.UserId == userId && d.IsActive);
         if (!senderDeviceOwned)
             return BadRequest("Sender device not found or does not belong to the current user.");
+
+        // Validate recipient device is active and recipient user is not deactivated
+        var recipientDevice = await _db.Devices
+            .Include(d => d.User)
+            .FirstOrDefaultAsync(d => d.Id == request.RecipientDeviceId && d.IsActive);
+        if (recipientDevice == null || !recipientDevice.User.IsActive)
+            return BadRequest("Recipient device is not available.");
 
         // Store the message
         var message = await _relayService.StoreMessage(request.SenderDeviceId, request);

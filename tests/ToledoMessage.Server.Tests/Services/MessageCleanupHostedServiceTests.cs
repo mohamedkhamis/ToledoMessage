@@ -4,6 +4,7 @@ using ToledoMessage.Services;
 
 namespace ToledoMessage.Server.Tests.Services;
 
+[TestClass]
 public class MessageCleanupHostedServiceTests
 {
     private static (MessageCleanupHostedService service, IServiceScopeFactory scopeFactory) CreateService()
@@ -23,7 +24,7 @@ public class MessageCleanupHostedServiceTests
         return (service, scopeFactory);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ExecuteAsync_StopsOnCancellation()
     {
         var (service, _) = CreateService();
@@ -35,10 +36,10 @@ public class MessageCleanupHostedServiceTests
         await service.StopAsync(CancellationToken.None);
 
         // If we reach here without hanging, the service correctly handled cancellation
-        Assert.True(true);
+        Assert.IsTrue(true);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ExecuteAsync_DoesNotThrowOnNormalStop()
     {
         var (service, _) = CreateService();
@@ -49,6 +50,6 @@ public class MessageCleanupHostedServiceTests
         await service.StopAsync(CancellationToken.None);
 
         // Service should complete without throwing
-        Assert.True(true);
+        Assert.IsTrue(true);
     }
 }

@@ -3,6 +3,7 @@ using ToledoMessage.Crypto.Classical;
 
 namespace ToledoMessage.Crypto.Tests.Classical;
 
+[TestClass]
 public class AesGcmCipherTests
 {
     private static byte[] GenerateRandomBytes(int length)
@@ -13,7 +14,7 @@ public class AesGcmCipherTests
         return bytes;
     }
 
-    [Fact]
+    [TestMethod]
     public void Encrypt_Decrypt_RoundTrip()
     {
         var key = GenerateRandomBytes(32);
@@ -23,10 +24,10 @@ public class AesGcmCipherTests
         var ciphertext = AesGcmCipher.Encrypt(key, nonce, plaintext);
         var decrypted = AesGcmCipher.Decrypt(key, nonce, ciphertext);
 
-        Assert.Equal(plaintext, decrypted);
+        CollectionAssert.AreEqual(plaintext, decrypted);
     }
 
-    [Fact]
+    [TestMethod]
     public void Decrypt_RejectsTamperedCiphertext()
     {
         var key = GenerateRandomBytes(32);
@@ -37,10 +38,12 @@ public class AesGcmCipherTests
 
         ciphertext[0] ^= 0xFF;
 
-        Assert.ThrowsAny<Exception>(() => AesGcmCipher.Decrypt(key, nonce, ciphertext));
+        bool threw = false;
+        try { AesGcmCipher.Decrypt(key, nonce, ciphertext); } catch { threw = true; }
+        Assert.IsTrue(threw);
     }
 
-    [Fact]
+    [TestMethod]
     public void Encrypt_Decrypt_WithAssociatedData()
     {
         var key = GenerateRandomBytes(32);
@@ -51,10 +54,10 @@ public class AesGcmCipherTests
         var ciphertext = AesGcmCipher.Encrypt(key, nonce, plaintext, aad);
         var decrypted = AesGcmCipher.Decrypt(key, nonce, ciphertext, aad);
 
-        Assert.Equal(plaintext, decrypted);
+        CollectionAssert.AreEqual(plaintext, decrypted);
     }
 
-    [Fact]
+    [TestMethod]
     public void Decrypt_RejectsMismatchedAssociatedData()
     {
         var key = GenerateRandomBytes(32);
@@ -65,10 +68,12 @@ public class AesGcmCipherTests
 
         var ciphertext = AesGcmCipher.Encrypt(key, nonce, plaintext, aad);
 
-        Assert.ThrowsAny<Exception>(() => AesGcmCipher.Decrypt(key, nonce, ciphertext, wrongAad));
+        bool threw = false;
+        try { AesGcmCipher.Decrypt(key, nonce, ciphertext, wrongAad); } catch { threw = true; }
+        Assert.IsTrue(threw);
     }
 
-    [Fact]
+    [TestMethod]
     public void Encrypt_DifferentNonces_ProduceDifferentCiphertexts()
     {
         var key = GenerateRandomBytes(32);
@@ -79,6 +84,6 @@ public class AesGcmCipherTests
         var ciphertext1 = AesGcmCipher.Encrypt(key, nonce1, plaintext);
         var ciphertext2 = AesGcmCipher.Encrypt(key, nonce2, plaintext);
 
-        Assert.NotEqual(ciphertext1, ciphertext2);
+        CollectionAssert.AreNotEqual(ciphertext1, ciphertext2);
     }
 }

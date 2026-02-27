@@ -38,6 +38,7 @@ public class StubClientProxy : IClientProxy
     }
 }
 
+[TestClass]
 public class MessageRelayServiceTests
 {
     private static (ApplicationDbContext db, MessageRelayService service) CreateService()
@@ -47,7 +48,7 @@ public class MessageRelayServiceTests
         return (db, service);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task StoreMessage_CreatesMessageWithSequenceNumber()
     {
         var (db, service) = CreateService();
@@ -62,13 +63,13 @@ public class MessageRelayServiceTests
 
         var message = await service.StoreMessage(10m, request);
 
-        Assert.NotEqual(0m, message.Id);
-        Assert.Equal(1, message.SequenceNumber);
-        Assert.Equal(100m, message.ConversationId);
-        Assert.False(message.IsDelivered);
+        Assert.AreNotEqual(0m, message.Id);
+        Assert.AreEqual(1, message.SequenceNumber);
+        Assert.AreEqual(100m, message.ConversationId);
+        Assert.IsFalse(message.IsDelivered);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task StoreMessage_IncrementsSequenceNumber()
     {
         var (db, service) = CreateService();
@@ -83,12 +84,12 @@ public class MessageRelayServiceTests
         var msg2 = await service.StoreMessage(10m, request);
         var msg3 = await service.StoreMessage(10m, request);
 
-        Assert.Equal(1, msg1.SequenceNumber);
-        Assert.Equal(2, msg2.SequenceNumber);
-        Assert.Equal(3, msg3.SequenceNumber);
+        Assert.AreEqual(1, msg1.SequenceNumber);
+        Assert.AreEqual(2, msg2.SequenceNumber);
+        Assert.AreEqual(3, msg3.SequenceNumber);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task GetPendingMessages_ReturnsUndeliveredOnly()
     {
         var (db, service) = CreateService();
@@ -115,12 +116,12 @@ public class MessageRelayServiceTests
 
         var pending = await service.GetPendingMessages(20m);
 
-        Assert.Equal(2, pending.Count);
-        Assert.Equal(1m, pending[0].Id);
-        Assert.Equal(3m, pending[1].Id);
+        Assert.AreEqual(2, pending.Count);
+        Assert.AreEqual(1m, pending[0].Id);
+        Assert.AreEqual(3m, pending[1].Id);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task AcknowledgeDelivery_MarksAsDelivered()
     {
         var (db, service) = CreateService();
@@ -133,20 +134,20 @@ public class MessageRelayServiceTests
 
         var result = await service.AcknowledgeDelivery(1m);
 
-        Assert.NotNull(result);
-        Assert.True(result.IsDelivered);
-        Assert.NotNull(result.DeliveredAt);
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.IsDelivered);
+        Assert.IsNotNull(result.DeliveredAt);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task AcknowledgeDelivery_MessageNotFound_ReturnsNull()
     {
         var (db, service) = CreateService();
         var result = await service.AcknowledgeDelivery(999m);
-        Assert.Null(result);
+        Assert.IsNull(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task CleanupExpiredMessages_DeletesExpiredDisappearingMessages()
     {
         var (db, service) = CreateService();
@@ -166,11 +167,11 @@ public class MessageRelayServiceTests
 
         var deleted = await service.CleanupExpiredMessages();
 
-        Assert.Equal(1, deleted);
-        Assert.Empty(db.EncryptedMessages);
+        Assert.AreEqual(1, deleted);
+        Assert.IsFalse(db.EncryptedMessages.Any());
     }
 
-    [Fact]
+    [TestMethod]
     public async Task CleanupExpiredMessages_KeepsNonExpiredMessages()
     {
         var (db, service) = CreateService();
@@ -190,11 +191,11 @@ public class MessageRelayServiceTests
 
         var deleted = await service.CleanupExpiredMessages();
 
-        Assert.Equal(0, deleted);
-        Assert.Single(db.EncryptedMessages);
+        Assert.AreEqual(0, deleted);
+        Assert.AreEqual(1, db.EncryptedMessages.Count());
     }
 
-    [Fact]
+    [TestMethod]
     public async Task StoreMessage_SequenceNumbersAreUniquePerConversation()
     {
         var (db, service) = CreateService();
@@ -216,12 +217,12 @@ public class MessageRelayServiceTests
         var msg3 = await service.StoreMessage(10m, request200);
 
         // Sequence numbers are per-conversation
-        Assert.Equal(1, msg1.SequenceNumber);
-        Assert.Equal(2, msg2.SequenceNumber);
-        Assert.Equal(1, msg3.SequenceNumber); // Independent sequence for conversation 200
+        Assert.AreEqual(1, msg1.SequenceNumber);
+        Assert.AreEqual(2, msg2.SequenceNumber);
+        Assert.AreEqual(1, msg3.SequenceNumber); // Independent sequence for conversation 200
     }
 
-    [Fact]
+    [TestMethod]
     public async Task StoreMessage_InvalidBase64_ThrowsArgumentException()
     {
         var (db, service) = CreateService();
@@ -232,7 +233,7 @@ public class MessageRelayServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => service.StoreMessage(10m, request));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task CleanupExpiredMessages_SkipsUndeliveredMessages()
     {
         var (db, service) = CreateService();
@@ -252,6 +253,6 @@ public class MessageRelayServiceTests
 
         var deleted = await service.CleanupExpiredMessages();
 
-        Assert.Equal(0, deleted);
+        Assert.AreEqual(0, deleted);
     }
 }

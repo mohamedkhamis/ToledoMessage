@@ -2,18 +2,19 @@ using ToledoMessage.Crypto.PostQuantum;
 
 namespace ToledoMessage.Crypto.Tests.PostQuantum;
 
+[TestClass]
 public class MlKemKeyExchangeTests
 {
-    [Fact]
+    [TestMethod]
     public void GenerateKeyPair_ReturnsValidKeys()
     {
         var (publicKey, privateKey) = MlKemKeyExchange.GenerateKeyPair();
 
-        Assert.NotEmpty(publicKey);
-        Assert.NotEmpty(privateKey);
+        Assert.IsTrue(publicKey.Length > 0);
+        Assert.IsTrue(privateKey.Length > 0);
     }
 
-    [Fact]
+    [TestMethod]
     public void Encapsulate_Decapsulate_ProducesSameSharedSecret()
     {
         var (publicKey, privateKey) = MlKemKeyExchange.GenerateKeyPair();
@@ -21,27 +22,27 @@ public class MlKemKeyExchangeTests
         var (ciphertext, sharedSecretSender) = MlKemKeyExchange.Encapsulate(publicKey);
         var sharedSecretRecipient = MlKemKeyExchange.Decapsulate(privateKey, ciphertext);
 
-        Assert.Equal(32, sharedSecretSender.Length);
-        Assert.Equal(32, sharedSecretRecipient.Length);
-        Assert.Equal(sharedSecretSender, sharedSecretRecipient);
+        Assert.AreEqual(32, sharedSecretSender.Length);
+        Assert.AreEqual(32, sharedSecretRecipient.Length);
+        CollectionAssert.AreEqual(sharedSecretSender, sharedSecretRecipient);
     }
 
-    [Fact]
+    [TestMethod]
     public void DifferentKeyPairs_ProduceDifferentKeys()
     {
         var (publicKey1, _) = MlKemKeyExchange.GenerateKeyPair();
         var (publicKey2, _) = MlKemKeyExchange.GenerateKeyPair();
 
-        Assert.NotEqual(publicKey1, publicKey2);
+        CollectionAssert.AreNotEqual(publicKey1, publicKey2);
     }
 
-    [Fact]
+    [TestMethod]
     public void Encapsulate_ProducesNonEmptyCiphertext()
     {
         var (publicKey, _) = MlKemKeyExchange.GenerateKeyPair();
 
         var (ciphertext, _) = MlKemKeyExchange.Encapsulate(publicKey);
 
-        Assert.NotEmpty(ciphertext);
+        Assert.IsTrue(ciphertext.Length > 0);
     }
 }

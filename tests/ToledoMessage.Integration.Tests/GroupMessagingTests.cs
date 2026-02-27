@@ -4,9 +4,10 @@ using ToledoMessage.Crypto.Protocol;
 
 namespace ToledoMessage.Integration.Tests;
 
+[TestClass]
 public class GroupMessagingTests
 {
-    [Fact]
+    [TestMethod]
     public void GroupMessage_ThreeUsers_AllDecryptCorrectly()
     {
         // ================================================================
@@ -49,7 +50,7 @@ public class GroupMessagingTests
             bobSignedPreKey.PrivateKey, bobKyberPreKey.PrivateKey,
             bobOneTimePreKeys[0].PrivateKey, initBob.EphemeralPublicKey, initBob.KemCiphertext);
 
-        Assert.Equal(initBob.RootKey, bobRootKey);
+        CollectionAssert.AreEqual(initBob.RootKey, bobRootKey);
 
         // ================================================================
         // 3. Alice performs X3DH with Charlie -> session_ac
@@ -72,7 +73,7 @@ public class GroupMessagingTests
             charlieSignedPreKey.PrivateKey, charlieKyberPreKey.PrivateKey,
             charlieOneTimePreKeys[0].PrivateKey, initCharlie.EphemeralPublicKey, initCharlie.KemCiphertext);
 
-        Assert.Equal(initCharlie.RootKey, charlieRootKey);
+        CollectionAssert.AreEqual(initCharlie.RootKey, charlieRootKey);
 
         // ================================================================
         // Initialize Double Ratchet sessions
@@ -100,19 +101,19 @@ public class GroupMessagingTests
         // 5. Bob decrypts his copy -> verify matches
         // ================================================================
         var bobDecrypted = bobFromAliceRatchet.Decrypt(ciphertextForBob, headerForBob);
-        Assert.Equal(groupMessage, Encoding.UTF8.GetString(bobDecrypted));
+        Assert.AreEqual(groupMessage, Encoding.UTF8.GetString(bobDecrypted));
 
         // ================================================================
         // 6. Charlie decrypts his copy -> verify matches
         // ================================================================
         var charlieDecrypted = charlieFromAliceRatchet.Decrypt(ciphertextForCharlie, headerForCharlie);
-        Assert.Equal(groupMessage, Encoding.UTF8.GetString(charlieDecrypted));
+        Assert.AreEqual(groupMessage, Encoding.UTF8.GetString(charlieDecrypted));
 
         // ================================================================
         // 7. Verify Bob's and Charlie's ciphertexts are different
         //    (different pairwise sessions => different keys)
         // ================================================================
-        Assert.NotEqual(ciphertextForBob, ciphertextForCharlie);
+        CollectionAssert.AreNotEqual(ciphertextForBob, ciphertextForCharlie);
 
         // ================================================================
         // 8. Bob sends a reply (must encrypt for Alice and Charlie)
@@ -140,7 +141,7 @@ public class GroupMessagingTests
             charlieSignedPreKey.PrivateKey, charlieKyberPreKey.PrivateKey,
             charlieOneTimePreKeys[1].PrivateKey, bobInitCharlie.EphemeralPublicKey, bobInitCharlie.KemCiphertext);
 
-        Assert.Equal(bobInitCharlie.RootKey, charlieFromBobRootKey);
+        CollectionAssert.AreEqual(bobInitCharlie.RootKey, charlieFromBobRootKey);
 
         var bobToCharlieRatchet = DoubleRatchet.InitializeAsInitiator(
             bobInitCharlie.RootKey, charlieSignedPreKey.PublicKey);
@@ -160,16 +161,16 @@ public class GroupMessagingTests
         // 9. Alice and Charlie both decrypt -> verify matches
         // ================================================================
         var aliceDecryptedReply = aliceToBobRatchet.Decrypt(replyCtForAlice, replyHdrForAlice);
-        Assert.Equal(bobReply, Encoding.UTF8.GetString(aliceDecryptedReply));
+        Assert.AreEqual(bobReply, Encoding.UTF8.GetString(aliceDecryptedReply));
 
         var charlieDecryptedReply = charlieFromBobRatchet.Decrypt(replyCtForCharlie, replyHdrForCharlie);
-        Assert.Equal(bobReply, Encoding.UTF8.GetString(charlieDecryptedReply));
+        Assert.AreEqual(bobReply, Encoding.UTF8.GetString(charlieDecryptedReply));
 
         // Verify the reply ciphertexts are also different
-        Assert.NotEqual(replyCtForAlice, replyCtForCharlie);
+        CollectionAssert.AreNotEqual(replyCtForAlice, replyCtForCharlie);
     }
 
-    [Fact]
+    [TestMethod]
     public void GroupMessage_MultipleRoundsOfConversation()
     {
         // Tests multiple rounds of group messaging to verify
@@ -241,13 +242,13 @@ public class GroupMessagingTests
             var (ctCharlie, hdrCharlie) = aliceToCharlie.Encrypt(plaintext);
 
             var bobDecrypted = bobFromAlice.Decrypt(ctBob, hdrBob);
-            Assert.Equal(msg, Encoding.UTF8.GetString(bobDecrypted));
+            Assert.AreEqual(msg, Encoding.UTF8.GetString(bobDecrypted));
 
             var charlieDecrypted = charlieFromAlice.Decrypt(ctCharlie, hdrCharlie);
-            Assert.Equal(msg, Encoding.UTF8.GetString(charlieDecrypted));
+            Assert.AreEqual(msg, Encoding.UTF8.GetString(charlieDecrypted));
 
             // Each round produces different ciphertexts
-            Assert.NotEqual(ctBob, ctCharlie);
+            CollectionAssert.AreNotEqual(ctBob, ctCharlie);
         }
 
         // Bob replies to Alice (via existing session)
@@ -258,7 +259,7 @@ public class GroupMessagingTests
 
             var (ct, hdr) = bobFromAlice.Encrypt(replyBytes);
             var decrypted = aliceToBob.Decrypt(ct, hdr);
-            Assert.Equal(reply, Encoding.UTF8.GetString(decrypted));
+            Assert.AreEqual(reply, Encoding.UTF8.GetString(decrypted));
         }
     }
 }

@@ -112,6 +112,7 @@ public class RecordingClientProxy : IClientProxy
     }
 }
 
+[TestClass]
 public class ChatHubTests
 {
     private static (ChatHub hub, ApplicationDbContext db, StubGroupManager groups, StubHubCallerClients clients) CreateHub(decimal userId = 1m)
@@ -135,7 +136,7 @@ public class ChatHubTests
 
     // --- RegisterDevice ---
 
-    [Fact]
+    [TestMethod]
     public async Task RegisterDevice_OwnDevice_AddsToGroups()
     {
         var (hub, db, groups, _) = CreateHub();
@@ -144,12 +145,12 @@ public class ChatHubTests
 
         await hub.RegisterDevice(10m);
 
-        Assert.Equal(2, groups.Added.Count);
-        Assert.Contains(groups.Added, g => g.groupName == "device_10");
-        Assert.Contains(groups.Added, g => g.groupName == "user_1");
+        Assert.AreEqual(2, groups.Added.Count);
+        Assert.IsTrue(groups.Added.Any(g => g.groupName == "device_10"));
+        Assert.IsTrue(groups.Added.Any(g => g.groupName == "user_1"));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task RegisterDevice_OtherUsersDevice_ThrowsHubException()
     {
         var (hub, db, _, _) = CreateHub();
@@ -158,10 +159,10 @@ public class ChatHubTests
         await TestDbContextFactory.SeedDevice(db, 20m, 2m, "OtherDevice");
 
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.RegisterDevice(20m));
-        Assert.Contains("not found", ex.Message);
+        StringAssert.Contains(ex.Message, "not found");
     }
 
-    [Fact]
+    [TestMethod]
     public async Task RegisterDevice_InactiveDevice_ThrowsHubException()
     {
         var (hub, db, _, _) = CreateHub();
@@ -171,22 +172,22 @@ public class ChatHubTests
         await db.SaveChangesAsync();
 
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.RegisterDevice(10m));
-        Assert.Contains("not found", ex.Message);
+        StringAssert.Contains(ex.Message, "not found");
     }
 
-    [Fact]
+    [TestMethod]
     public async Task RegisterDevice_NonExistentDevice_ThrowsHubException()
     {
         var (hub, db, _, _) = CreateHub();
         await TestDbContextFactory.SeedUser(db, 1m, "user1");
 
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.RegisterDevice(999m));
-        Assert.Contains("not found", ex.Message);
+        StringAssert.Contains(ex.Message, "not found");
     }
 
     // --- SendMessage ---
 
-    [Fact]
+    [TestMethod]
     public async Task SendMessage_AsParticipant_ReturnsResult()
     {
         var (hub, db, _, _) = CreateHub();
@@ -203,11 +204,11 @@ public class ChatHubTests
 
         var result = await hub.SendMessage(request);
 
-        Assert.NotEqual(0m, result.MessageId);
-        Assert.Equal(1, result.SequenceNumber);
+        Assert.AreNotEqual(0m, result.MessageId);
+        Assert.AreEqual(1, result.SequenceNumber);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task SendMessage_NotParticipant_ThrowsHubException()
     {
         var (hub, db, _, _) = CreateHub();
@@ -220,10 +221,10 @@ public class ChatHubTests
             Convert.ToBase64String(new byte[] { 1 }), MessageType.NormalMessage, ContentType.Text);
 
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.SendMessage(request));
-        Assert.Contains("not a participant", ex.Message);
+        StringAssert.Contains(ex.Message, "not a participant");
     }
 
-    [Fact]
+    [TestMethod]
     public async Task SendMessage_DeviceNotOwnedBySender_ThrowsHubException()
     {
         var (hub, db, _, _) = CreateHub();
@@ -237,12 +238,12 @@ public class ChatHubTests
             Convert.ToBase64String(new byte[] { 1 }), MessageType.NormalMessage, ContentType.Text);
 
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.SendMessage(request));
-        Assert.Contains("Sender device not found", ex.Message);
+        StringAssert.Contains(ex.Message, "Sender device not found");
     }
 
     // --- AcknowledgeDelivery ---
 
-    [Fact]
+    [TestMethod]
     public async Task AcknowledgeDelivery_ValidMessage_MarksDelivered()
     {
         var (hub, db, _, clients) = CreateHub();
@@ -260,24 +261,24 @@ public class ChatHubTests
         await hub.AcknowledgeDelivery(500m);
 
         var msg = await db.EncryptedMessages.FindAsync(500m);
-        Assert.True(msg!.IsDelivered);
+        Assert.IsTrue(msg!.IsDelivered);
         // Verify notification was sent to the sender's device group
-        Assert.True(clients.SentToGroups.ContainsKey("device_20"));
-        Assert.Contains(clients.SentToGroups["device_20"], s => s.method == "MessageDelivered");
+        Assert.IsTrue(clients.SentToGroups.ContainsKey("device_20"));
+        Assert.IsTrue(clients.SentToGroups["device_20"].Any(s => s.method == "MessageDelivered"));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task AcknowledgeDelivery_MessageNotFound_ThrowsHubException()
     {
         var (hub, _, _, _) = CreateHub();
 
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.AcknowledgeDelivery(999m));
-        Assert.Contains("not found", ex.Message);
+        StringAssert.Contains(ex.Message, "not found");
     }
 
     // --- AcknowledgeRead ---
 
-    [Fact]
+    [TestMethod]
     public async Task AcknowledgeRead_ValidMessage_NotifiesSenderDevice()
     {
         var (hub, db, _, clients) = CreateHub();
@@ -294,22 +295,22 @@ public class ChatHubTests
 
         await hub.AcknowledgeRead(500m);
 
-        Assert.True(clients.SentToGroups.ContainsKey("device_20"));
-        Assert.Contains(clients.SentToGroups["device_20"], s => s.method == "MessageRead");
+        Assert.IsTrue(clients.SentToGroups.ContainsKey("device_20"));
+        Assert.IsTrue(clients.SentToGroups["device_20"].Any(s => s.method == "MessageRead"));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task AcknowledgeRead_MessageNotFound_ThrowsHubException()
     {
         var (hub, _, _, _) = CreateHub();
 
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.AcknowledgeRead(999m));
-        Assert.Contains("not found", ex.Message);
+        StringAssert.Contains(ex.Message, "not found");
     }
 
     // --- TypingIndicator ---
 
-    [Fact]
+    [TestMethod]
     public async Task TypingIndicator_NotifiesOtherParticipants()
     {
         var (hub, db, _, clients) = CreateHub();
@@ -324,16 +325,16 @@ public class ChatHubTests
         await hub.TypingIndicator(100m);
 
         // Should notify user_2 and user_3 but NOT user_1 (the sender)
-        Assert.True(clients.SentToGroups.ContainsKey("user_2"));
-        Assert.True(clients.SentToGroups.ContainsKey("user_3"));
-        Assert.False(clients.SentToGroups.ContainsKey("user_1"));
-        Assert.Contains(clients.SentToGroups["user_2"], s => s.method == "UserTyping");
-        Assert.Contains(clients.SentToGroups["user_3"], s => s.method == "UserTyping");
+        Assert.IsTrue(clients.SentToGroups.ContainsKey("user_2"));
+        Assert.IsTrue(clients.SentToGroups.ContainsKey("user_3"));
+        Assert.IsFalse(clients.SentToGroups.ContainsKey("user_1"));
+        Assert.IsTrue(clients.SentToGroups["user_2"].Any(s => s.method == "UserTyping"));
+        Assert.IsTrue(clients.SentToGroups["user_3"].Any(s => s.method == "UserTyping"));
     }
 
     // --- Ownership verification tests ---
 
-    [Fact]
+    [TestMethod]
     public async Task SendMessage_OtherUsersDevice_ThrowsHubException()
     {
         var (hub, db, _, _) = CreateHub(); // userId = 1
@@ -350,10 +351,10 @@ public class ChatHubTests
             Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType.NormalMessage, ContentType.Text);
 
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.SendMessage(request));
-        Assert.Contains("Sender device not found", ex.Message);
+        StringAssert.Contains(ex.Message, "Sender device not found");
     }
 
-    [Fact]
+    [TestMethod]
     public async Task AcknowledgeDelivery_OtherUsersMessage_ThrowsHubException()
     {
         var (hub, db, _, _) = CreateHub(); // userId = 1
@@ -372,10 +373,10 @@ public class ChatHubTests
 
         // User 1 tries to acknowledge a message destined for user 2's device
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.AcknowledgeDelivery(500m));
-        Assert.Contains("does not belong", ex.Message);
+        StringAssert.Contains(ex.Message, "does not belong");
     }
 
-    [Fact]
+    [TestMethod]
     public async Task AcknowledgeRead_OtherUsersMessage_ThrowsHubException()
     {
         var (hub, db, _, _) = CreateHub(); // userId = 1
@@ -394,18 +395,18 @@ public class ChatHubTests
 
         // User 1 tries to mark as read a message destined for user 2's device
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.AcknowledgeRead(500m));
-        Assert.Contains("does not belong", ex.Message);
+        StringAssert.Contains(ex.Message, "does not belong");
     }
 
     // --- OnDisconnectedAsync ---
 
-    [Fact]
+    [TestMethod]
     public async Task OnDisconnectedAsync_CompletesWithoutError()
     {
         var (hub, _, _, _) = CreateHub();
 
         // Should not throw
         await hub.OnDisconnectedAsync(null);
-        Assert.True(true);
+        Assert.IsTrue(true);
     }
 }

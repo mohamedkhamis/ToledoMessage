@@ -5,6 +5,7 @@ using ToledoMessage.Shared.DTOs;
 
 namespace ToledoMessage.Server.Tests.Controllers;
 
+[TestClass]
 public class UsersControllerTests
 {
     private static (UsersController controller, Data.ApplicationDbContext db) CreateController(decimal userId = 1m)
@@ -16,27 +17,31 @@ public class UsersControllerTests
         return (controller, db);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Search_EmptyQuery_ReturnsEmptyList()
     {
         var (controller, _) = CreateController();
         var result = await controller.Search("");
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<UserSearchResponse>(ok.Value);
-        Assert.Empty(response.Users);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
+        Assert.IsInstanceOfType<UserSearchResponse>(ok.Value);
+        var response = (UserSearchResponse)ok.Value!;
+        Assert.IsFalse(response.Users.Any());
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Search_NullQuery_ReturnsEmptyList()
     {
         var (controller, _) = CreateController();
         var result = await controller.Search(null);
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<UserSearchResponse>(ok.Value);
-        Assert.Empty(response.Users);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
+        Assert.IsInstanceOfType<UserSearchResponse>(ok.Value);
+        var response = (UserSearchResponse)ok.Value!;
+        Assert.IsFalse(response.Users.Any());
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Search_FindsMatchingUsers()
     {
         var (controller, db) = CreateController();
@@ -46,24 +51,28 @@ public class UsersControllerTests
         await TestDbContextFactory.SeedUser(db, 4m, "alice2");
 
         var result = await controller.Search("alice");
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<UserSearchResponse>(ok.Value);
-        Assert.Equal(2, response.Users.Count);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
+        Assert.IsInstanceOfType<UserSearchResponse>(ok.Value);
+        var response = (UserSearchResponse)ok.Value!;
+        Assert.AreEqual(2, response.Users.Count);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Search_ExcludesCurrentUser()
     {
         var (controller, db) = CreateController();
         await TestDbContextFactory.SeedUser(db, 1m, "myself");
 
         var result = await controller.Search("myself");
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<UserSearchResponse>(ok.Value);
-        Assert.Empty(response.Users);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
+        Assert.IsInstanceOfType<UserSearchResponse>(ok.Value);
+        var response = (UserSearchResponse)ok.Value!;
+        Assert.IsFalse(response.Users.Any());
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Search_ExcludesInactiveUsers()
     {
         var (controller, db) = CreateController();
@@ -71,12 +80,14 @@ public class UsersControllerTests
         await TestDbContextFactory.SeedUser(db, 2m, "inactive", isActive: false);
 
         var result = await controller.Search("inactive");
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<UserSearchResponse>(ok.Value);
-        Assert.Empty(response.Users);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
+        Assert.IsInstanceOfType<UserSearchResponse>(ok.Value);
+        var response = (UserSearchResponse)ok.Value!;
+        Assert.IsFalse(response.Users.Any());
     }
 
-    [Fact]
+    [TestMethod]
     public async Task GetPreKeyBundle_ValidDevice_ReturnsBundle()
     {
         var (controller, db) = CreateController();
@@ -89,13 +100,15 @@ public class UsersControllerTests
 
         var result = await controller.GetPreKeyBundle(2m, 20m);
 
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var bundle = Assert.IsType<PreKeyBundleResponse>(ok.Value);
-        Assert.Equal(20m, bundle.DeviceId);
-        Assert.NotNull(bundle.OneTimePreKey);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
+        Assert.IsInstanceOfType<PreKeyBundleResponse>(ok.Value);
+        var bundle = (PreKeyBundleResponse)ok.Value!;
+        Assert.AreEqual(20m, bundle.DeviceId);
+        Assert.IsNotNull(bundle.OneTimePreKey);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task GetPreKeyBundle_NoOtpAvailable_ReturnsNullOneTimePreKey()
     {
         var (controller, db) = CreateController();
@@ -105,20 +118,22 @@ public class UsersControllerTests
 
         var result = await controller.GetPreKeyBundle(2m, 20m);
 
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var bundle = Assert.IsType<PreKeyBundleResponse>(ok.Value);
-        Assert.Null(bundle.OneTimePreKey);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
+        Assert.IsInstanceOfType<PreKeyBundleResponse>(ok.Value);
+        var bundle = (PreKeyBundleResponse)ok.Value!;
+        Assert.IsNull(bundle.OneTimePreKey);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task GetPreKeyBundle_InvalidDevice_ReturnsNotFound()
     {
         var (controller, _) = CreateController();
         var result = await controller.GetPreKeyBundle(2m, 999m);
-        Assert.IsType<NotFoundObjectResult>(result);
+        Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task GetUserDevices_ReturnsActiveDevices()
     {
         var (controller, db) = CreateController();
@@ -131,15 +146,17 @@ public class UsersControllerTests
 
         var result = await controller.GetUserDevices(2m);
 
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var devices = Assert.IsAssignableFrom<List<DeviceInfoResponse>>(ok.Value);
-        Assert.Single(devices);
-        Assert.Equal("Active", devices[0].DeviceName);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
+        Assert.IsInstanceOfType<List<DeviceInfoResponse>>(ok.Value);
+        var devices = (List<DeviceInfoResponse>)ok.Value!;
+        Assert.AreEqual(1, devices.Count);
+        Assert.AreEqual("Active", devices[0].DeviceName);
     }
 
     // --- Bounded Search Results ---
 
-    [Fact]
+    [TestMethod]
     public async Task Search_ResultsAreBoundedByDefault()
     {
         var (controller, db) = CreateController();
@@ -152,14 +169,16 @@ public class UsersControllerTests
         }
 
         var result = await controller.Search("testuser");
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<UserSearchResponse>(ok.Value);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
+        Assert.IsInstanceOfType<UserSearchResponse>(ok.Value);
+        var response = (UserSearchResponse)ok.Value!;
 
         // Default take is 50
-        Assert.Equal(50, response.Users.Count);
+        Assert.AreEqual(50, response.Users.Count);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Search_TakeLimitIsEnforced()
     {
         var (controller, db) = CreateController();
@@ -169,13 +188,15 @@ public class UsersControllerTests
         await TestDbContextFactory.SeedUser(db, 4m, "alice3");
 
         var result = await controller.Search("alice", take: 2);
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<UserSearchResponse>(ok.Value);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
+        Assert.IsInstanceOfType<UserSearchResponse>(ok.Value);
+        var response = (UserSearchResponse)ok.Value!;
 
-        Assert.Equal(2, response.Users.Count);
+        Assert.AreEqual(2, response.Users.Count);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task Search_SkipPaginationWorks()
     {
         var (controller, db) = CreateController();
@@ -185,9 +206,11 @@ public class UsersControllerTests
         await TestDbContextFactory.SeedUser(db, 4m, "alice3");
 
         var result = await controller.Search("alice", skip: 1, take: 10);
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<UserSearchResponse>(ok.Value);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var ok = (OkObjectResult)result;
+        Assert.IsInstanceOfType<UserSearchResponse>(ok.Value);
+        var response = (UserSearchResponse)ok.Value!;
 
-        Assert.Equal(2, response.Users.Count); // 3 total alice, skip 1, take 2 remaining
+        Assert.AreEqual(2, response.Users.Count); // 3 total alice, skip 1, take 2 remaining
     }
 }

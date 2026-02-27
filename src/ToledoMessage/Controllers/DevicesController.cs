@@ -5,6 +5,7 @@ using Toledo.SharedKernel.Helpers;
 using ToledoMessage.Data;
 using ToledoMessage.Models;
 using ToledoMessage.Services;
+using ToledoMessage.Shared.Constants;
 using ToledoMessage.Shared.DTOs;
 
 namespace ToledoMessage.Controllers;
@@ -32,23 +33,42 @@ public class DevicesController : BaseApiController
         var userId = GetUserId();
 
         var activeDeviceCount = await _db.Devices.CountAsync(d => d.UserId == userId && d.IsActive);
-        if (activeDeviceCount >= 10)
-            return StatusCode(403, "Maximum number of devices (10) reached.");
+        if (activeDeviceCount >= ProtocolConstants.MaxDevicesPerUser)
+            return StatusCode(403, $"Maximum number of devices ({ProtocolConstants.MaxDevicesPerUser}) reached.");
 
-        // Validate all Base64 inputs
+        // Validate DeviceName
+        if (string.IsNullOrWhiteSpace(request.DeviceName) || request.DeviceName.Length > ProtocolConstants.MaxDeviceNameLength)
+            return BadRequest($"Device name must be between 1 and {ProtocolConstants.MaxDeviceNameLength} characters.");
+
+        // Decode and validate all Base64 key inputs
+        byte[] classicalIdentityKey, pqIdentityKey, signedPreKeyPublic, signedPreKeySig, kyberPreKeyPublic, kyberPreKeySig;
         try
         {
-            Convert.FromBase64String(request.IdentityPublicKeyClassical);
-            Convert.FromBase64String(request.IdentityPublicKeyPostQuantum);
-            Convert.FromBase64String(request.SignedPreKeyPublic);
-            Convert.FromBase64String(request.SignedPreKeySignature);
-            Convert.FromBase64String(request.KyberPreKeyPublic);
-            Convert.FromBase64String(request.KyberPreKeySignature);
+            classicalIdentityKey = Convert.FromBase64String(request.IdentityPublicKeyClassical);
+            pqIdentityKey = Convert.FromBase64String(request.IdentityPublicKeyPostQuantum);
+            signedPreKeyPublic = Convert.FromBase64String(request.SignedPreKeyPublic);
+            signedPreKeySig = Convert.FromBase64String(request.SignedPreKeySignature);
+            kyberPreKeyPublic = Convert.FromBase64String(request.KyberPreKeyPublic);
+            kyberPreKeySig = Convert.FromBase64String(request.KyberPreKeySignature);
         }
         catch (FormatException)
         {
             return BadRequest("One or more key fields contain invalid Base64.");
         }
+
+        // Validate decoded key sizes against protocol constants
+        if (classicalIdentityKey.Length != ProtocolConstants.Ed25519PublicKeySize)
+            return BadRequest("Invalid identity public key (classical) size.");
+        if (pqIdentityKey.Length != ProtocolConstants.MlDsa65PublicKeySize)
+            return BadRequest("Invalid identity public key (post-quantum) size.");
+        if (signedPreKeyPublic.Length != ProtocolConstants.X25519PublicKeySize)
+            return BadRequest("Invalid signed pre-key public key size.");
+        if (signedPreKeySig.Length != ProtocolConstants.HybridSignatureSize)
+            return BadRequest("Invalid signed pre-key signature size.");
+        if (kyberPreKeyPublic.Length != ProtocolConstants.MlKem768PublicKeySize)
+            return BadRequest("Invalid Kyber pre-key public key size.");
+        if (kyberPreKeySig.Length != ProtocolConstants.HybridSignatureSize)
+            return BadRequest("Invalid Kyber pre-key signature size.");
 
         // Wrap device creation and pre-key storage in a transaction for atomicity
         await using var transaction = await _db.Database.BeginTransactionAsync();
@@ -59,13 +79,13 @@ public class DevicesController : BaseApiController
                 Id = DecimalTools.GetNewId(),
                 UserId = userId,
                 DeviceName = request.DeviceName,
-                IdentityPublicKeyClassical = Convert.FromBase64String(request.IdentityPublicKeyClassical),
-                IdentityPublicKeyPostQuantum = Convert.FromBase64String(request.IdentityPublicKeyPostQuantum),
-                SignedPreKeyPublic = Convert.FromBase64String(request.SignedPreKeyPublic),
-                SignedPreKeySignature = Convert.FromBase64String(request.SignedPreKeySignature),
+                IdentityPublicKeyClassical = classicalIdentityKey,
+                IdentityPublicKeyPostQuantum = pqIdentityKey,
+                SignedPreKeyPublic = signedPreKeyPublic,
+                SignedPreKeySignature = signedPreKeySig,
                 SignedPreKeyId = request.SignedPreKeyId,
-                KyberPreKeyPublic = Convert.FromBase64String(request.KyberPreKeyPublic),
-                KyberPreKeySignature = Convert.FromBase64String(request.KyberPreKeySignature),
+                KyberPreKeyPublic = kyberPreKeyPublic,
+                KyberPreKeySignature = kyberPreKeySig,
                 CreatedAt = DateTimeOffset.UtcNow,
                 LastSeenAt = DateTimeOffset.UtcNow,
                 IsActive = true

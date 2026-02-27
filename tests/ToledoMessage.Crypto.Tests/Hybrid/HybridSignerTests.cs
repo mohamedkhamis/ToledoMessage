@@ -2,20 +2,21 @@ using ToledoMessage.Crypto.Hybrid;
 
 namespace ToledoMessage.Crypto.Tests.Hybrid;
 
+[TestClass]
 public class HybridSignerTests
 {
-    [Fact]
+    [TestMethod]
     public void GenerateKeyPair_ReturnsBothClassicalAndPqKeys()
     {
         var (classicalPublic, classicalPrivate, pqPublic, pqPrivate) = HybridSigner.GenerateKeyPair();
 
-        Assert.NotEmpty(classicalPublic);
-        Assert.NotEmpty(classicalPrivate);
-        Assert.NotEmpty(pqPublic);
-        Assert.NotEmpty(pqPrivate);
+        Assert.IsTrue(classicalPublic.Length > 0);
+        Assert.IsTrue(classicalPrivate.Length > 0);
+        Assert.IsTrue(pqPublic.Length > 0);
+        Assert.IsTrue(pqPrivate.Length > 0);
     }
 
-    [Fact]
+    [TestMethod]
     public void Sign_Verify_RoundTrip()
     {
         var (classicalPublic, classicalPrivate, pqPublic, pqPrivate) = HybridSigner.GenerateKeyPair();
@@ -23,10 +24,10 @@ public class HybridSignerTests
 
         var signature = HybridSigner.Sign(classicalPrivate, pqPrivate, message);
 
-        Assert.True(HybridSigner.Verify(classicalPublic, pqPublic, message, signature));
+        Assert.IsTrue(HybridSigner.Verify(classicalPublic, pqPublic, message, signature));
     }
 
-    [Fact]
+    [TestMethod]
     public void Verify_RejectsTamperedMessage()
     {
         var (classicalPublic, classicalPrivate, pqPublic, pqPrivate) = HybridSigner.GenerateKeyPair();
@@ -35,10 +36,10 @@ public class HybridSignerTests
         var signature = HybridSigner.Sign(classicalPrivate, pqPrivate, message);
 
         var tamperedMessage = "Hello, Tampered!"u8.ToArray();
-        Assert.False(HybridSigner.Verify(classicalPublic, pqPublic, tamperedMessage, signature));
+        Assert.IsFalse(HybridSigner.Verify(classicalPublic, pqPublic, tamperedMessage, signature));
     }
 
-    [Fact]
+    [TestMethod]
     public void Verify_RejectsTamperedSignature()
     {
         var (classicalPublic, classicalPrivate, pqPublic, pqPrivate) = HybridSigner.GenerateKeyPair();
@@ -48,6 +49,6 @@ public class HybridSignerTests
 
         // Tamper with a byte in the middle of the signature (past the length prefix)
         signature[signature.Length / 2] ^= 0xFF;
-        Assert.False(HybridSigner.Verify(classicalPublic, pqPublic, message, signature));
+        Assert.IsFalse(HybridSigner.Verify(classicalPublic, pqPublic, message, signature));
     }
 }

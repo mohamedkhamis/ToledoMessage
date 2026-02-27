@@ -3,9 +3,10 @@ using ToledoMessage.Shared.DTOs;
 
 namespace ToledoMessage.Server.Tests.Services;
 
+[TestClass]
 public class PreKeyServiceTests
 {
-    [Fact]
+    [TestMethod]
     public async Task StoreOneTimePreKeys_StoresKeys()
     {
         var db = TestDbContextFactory.Create();
@@ -23,10 +24,10 @@ public class PreKeyServiceTests
         await service.StoreOneTimePreKeys(10m, preKeys);
 
         var count = await service.CountRemainingPreKeys(10m);
-        Assert.Equal(3, count);
+        Assert.AreEqual(3, count);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConsumeOneTimePreKey_ReturnsKeyInOrder()
     {
         var db = TestDbContextFactory.Create();
@@ -44,12 +45,12 @@ public class PreKeyServiceTests
 
         var consumed = await service.ConsumeOneTimePreKey(10m);
 
-        Assert.NotNull(consumed);
-        Assert.Equal(3, consumed.KeyId); // lowest KeyId first
-        Assert.True(consumed.IsUsed);
+        Assert.IsNotNull(consumed);
+        Assert.AreEqual(3, consumed.KeyId); // lowest KeyId first
+        Assert.IsTrue(consumed.IsUsed);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConsumeOneTimePreKey_MarksAsUsed()
     {
         var db = TestDbContextFactory.Create();
@@ -62,10 +63,10 @@ public class PreKeyServiceTests
         await service.ConsumeOneTimePreKey(10m);
         var remaining = await service.CountRemainingPreKeys(10m);
 
-        Assert.Equal(0, remaining);
+        Assert.AreEqual(0, remaining);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConsumeOneTimePreKey_NoKeysAvailable_ReturnsNull()
     {
         var db = TestDbContextFactory.Create();
@@ -73,10 +74,10 @@ public class PreKeyServiceTests
 
         var result = await service.ConsumeOneTimePreKey(999m);
 
-        Assert.Null(result);
+        Assert.IsNull(result);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task CountRemainingPreKeys_NoKeys_ReturnsZero()
     {
         var db = TestDbContextFactory.Create();
@@ -84,10 +85,10 @@ public class PreKeyServiceTests
 
         var count = await service.CountRemainingPreKeys(999m);
 
-        Assert.Equal(0, count);
+        Assert.AreEqual(0, count);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ConsumeOneTimePreKey_ConsumesSequentially()
     {
         var db = TestDbContextFactory.Create();
@@ -105,10 +106,10 @@ public class PreKeyServiceTests
         var second = await service.ConsumeOneTimePreKey(10m);
         var third = await service.ConsumeOneTimePreKey(10m);
 
-        Assert.NotNull(first);
-        Assert.NotNull(second);
-        Assert.Null(third);
-        Assert.Equal(1, first.KeyId);
-        Assert.Equal(2, second.KeyId);
+        Assert.IsNotNull(first);
+        Assert.IsNotNull(second);
+        Assert.IsNull(third);
+        Assert.AreEqual(1, first.KeyId);
+        Assert.AreEqual(2, second.KeyId);
     }
 }

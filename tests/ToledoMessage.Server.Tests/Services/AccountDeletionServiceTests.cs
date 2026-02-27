@@ -5,6 +5,7 @@ using ToledoMessage.Shared.Constants;
 
 namespace ToledoMessage.Server.Tests.Services;
 
+[TestClass]
 public class AccountDeletionServiceTests
 {
     private static AccountDeletionService CreateService(Data.ApplicationDbContext db)
@@ -12,7 +13,7 @@ public class AccountDeletionServiceTests
         return new AccountDeletionService(db, NullLogger<AccountDeletionService>.Instance);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task InitiateDeletionAsync_SetsDeletionRequestedAt()
     {
         var db = TestDbContextFactory.Create();
@@ -22,11 +23,11 @@ public class AccountDeletionServiceTests
         var result = await service.InitiateDeletionAsync(1m);
 
         var user = await db.Users.FindAsync(1m);
-        Assert.NotNull(user!.DeletionRequestedAt);
-        Assert.Equal(result, user.DeletionRequestedAt.Value);
+        Assert.IsNotNull(user!.DeletionRequestedAt);
+        Assert.AreEqual(result, user.DeletionRequestedAt.Value);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task InitiateDeletionAsync_UserNotFound_Throws()
     {
         var db = TestDbContextFactory.Create();
@@ -36,7 +37,7 @@ public class AccountDeletionServiceTests
             () => service.InitiateDeletionAsync(999m));
     }
 
-    [Fact]
+    [TestMethod]
     public async Task CancelDeletionAsync_ClearsDeletionRequestedAt()
     {
         var db = TestDbContextFactory.Create();
@@ -48,10 +49,10 @@ public class AccountDeletionServiceTests
         await service.CancelDeletionAsync(1m);
 
         var refreshedUser = await db.Users.FindAsync(1m);
-        Assert.Null(refreshedUser!.DeletionRequestedAt);
+        Assert.IsNull(refreshedUser!.DeletionRequestedAt);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task CancelDeletionAsync_NoDeletionPending_DoesNothing()
     {
         var db = TestDbContextFactory.Create();
@@ -62,10 +63,10 @@ public class AccountDeletionServiceTests
         await service.CancelDeletionAsync(1m);
 
         var user = await db.Users.FindAsync(1m);
-        Assert.Null(user!.DeletionRequestedAt);
+        Assert.IsNull(user!.DeletionRequestedAt);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task CancelDeletionAsync_UserNotFound_DoesNothing()
     {
         var db = TestDbContextFactory.Create();
@@ -75,7 +76,7 @@ public class AccountDeletionServiceTests
         await service.CancelDeletionAsync(999m);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ProcessExpiredDeletionsAsync_DeactivatesExpiredAccounts()
     {
         var db = TestDbContextFactory.Create();
@@ -90,13 +91,13 @@ public class AccountDeletionServiceTests
         await service.ProcessExpiredDeletionsAsync(CancellationToken.None);
 
         var refreshedUser = await db.Users.FindAsync(1m);
-        Assert.False(refreshedUser!.IsActive);
+        Assert.IsFalse(refreshedUser!.IsActive);
 
         var refreshedDevice = await db.Devices.FindAsync(10m);
-        Assert.False(refreshedDevice!.IsActive);
+        Assert.IsFalse(refreshedDevice!.IsActive);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ProcessExpiredDeletionsAsync_RevokesRefreshTokens()
     {
         var db = TestDbContextFactory.Create();
@@ -120,10 +121,10 @@ public class AccountDeletionServiceTests
         await service.ProcessExpiredDeletionsAsync(CancellationToken.None);
 
         var token = await db.RefreshTokens.FindAsync(100m);
-        Assert.True(token!.IsRevoked);
+        Assert.IsTrue(token!.IsRevoked);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ProcessExpiredDeletionsAsync_SkipsAccountsWithinGracePeriod()
     {
         var db = TestDbContextFactory.Create();
@@ -137,10 +138,10 @@ public class AccountDeletionServiceTests
         await service.ProcessExpiredDeletionsAsync(CancellationToken.None);
 
         var refreshedUser = await db.Users.FindAsync(1m);
-        Assert.True(refreshedUser!.IsActive); // Should still be active
+        Assert.IsTrue(refreshedUser!.IsActive); // Should still be active
     }
 
-    [Fact]
+    [TestMethod]
     public async Task ProcessExpiredDeletionsAsync_SkipsAlreadyDeactivated()
     {
         var db = TestDbContextFactory.Create();

@@ -6,6 +6,7 @@ using ToledoMessage.Services;
 
 namespace ToledoMessage.Server.Tests.Middleware;
 
+[TestClass]
 public class RateLimitMiddlewareTests
 {
     private static (RateLimitMiddleware middleware, RateLimitService service) CreateMiddleware(
@@ -16,7 +17,7 @@ public class RateLimitMiddlewareTests
         return (new RateLimitMiddleware(next, service), service);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task InvokeAsync_NullPath_PassesThrough()
     {
         bool nextCalled = false;
@@ -27,10 +28,10 @@ public class RateLimitMiddlewareTests
 
         await middleware.InvokeAsync(context);
 
-        Assert.True(nextCalled);
+        Assert.IsTrue(nextCalled);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task InvokeAsync_NonRateLimitedPath_PassesThrough()
     {
         bool nextCalled = false;
@@ -42,10 +43,10 @@ public class RateLimitMiddlewareTests
 
         await middleware.InvokeAsync(context);
 
-        Assert.True(nextCalled);
+        Assert.IsTrue(nextCalled);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task InvokeAsync_RegisterEndpoint_LimitsAfterExceeded()
     {
         var (middleware, _) = CreateMiddleware();
@@ -56,7 +57,7 @@ public class RateLimitMiddlewareTests
             context.Request.Path = "/api/auth/register";
             context.Connection.RemoteIpAddress = IPAddress.Parse("10.0.0.1");
             await middleware.InvokeAsync(context);
-            Assert.NotEqual(429, context.Response.StatusCode);
+            Assert.AreNotEqual(429, context.Response.StatusCode);
         }
 
         // 6th request should be rate limited
@@ -67,10 +68,10 @@ public class RateLimitMiddlewareTests
 
         await middleware.InvokeAsync(limitedContext);
 
-        Assert.Equal(429, limitedContext.Response.StatusCode);
+        Assert.AreEqual(429, limitedContext.Response.StatusCode);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task InvokeAsync_ByUserRoute_NoAuthUser_PassesThrough()
     {
         bool nextCalled = false;
@@ -82,10 +83,10 @@ public class RateLimitMiddlewareTests
 
         await middleware.InvokeAsync(context);
 
-        Assert.True(nextCalled);
+        Assert.IsTrue(nextCalled);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task InvokeAsync_ByUserRoute_WithAuth_RateLimits()
     {
         var (middleware, _) = CreateMiddleware();
@@ -108,10 +109,10 @@ public class RateLimitMiddlewareTests
 
         await middleware.InvokeAsync(limitedContext);
 
-        Assert.Equal(429, limitedContext.Response.StatusCode);
+        Assert.AreEqual(429, limitedContext.Response.StatusCode);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task InvokeAsync_SearchEndpoint_LimitsAt10()
     {
         var (middleware, _) = CreateMiddleware();
@@ -133,10 +134,10 @@ public class RateLimitMiddlewareTests
 
         await middleware.InvokeAsync(limitedContext);
 
-        Assert.Equal(429, limitedContext.Response.StatusCode);
+        Assert.AreEqual(429, limitedContext.Response.StatusCode);
     }
 
-    [Fact]
+    [TestMethod]
     public async Task InvokeAsync_DifferentIPs_IndependentLimits()
     {
         var (middleware, _) = CreateMiddleware();
@@ -158,6 +159,6 @@ public class RateLimitMiddlewareTests
 
         await middleware.InvokeAsync(context2);
 
-        Assert.NotEqual(429, context2.Response.StatusCode);
+        Assert.AreNotEqual(429, context2.Response.StatusCode);
     }
 }

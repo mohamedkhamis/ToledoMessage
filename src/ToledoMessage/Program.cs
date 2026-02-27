@@ -124,13 +124,8 @@ else
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-app.UseAntiforgery();
 
-app.UseCors();
-app.UseAuthentication();
-app.UseMiddleware<RateLimitMiddleware>();
-app.UseAuthorization();
-
+// Serilog request logging must be early to capture all requests and errors
 app.UseSerilogRequestLogging(options =>
 {
     options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
@@ -138,6 +133,14 @@ app.UseSerilogRequestLogging(options =>
         diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value ?? "unknown");
     };
 });
+
+app.UseCors();
+app.UseAuthentication();
+app.UseMiddleware<RateLimitMiddleware>();
+app.UseAuthorization();
+
+// Antiforgery must come after UseAuthentication and UseAuthorization
+app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapControllers();

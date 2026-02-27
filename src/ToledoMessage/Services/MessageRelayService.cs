@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Toledo.SharedKernel.Helpers;
 using ToledoMessage.Data;
@@ -39,13 +40,25 @@ public class MessageRelayService
         {
             // Atomic: INSERT with subquery that computes MAX+1 in a single statement.
             // This prevents two concurrent messages from getting the same sequence number.
+            // Must use explicit SqlParameter with precision/scale for decimal(28,8) columns.
+            SqlParameter DecParam(string name, decimal value) => new(name, System.Data.SqlDbType.Decimal)
+            {
+                Precision = 28, Scale = 8, Value = value
+            };
+
             await _db.Database.ExecuteSqlRawAsync(
                 """
                 INSERT INTO EncryptedMessages (Id, ConversationId, SenderDeviceId, RecipientDeviceId, Ciphertext, MessageType, ContentType, SequenceNumber, ServerTimestamp, IsDelivered)
-                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, ISNULL((SELECT MAX(SequenceNumber) FROM EncryptedMessages WITH (UPDLOCK) WHERE ConversationId = {1}), 0) + 1, {7}, 0)
+                VALUES (@id, @convId, @senderDevId, @recipDevId, @cipher, @msgType, @contentType, ISNULL((SELECT MAX(SequenceNumber) FROM EncryptedMessages WITH (UPDLOCK) WHERE ConversationId = @convId), 0) + 1, @ts, 0)
                 """,
-                messageId, request.ConversationId, senderDeviceId, request.RecipientDeviceId,
-                ciphertext, (int)request.MessageType, (int)request.ContentType, now);
+                DecParam("@id", messageId),
+                DecParam("@convId", request.ConversationId),
+                DecParam("@senderDevId", senderDeviceId),
+                DecParam("@recipDevId", request.RecipientDeviceId),
+                new SqlParameter("@cipher", System.Data.SqlDbType.VarBinary) { Value = ciphertext },
+                new SqlParameter("@msgType", System.Data.SqlDbType.Int) { Value = (int)request.MessageType },
+                new SqlParameter("@contentType", System.Data.SqlDbType.Int) { Value = (int)request.ContentType },
+                new SqlParameter("@ts", System.Data.SqlDbType.DateTimeOffset) { Value = now });
 
             var message = await _db.EncryptedMessages.FirstAsync(m => m.Id == messageId);
             return message;

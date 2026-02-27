@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Toledo.SharedKernel.Helpers;
 using ToledoMessage.Data;
@@ -55,14 +56,19 @@ public class PreKeyService
         {
             // Atomic: claim the lowest-KeyId unused pre-key in a single UPDATE+OUTPUT statement.
             // This prevents two concurrent requests from consuming the same key.
+            // Must use explicit SqlParameter with precision/scale for decimal(28,8) columns.
+            var deviceIdParam = new SqlParameter("@deviceId", System.Data.SqlDbType.Decimal)
+            {
+                Precision = 28, Scale = 8, Value = deviceId
+            };
             var claimed = await _db.Database.SqlQueryRaw<decimal>(
                 """
                 UPDATE TOP(1) OneTimePreKeys
                 SET IsUsed = 1
                 OUTPUT inserted.Id
-                WHERE DeviceId = {0} AND IsUsed = 0
+                WHERE DeviceId = @deviceId AND IsUsed = 0
                 """,
-                deviceId).ToListAsync();
+                deviceIdParam).ToListAsync();
 
             if (claimed.Count == 0)
                 return null;

@@ -1,0 +1,39 @@
+<div class="avatar" style="width:@(Size)px;height:@(Size)px;font-size:@(FontSizePx)px;background:@Color;">
+    @Initials
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string DisplayName { get; set; } = "";
+
+    [Parameter]
+    public int Size { get; set; } = 40;
+
+    private string Initials => GetInitials(DisplayName);
+    private string Color => GetColor(DisplayName);
+    private string FontSizePx => ((int)(Size / 2.6)).ToString();
+
+    private static string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[1][0])}";
+        return char.ToUpperInvariant(name[0]).ToString();
+    }
+
+    private static readonly string[] AvatarColors =
+    [
+        "#25D366", "#128C7E", "#7B1FA2", "#F57C00",
+        "#00796B", "#C62828", "#3949AB", "#E91E63"
+    ];
+
+    private static string GetColor(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return AvatarColors[0];
+        var hash = 0;
+        foreach (var c in name)
+            hash = (hash * 31 + c) & int.MaxValue;
+        return AvatarColors[hash % AvatarColors.Length];
+    }
+}

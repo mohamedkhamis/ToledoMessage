@@ -1,0 +1,76 @@
+@using ToledoMessage.Shared.Enums
+
+<div class="message-row @(IsMine ? "mine" : "") @(IsMine ? "msg-slide-in-right" : "msg-slide-in-left")">
+    <div class="message-bubble @(IsMine ? "mine" : "theirs")">
+        @if (ContentType == ContentType.Image && !string.IsNullOrEmpty(MediaDataUrl))
+        {
+            <div class="message-media">
+                <img src="@MediaDataUrl" alt="@(FileName ?? "Image")" class="message-image" />
+            </div>
+        }
+        else if (ContentType == ContentType.Video && !string.IsNullOrEmpty(MediaDataUrl))
+        {
+            <div class="message-media">
+                <video controls src="@MediaDataUrl" class="message-video"
+                       preload="metadata" aria-label="@(FileName ?? "Video")">
+                    Your browser does not support video playback.
+                </video>
+            </div>
+        }
+        else if (ContentType == ContentType.Audio && !string.IsNullOrEmpty(MediaDataUrl))
+        {
+            <div class="message-media">
+                <audio controls src="@MediaDataUrl" class="message-audio" aria-label="@(FileName ?? "Audio")">
+                    Your browser does not support audio playback.
+                </audio>
+            </div>
+        }
+        else if (ContentType == ContentType.File && !string.IsNullOrEmpty(MediaDataUrl))
+        {
+            <div class="message-file-card">
+                <div class="message-file-icon">&#128196;</div>
+                <div class="message-file-info">
+                    <span class="message-file-name">@(FileName ?? "File")</span>
+                    <a href="@MediaDataUrl" download="@(FileName ?? "file")"
+                       class="message-file-download" aria-label="Download @(FileName ?? "file")">
+                        &#8595; Download
+                    </a>
+                </div>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(Text))
+        {
+            <div class="message-text">@Text</div>
+        }
+        <div class="message-meta">
+            <span>@Timestamp.ToLocalTime().ToString("HH:mm")</span>
+            @if (IsMine)
+            {
+                <DeliveryStatus Status="Status" />
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Text { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public DateTimeOffset Timestamp { get; set; }
+
+    [Parameter]
+    public bool IsMine { get; set; }
+
+    [Parameter]
+    public ToledoMessage.Shared.Enums.DeliveryStatus Status { get; set; }
+
+    [Parameter]
+    public ContentType ContentType { get; set; } = ContentType.Text;
+
+    [Parameter]
+    public string? MediaDataUrl { get; set; }
+
+    [Parameter]
+    public string? FileName { get; set; }
+}

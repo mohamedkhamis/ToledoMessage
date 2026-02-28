@@ -1,0 +1,172 @@
+@page "/new-conversation"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@layout ChatLayout
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject LocalStorageService Storage
+
+<div class="panel-content-scroll">
+
+@if (!isAuthenticated)
+{
+    <p class="centered-text"><span class="spinner"></span> Loading...</p>
+}
+else
+{
+<div class="page-header">
+    <h2>New Conversation</h2>
+</div>
+
+<div class="card mb-md">
+    <div class="form-group mb-0">
+        <input placeholder="Search users by name..."
+               @bind="searchQuery"
+               @bind:event="oninput"
+               @bind:after="OnSearchInputChanged"
+               aria-label="Search users" />
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-error">@errorMessage</div>
+}
+
+@if (isSearching)
+{
+    <p class="centered-text"><span class="spinner"></span> Searching...</p>
+}
+else if (searchResults is not null && searchResults.Count > 0)
+{
+    <div class="card card-flush">
+        @foreach (var user in searchResults)
+        {
+            <div class="search-result-item">
+                <div>
+                    <span class="search-result-name">@user.DisplayName</span>
+                    <span class="search-result-meta">@user.DeviceCount device(s)</span>
+                </div>
+                <button class="btn-primary btn-sm"
+                        @onclick="() => StartConversation(user)"
+                        disabled="@isCreating">
+                    @(isCreating && creatingUserId == user.UserId ? "Creating..." : "Message")
+                </button>
+            </div>
+        }
+    </div>
+}
+else if (searchResults is not null && searchResults.Count == 0 && !string.IsNullOrWhiteSpace(searchQuery))
+{
+    <p class="centered-text">No users found.</p>
+}
+}
+
+</div>
+
+@code {
+    private bool isAuthenticated;
+    private string searchQuery = "";
+    private string? errorMessage;
+    private bool isSearching;
+    private bool isCreating;
+    private decimal? creatingUserId;
+    private List<UserSearchResult>? searchResults;
+    private CancellationTokenSource? _debounceCts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var tokenBytes = await Storage.GetAsync("auth.token");
+        if (tokenBytes is null)
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+            return;
+        }
+        isAuthenticated = true;
+    }
+
+    private async Task OnSearchInputChanged()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+
+        if (string.IsNullOrWhiteSpace(searchQuery) || searchQuery.Length < 2)
+        {
+            searchResults = null;
+            return;
+        }
+
+        try
+        {
+            await Task.Delay(300, token);
+
+            if (token.IsCancellationRequested)
+                return;
+
+            isSearching = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            var response = await Http.GetFromJsonAsync<UserSearchResponse>(
+                $"/api/users/search?q={Uri.EscapeDataString(searchQuery)}", token);
+
+            if (!token.IsCancellationRequested)
+            {
+                searchResults = response?.Users ?? [];
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Debounce cancelled
+        }
+        catch (Exception ex)
+        {
+            if (!token.IsCancellationRequested)
+            {
+                errorMessage = $"Search failed: {ex.Message}";
+            }
+        }
+        finally
+        {
+            if (!token.IsCancellationRequested)
+            {
+                isSearching = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task StartConversation(UserSearchResult user)
+    {
+        isCreating = true;
+        creatingUserId = user.UserId;
+        errorMessage = null;
+
+        try
+        {
+            var request = new CreateConversationRequest(user.UserId);
+            var response = await Http.PostAsJsonAsync("/api/conversations", request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage = "Failed to create conversation.";
+                return;
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<ConversationResponse>();
+            if (result is not null)
+            {
+                Navigation.NavigateTo($"/chat/{result.ConversationId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isCreating = false;
+            creatingUserId = null;
+        }
+    }
+}

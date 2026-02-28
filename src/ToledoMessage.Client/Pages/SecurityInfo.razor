@@ -1,0 +1,156 @@
+@page "/security/{DeviceId:decimal}"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@layout ChatLayout
+@inject FingerprintService Fingerprint
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<div class="panel-content-scroll">
+<div class="security-page fade-in">
+    <div class="security-header">
+        <button @onclick="GoBack" class="back-link" aria-label="Go back">&larr;</button>
+        <h3>Security Verification</h3>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-error" role="alert">@errorMessage</div>
+    }
+    else if (isLoading)
+    {
+        <p class="centered-text"><span class="spinner"></span> Computing safety number...</p>
+    }
+    else
+    {
+        <div class="safety-number-card">
+            <p class="safety-number-label">Safety Number</p>
+            <div class="safety-number-value">
+                @safetyNumber
+            </div>
+            <button class="btn-copy @(copied ? "copied" : "")" @onclick="CopySafetyNumber"
+                    aria-label="Copy safety number">
+                @(copied ? "Copied!" : "Copy")
+            </button>
+        </div>
+
+        <div class="verify-actions">
+            @if (isVerified)
+            {
+                <div class="verification-badge verified">
+                    <span>Verified</span>
+                </div>
+            }
+            else
+            {
+                <div class="verification-badge unverified">
+                    <span>Not Verified</span>
+                </div>
+            }
+        </div>
+
+        <div class="verify-actions">
+            @if (isVerified)
+            {
+                <button class="btn-unverify" @onclick="HandleMarkUnverified">
+                    Mark as Unverified
+                </button>
+            }
+            else
+            {
+                <button class="btn-verify" @onclick="HandleMarkVerified">
+                    Mark as Verified
+                </button>
+            }
+        </div>
+
+        <div class="security-info-box">
+            <p>
+                Compare this safety number with your contact. If the numbers match,
+                your communication is secure. You can compare in person or via a trusted
+                channel such as a phone call.
+            </p>
+        </div>
+    }
+</div>
+</div>
+
+@code {
+    [Parameter]
+    public decimal DeviceId { get; set; }
+
+    /// <summary>
+    /// Optional conversation ID used for tracking verification state and for the back link.
+    /// Passed as a query parameter: /security/{DeviceId}?conversationId=123
+    /// </summary>
+    [SupplyParameterFromQuery]
+    public decimal? ConversationId { get; set; }
+
+    private string? safetyNumber;
+    private bool isVerified;
+    private bool isLoading = true;
+    private string? errorMessage;
+    private bool copied;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            safetyNumber = await Fingerprint.ComputeSafetyNumberAsync(DeviceId);
+
+            if (ConversationId.HasValue)
+            {
+                isVerified = await Fingerprint.IsVerifiedAsync(ConversationId.Value);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleMarkVerified()
+    {
+        if (ConversationId.HasValue)
+        {
+            await Fingerprint.MarkVerifiedAsync(ConversationId.Value);
+            isVerified = true;
+        }
+    }
+
+    private async Task HandleMarkUnverified()
+    {
+        if (ConversationId.HasValue)
+        {
+            await Fingerprint.MarkUnverifiedAsync(ConversationId.Value);
+            isVerified = false;
+        }
+    }
+
+    private async Task CopySafetyNumber()
+    {
+        if (!string.IsNullOrEmpty(safetyNumber))
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", safetyNumber);
+            copied = true;
+            StateHasChanged();
+            await Task.Delay(2000);
+            copied = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        if (ConversationId.HasValue)
+        {
+            Navigation.NavigateTo($"/chat/{ConversationId.Value}");
+        }
+        else
+        {
+            Navigation.NavigateTo("/chat");
+        }
+    }
+}

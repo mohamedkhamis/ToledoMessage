@@ -1,0 +1,139 @@
+@page "/login"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using System.Text
+@using ToledoMessage.Shared.DTOs
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject LocalStorageService Storage
+@inject KeyGenerationService KeyGenService
+@inject Microsoft.JSInterop.IJSRuntime JS
+
+<div class="auth-page fade-in">
+    <h2>Sign In</h2>
+
+    <div class="card">
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-error" role="alert">@errorMessage</div>
+        }
+
+        @if (!string.IsNullOrEmpty(statusMessage))
+        {
+            <div class="alert alert-info" role="status">@statusMessage</div>
+        }
+
+        <form @onsubmit="HandleLogin">
+            <div class="form-group">
+                <label for="displayName">Display Name</label>
+                <input id="displayName" @bind="displayName" placeholder="Enter your display name"
+                       autocomplete="username" required aria-required="true" />
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input id="password" type="password" @bind="password" placeholder="Enter your password"
+                       autocomplete="current-password" required aria-required="true" />
+            </div>
+            <button type="submit" class="btn-primary btn-full" disabled="@isLoading"
+                    aria-busy="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="spinner spinner-sm"></span>
+                    <text> Signing in...</text>
+                }
+                else
+                {
+                    <text>Sign In</text>
+                }
+            </button>
+        </form>
+    </div>
+
+    <p class="auth-footer">Don't have an account? <a href="/register">Create one</a></p>
+</div>
+
+@code {
+    private string displayName = "";
+    private string password = "";
+    private string? errorMessage;
+    private string? statusMessage;
+    private bool isLoading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = new Uri(Navigation.Uri);
+        if (uri.Query.Contains("logout", StringComparison.OrdinalIgnoreCase))
+        {
+            // Clear all stored auth and crypto data
+            await JS.InvokeVoidAsync("localStorage.clear");
+            Http.DefaultRequestHeaders.Authorization = null;
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        isLoading = true;
+        errorMessage = null;
+        statusMessage = null;
+
+        try
+        {
+            // 1. Authenticate
+            var request = new LoginRequest(displayName, password);
+            var response = await Http.PostAsJsonAsync("/api/auth/login", request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage = "Invalid credentials.";
+                return;
+            }
+
+            var authResponse = await response.Content.ReadFromJsonAsync<AuthResponse>();
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authResponse!.Token);
+
+            // 2. Store auth token
+            await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse.Token));
+
+            // 3. Check if we already have a deviceId stored (returning to same browser)
+            var existingDeviceId = await Storage.GetAsync("local.deviceId");
+            if (existingDeviceId is not null)
+            {
+                // Already have a device registered on this browser
+                Navigation.NavigateTo("/chat");
+                return;
+            }
+
+            // 4. New device: generate crypto keys and register
+            statusMessage = "Generating encryption keys...";
+            StateHasChanged();
+
+            var deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+            var deviceResponse = await Http.PostAsJsonAsync("/api/devices", deviceRequest);
+
+            if (!deviceResponse.IsSuccessStatusCode)
+            {
+                errorMessage = "Device registration failed.";
+                return;
+            }
+
+            var deviceResult = await deviceResponse.Content.ReadFromJsonAsync<DeviceRegistrationResult>();
+            if (deviceResult is not null)
+            {
+                await Storage.StoreAsync("local.deviceId", Encoding.UTF8.GetBytes(deviceResult.DeviceId.ToString()));
+            }
+
+            // 5. Navigate to chat
+            Navigation.NavigateTo("/chat");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private sealed record DeviceRegistrationResult(decimal DeviceId);
+}

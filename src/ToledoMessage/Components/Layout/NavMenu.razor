@@ -1,0 +1,83 @@
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<nav class="app-nav" role="navigation" aria-label="Main navigation">
+    <a href="/" class="brand">ToledoMessage</a>
+
+    @if (IsPublicPage())
+    {
+        <div class="nav-links">
+            <a href="/login" class="@ActiveClass("/login")">Sign In</a>
+            <a href="/register" class="@ActiveClass("/register")">Register</a>
+        </div>
+    }
+    else
+    {
+        <button class="nav-toggle" @onclick="ToggleNav" aria-label="Toggle navigation"
+                aria-expanded="@isOpen">
+            &#9776;
+        </button>
+        <div class="nav-links @(isOpen ? "open" : "")">
+            <a href="/chat" class="@ActiveClass("/chat")" @onclick="CloseNav"
+               aria-current="@(IsActive("/chat") ? "page" : null)">Chats</a>
+            <a href="/settings" class="@ActiveClass("/settings")" @onclick="CloseNav"
+               aria-current="@(IsActive("/settings") ? "page" : null)">Settings</a>
+            <button class="btn-logout" @onclick="HandleLogout">Logout</button>
+        </div>
+    }
+</nav>
+
+@if (isOpen)
+{
+    <div class="nav-backdrop open" @onclick="CloseNav"></div>
+}
+
+@code {
+    private static readonly string[] PublicPaths = ["/", "/login", "/register"];
+    private bool isOpen;
+    private string currentUri = "";
+
+    protected override void OnInitialized()
+    {
+        currentUri = Navigation.Uri;
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        currentUri = e.Location;
+        isOpen = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private bool IsPublicPage()
+    {
+        var path = new Uri(currentUri).AbsolutePath.TrimEnd('/');
+        if (string.IsNullOrEmpty(path)) path = "/";
+        return Array.Exists(PublicPaths, p =>
+            string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private bool IsActive(string path)
+    {
+        var relative = new Uri(currentUri).AbsolutePath;
+        return relative.StartsWith(path, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string ActiveClass(string path) => IsActive(path) ? "active" : "";
+
+    private void ToggleNav() => isOpen = !isOpen;
+
+    private void CloseNav() => isOpen = false;
+
+    private void HandleLogout()
+    {
+        CloseNav();
+        Navigation.NavigateTo("/login?logout=true", forceLoad: true);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

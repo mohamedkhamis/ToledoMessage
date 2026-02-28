@@ -1,0 +1,166 @@
+@page "/register"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using System.Text
+@using ToledoMessage.Shared.DTOs
+@using ToledoMessage.Client.Services
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject KeyGenerationService KeyGenService
+@inject LocalStorageService Storage
+
+<div class="auth-page fade-in">
+    <h2>Create Account</h2>
+
+    <div class="card">
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-error" role="alert">@errorMessage</div>
+        }
+
+        <form @onsubmit="HandleRegister">
+            <div class="form-group">
+                <label for="displayName">Display Name</label>
+                <input id="displayName" @bind="displayName" placeholder="Choose a display name"
+                       autocomplete="username" required aria-required="true" />
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <div class="password-wrapper">
+                    <input id="password" type="password" @bind="password" @bind:event="oninput"
+                           @bind:after="OnPasswordChanged"
+                           placeholder="Minimum 8 characters"
+                           autocomplete="new-password" required aria-required="true" />
+                </div>
+                <div class="strength-bar">
+                    <div class="strength-bar-fill @passwordStrengthClass"></div>
+                </div>
+                @if (!string.IsNullOrEmpty(passwordStrengthText))
+                {
+                    <div class="strength-text" style="color: @passwordStrengthColor">@passwordStrengthText</div>
+                }
+            </div>
+            <button type="submit" class="btn-primary btn-full" disabled="@isLoading"
+                    aria-busy="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="spinner spinner-sm"></span>
+                    <text> Creating account...</text>
+                }
+                else
+                {
+                    <text>Create Account</text>
+                }
+            </button>
+        </form>
+    </div>
+
+    <p class="auth-footer">Already have an account? <a href="/login">Sign in</a></p>
+</div>
+
+@code {
+    private string displayName = "";
+    private string password = "";
+    private string? errorMessage;
+    private bool isLoading;
+    private string passwordStrengthClass = "";
+    private string passwordStrengthText = "";
+    private string passwordStrengthColor = "";
+
+    private void OnPasswordChanged()
+    {
+        if (string.IsNullOrEmpty(password))
+        {
+            passwordStrengthClass = "";
+            passwordStrengthText = "";
+            passwordStrengthColor = "";
+            return;
+        }
+
+        var score = 0;
+        if (password.Length >= 8) score++;
+        if (password.Length >= 12) score++;
+        if (password.Any(char.IsUpper) && password.Any(char.IsLower)) score++;
+        if (password.Any(char.IsDigit)) score++;
+        if (password.Any(c => !char.IsLetterOrDigit(c))) score++;
+
+        if (score <= 2)
+        {
+            passwordStrengthClass = "weak";
+            passwordStrengthText = "Weak";
+            passwordStrengthColor = "var(--danger)";
+        }
+        else if (score <= 3)
+        {
+            passwordStrengthClass = "medium";
+            passwordStrengthText = "Fair";
+            passwordStrengthColor = "var(--warning)";
+        }
+        else
+        {
+            passwordStrengthClass = "strong";
+            passwordStrengthText = "Strong";
+            passwordStrengthColor = "var(--success)";
+        }
+    }
+
+    private async Task HandleRegister()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            // 1. Register account
+            var registerRequest = new RegisterRequest(displayName, password);
+            var response = await Http.PostAsJsonAsync("/api/auth/register", registerRequest);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                errorMessage = response.StatusCode == System.Net.HttpStatusCode.Conflict
+                    ? "Display name already taken."
+                    : $"Registration failed: {body}";
+                return;
+            }
+
+            var authResponse = await response.Content.ReadFromJsonAsync<AuthResponse>();
+
+            // 2. Generate crypto keys
+            var deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+
+            // 3. Register device with pre-key bundle
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authResponse!.Token);
+            var deviceResponse = await Http.PostAsJsonAsync("/api/devices", deviceRequest);
+
+            if (!deviceResponse.IsSuccessStatusCode)
+            {
+                errorMessage = "Device registration failed.";
+                return;
+            }
+
+            // 4. Extract deviceId from response
+            var deviceResult = await deviceResponse.Content.ReadFromJsonAsync<DeviceRegistrationResult>();
+
+            // 5. Store auth token and deviceId for later use
+            await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse!.Token));
+            if (deviceResult is not null)
+            {
+                await Storage.StoreAsync("local.deviceId", Encoding.UTF8.GetBytes(deviceResult.DeviceId.ToString()));
+            }
+
+            // 6. Navigate to chat
+            Navigation.NavigateTo("/chat");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private sealed record DeviceRegistrationResult(decimal DeviceId);
+}

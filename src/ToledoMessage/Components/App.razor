@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <script>
+        (function () {
+            function applyTheme() {
+                var t = localStorage.getItem('app.theme');
+                if (t) document.documentElement.setAttribute('data-theme', t);
+                else document.documentElement.removeAttribute('data-theme');
+            }
+            applyTheme();
+            // Re-apply after Blazor enhanced navigation (server re-renders <html> without data-theme)
+            document.addEventListener('blazor:enhancedload', applyTheme);
+        })();
+    </script>
+    <ResourcePreloader />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["themes.css"]" />
+    <link rel="stylesheet" href="@Assets["ToledoMessage.styles.css"]" />
+    <ImportMap />
+    <HeadOutlet />
+</head>
+
+<body>
+    <Routes />
+    <script src="storage.js"></script>
+    <script src="tab-leader.js"></script>
+    <script src="notifications.js"></script>
+    <script src="media-helpers.js"></script>
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+</body>
+
+</html>

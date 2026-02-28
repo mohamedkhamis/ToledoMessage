@@ -1,0 +1,99 @@
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using Toledo.SharedKernel.Helpers;
+using ToledoMessage.Data;
+using ToledoMessage.Models;
+using ToledoMessage.Shared.DTOs;
+
+namespace ToledoMessage.Services;
+
+public class PreKeyService
+{
+    private readonly ApplicationDbContext _db;
+
+    public PreKeyService(ApplicationDbContext db)
+    {
+        _db = db;
+    }
+
+    /// <summary>Store one-time pre-keys for a device. Validates Base64 input.</summary>
+    public async Task StoreOneTimePreKeys(decimal deviceId, List<OneTimePreKeyDto> preKeys)
+    {
+        foreach (var pk in preKeys)
+        {
+            byte[] publicKeyBytes;
+            try
+            {
+                publicKeyBytes = Convert.FromBase64String(pk.PublicKey);
+            }
+            catch (FormatException)
+            {
+                throw new ArgumentException($"Invalid Base64 in one-time pre-key {pk.KeyId}.");
+            }
+
+            _db.OneTimePreKeys.Add(new OneTimePreKey
+            {
+                Id = DecimalTools.GetNewId(),
+                DeviceId = deviceId,
+                KeyId = pk.KeyId,
+                PublicKey = publicKeyBytes,
+                IsUsed = false
+            });
+        }
+
+        await _db.SaveChangesAsync();
+    }
+
+    /// <summary>Consume one unused one-time pre-key for a device. Returns null if exhausted.</summary>
+    /// <remarks>
+    /// Uses raw SQL with OUTPUT clause for atomic claim to prevent race conditions
+    /// where two concurrent requests could consume the same one-time pre-key.
+    /// Falls back to EF-based approach for in-memory provider (testing).
+    /// </remarks>
+    public async Task<OneTimePreKey?> ConsumeOneTimePreKey(decimal deviceId)
+    {
+        if (_db.Database.IsRelational())
+        {
+            // Atomic: claim the lowest-KeyId unused pre-key in a single UPDATE+OUTPUT statement.
+            // This prevents two concurrent requests from consuming the same key.
+            // Must use explicit SqlParameter with precision/scale for decimal(28,8) columns.
+            var deviceIdParam = new SqlParameter("@deviceId", System.Data.SqlDbType.Decimal)
+            {
+                Precision = 28, Scale = 8, Value = deviceId
+            };
+            var claimed = await _db.Database.SqlQueryRaw<decimal>(
+                """
+                UPDATE TOP(1) OneTimePreKeys
+                SET IsUsed = 1
+                OUTPUT inserted.Id
+                WHERE DeviceId = @deviceId AND IsUsed = 0
+                """,
+                deviceIdParam).ToListAsync();
+
+            if (claimed.Count == 0)
+                return null;
+
+            return await _db.OneTimePreKeys.FirstAsync(k => k.Id == claimed[0]);
+        }
+
+        // Fallback for in-memory provider (unit tests)
+        var key = await _db.OneTimePreKeys
+            .Where(k => k.DeviceId == deviceId && !k.IsUsed)
+            .OrderBy(k => k.KeyId)
+            .FirstOrDefaultAsync();
+
+        if (key != null)
+        {
+            key.IsUsed = true;
+            await _db.SaveChangesAsync();
+        }
+
+        return key;
+    }
+
+    /// <summary>Count remaining unused pre-keys for a device.</summary>
+    public async Task<int> CountRemainingPreKeys(decimal deviceId)
+    {
+        return await _db.OneTimePreKeys.CountAsync(k => k.DeviceId == deviceId && !k.IsUsed);
+    }
+}

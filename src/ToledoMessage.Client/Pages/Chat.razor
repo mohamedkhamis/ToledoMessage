@@ -1,0 +1,677 @@
+@page "/chat/{ConversationId:decimal}"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@layout ChatLayout
+@using System.Text
+@using System.Text.Json
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject CryptoService Crypto
+@inject SignalRService SignalR
+@inject LocalStorageService Storage
+@inject PreKeyReplenishmentService PreKeyReplenishment
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="chat-container">
+    <div class="chat-header">
+        <a href="/chat" class="back-link back-link-desktop-hidden" aria-label="Back to conversations">&larr;</a>
+        @{
+            var headerName = conversationDetail?.Type == ConversationType.Group
+                ? (conversationDetail.GroupName ?? "Group")
+                : (participants.FirstOrDefault(p => p.UserId != localUserId)?.DisplayName ?? "Conversation");
+        }
+        <AvatarInitials DisplayName="@headerName" Size="38" />
+        <div>
+            <h3 class="chat-header-title">@headerName</h3>
+            @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
+            {
+                <span class="chat-header-subtitle">@participants.Count members</span>
+            }
+        </div>
+        @if (!string.IsNullOrEmpty(typingIndicator))
+        {
+            <span class="chat-typing-indicator">@typingIndicator</span>
+        }
+    </div>
+
+    @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group && showParticipants)
+    {
+        <div class="participants-panel">
+            <div class="participants-list">
+                @foreach (var p in participants)
+                {
+                    <span class="participant-tag">
+                        @p.DisplayName
+                        @if (p.Role == ParticipantRole.Admin)
+                        {
+                            <span class="participant-admin">Admin</span>
+                        }
+                    </span>
+                }
+            </div>
+        </div>
+    }
+
+    @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
+    {
+        <div class="toggle-participants-row">
+            <button class="toggle-participants-btn"
+                    @onclick="() => showParticipants = !showParticipants">
+                @(showParticipants ? "Hide participants" : "Show participants")
+            </button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-error mx-chat" role="alert">@errorMessage</div>
+    }
+
+    <div class="chat-messages" @ref="messageContainer" role="log" aria-live="polite">
+        @if (isLoading)
+        {
+            <p class="chat-empty-state"><span class="spinner"></span> Loading messages...</p>
+        }
+        else if (messages.Count == 0)
+        {
+            <p class="chat-empty-state">No messages yet. Send the first message!</p>
+        }
+        else
+        {
+            @foreach (var msg in messages)
+            {
+                <MessageBubble Text="@msg.Text"
+                               Timestamp="msg.Timestamp"
+                               IsMine="msg.IsMine"
+                               Status="msg.Status"
+                               ContentType="msg.ContentType"
+                               MediaDataUrl="@msg.MediaDataUrl"
+                               FileName="@msg.FileName" />
+            }
+        }
+    </div>
+
+    <MessageInput OnSend="HandleSend" OnTyping="HandleTyping" />
+</div>
+
+@code {
+    [Parameter]
+    public decimal ConversationId { get; set; }
+
+    private readonly List<ChatMessage> messages = [];
+    private ElementReference messageContainer;
+    private string? errorMessage;
+    private bool isLoading = true;
+    private string? typingIndicator;
+    private decimal localDeviceId;
+    private decimal localUserId;
+    private string? accessToken;
+    private System.Timers.Timer? typingTimer;
+    private ConversationDetailResponse? conversationDetail;
+    private List<ParticipantResponse> participants = [];
+    private bool showParticipants;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Retrieve local deviceId and token from storage
+            var deviceIdBytes = await Storage.GetAsync("local.deviceId");
+            var tokenBytes = await Storage.GetAsync("auth.token");
+
+            if (deviceIdBytes is null || tokenBytes is null)
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+
+            localDeviceId = decimal.Parse(Encoding.UTF8.GetString(deviceIdBytes));
+            accessToken = Encoding.UTF8.GetString(tokenBytes);
+
+            // Extract userId from JWT token
+            localUserId = ExtractUserIdFromJwt(accessToken);
+
+            // Set auth header for HTTP requests
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+            // Load conversation details and participants
+            await LoadConversationDetails();
+            await LoadParticipants();
+
+            // Load pending messages from the server
+            await LoadPendingMessages();
+
+            // Connect to SignalR hub
+            var hubUrl = Navigation.ToAbsoluteUri("/hubs/chat").ToString();
+            await SignalR.ConnectAsync(hubUrl, accessToken);
+            await SignalR.RegisterDeviceAsync(localDeviceId);
+
+            // Subscribe to real-time events
+            SignalR.OnMessageReceived += HandleMessageReceived;
+            SignalR.OnMessageDelivered += HandleMessageDelivered;
+            SignalR.OnMessageRead += HandleMessageRead;
+            SignalR.OnTypingIndicator += HandleTypingIndicator;
+            SignalR.OnParticipantAdded += HandleParticipantAdded;
+            SignalR.OnParticipantRemoved += HandleParticipantRemoved;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to initialize chat: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadConversationDetails()
+    {
+        try
+        {
+            conversationDetail = await Http.GetFromJsonAsync<ConversationDetailResponse>(
+                $"/api/conversations/{ConversationId}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load conversation details: {ex.Message}";
+        }
+    }
+
+    private async Task LoadParticipants()
+    {
+        try
+        {
+            participants = await Http.GetFromJsonAsync<List<ParticipantResponse>>(
+                $"/api/conversations/{ConversationId}/participants") ?? [];
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load participants: {ex.Message}";
+        }
+    }
+
+    private async Task LoadPendingMessages()
+    {
+        try
+        {
+            var envelopes = await Http.GetFromJsonAsync<List<MessageEnvelope>>(
+                $"/api/messages/pending?deviceId={localDeviceId}");
+
+            if (envelopes is null)
+                return;
+
+            foreach (var envelope in envelopes.Where(e => e.ConversationId == ConversationId))
+            {
+                try
+                {
+                    var chatMsg = await DecryptEnvelopeToChatMessage(envelope, isMine: false);
+                    messages.Add(chatMsg);
+                }
+                catch (Exception)
+                {
+                    messages.Add(new ChatMessage
+                    {
+                        MessageId = envelope.MessageId,
+                        Text = "[Unable to decrypt message]",
+                        Timestamp = envelope.ServerTimestamp,
+                        IsMine = false,
+                        ContentType = ContentType.Text,
+                        Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered
+                    });
+                }
+
+                // Always acknowledge — whether decryption succeeded or failed.
+                // Failed messages can never be re-decrypted (ratchet keys are
+                // consumed or lost), so leaving them unacknowledged causes
+                // them to reappear on every load forever.
+                try
+                {
+                    await Http.PostAsync(
+                        $"/api/messages/{envelope.MessageId}/acknowledge", null);
+                }
+                catch
+                {
+                    // Best-effort; will retry on next load
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load messages: {ex.Message}";
+        }
+    }
+
+    private async void HandleMessageReceived(MessageEnvelope envelope)
+    {
+        if (envelope.ConversationId != ConversationId)
+            return;
+
+        try
+        {
+            await InvokeAsync(async () =>
+            {
+                try
+                {
+                    var chatMsg = await DecryptEnvelopeToChatMessage(envelope, isMine: false);
+                    messages.Add(chatMsg);
+                }
+                catch
+                {
+                    messages.Add(new ChatMessage
+                    {
+                        MessageId = envelope.MessageId,
+                        Text = "[Unable to decrypt message]",
+                        Timestamp = envelope.ServerTimestamp,
+                        IsMine = false,
+                        ContentType = ContentType.Text,
+                        Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered
+                    });
+                }
+                StateHasChanged();
+            });
+
+            // Always acknowledge — even if decryption failed.
+            // Lost ratchet keys can never be recovered.
+            await SignalR.AcknowledgeDeliveryAsync(envelope.MessageId);
+        }
+        catch
+        {
+            // Prevent async void from crashing the WASM runtime
+        }
+    }
+
+    private async void HandleMessageDelivered(decimal messageId)
+    {
+        await InvokeAsync(() =>
+        {
+            var msg = messages.FirstOrDefault(m => m.MessageId == messageId);
+            if (msg is not null)
+            {
+                msg.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered;
+                StateHasChanged();
+            }
+        });
+    }
+
+    private async void HandleMessageRead(decimal messageId)
+    {
+        await InvokeAsync(() =>
+        {
+            var msg = messages.FirstOrDefault(m => m.MessageId == messageId);
+            if (msg is not null)
+            {
+                msg.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Read;
+                StateHasChanged();
+            }
+        });
+    }
+
+    private async void HandleTypingIndicator(decimal conversationId, string displayName)
+    {
+        if (conversationId != ConversationId)
+            return;
+
+        await InvokeAsync(() =>
+        {
+            typingIndicator = $"{displayName} is typing...";
+            StateHasChanged();
+        });
+
+        // Clear typing indicator after 3 seconds
+        typingTimer?.Stop();
+        typingTimer?.Dispose();
+        typingTimer = new System.Timers.Timer(3000);
+        typingTimer.AutoReset = false;
+        typingTimer.Elapsed += async (_, _) =>
+        {
+            await InvokeAsync(() =>
+            {
+                typingIndicator = null;
+                StateHasChanged();
+            });
+        };
+        typingTimer.Start();
+    }
+
+    private async void HandleParticipantAdded(decimal conversationId, decimal userId, string displayName)
+    {
+        if (conversationId != ConversationId)
+            return;
+
+        await InvokeAsync(() =>
+        {
+            // Add to the local participant list if not already present
+            if (!participants.Any(p => p.UserId == userId))
+            {
+                participants.Add(new ParticipantResponse(userId, displayName, ParticipantRole.Member));
+            }
+            StateHasChanged();
+        });
+    }
+
+    private async void HandleParticipantRemoved(decimal conversationId, decimal userId)
+    {
+        if (conversationId != ConversationId)
+            return;
+
+        await InvokeAsync(() =>
+        {
+            participants.RemoveAll(p => p.UserId == userId);
+            StateHasChanged();
+        });
+    }
+
+    private async Task HandleSend(MessageInput.ChatInputMessage input)
+    {
+        var hasMedia = input.HasMedia;
+        var tempMessage = new ChatMessage
+        {
+            MessageId = 0,
+            Text = input.Text,
+            Timestamp = DateTimeOffset.UtcNow,
+            IsMine = true,
+            ContentType = input.ContentType,
+            FileName = input.FileName,
+            MediaDataUrl = hasMedia ? await CreateMediaBlobUrl(input.MimeType!, input.MediaBytes!) : null,
+            Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sending
+        };
+        messages.Add(tempMessage);
+        StateHasChanged();
+
+        try
+        {
+            // When there's media, we send the media as the encrypted payload.
+            // The text caption is sent alongside as plain metadata (not encrypted separately).
+            // When there's text only, we send a normal text message.
+            if (hasMedia)
+            {
+                await SendMediaToRecipients(input, tempMessage);
+            }
+            else
+            {
+                await SendTextToRecipients(input.Text, tempMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to send message: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task SendTextToRecipients(string text, ChatMessage tempMessage)
+    {
+        if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
+        {
+            var requests = await Crypto.EncryptGroupMessageAsync(ConversationId, localUserId, localDeviceId, text);
+
+            SendMessageResult? lastResult = null;
+            foreach (var request in requests)
+            {
+                lastResult = await SignalR.SendMessageAsync(request);
+            }
+
+            if (lastResult is not null)
+            {
+                tempMessage.MessageId = lastResult.MessageId;
+                tempMessage.Timestamp = lastResult.ServerTimestamp;
+                tempMessage.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sent;
+            }
+        }
+        else
+        {
+            var recipient = participants.FirstOrDefault(p => p.UserId != localUserId);
+            if (recipient is null)
+            {
+                errorMessage = "Could not determine the recipient.";
+                return;
+            }
+
+            var deviceCiphertexts = await Crypto.EncryptMessageForAllDevicesAsync(recipient.UserId, text);
+
+            SendMessageResult? lastResult = null;
+            foreach (var (deviceId, ciphertextBase64, messageType) in deviceCiphertexts)
+            {
+                var request = new SendMessageRequest(
+                    ConversationId,
+                    localDeviceId,
+                    deviceId,
+                    ciphertextBase64,
+                    messageType,
+                    ContentType.Text);
+
+                lastResult = await SignalR.SendMessageAsync(request);
+            }
+
+            if (lastResult is not null)
+            {
+                tempMessage.MessageId = lastResult.MessageId;
+                tempMessage.Timestamp = lastResult.ServerTimestamp;
+                tempMessage.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sent;
+            }
+        }
+    }
+
+    private async Task SendMediaToRecipients(MessageInput.ChatInputMessage input, ChatMessage tempMessage)
+    {
+        if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
+        {
+            var requests = await Crypto.EncryptGroupBytesAsync(
+                ConversationId, localUserId, localDeviceId,
+                input.MediaBytes!, input.ContentType, input.FileName, input.MimeType);
+
+            SendMessageResult? lastResult = null;
+            foreach (var request in requests)
+            {
+                lastResult = await SignalR.SendMessageAsync(request);
+            }
+
+            if (lastResult is not null)
+            {
+                tempMessage.MessageId = lastResult.MessageId;
+                tempMessage.Timestamp = lastResult.ServerTimestamp;
+                tempMessage.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sent;
+            }
+        }
+        else
+        {
+            var recipient = participants.FirstOrDefault(p => p.UserId != localUserId);
+            if (recipient is null)
+            {
+                errorMessage = "Could not determine the recipient.";
+                return;
+            }
+
+            var deviceCiphertexts = await Crypto.EncryptBytesForAllDevicesAsync(recipient.UserId, input.MediaBytes!);
+
+            SendMessageResult? lastResult = null;
+            foreach (var (deviceId, ciphertextBase64, messageType) in deviceCiphertexts)
+            {
+                var request = new SendMessageRequest(
+                    ConversationId,
+                    localDeviceId,
+                    deviceId,
+                    ciphertextBase64,
+                    messageType,
+                    input.ContentType,
+                    input.FileName,
+                    input.MimeType);
+
+                lastResult = await SignalR.SendMessageAsync(request);
+            }
+
+            if (lastResult is not null)
+            {
+                tempMessage.MessageId = lastResult.MessageId;
+                tempMessage.Timestamp = lastResult.ServerTimestamp;
+                tempMessage.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sent;
+            }
+        }
+
+        // If there's also a text caption, send it as a separate text message right after
+        if (!string.IsNullOrEmpty(input.Text))
+        {
+            var captionMessage = new ChatMessage
+            {
+                MessageId = 0,
+                Text = input.Text,
+                Timestamp = DateTimeOffset.UtcNow,
+                IsMine = true,
+                ContentType = ContentType.Text,
+                Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sending
+            };
+            messages.Add(captionMessage);
+            StateHasChanged();
+
+            await SendTextToRecipients(input.Text, captionMessage);
+        }
+    }
+
+    private async Task<ChatMessage> DecryptEnvelopeToChatMessage(MessageEnvelope envelope, bool isMine)
+    {
+        if (envelope.ContentType is ContentType.Image or ContentType.Audio or ContentType.Video or ContentType.File)
+        {
+            var bytes = await Crypto.DecryptToBytesAsync(
+                envelope.SenderDeviceId, envelope.Ciphertext, envelope.MessageType);
+            var mimeType = envelope.MimeType ?? GetDefaultMimeType(envelope.ContentType);
+            var blobUrl = await CreateMediaBlobUrl(mimeType, bytes);
+            return new ChatMessage
+            {
+                MessageId = envelope.MessageId,
+                Text = "",
+                Timestamp = envelope.ServerTimestamp,
+                IsMine = isMine,
+                ContentType = envelope.ContentType,
+                FileName = envelope.FileName,
+                MediaDataUrl = blobUrl,
+                Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered
+            };
+        }
+        else
+        {
+            var plaintext = await Crypto.DecryptMessageAsync(
+                envelope.SenderDeviceId, envelope.Ciphertext, envelope.MessageType);
+            return new ChatMessage
+            {
+                MessageId = envelope.MessageId,
+                Text = plaintext,
+                Timestamp = envelope.ServerTimestamp,
+                IsMine = isMine,
+                ContentType = ContentType.Text,
+                Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered
+            };
+        }
+    }
+
+    private static string GetDefaultMimeType(ContentType contentType) => contentType switch
+    {
+        ContentType.Image => "image/png",
+        ContentType.Audio => "audio/mpeg",
+        ContentType.Video => "video/mp4",
+        ContentType.File  => "application/octet-stream",
+        _                 => "application/octet-stream"
+    };
+
+    private readonly List<string> _blobUrls = [];
+
+    private async Task<string> CreateMediaBlobUrl(string mimeType, byte[] data)
+    {
+        var url = await JS.InvokeAsync<string>("mediaHelpers.createObjectUrl", data, mimeType);
+        _blobUrls.Add(url);
+        return url;
+    }
+
+    private async Task RevokeBlobUrls()
+    {
+        foreach (var url in _blobUrls)
+        {
+            try { await JS.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", url); } catch { }
+        }
+        _blobUrls.Clear();
+    }
+
+    private async Task HandleTyping()
+    {
+        try
+        {
+            if (SignalR.IsConnected)
+            {
+                await SignalR.SendTypingIndicatorAsync(ConversationId);
+            }
+        }
+        catch
+        {
+            // Typing indicator failures are non-critical
+        }
+    }
+
+    /// <summary>
+    /// Extracts the user ID from a JWT token by decoding the payload.
+    /// </summary>
+    private static decimal ExtractUserIdFromJwt(string token)
+    {
+        var parts = token.Split('.');
+        if (parts.Length != 3)
+            throw new InvalidOperationException("Invalid JWT token format.");
+
+        var payload = parts[1];
+        // Fix base64 padding
+        switch (payload.Length % 4)
+        {
+            case 2: payload += "=="; break;
+            case 3: payload += "="; break;
+        }
+
+        var jsonBytes = Convert.FromBase64String(payload);
+        using var doc = JsonDocument.Parse(jsonBytes);
+        var root = doc.RootElement;
+
+        // Try "sub" claim first, then "nameid"
+        if (root.TryGetProperty("sub", out var subProp))
+            return decimal.Parse(subProp.GetString()!);
+
+        if (root.TryGetProperty("nameid", out var nameidProp))
+            return decimal.Parse(nameidProp.GetString()!);
+
+        if (root.TryGetProperty("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier", out var fullProp))
+            return decimal.Parse(fullProp.GetString()!);
+
+        throw new InvalidOperationException("JWT token does not contain a user ID claim.");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // Unsubscribe from events
+        SignalR.OnMessageReceived -= HandleMessageReceived;
+        SignalR.OnMessageDelivered -= HandleMessageDelivered;
+        SignalR.OnMessageRead -= HandleMessageRead;
+        SignalR.OnTypingIndicator -= HandleTypingIndicator;
+        SignalR.OnParticipantAdded -= HandleParticipantAdded;
+        SignalR.OnParticipantRemoved -= HandleParticipantRemoved;
+
+        typingTimer?.Stop();
+        typingTimer?.Dispose();
+
+        // Revoke blob URLs to free browser memory
+        await RevokeBlobUrls();
+
+        await SignalR.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Local view model for a chat message displayed in the UI.
+    /// </summary>
+    private sealed class ChatMessage
+    {
+        public decimal MessageId { get; set; }
+        public string Text { get; set; } = "";
+        public DateTimeOffset Timestamp { get; set; }
+        public bool IsMine { get; set; }
+        public ToledoMessage.Shared.Enums.DeliveryStatus Status { get; set; }
+        public ContentType ContentType { get; set; } = ContentType.Text;
+        public string? MediaDataUrl { get; set; }
+        public string? FileName { get; set; }
+    }
+}

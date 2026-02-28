@@ -1,0 +1,68 @@
+@using Microsoft.AspNetCore.Components.Web
+@inject NavigationManager Navigation
+
+<div class="conversation-item" role="button" tabindex="0"
+     @onclick="NavigateToChat" @onkeydown="HandleKeyDown"
+     aria-label="@($"Conversation with {DisplayName}")">
+    <AvatarInitials DisplayName="@DisplayName" Size="46" />
+    <div class="conversation-item-content">
+        <div class="conversation-item-name">@DisplayName</div>
+        <div class="conversation-item-preview">
+            @(LastMessage ?? "No messages yet")
+        </div>
+    </div>
+    <div class="conversation-item-meta">
+        @if (LastMessageTime.HasValue)
+        {
+            <div class="conversation-item-time">@FormatRelativeTime(LastMessageTime.Value)</div>
+        }
+        @if (UnreadCount > 0)
+        {
+            <span class="conversation-item-badge" aria-label="@($"{UnreadCount} unread")">@UnreadCount</span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public decimal ConversationId { get; set; }
+
+    [Parameter, EditorRequired]
+    public string DisplayName { get; set; } = "";
+
+    [Parameter]
+    public string? LastMessage { get; set; }
+
+    [Parameter]
+    public int UnreadCount { get; set; }
+
+    [Parameter]
+    public DateTimeOffset? LastMessageTime { get; set; }
+
+    private void NavigateToChat()
+    {
+        Navigation.NavigateTo($"/chat/{ConversationId}");
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " ")
+            NavigateToChat();
+    }
+
+    private static string FormatRelativeTime(DateTimeOffset time)
+    {
+        var diff = DateTimeOffset.UtcNow - time;
+
+        if (diff.TotalMinutes < 1)
+            return "just now";
+        if (diff.TotalMinutes < 60)
+            return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24)
+            return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7)
+            return $"{(int)diff.TotalDays}d ago";
+
+        return time.ToString("MMM d");
+    }
+}

@@ -1,0 +1,45 @@
+@if (IsVisible)
+{
+    <div class="key-change-warning" role="alert">
+        <div class="key-change-content">
+            <p class="key-change-title">
+                Security keys changed
+            </p>
+            <p class="key-change-text">
+                The security keys for @ContactName have changed. This could mean a new device
+                was added or your contact reinstalled the app. Please verify the safety number.
+            </p>
+        </div>
+        <button class="key-change-dismiss"
+                @onclick="HandleDismiss"
+                aria-label="Dismiss warning"
+                title="Dismiss">
+            &times;
+        </button>
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// Whether to show the key change warning banner.
+    /// </summary>
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    /// <summary>
+    /// The display name of the contact whose key changed.
+    /// </summary>
+    [Parameter]
+    public string ContactName { get; set; } = "";
+
+    /// <summary>
+    /// Callback invoked when the user dismisses the warning.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnDismiss { get; set; }
+
+    private async Task HandleDismiss()
+    {
+        await OnDismiss.InvokeAsync();
+    }
+}

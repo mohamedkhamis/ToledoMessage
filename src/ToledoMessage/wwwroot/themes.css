@@ -1,0 +1,159 @@
+/* ========================================
+   ToledoMessage Theme System
+   7 themes using [data-theme] selectors
+   ======================================== */
+
+/* 1. Default (blue/white) — applied via :root in app.css */
+
+/* 2. Default Dark */
+[data-theme="default-dark"] {
+    --bg-primary: #1a1a2e;
+    --bg-secondary: #16213e;
+    --bg-chat: #0f3460;
+    --text-primary: #e0e0e0;
+    --text-secondary: #a0a0b0;
+    --accent: #1976d2;
+    --accent-hover: #1565c0;
+    --accent-text: #ffffff;
+    --border: #2a2a4a;
+    --msg-sent-bg: #1976d2;
+    --msg-sent-text: #ffffff;
+    --msg-received-bg: #16213e;
+    --msg-received-text: #e0e0e0;
+    --nav-bg: #0f3460;
+    --nav-text: #ffffff;
+    --input-bg: #16213e;
+    --input-border: #2a2a4a;
+    --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2);
+    --card-bg: #16213e;
+    --hover-bg: #1a1a3e;
+    color-scheme: dark;
+}
+
+/* 3. WhatsApp */
+[data-theme="whatsapp"] {
+    --bg-primary: #f0f2f5;
+    --bg-secondary: #ffffff;
+    --bg-chat: #efeae2;
+    --text-primary: #111b21;
+    --text-secondary: #667781;
+    --accent: #25d366;
+    --accent-hover: #1da851;
+    --accent-text: #ffffff;
+    --border: #e9edef;
+    --msg-sent-bg: #d9fdd3;
+    --msg-sent-text: #111b21;
+    --msg-received-bg: #ffffff;
+    --msg-received-text: #111b21;
+    --nav-bg: #008069;
+    --nav-text: #ffffff;
+    --input-bg: #ffffff;
+    --input-border: #e9edef;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md: 0 2px 5px rgba(0,0,0,0.1);
+    --card-bg: #ffffff;
+    --hover-bg: #f5f6f6;
+}
+
+/* 4. WhatsApp Dark */
+[data-theme="whatsapp-dark"] {
+    --bg-primary: #0b141a;
+    --bg-secondary: #111b21;
+    --bg-chat: #0b141a;
+    --text-primary: #e9edef;
+    --text-secondary: #8696a0;
+    --accent: #25d366;
+    --accent-hover: #1da851;
+    --accent-text: #ffffff;
+    --border: #222d34;
+    --msg-sent-bg: #005c4b;
+    --msg-sent-text: #e9edef;
+    --msg-received-bg: #202c33;
+    --msg-received-text: #e9edef;
+    --nav-bg: #202c33;
+    --nav-text: #e9edef;
+    --input-bg: #2a3942;
+    --input-border: #222d34;
+    --shadow: 0 1px 3px rgba(0,0,0,0.4);
+    --shadow-md: 0 2px 5px rgba(0,0,0,0.4);
+    --card-bg: #111b21;
+    --hover-bg: #202c33;
+    color-scheme: dark;
+}
+
+/* 5. Telegram */
+[data-theme="telegram"] {
+    --bg-primary: #f4f4f5;
+    --bg-secondary: #ffffff;
+    --bg-chat: #c8d9e6;
+    --text-primary: #000000;
+    --text-secondary: #707579;
+    --accent: #2aabee;
+    --accent-hover: #229ed9;
+    --accent-text: #ffffff;
+    --border: #e6e6e6;
+    --msg-sent-bg: #effdde;
+    --msg-sent-text: #000000;
+    --msg-received-bg: #ffffff;
+    --msg-received-text: #000000;
+    --nav-bg: #517da2;
+    --nav-text: #ffffff;
+    --input-bg: #ffffff;
+    --input-border: #e6e6e6;
+    --shadow: 0 1px 2px rgba(0,0,0,0.08);
+    --shadow-md: 0 2px 4px rgba(0,0,0,0.1);
+    --card-bg: #ffffff;
+    --hover-bg: #f4f4f5;
+}
+
+/* 6. Signal */
+[data-theme="signal"] {
+    --bg-primary: #f6f6f6;
+    --bg-secondary: #ffffff;
+    --bg-chat: #eeeee4;
+    --text-primary: #1b1b1b;
+    --text-secondary: #5e5e5e;
+    --accent: #3a76f0;
+    --accent-hover: #2c5fc7;
+    --accent-text: #ffffff;
+    --border: #e0e0e0;
+    --msg-sent-bg: #3a76f0;
+    --msg-sent-text: #ffffff;
+    --msg-received-bg: #ffffff;
+    --msg-received-text: #1b1b1b;
+    --nav-bg: #3a76f0;
+    --nav-text: #ffffff;
+    --input-bg: #ffffff;
+    --input-border: #e0e0e0;
+    --shadow: 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 2px 4px rgba(0,0,0,0.08);
+    --card-bg: #ffffff;
+    --hover-bg: #f0f0f0;
+}
+
+/* 7. Signal Dark */
+[data-theme="signal-dark"] {
+    --bg-primary: #1b1c1f;
+    --bg-secondary: #121214;
+    --bg-chat: #1b1c1f;
+    --text-primary: #e9e9e9;
+    --text-secondary: #a0a0a0;
+    --accent: #3a76f0;
+    --accent-hover: #2c5fc7;
+    --accent-text: #ffffff;
+    --border: #303030;
+    --msg-sent-bg: #3a76f0;
+    --msg-sent-text: #ffffff;
+    --msg-received-bg: #303030;
+    --msg-received-text: #e9e9e9;
+    --nav-bg: #2c2c2e;
+    --nav-text: #e9e9e9;
+    --input-bg: #303030;
+    --input-border: #404040;
+    --shadow: 0 1px 3px rgba(0,0,0,0.4);
+    --shadow-md: 0 2px 5px rgba(0,0,0,0.4);
+    --card-bg: #252528;
+    --hover-bg: #303033;
+    color-scheme: dark;
+}

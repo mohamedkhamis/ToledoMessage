@@ -58,7 +58,7 @@ param(
 
     [string]$ConnectionString = "",
 
-    [string]$JwtSecretKey = "",
+    [string]$JwtSecretKey = "TjstMZVqlbv1ibCozYAKKSVa_HfyMtH7Nh7Ohh9XtnSgZtdzvWfsmAPsvGcvQj58",
 
     [switch]$Force
 )

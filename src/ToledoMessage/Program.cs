@@ -9,6 +9,7 @@ using ToledoMessage.Data;
 using ToledoMessage.Models;
 using ToledoMessage.Hubs;
 using ToledoMessage.Middleware;
+using ToledoMessage.Client.Services;
 using ToledoMessage.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -38,6 +39,9 @@ builder.Services.AddScoped<AccountDeletionService>();
 builder.Services.AddHostedService<MessageCleanupHostedService>();
 builder.Services.AddHostedService<AccountDeletionHostedService>();
 builder.Services.AddSingleton<RateLimitService>();
+
+// Client services needed during SSR (static server-side rendering)
+builder.Services.AddScoped<ToastService>();
 
 // Health checks
 builder.Services.AddHealthChecks()

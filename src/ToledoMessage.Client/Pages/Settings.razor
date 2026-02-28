@@ -248,11 +248,11 @@
             readReceiptsEnabled = prefs.ReadReceiptsEnabled;
             typingIndicatorsEnabled = prefs.TypingIndicatorsEnabled;
 
-            // Apply server theme if different from local
-            if (prefs.Theme != currentTheme && prefs.Theme != "default")
+            // Sync local theme TO server if different (local is source of truth)
+            if (prefs.Theme != currentTheme)
             {
-                currentTheme = prefs.Theme;
-                await Theme.SetThemeAsync(prefs.Theme);
+                try { await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(Theme: currentTheme)); }
+                catch { /* best effort */ }
             }
 
             if (prefs.FontSize != currentFontSize)

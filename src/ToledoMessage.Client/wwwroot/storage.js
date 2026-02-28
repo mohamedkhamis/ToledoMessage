@@ -12,16 +12,20 @@ window.toledoStorage = {
         return localStorage.getItem(key) !== null;
     },
     setTheme: function (name) {
-        if (name && name !== 'default') {
+        if (name) {
             localStorage.setItem('app.theme', name);
-            document.documentElement.setAttribute('data-theme', name);
+            if (name === 'default') {
+                document.documentElement.removeAttribute('data-theme');
+            } else {
+                document.documentElement.setAttribute('data-theme', name);
+            }
         } else {
             localStorage.removeItem('app.theme');
             document.documentElement.removeAttribute('data-theme');
         }
     },
     getTheme: function () {
-        return localStorage.getItem('app.theme') || 'default';
+        return localStorage.getItem('app.theme');
     },
     prefersDarkMode: function () {
         return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -75,9 +79,17 @@ window.toledoMessageStore = {
             tx.onerror = (e) => reject(e.target.error);
         });
     },
-
+    // ReSharper disable  VariableUsedInInnerScopeBeforeDeclared
     storeMessages: async function (msgs) {
-        if (!msgs || msgs.length === 0) return;
+        if (!msgs || msgs.length === 0) return new Promise((resolve, reject) => {
+            const tx = db.transaction('messages', 'readwrite');
+            const store = tx.objectStore('messages');
+            for (const msg of msgs) {
+                store.put(msg);
+            }
+            tx.oncomplete = () => resolve();
+            tx.onerror = (e) => reject(e.target.error);
+        });
         const db = await this.open();
         return new Promise((resolve, reject) => {
             const tx = db.transaction('messages', 'readwrite');

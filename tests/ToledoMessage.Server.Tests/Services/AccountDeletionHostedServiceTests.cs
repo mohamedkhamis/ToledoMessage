@@ -30,7 +30,8 @@ public class AccountDeletionHostedServiceTests
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
 
         await service.StartAsync(cts.Token);
-        await Task.Delay(200, cts.Token);
+        // ReSharper disable once MethodSupportsCancellation
+        await Task.Delay(200);
         await service.StopAsync(CancellationToken.None);
 
 #pragma warning disable MSTEST0032

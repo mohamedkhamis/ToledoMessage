@@ -33,7 +33,8 @@ public class MessageCleanupHostedServiceTests
 
         // StartAsync internally calls ExecuteAsync; it should exit gracefully when cancelled
         await service.StartAsync(cts.Token);
-        await Task.Delay(200, cts.Token); // Give it time to observe cancellation
+        // ReSharper disable once MethodSupportsCancellation
+        await Task.Delay(200); // Give it time to observe cancellation
         await service.StopAsync(CancellationToken.None);
 
         // If we reach here without hanging, the service correctly handled cancellation

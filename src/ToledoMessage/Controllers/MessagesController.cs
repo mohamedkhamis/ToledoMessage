@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ToledoMessage.Data;
 using ToledoMessage.Services;
-using ToledoMessage.Shared.Constants;
 using ToledoMessage.Shared.DTOs;
 
 namespace ToledoMessage.Controllers;
@@ -34,9 +33,10 @@ public class MessagesController : BaseApiController
         if (!MessageRelayService.IsValidBase64(request.Ciphertext, out var ciphertextBytes))
             return BadRequest("Invalid Base64 ciphertext.");
 
-        // Enforce maximum ciphertext size (FR-019)
-        if (ciphertextBytes.Length > ProtocolConstants.MaxCiphertextSizeBytes)
-            return BadRequest($"Message ciphertext exceeds the maximum allowed size of {ProtocolConstants.MaxCiphertextSizeBytes} bytes.");
+        // Enforce maximum ciphertext size (content-type-aware)
+        var maxSize = MessageRelayService.GetMaxCiphertextSize(request.ContentType);
+        if (ciphertextBytes.Length > maxSize)
+            return BadRequest($"Message ciphertext exceeds the maximum allowed size of {maxSize} bytes.");
 
         // Validate sender is a participant in the conversation
         var isParticipant = await _db.ConversationParticipants
@@ -90,7 +90,9 @@ public class MessagesController : BaseApiController
             m.MessageType,
             m.ContentType,
             m.SequenceNumber,
-            m.ServerTimestamp)).ToList();
+            m.ServerTimestamp,
+            m.FileName,
+            m.MimeType)).ToList();
 
         return Ok(envelopes);
     }

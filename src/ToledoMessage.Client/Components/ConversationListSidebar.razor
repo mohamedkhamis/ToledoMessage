@@ -1,0 +1,318 @@
+@using System.Text
+@using System.Text.Json
+@inject NavigationManager Navigation
+@inject LocalStorageService Storage
+@inject HttpClient Http
+@inject SignalRService SignalR
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="sidebar-header">
+    <AvatarInitials DisplayName="@userName" Size="40" />
+    <span class="sidebar-user-name">@(string.IsNullOrEmpty(userName) ? "You" : userName)</span>
+    <div class="sidebar-header-actions">
+        <button class="sidebar-icon-btn" @onclick="NavigateToSettings" title="Settings">⚙</button>
+        <button class="sidebar-icon-btn" @onclick="NavigateToNewConversation" title="New conversation">✏</button>
+        <button class="sidebar-icon-btn" @onclick="HandleLogout" title="Logout">⏻</button>
+    </div>
+</div>
+
+<div class="sidebar-search">
+    <input placeholder="Search conversations..."
+           value="@searchQuery"
+           @oninput="OnSearchInput"
+           aria-label="Search conversations" />
+</div>
+
+<div class="sidebar-list">
+    @if (isLoading)
+    {
+        <p class="centered-text"><span class="spinner"></span></p>
+    }
+    else if (FilteredConversations.Count == 0 && string.IsNullOrEmpty(searchQuery))
+    {
+        <div style="text-align:center;padding:32px 16px;">
+            <p class="centered-text" style="padding:0 0 16px;">No conversations yet</p>
+            <button class="btn-outline btn-sm" @onclick="NavigateToNewConversation">
+                Start a conversation
+            </button>
+        </div>
+    }
+    else if (FilteredConversations.Count == 0)
+    {
+        <p class="centered-text" style="padding:24px 16px;">No results for "@searchQuery"</p>
+    }
+    else
+    {
+        @foreach (var conv in FilteredConversations)
+        {
+            var convId = conv.ConversationId;
+            <div class="sidebar-item @(IsActiveConversation(conv.ConversationId) ? "active" : "")"
+                 role="button" tabindex="0"
+                 @onclick="() => SelectConversation(convId)"
+                 @onkeydown="(e) => HandleKeyDown(e, convId)"
+                 aria-label="@($"Conversation with {conv.DisplayName}")">
+                <AvatarInitials DisplayName="@conv.DisplayName" Size="46" />
+                <div class="sidebar-item-body">
+                    <div class="sidebar-item-top">
+                        <span class="sidebar-item-name">@conv.DisplayName</span>
+                        @if (conv.LastMessageTime.HasValue)
+                        {
+                            <span class="sidebar-item-time">@FormatTime(conv.LastMessageTime.Value)</span>
+                        }
+                    </div>
+                    <div class="sidebar-item-preview">
+                        @if (conv.UnreadCount > 0)
+                        {
+                            <span class="conversation-item-badge" style="margin-right:4px;font-size:0.75em;">@conv.UnreadCount</span>
+                        }
+                        @(conv.LastMessage ?? "No messages yet")
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<ConversationSummary> conversations = [];
+    private string searchQuery = "";
+    private bool isLoading = true;
+    private string? accessToken;
+    private decimal localDeviceId;
+    private string userName = "";
+    private string currentPath = "";
+
+    private List<ConversationSummary> FilteredConversations =>
+        string.IsNullOrWhiteSpace(searchQuery)
+            ? conversations
+            : conversations
+                .Where(c => c.DisplayName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentPath = new Uri(Navigation.Uri).AbsolutePath;
+        Navigation.LocationChanged += OnLocationChanged;
+
+        try
+        {
+            var tokenBytes = await Storage.GetAsync("auth.token");
+            if (tokenBytes is null)
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+
+            accessToken = Encoding.UTF8.GetString(tokenBytes);
+            userName = ExtractDisplayNameFromJwt(accessToken);
+
+            var deviceIdBytes = await Storage.GetAsync("local.deviceId");
+            if (deviceIdBytes is not null)
+                localDeviceId = decimal.Parse(Encoding.UTF8.GetString(deviceIdBytes));
+
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+            await LoadConversations();
+
+            try
+            {
+                var hubUrl = Navigation.ToAbsoluteUri("/hubs/chat").ToString();
+                await SignalR.ConnectAsync(hubUrl, accessToken);
+                if (localDeviceId != 0)
+                    await SignalR.RegisterDeviceAsync(localDeviceId);
+                SignalR.OnMessageReceived += HandleMessageReceived;
+            }
+            catch
+            {
+                // Non-critical for sidebar
+            }
+        }
+        catch
+        {
+            // Swallow initialization errors gracefully
+        }
+        finally
+        {
+            isLoading = false;
+        }
+
+        await UpdateMobileLayout();
+    }
+
+    private async Task LoadConversations()
+    {
+        try
+        {
+            var serverConversations = await Http.GetFromJsonAsync<List<ConversationListItemResponse>>(
+                "/api/conversations");
+
+            conversations = serverConversations?.Select(c => new ConversationSummary
+            {
+                ConversationId = c.ConversationId,
+                DisplayName = c.DisplayName,
+                LastMessage = c.LastMessageTime.HasValue ? "New message" : null,
+                UnreadCount = c.UnreadCount,
+                LastMessageTime = c.LastMessageTime
+            }).ToList() ?? [];
+        }
+        catch
+        {
+            conversations = [];
+        }
+    }
+
+    private bool IsActiveConversation(decimal conversationId)
+    {
+        return currentPath.Equals($"/chat/{conversationId}", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsInChatPage()
+    {
+        var path = currentPath.TrimEnd('/');
+        if (!path.StartsWith("/chat/", StringComparison.OrdinalIgnoreCase))
+            return false;
+        var segment = path["/chat/".Length..];
+        return decimal.TryParse(segment, out _);
+    }
+
+    private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        currentPath = new Uri(e.Location).AbsolutePath;
+        await InvokeAsync(StateHasChanged);
+        await UpdateMobileLayout();
+    }
+
+    private async Task UpdateMobileLayout()
+    {
+        try
+        {
+            var inChat = IsInChatPage();
+            await JS.InvokeVoidAsync("eval",
+                "(function(){" +
+                "var s=document.getElementById('chat-sidebar');" +
+                "var p=document.getElementById('chat-panel');" +
+                $"if(s)s.classList.{(inChat ? "add" : "remove")}('hide-mobile');" +
+                $"if(p)p.classList.{(inChat ? "add" : "remove")}('show-mobile');" +
+                "})()");
+        }
+        catch
+        {
+            // JS interop may fail during prerender or initial load
+        }
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        searchQuery = e.Value?.ToString() ?? "";
+    }
+
+    private void SelectConversation(decimal conversationId)
+    {
+        var conv = conversations.FirstOrDefault(c => c.ConversationId == conversationId);
+        if (conv is not null && IsActiveConversation(conversationId))
+            conv.UnreadCount = 0;
+        Navigation.NavigateTo($"/chat/{conversationId}");
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e, decimal conversationId)
+    {
+        if (e.Key is "Enter" or " ")
+            SelectConversation(conversationId);
+    }
+
+    private void NavigateToSettings() => Navigation.NavigateTo("/settings");
+    private void NavigateToNewConversation() => Navigation.NavigateTo("/new-conversation");
+    private void HandleLogout() => Navigation.NavigateTo("/login?logout=true", forceLoad: true);
+
+    private async void HandleMessageReceived(MessageEnvelope envelope)
+    {
+        await InvokeAsync(() =>
+        {
+            var existing = conversations.FirstOrDefault(c => c.ConversationId == envelope.ConversationId);
+            var isViewing = IsActiveConversation(envelope.ConversationId);
+
+            if (existing is not null)
+            {
+                if (!isViewing)
+                    existing.UnreadCount++;
+                existing.LastMessage = "New message";
+                existing.LastMessageTime = envelope.ServerTimestamp;
+                conversations.Remove(existing);
+                conversations.Insert(0, existing);
+            }
+            else
+            {
+                conversations.Insert(0, new ConversationSummary
+                {
+                    ConversationId = envelope.ConversationId,
+                    DisplayName = "New conversation",
+                    LastMessage = "New message",
+                    UnreadCount = isViewing ? 0 : 1,
+                    LastMessageTime = envelope.ServerTimestamp
+                });
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    private static string FormatTime(DateTimeOffset time)
+    {
+        var diff = DateTimeOffset.UtcNow - time;
+        if (diff.TotalMinutes < 1) return "now";
+        if (diff.TotalHours < 24) return time.ToLocalTime().ToString("HH:mm");
+        if (diff.TotalDays < 7) return time.ToLocalTime().ToString("ddd");
+        return time.ToString("MMM d");
+    }
+
+    private static string ExtractDisplayNameFromJwt(string token)
+    {
+        try
+        {
+            var parts = token.Split('.');
+            if (parts.Length != 3) return "?";
+            var payload = parts[1];
+            switch (payload.Length % 4)
+            {
+                case 2: payload += "=="; break;
+                case 3: payload += "="; break;
+            }
+            var json = Encoding.UTF8.GetString(Convert.FromBase64String(payload));
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            foreach (var claim in new[]
+            {
+                "name",
+                "unique_name",
+                "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
+            })
+            {
+                if (root.TryGetProperty(claim, out var prop))
+                {
+                    var val = prop.GetString();
+                    if (!string.IsNullOrEmpty(val)) return val;
+                }
+            }
+            return "?";
+        }
+        catch { return "?"; }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+        SignalR.OnMessageReceived -= HandleMessageReceived;
+        await Task.CompletedTask;
+    }
+
+    private sealed class ConversationSummary
+    {
+        public decimal ConversationId { get; init; }
+        public string DisplayName { get; init; } = "";
+        public string? LastMessage { get; set; }
+        public int UnreadCount { get; set; }
+        public DateTimeOffset? LastMessageTime { get; set; }
+    }
+}

@@ -4,23 +4,13 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using ToledoMessage.Data;
 using ToledoMessage.Services;
-using ToledoMessage.Shared.Constants;
 using ToledoMessage.Shared.DTOs;
 
 namespace ToledoMessage.Hubs;
 
 [Authorize]
-public class ChatHub : Hub
+public class ChatHub(MessageRelayService relayService, ApplicationDbContext db) : Hub
 {
-    private readonly MessageRelayService _relayService;
-    private readonly ApplicationDbContext _db;
-
-    public ChatHub(MessageRelayService relayService, ApplicationDbContext db)
-    {
-        _relayService = relayService;
-        _db = db;
-    }
-
     /// <summary>
     /// Register the current connection with a specific device, adding it to device and user groups.
     /// </summary>
@@ -29,7 +19,7 @@ public class ChatHub : Hub
         var userId = GetUserId();
 
         // Verify the device belongs to the requesting user
-        var deviceOwned = await _db.Devices.AnyAsync(d => d.Id == deviceId && d.UserId == userId && d.IsActive);
+        var deviceOwned = await db.Devices.AnyAsync(d => d.Id == deviceId && d.UserId == userId && d.IsActive);
         if (!deviceOwned)
             throw new HubException("Device not found or does not belong to the current user.");
 
@@ -44,36 +34,38 @@ public class ChatHub : Hub
     {
         var userId = GetUserId();
 
-        // Validate ciphertext size (FR-019: max 64 KB plaintext, ~66 KB ciphertext)
+        // Validate ciphertext size (content-type-aware)
         if (!MessageRelayService.IsValidBase64(request.Ciphertext, out var ciphertextBytes))
             throw new HubException("Invalid Base64 ciphertext.");
-        if (ciphertextBytes.Length > ProtocolConstants.MaxCiphertextSizeBytes)
+
+        var maxSize = MessageRelayService.GetMaxCiphertextSize(request.ContentType);
+        if (ciphertextBytes.Length > maxSize)
             throw new HubException("Message exceeds the maximum allowed size.");
 
         // Validate sender is a participant in the conversation
-        var isParticipant = await _db.ConversationParticipants
+        var isParticipant = await db.ConversationParticipants
             .AnyAsync(cp => cp.ConversationId == request.ConversationId && cp.UserId == userId);
         if (!isParticipant)
             throw new HubException("You are not a participant in this conversation.");
 
         // Verify the SenderDeviceId belongs to the calling user
-        var senderDeviceOwned = await _db.Devices
+        var senderDeviceOwned = await db.Devices
             .AnyAsync(d => d.Id == request.SenderDeviceId && d.UserId == userId && d.IsActive);
         if (!senderDeviceOwned)
             throw new HubException("Sender device not found or does not belong to the current user.");
 
         // Validate recipient device is active and recipient user is not deactivated
-        var recipientDevice = await _db.Devices
-            .Include(d => d.User)
+        var recipientDevice = await db.Devices
+            .Include(static d => d.User)
             .FirstOrDefaultAsync(d => d.Id == request.RecipientDeviceId && d.IsActive);
         if (recipientDevice == null || !recipientDevice.User.IsActive)
             throw new HubException("Recipient device is not available.");
 
         // Store the message
-        var message = await _relayService.StoreMessage(request.SenderDeviceId, request);
+        var message = await relayService.StoreMessage(request.SenderDeviceId, request);
 
         // Try to relay to online recipient
-        await _relayService.TryRelayToOnlineRecipient(message);
+        await relayService.TryRelayToOnlineRecipient(message);
 
         return new SendMessageResult(message.Id, message.ServerTimestamp, message.SequenceNumber);
     }
@@ -85,21 +77,21 @@ public class ChatHub : Hub
     {
         var userId = GetUserId();
 
-        var msg = await _db.EncryptedMessages
-            .Include(m => m.RecipientDevice)
+        var msg = await db.EncryptedMessages
+            .Include(static m => m.RecipientDevice)
             .FirstOrDefaultAsync(m => m.Id == messageId);
         if (msg == null)
             throw new HubException("Message not found.");
         if (msg.RecipientDevice.UserId != userId)
             throw new HubException("Message does not belong to the current user.");
 
-        var message = await _relayService.AcknowledgeDelivery(messageId);
+        var message = await relayService.AcknowledgeDelivery(messageId);
         if (message == null)
             throw new HubException("Message not found.");
 
         // Notify the sender's device that the message was delivered
         await Clients.Group($"device_{message.SenderDeviceId}")
-            .SendAsync("MessageDelivered", new { messageId, deliveredAt = message.DeliveredAt });
+            .SendAsync("MessageDelivered", message.Id);
     }
 
     /// <summary>
@@ -109,8 +101,8 @@ public class ChatHub : Hub
     {
         var userId = GetUserId();
 
-        var message = await _db.EncryptedMessages
-            .Include(m => m.RecipientDevice)
+        var message = await db.EncryptedMessages
+            .Include(static m => m.RecipientDevice)
             .FirstOrDefaultAsync(m => m.Id == messageId);
         if (message == null)
             throw new HubException("Message not found.");
@@ -119,7 +111,7 @@ public class ChatHub : Hub
 
         // Notify the sender's device that the message was read
         await Clients.Group($"device_{message.SenderDeviceId}")
-            .SendAsync("MessageRead", new { messageId, readAt = DateTimeOffset.UtcNow });
+            .SendAsync("MessageRead", messageId);
     }
 
     /// <summary>
@@ -129,18 +121,21 @@ public class ChatHub : Hub
     {
         var userId = GetUserId();
 
+        var displayName = await db.Users
+            .Where(u => u.Id == userId)
+            .Select(static u => u.DisplayName)
+            .FirstOrDefaultAsync() ?? string.Empty;
+
         // Get all other participants in the conversation
-        var otherParticipantUserIds = await _db.ConversationParticipants
+        var otherParticipantUserIds = await db.ConversationParticipants
             .Where(cp => cp.ConversationId == conversationId && cp.UserId != userId)
-            .Select(cp => cp.UserId)
+            .Select(static cp => cp.UserId)
             .ToListAsync();
 
         // Send typing indicator to each participant's user group
         foreach (var participantUserId in otherParticipantUserIds)
-        {
             await Clients.Group($"user_{participantUserId}")
-                .SendAsync("UserTyping", new { conversationId, userId });
-        }
+                .SendAsync("UserTyping", conversationId, displayName);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
@@ -153,9 +148,10 @@ public class ChatHub : Hub
     private decimal GetUserId()
     {
         var sub = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? Context.User?.FindFirstValue("sub");
+                  ?? Context.User?.FindFirstValue("sub");
         if (string.IsNullOrEmpty(sub) || !decimal.TryParse(sub, out var userId))
             throw new HubException("Authentication required.");
+
         return userId;
     }
 }

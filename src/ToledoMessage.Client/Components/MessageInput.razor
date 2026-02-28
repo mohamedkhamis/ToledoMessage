@@ -1,25 +1,49 @@
 <div class="chat-input-area">
-    <textarea @bind="messageText"
-              @bind:event="oninput"
-              @bind:after="HandleTyping"
-              @onkeydown="HandleKeyDown"
-              placeholder="Type a message..."
-              rows="1"
-              class="msg-textarea" />
-    <button @onclick="SendMessage"
-            disabled="@string.IsNullOrWhiteSpace(messageText)"
-            class="btn-primary send-btn"
-            aria-label="Send message"
-            title="Send">
-        &#10148;
-    </button>
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="media-error">@errorMessage</div>
+    }
+    @if (selectedFile is not null)
+    {
+        <div class="media-preview">
+            <span class="media-preview-name">@selectedFile.Name (@FormatFileSize(selectedFile.Size))</span>
+            <button class="media-preview-remove" @onclick="ClearSelectedFile" aria-label="Remove attachment">&times;</button>
+        </div>
+    }
+    <div class="chat-input-row">
+        <label class="attach-btn" title="Send image" aria-label="Attach image">
+            &#128247;
+            <InputFile accept="image/*" OnChange="OnImageSelected" style="display:none" />
+        </label>
+        <label class="attach-btn" title="Send audio" aria-label="Attach audio">
+            &#127908;
+            <InputFile accept="audio/*" OnChange="OnAudioSelected" style="display:none" />
+        </label>
+        <textarea @bind="messageText"
+                  @bind:event="oninput"
+                  @bind:after="HandleTyping"
+                  @onkeydown="HandleKeyDown"
+                  placeholder="Type a message..."
+                  rows="1"
+                  class="msg-textarea" />
+        <button @onclick="SendMessage"
+                disabled="@(string.IsNullOrWhiteSpace(messageText) && selectedFile is null)"
+                class="btn-primary send-btn"
+                aria-label="Send message"
+                title="Send">
+            &#10148;
+        </button>
+    </div>
 </div>
 
 @code {
     private string messageText = "";
+    private IBrowserFile? selectedFile;
+    private ContentType selectedContentType = ContentType.Text;
+    private string? errorMessage;
 
     [Parameter]
-    public EventCallback<string> OnSend { get; set; }
+    public EventCallback<ChatInputMessage> OnSend { get; set; }
 
     [Parameter]
     public EventCallback OnTyping { get; set; }
@@ -34,16 +58,90 @@
 
     private async Task SendMessage()
     {
-        var text = messageText?.Trim();
-        if (string.IsNullOrEmpty(text))
+        var text = messageText?.Trim() ?? "";
+        byte[]? mediaBytes = null;
+        string? fileName = null;
+        string? mimeType = null;
+        var contentType = ContentType.Text;
+
+        if (selectedFile is not null)
+        {
+            var maxSize = ProtocolConstants.MaxMediaCiphertextSizeBytes;
+            if (selectedFile.Size > maxSize)
+            {
+                errorMessage = $"File too large. Maximum size is {FormatFileSize(maxSize)}.";
+                return;
+            }
+
+            errorMessage = null;
+            using var stream = selectedFile.OpenReadStream(maxAllowedSize: maxSize);
+            mediaBytes = new byte[selectedFile.Size];
+            await stream.ReadExactlyAsync(mediaBytes);
+
+            fileName = selectedFile.Name;
+            mimeType = selectedFile.ContentType;
+            contentType = selectedContentType;
+        }
+
+        // Must have text or media (or both)
+        if (string.IsNullOrEmpty(text) && mediaBytes is null)
             return;
 
+        var msg = new ChatInputMessage
+        {
+            Text = text,
+            MediaBytes = mediaBytes,
+            FileName = fileName,
+            MimeType = mimeType,
+            ContentType = contentType
+        };
+
         messageText = "";
-        await OnSend.InvokeAsync(text);
+        ClearSelectedFile();
+        await OnSend.InvokeAsync(msg);
+    }
+
+    private void OnImageSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        selectedContentType = ContentType.Image;
+        errorMessage = null;
+    }
+
+    private void OnAudioSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        selectedContentType = ContentType.Audio;
+        errorMessage = null;
+    }
+
+    private void ClearSelectedFile()
+    {
+        selectedFile = null;
+        selectedContentType = ContentType.Text;
     }
 
     private async Task HandleTyping()
     {
         await OnTyping.InvokeAsync();
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024)
+            return $"{bytes} B";
+        if (bytes < 1024 * 1024)
+            return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024.0):F1} MB";
+    }
+
+    public sealed class ChatInputMessage
+    {
+        public string Text { get; set; } = "";
+        public byte[]? MediaBytes { get; set; }
+        public string? FileName { get; set; }
+        public string? MimeType { get; set; }
+        public ContentType ContentType { get; set; } = ContentType.Text;
+        public bool HasMedia => MediaBytes is not null;
     }
 }

@@ -10,4 +10,6 @@ public sealed record MessageEnvelope(
     MessageType MessageType,
     ContentType ContentType,
     long SequenceNumber,
-    DateTimeOffset ServerTimestamp);
+    DateTimeOffset ServerTimestamp,
+    string? FileName = null,
+    string? MimeType = null);

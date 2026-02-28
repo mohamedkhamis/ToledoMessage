@@ -1,8 +1,11 @@
 @page "/new-conversation"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@layout ChatLayout
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject LocalStorageService Storage
+
+<div class="panel-content-scroll">
 
 @if (!isAuthenticated)
 {
@@ -11,7 +14,6 @@
 else
 {
 <div class="page-header">
-    <a href="/chat" class="back-link">&larr;</a>
     <h2>New Conversation</h2>
 </div>
 
@@ -58,6 +60,8 @@ else if (searchResults is not null && searchResults.Count == 0 && !string.IsNull
     <p class="centered-text">No users found.</p>
 }
 }
+
+</div>
 
 @code {
     private bool isAuthenticated;

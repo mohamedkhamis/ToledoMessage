@@ -8,4 +8,6 @@ public sealed record SendMessageRequest(
     decimal RecipientDeviceId,
     string Ciphertext,
     MessageType MessageType,
-    ContentType ContentType);
+    ContentType ContentType,
+    string? FileName = null,
+    string? MimeType = null);

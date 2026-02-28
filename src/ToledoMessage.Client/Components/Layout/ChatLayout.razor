@@ -1,0 +1,10 @@
+@inherits LayoutComponentBase
+
+<div class="chat-app-shell">
+    <div class="chat-sidebar" id="chat-sidebar">
+        <ConversationListSidebar @rendermode="@(new InteractiveWebAssemblyRenderMode(prerender: false))" />
+    </div>
+    <div class="chat-panel" id="chat-panel">
+        @Body
+    </div>
+</div>

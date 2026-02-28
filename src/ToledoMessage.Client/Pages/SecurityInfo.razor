@@ -1,9 +1,11 @@
 @page "/security/{DeviceId:decimal}"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@layout ChatLayout
 @inject FingerprintService Fingerprint
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 
+<div class="panel-content-scroll">
 <div class="security-page fade-in">
     <div class="security-header">
         <button @onclick="GoBack" class="back-link" aria-label="Go back">&larr;</button>
@@ -69,6 +71,7 @@
             </p>
         </div>
     }
+</div>
 </div>
 
 @code {

@@ -4,6 +4,7 @@
 <div class="conversation-item" role="button" tabindex="0"
      @onclick="NavigateToChat" @onkeydown="HandleKeyDown"
      aria-label="@($"Conversation with {DisplayName}")">
+    <AvatarInitials DisplayName="@DisplayName" Size="46" />
     <div class="conversation-item-content">
         <div class="conversation-item-name">@DisplayName</div>
         <div class="conversation-item-preview">

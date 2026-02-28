@@ -62,6 +62,9 @@ public class SignalRService : IAsyncDisposable
             .WithAutomaticReconnect()
             .Build();
 
+        // Increase max message size to support encrypted media payloads
+        _hubConnection.ServerTimeout = TimeSpan.FromSeconds(60);
+
         // Register server-to-client handlers
         _hubConnection.On<MessageEnvelope>("ReceiveMessage", envelope =>
         {

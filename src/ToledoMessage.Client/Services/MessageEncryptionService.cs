@@ -19,7 +19,16 @@ public class MessageEncryptionService
         DoubleRatchet session, string plaintext)
     {
         var plaintextBytes = Encoding.UTF8.GetBytes(plaintext);
-        var (ciphertext, header) = session.Encrypt(plaintextBytes);
+        return EncryptBytes(session, plaintextBytes);
+    }
+
+    /// <summary>
+    /// Encrypts raw bytes as a NormalMessage (for media payloads).
+    /// </summary>
+    public (byte[] ciphertextWithHeader, RatchetState updatedState) EncryptBytes(
+        DoubleRatchet session, byte[] data)
+    {
+        var (ciphertext, header) = session.Encrypt(data);
 
         var ciphertextWithHeader = PackNormalMessage(header, ciphertext);
         return (ciphertextWithHeader, session.GetState());
@@ -32,7 +41,16 @@ public class MessageEncryptionService
         DoubleRatchet session, string plaintext, PreKeyHeaderInfo preKeyHeader)
     {
         var plaintextBytes = Encoding.UTF8.GetBytes(plaintext);
-        var (ciphertext, header) = session.Encrypt(plaintextBytes);
+        return EncryptPreKeyMessageBytes(session, plaintextBytes, preKeyHeader);
+    }
+
+    /// <summary>
+    /// Encrypts raw bytes as a PreKeyMessage (for media payloads on first message to a device).
+    /// </summary>
+    public (byte[] ciphertextWithHeader, RatchetState updatedState) EncryptPreKeyMessageBytes(
+        DoubleRatchet session, byte[] data, PreKeyHeaderInfo preKeyHeader)
+    {
+        var (ciphertext, header) = session.Encrypt(data);
 
         var ciphertextWithHeader = PackPreKeyMessage(preKeyHeader, header, ciphertext);
         return (ciphertextWithHeader, session.GetState());
@@ -44,10 +62,20 @@ public class MessageEncryptionService
     public (string plaintext, RatchetState updatedState) DecryptMessage(
         DoubleRatchet session, byte[] ciphertextWithHeader)
     {
+        var (bytes, updatedState) = DecryptToBytes(session, ciphertextWithHeader);
+        return (Encoding.UTF8.GetString(bytes), updatedState);
+    }
+
+    /// <summary>
+    /// Decrypts a NormalMessage blob returning raw bytes (for media payloads).
+    /// </summary>
+    public (byte[] data, RatchetState updatedState) DecryptToBytes(
+        DoubleRatchet session, byte[] ciphertextWithHeader)
+    {
         var (header, ciphertext) = UnpackNormalMessage(ciphertextWithHeader);
         var plaintextBytes = session.Decrypt(ciphertext, header);
 
-        return (Encoding.UTF8.GetString(plaintextBytes), session.GetState());
+        return (plaintextBytes, session.GetState());
     }
 
     /// <summary>

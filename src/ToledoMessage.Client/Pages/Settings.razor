@@ -1,14 +1,15 @@
 @page "/settings"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@layout ChatLayout
 @using System.Text
 @inject HttpClient Http
 @inject LocalStorageService Storage
 @inject NavigationManager Navigation
 @inject ThemeService Theme
 
+<div class="panel-content-scroll">
 <div class="settings-page">
     <div class="settings-header">
-        <a href="/chat" class="back-link">&larr;</a>
         <h2>Settings</h2>
     </div>
 
@@ -135,6 +136,7 @@
             }
         </div>
     }
+</div>
 </div>
 
 @code {

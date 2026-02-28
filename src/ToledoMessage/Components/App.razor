@@ -7,25 +7,44 @@
     <base href="/" />
     <script>
         (function () {
-            function applyTheme() {
+            function getDesiredTheme() {
                 var t = localStorage.getItem('app.theme');
                 if (!t) {
-                    // No explicit choice — auto-detect OS dark mode
                     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                        document.documentElement.setAttribute('data-theme', 'default-dark');
-                    } else {
-                        document.documentElement.removeAttribute('data-theme');
+                        return 'default-dark';
                     }
-                } else if (t === 'default') {
-                    document.documentElement.removeAttribute('data-theme');
+                    return null;
+                }
+                return t === 'default' ? null : t;
+            }
+            function applyTheme() {
+                var theme = getDesiredTheme();
+                if (theme) {
+                    document.documentElement.setAttribute('data-theme', theme);
                 } else {
-                    document.documentElement.setAttribute('data-theme', t);
+                    document.documentElement.removeAttribute('data-theme');
                 }
             }
             applyTheme();
-            // Re-apply after Blazor enhanced navigation (server re-renders <html> without data-theme)
+            // Re-apply after Blazor enhanced navigation
 // ReSharper disable  Html.EventNotResolved
-            document.addEventListener('blazor:enhancedload', applyTheme);
+            document.addEventListener('blazor:enhancedload', function () {
+                applyTheme();
+                // Also re-apply after a frame in case Blazor patches DOM after the event
+                requestAnimationFrame(applyTheme);
+            });
+            // MutationObserver: catch Blazor stripping data-theme during DOM patching
+            var _applying = false;
+            new MutationObserver(function () {
+                if (_applying) return;
+                var theme = getDesiredTheme();
+                var current = document.documentElement.getAttribute('data-theme');
+                if (theme && current !== theme) {
+                    _applying = true;
+                    document.documentElement.setAttribute('data-theme', theme);
+                    _applying = false;
+                }
+            }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'lang'] });
         })();
     </script>
     <ResourcePreloader />

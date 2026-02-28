@@ -50,7 +50,7 @@ public class PreKeyService(ApplicationDbContext db)
             // Atomic: claim the lowest-KeyId unused pre-key in a single UPDATE+OUTPUT statement.
             // This prevents two concurrent requests from consuming the same key.
             // Must use explicit SqlParameter with precision/scale for decimal(28,8) columns.
-            new SqlParameter("@deviceId", System.Data.SqlDbType.Decimal)
+            var deviceParam = new SqlParameter("@deviceId", System.Data.SqlDbType.Decimal)
             {
                 Precision = 28, Scale = 8, Value = deviceId
             };
@@ -60,7 +60,7 @@ public class PreKeyService(ApplicationDbContext db)
                 SET IsUsed = 1
                 OUTPUT inserted.Id
                 WHERE DeviceId = @deviceId AND IsUsed = 0
-                """).ToListAsync();
+                """, deviceParam).ToListAsync();
 
             if (claimed.Count == 0)
                 return null;

@@ -1,10 +1,10 @@
-using System.Text;
 using ToledoMessage.Crypto.Classical;
 using ToledoMessage.Crypto.Hybrid;
 using ToledoMessage.Crypto.PostQuantum;
 
 namespace ToledoMessage.Crypto.Protocol;
 
+// ReSharper disable  RemoveRedundantBraces
 /// <summary>
 /// Performs the initiator (Alice) side of the X3DH key agreement with post-quantum extension.
 /// </summary>
@@ -31,7 +31,7 @@ public static class X3dhInitiator
         public int? UsedOneTimePreKeyId { get; init; }
     }
 
-    private static readonly byte[] HkdfInfo = Encoding.UTF8.GetBytes("ToledoMessage-X3DH-v1");
+    private static readonly byte[] HkdfInfo = "ToledoMessage-X3DH-v1"u8.ToArray();
 
     /// <summary>
     /// Performs X3DH initiation against Bob's pre-key bundle.
@@ -42,7 +42,7 @@ public static class X3dhInitiator
     public static InitiationResult Initiate(PreKeyBundle bobBundle)
     {
         // 1. Verify Bob's signed pre-key signature
-        bool spkValid = HybridSigner.Verify(
+        var spkValid = HybridSigner.Verify(
             bobBundle.IdentityKeyClassical,
             bobBundle.IdentityKeyPostQuantum,
             bobBundle.SignedPreKeyPublic,
@@ -52,7 +52,7 @@ public static class X3dhInitiator
             throw new InvalidOperationException("Signed pre-key signature verification failed.");
 
         // 2. Verify Bob's Kyber pre-key signature
-        bool kyberValid = HybridSigner.Verify(
+        var kyberValid = HybridSigner.Verify(
             bobBundle.IdentityKeyClassical,
             bobBundle.IdentityKeyPostQuantum,
             bobBundle.KyberPreKeyPublic,
@@ -65,7 +65,7 @@ public static class X3dhInitiator
         var (ephemeralPublic, ephemeralPrivate) = X25519KeyExchange.GenerateKeyPair();
 
         // 4. DH1 = X25519(ek_A_private, spk_B)
-        byte[] dh1 = X25519KeyExchange.ComputeSharedSecret(ephemeralPrivate, bobBundle.SignedPreKeyPublic);
+        var dh1 = X25519KeyExchange.ComputeSharedSecret(ephemeralPrivate, bobBundle.SignedPreKeyPublic);
 
         // 5. DH2 = X25519(ek_A_private, opk_B) if available
         byte[]? dh2 = null;
@@ -94,11 +94,11 @@ public static class X3dhInitiator
         }
 
         // 8. SK = HKDF(ikm, info: "ToledoMessage-X3DH-v1", outputLength: 64)
-        byte[] sk = HybridKeyDerivation.DeriveKey(ikm, HkdfInfo, 64);
+        var sk = HybridKeyDerivation.DeriveKey(ikm, HkdfInfo, 64);
 
         // 9. rootKey = SK[0..32], chainKey = SK[32..64]
-        byte[] rootKey = new byte[32];
-        byte[] chainKey = new byte[32];
+        var rootKey = new byte[32];
+        var chainKey = new byte[32];
         Buffer.BlockCopy(sk, 0, rootKey, 0, 32);
         Buffer.BlockCopy(sk, 32, chainKey, 0, 32);
 

@@ -2,34 +2,49 @@ using Microsoft.JSInterop;
 
 namespace ToledoMessage.Client.Services;
 
-public sealed class ThemeService
+public sealed class ThemeService(IJSRuntime js)
 {
-    private readonly IJSRuntime _js;
-    private const string StorageKey = "app.theme";
-
-    public ThemeService(IJSRuntime js) => _js = js;
-
     public async Task<string> GetThemeAsync()
     {
-        var theme = await _js.InvokeAsync<string?>("toledoStorage.getTheme");
+        var theme = await js.InvokeAsync<string?>("toledoStorage.getTheme");
+        // ReSharper disable once InvertIf
+        if (theme is null or "default")
+        {
+            var prefersDark = await js.InvokeAsync<bool>("toledoStorage.prefersDarkMode");
+            if (prefersDark) return "default-dark";
+        }
+
         return theme ?? "default";
     }
 
     public async Task SetThemeAsync(string themeName)
     {
-        await _js.InvokeVoidAsync("toledoStorage.setTheme", themeName);
+        await js.InvokeVoidAsync("toledoStorage.setTheme", themeName);
     }
 
-    public static IReadOnlyList<ThemeInfo> GetAvailableThemes() =>
-    [
-        new("default",       "Default",        "#1976d2"),
-        new("default-dark",  "Default Dark",   "#1565c0"),
-        new("whatsapp",      "WhatsApp",       "#25d366"),
-        new("whatsapp-dark", "WhatsApp Dark",  "#005c4b"),
-        new("telegram",      "Telegram",       "#2aabee"),
-        new("signal",        "Signal",         "#3a76f0"),
-        new("signal-dark",   "Signal Dark",    "#2c5fc7"),
-    ];
+    public async Task<string> GetFontSizeAsync()
+    {
+        return await js.InvokeAsync<string?>("toledoStorage.getFontSize") ?? "medium";
+    }
+
+    public async Task SetFontSizeAsync(string fontSize)
+    {
+        await js.InvokeVoidAsync("toledoStorage.setFontSize", fontSize);
+    }
+
+    public static IReadOnlyList<ThemeInfo> GetAvailableThemes()
+    {
+        return
+        [
+            new ThemeInfo("default", "Default", "#1976d2"),
+            new ThemeInfo("default-dark", "Default Dark", "#1565c0"),
+            new ThemeInfo("whatsapp", "WhatsApp", "#25d366"),
+            new ThemeInfo("whatsapp-dark", "WhatsApp Dark", "#005c4b"),
+            new ThemeInfo("telegram", "Telegram", "#2aabee"),
+            new ThemeInfo("signal", "Signal", "#3a76f0"),
+            new ThemeInfo("signal-dark", "Signal Dark", "#2c5fc7"),
+        ];
+    }
 }
 
 public sealed record ThemeInfo(string Id, string DisplayName, string SwatchColor);

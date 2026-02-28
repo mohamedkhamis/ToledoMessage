@@ -4,6 +4,8 @@ namespace ToledoMessage.Models;
 
 public class EncryptedMessage
 {
+    // ReSharper disable  NullableWarningSuppressionIsUsed
+
     public decimal Id { get; set; }
     public decimal ConversationId { get; set; }
     public decimal SenderDeviceId { get; set; }

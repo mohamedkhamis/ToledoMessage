@@ -10,6 +10,7 @@
 @inject LocalStorageService Storage
 @inject PreKeyReplenishmentService PreKeyReplenishment
 @inject IJSRuntime JS
+@inject MessageStoreService MessageStore
 @implements IAsyncDisposable
 
 <div class="chat-container">
@@ -70,27 +71,60 @@
     <div class="chat-messages" @ref="messageContainer" role="log" aria-live="polite">
         @if (isLoading)
         {
-            <p class="chat-empty-state"><span class="spinner"></span> Loading messages...</p>
+            <SkeletonLoader Variant="SkeletonLoader.SkeletonVariant.ChatMessages" />
         }
         else if (messages.Count == 0)
         {
-            <p class="chat-empty-state">No messages yet. Send the first message!</p>
+            <div class="empty-state">
+                <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                </svg>
+                <h3>No messages yet</h3>
+                <p>Send the first message to start the conversation.</p>
+            </div>
         }
         else
         {
-            @foreach (var msg in messages)
+            @for (int i = 0; i < messages.Count; i++)
             {
+                var msg = messages[i];
+                var prevMsg = i > 0 ? messages[i - 1] : null;
+                var nextMsg = i < messages.Count - 1 ? messages[i + 1] : null;
+
+                bool showDateSeparator = prevMsg is null ||
+                    msg.Timestamp.LocalDateTime.Date != prevMsg.Timestamp.LocalDateTime.Date;
+
+                if (showDateSeparator)
+                {
+                    <DateSeparator Date="msg.Timestamp" />
+                }
+
+                @if (firstUnreadMessageId.HasValue && msg.MessageId == firstUnreadMessageId.Value)
+                {
+                    var unreadCount = messages.Count - i;
+                    <div class="unread-divider">
+                        <span>@unreadCount new message@(unreadCount == 1 ? "" : "s")</span>
+                    </div>
+                }
+
+                bool isFirstInGroup = prevMsg is null || prevMsg.IsMine != msg.IsMine || showDateSeparator;
+                bool isLastInGroup = nextMsg is null || nextMsg.IsMine != msg.IsMine ||
+                    nextMsg.Timestamp.LocalDateTime.Date != msg.Timestamp.LocalDateTime.Date;
+
                 <MessageBubble Text="@msg.Text"
                                Timestamp="msg.Timestamp"
                                IsMine="msg.IsMine"
                                Status="msg.Status"
                                ContentType="msg.ContentType"
                                MediaDataUrl="@msg.MediaDataUrl"
-                               FileName="@msg.FileName" />
+                               FileName="@msg.FileName"
+                               IsFirstInGroup="isFirstInGroup"
+                               IsLastInGroup="isLastInGroup" />
             }
         }
     </div>
 
+    <ScrollToBottom Visible="showScrollButton" OnClick="ScrollToBottom" />
     <MessageInput OnSend="HandleSend" OnTyping="HandleTyping" />
 </div>
 
@@ -110,6 +144,8 @@
     private ConversationDetailResponse? conversationDetail;
     private List<ParticipantResponse> participants = [];
     private bool showParticipants;
+    private bool showScrollButton;
+    private decimal? firstUnreadMessageId;
 
     protected override async Task OnInitializedAsync()
     {
@@ -135,11 +171,17 @@
             Http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
 
+            // Initialize message store
+            await MessageStore.InitializeAsync();
+
             // Load conversation details and participants
             await LoadConversationDetails();
             await LoadParticipants();
 
-            // Load pending messages from the server
+            // Load cached messages from IndexedDB (instant display)
+            await LoadCachedMessages();
+
+            // Load new pending messages from the server
             await LoadPendingMessages();
 
             // Connect to SignalR hub
@@ -191,6 +233,73 @@
         }
     }
 
+    private async Task LoadCachedMessages()
+    {
+        try
+        {
+            var conversationKey = ConversationId.ToString();
+            var cached = await MessageStore.GetMessagesAsync(conversationKey);
+
+            foreach (var stored in cached)
+            {
+                // Skip if already in messages list (shouldn't happen, but guard against duplicates)
+                if (messages.Any(m => m.MessageId.ToString() == stored.MessageId))
+                    continue;
+
+                messages.Add(new ChatMessage
+                {
+                    MessageId = decimal.TryParse(stored.MessageId, out var mid) ? mid : 0,
+                    Text = stored.Text,
+                    Timestamp = DateTimeOffset.TryParse(stored.Timestamp, out var ts) ? ts : DateTimeOffset.UtcNow,
+                    IsMine = stored.IsMine,
+                    ContentType = (ContentType)stored.ContentType,
+                    FileName = stored.FileName,
+                    MediaDataUrl = stored.MediaDataBase64 is not null
+                        ? await CreateMediaBlobUrlFromBase64(stored.MediaDataBase64, stored.FileName)
+                        : null,
+                    Status = (ToledoMessage.Shared.Enums.DeliveryStatus)stored.Status
+                });
+            }
+        }
+        catch
+        {
+            // Non-critical: will still load from server
+        }
+    }
+
+    private async Task<string?> CreateMediaBlobUrlFromBase64(string base64Data, string? fileName)
+    {
+        try
+        {
+            var bytes = Convert.FromBase64String(base64Data);
+            var mimeType = fileName is not null ? GetMimeTypeFromFileName(fileName) : "application/octet-stream";
+            return await CreateMediaBlobUrl(mimeType, bytes);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string GetMimeTypeFromFileName(string fileName)
+    {
+        var ext = System.IO.Path.GetExtension(fileName)?.ToLowerInvariant();
+        return ext switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".mp4" => "video/mp4",
+            ".webm" => "video/webm",
+            ".mp3" => "audio/mpeg",
+            ".ogg" => "audio/ogg",
+            ".wav" => "audio/wav",
+            ".pdf" => "application/pdf",
+            _ => "application/octet-stream"
+        };
+    }
+
     private async Task LoadPendingMessages()
     {
         try
@@ -203,14 +312,22 @@
 
             foreach (var envelope in envelopes.Where(e => e.ConversationId == ConversationId))
             {
+                // Skip if already loaded from cache
+                if (messages.Any(m => m.MessageId == envelope.MessageId))
+                {
+                    // Still acknowledge
+                    try { await Http.PostAsync($"/api/messages/{envelope.MessageId}/acknowledge", null); } catch { }
+                    continue;
+                }
+
+                ChatMessage chatMsg;
                 try
                 {
-                    var chatMsg = await DecryptEnvelopeToChatMessage(envelope, isMine: false);
-                    messages.Add(chatMsg);
+                    chatMsg = await DecryptEnvelopeToChatMessage(envelope, isMine: false);
                 }
                 catch (Exception)
                 {
-                    messages.Add(new ChatMessage
+                    chatMsg = new ChatMessage
                     {
                         MessageId = envelope.MessageId,
                         Text = "[Unable to decrypt message]",
@@ -218,13 +335,21 @@
                         IsMine = false,
                         ContentType = ContentType.Text,
                         Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered
-                    });
+                    };
                 }
 
-                // Always acknowledge — whether decryption succeeded or failed.
-                // Failed messages can never be re-decrypted (ratchet keys are
-                // consumed or lost), so leaving them unacknowledged causes
-                // them to reappear on every load forever.
+                messages.Add(chatMsg);
+
+                // Track the first new unread message for the divider
+                if (!chatMsg.IsMine && !firstUnreadMessageId.HasValue)
+                {
+                    firstUnreadMessageId = chatMsg.MessageId;
+                }
+
+                // Persist to IndexedDB
+                await PersistMessageAsync(chatMsg);
+
+                // Always acknowledge
                 try
                 {
                     await Http.PostAsync(
@@ -242,6 +367,28 @@
         }
     }
 
+    private async Task PersistMessageAsync(ChatMessage chatMsg)
+    {
+        try
+        {
+            await MessageStore.StoreMessageAsync(new StoredMessage
+            {
+                MessageId = chatMsg.MessageId.ToString(),
+                ConversationId = ConversationId.ToString(),
+                Text = chatMsg.Text,
+                Timestamp = chatMsg.Timestamp.ToString("O"),
+                IsMine = chatMsg.IsMine,
+                ContentType = (int)chatMsg.ContentType,
+                FileName = chatMsg.FileName,
+                Status = (int)chatMsg.Status
+            });
+        }
+        catch
+        {
+            // Non-critical: message is still in memory
+        }
+    }
+
     private async void HandleMessageReceived(MessageEnvelope envelope)
     {
         if (envelope.ConversationId != ConversationId)
@@ -251,14 +398,18 @@
         {
             await InvokeAsync(async () =>
             {
+                // Skip duplicates
+                if (messages.Any(m => m.MessageId == envelope.MessageId))
+                    return;
+
+                ChatMessage chatMsg;
                 try
                 {
-                    var chatMsg = await DecryptEnvelopeToChatMessage(envelope, isMine: false);
-                    messages.Add(chatMsg);
+                    chatMsg = await DecryptEnvelopeToChatMessage(envelope, isMine: false);
                 }
                 catch
                 {
-                    messages.Add(new ChatMessage
+                    chatMsg = new ChatMessage
                     {
                         MessageId = envelope.MessageId,
                         Text = "[Unable to decrypt message]",
@@ -266,8 +417,11 @@
                         IsMine = false,
                         ContentType = ContentType.Text,
                         Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered
-                    });
+                    };
                 }
+
+                messages.Add(chatMsg);
+                await PersistMessageAsync(chatMsg);
                 StateHasChanged();
             });
 
@@ -283,12 +437,13 @@
 
     private async void HandleMessageDelivered(decimal messageId)
     {
-        await InvokeAsync(() =>
+        await InvokeAsync(async () =>
         {
             var msg = messages.FirstOrDefault(m => m.MessageId == messageId);
             if (msg is not null)
             {
                 msg.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered;
+                try { await MessageStore.UpdateMessageStatusAsync(messageId.ToString(), (int)msg.Status); } catch { }
                 StateHasChanged();
             }
         });
@@ -296,12 +451,13 @@
 
     private async void HandleMessageRead(decimal messageId)
     {
-        await InvokeAsync(() =>
+        await InvokeAsync(async () =>
         {
             var msg = messages.FirstOrDefault(m => m.MessageId == messageId);
             if (msg is not null)
             {
                 msg.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Read;
+                try { await MessageStore.UpdateMessageStatusAsync(messageId.ToString(), (int)msg.Status); } catch { }
                 StateHasChanged();
             }
         });
@@ -392,6 +548,9 @@
             {
                 await SendTextToRecipients(input.Text, tempMessage);
             }
+
+            // Persist sent message to IndexedDB
+            await PersistMessageAsync(tempMessage);
         }
         catch (Exception ex)
         {
@@ -565,14 +724,17 @@
         }
     }
 
-    private static string GetDefaultMimeType(ContentType contentType) => contentType switch
+    private static string GetDefaultMimeType(ContentType contentType)
     {
-        ContentType.Image => "image/png",
-        ContentType.Audio => "audio/mpeg",
-        ContentType.Video => "video/mp4",
-        ContentType.File  => "application/octet-stream",
-        _                 => "application/octet-stream"
-    };
+        return contentType switch
+        {
+            ContentType.Image => "image/png",
+            ContentType.Audio => "audio/mpeg",
+            ContentType.Video => "video/mp4",
+            ContentType.File => "application/octet-stream",
+            _ => "application/octet-stream"
+        };
+    }
 
     private readonly List<string> _blobUrls = [];
 
@@ -590,6 +752,24 @@
             try { await JS.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", url); } catch { }
         }
         _blobUrls.Clear();
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("eval",
+                "document.querySelector('.chat-messages')?.scrollTo({top: document.querySelector('.chat-messages').scrollHeight, behavior: 'smooth'})");
+            showScrollButton = false;
+        }
+        catch { }
+    }
+
+    [JSInvokable]
+    public void OnScrollPositionChanged(bool isNearBottom)
+    {
+        showScrollButton = !isNearBottom;
+        InvokeAsync(StateHasChanged);
     }
 
     private async Task HandleTyping()

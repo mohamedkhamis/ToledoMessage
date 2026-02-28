@@ -19,7 +19,7 @@ public class MlDsaSignerTests
     public void Sign_ProducesValidSignature()
     {
         var (publicKey, privateKey) = MlDsaSigner.GenerateKeyPair();
-        var message = Encoding.UTF8.GetBytes("Hello, post-quantum world!");
+        var message = "Hello, post-quantum world!"u8.ToArray();
 
         var signature = MlDsaSigner.Sign(privateKey, message);
 
@@ -30,10 +30,10 @@ public class MlDsaSignerTests
     public void Verify_RejectsTamperedMessage()
     {
         var (publicKey, privateKey) = MlDsaSigner.GenerateKeyPair();
-        var message = Encoding.UTF8.GetBytes("Original message");
+        var message = "Original message"u8.ToArray();
 
         var signature = MlDsaSigner.Sign(privateKey, message);
-        var tamperedMessage = Encoding.UTF8.GetBytes("Tampered message");
+        var tamperedMessage = "Tampered message"u8.ToArray();
 
         Assert.IsFalse(MlDsaSigner.Verify(publicKey, tamperedMessage, signature));
     }
@@ -42,7 +42,7 @@ public class MlDsaSignerTests
     public void Verify_RejectsTamperedSignature()
     {
         var (publicKey, privateKey) = MlDsaSigner.GenerateKeyPair();
-        var message = Encoding.UTF8.GetBytes("Test message");
+        var message = "Test message"u8.ToArray();
 
         var signature = MlDsaSigner.Sign(privateKey, message);
         signature[0] ^= 0xFF;

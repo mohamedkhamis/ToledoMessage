@@ -41,7 +41,7 @@ public class AuthControllerTests
         Assert.IsInstanceOfType<CreatedResult>(result);
         var created = (CreatedResult)result;
         Assert.IsInstanceOfType<AuthResponse>(created.Value);
-        var response = (AuthResponse)created.Value!;
+        var response = (AuthResponse)created.Value;
         Assert.AreEqual("testuser01", response.DisplayName);
         Assert.IsNotNull(response.Token);
         Assert.IsNotNull(response.RefreshToken);
@@ -62,7 +62,7 @@ public class AuthControllerTests
         var result = await controller.Register(new RegisterRequest("ab", "MySecurePass12"));
         Assert.IsInstanceOfType<BadRequestObjectResult>(result);
         var bad = (BadRequestObjectResult)result;
-        StringAssert.Contains(bad.Value!.ToString()!, "3 and 32");
+        StringAssert.Contains(bad.Value!.ToString(), "3 and 32");
     }
 
     [TestMethod]
@@ -231,6 +231,7 @@ public class AuthControllerTests
 
         // Revoke all tokens
         foreach (var token in db.RefreshTokens) token.IsRevoked = true;
+
         await db.SaveChangesAsync();
 
         var result = await controller.Refresh(

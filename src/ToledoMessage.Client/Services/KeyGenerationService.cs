@@ -7,15 +7,8 @@ namespace ToledoMessage.Client.Services;
 /// Generates all cryptographic key material for device registration
 /// and persists private keys to local storage.
 /// </summary>
-public class KeyGenerationService
+public class KeyGenerationService(LocalStorageService storage)
 {
-    private readonly LocalStorageService _storage;
-
-    public KeyGenerationService(LocalStorageService storage)
-    {
-        _storage = storage;
-    }
-
     /// <summary>
     /// Generates all key material for device registration and stores private keys locally.
     /// Returns a <see cref="DeviceRegistrationRequest"/> ready to send to the server.
@@ -37,18 +30,15 @@ public class KeyGenerationService
         var oneTimePreKeys = PreKeyGenerator.GenerateOneTimePreKeys(0, 100);
 
         // 5. Store all private keys in local storage
-        await _storage.StoreAsync("identity.classical.private", identity.ClassicalPrivateKey);
-        await _storage.StoreAsync("identity.classical.public", identity.ClassicalPublicKey);
-        await _storage.StoreAsync("identity.pq.private", identity.PostQuantumPrivateKey);
-        await _storage.StoreAsync("identity.pq.public", identity.PostQuantumPublicKey);
-        await _storage.StoreAsync("signedPreKey.private", signedPreKey.PrivateKey);
-        await _storage.StoreAsync("signedPreKey.public", signedPreKey.PublicKey);
-        await _storage.StoreAsync("kyberPreKey.private", kyberPreKey.PrivateKey);
+        await storage.StoreAsync("identity.classical.private", identity.ClassicalPrivateKey);
+        await storage.StoreAsync("identity.classical.public", identity.ClassicalPublicKey);
+        await storage.StoreAsync("identity.pq.private", identity.PostQuantumPrivateKey);
+        await storage.StoreAsync("identity.pq.public", identity.PostQuantumPublicKey);
+        await storage.StoreAsync("signedPreKey.private", signedPreKey.PrivateKey);
+        await storage.StoreAsync("signedPreKey.public", signedPreKey.PublicKey);
+        await storage.StoreAsync("kyberPreKey.private", kyberPreKey.PrivateKey);
 
-        foreach (var otpk in oneTimePreKeys)
-        {
-            await _storage.StoreAsync($"otpk.{otpk.KeyId}", otpk.PrivateKey);
-        }
+        foreach (var otpk in oneTimePreKeys) await storage.StoreAsync($"otpk.{otpk.KeyId}", otpk.PrivateKey);
 
         // 6. Build DeviceRegistrationRequest with base64-encoded public keys
         return new DeviceRegistrationRequest(

@@ -97,13 +97,19 @@
     [Parameter]
     public EventCallback OnTyping { get; set; }
 
-    private void ToggleAttachMenu() => showAttachMenu = !showAttachMenu;
+    private void ToggleAttachMenu()
+    {
+        showAttachMenu = !showAttachMenu;
+    }
 
-    private void CloseAttachMenu() => showAttachMenu = false;
+    private void CloseAttachMenu()
+    {
+        showAttachMenu = false;
+    }
 
     private async Task HandleKeyDown(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter" && !e.ShiftKey)
+        if (e is { Key: "Enter", ShiftKey: false })
             await SendMessage();
     }
 
@@ -225,13 +231,16 @@
         errorMessage = null;
     }
 
-    private static string GetFileIcon(ContentType type) => type switch
+    private static string GetFileIcon(ContentType type)
     {
-        ContentType.Audio => "🎵",
-        ContentType.Video => "🎬",
-        ContentType.Image => "🖼️",
-        _ => "📄"
-    };
+        return type switch
+        {
+            ContentType.Audio => "🎵",
+            ContentType.Video => "🎬",
+            ContentType.Image => "🖼️",
+            _ => "📄"
+        };
+    }
 
     private static string FormatFileSize(long bytes)
     {

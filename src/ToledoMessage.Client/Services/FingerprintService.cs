@@ -7,16 +7,9 @@ namespace ToledoMessage.Client.Services;
 /// Safety numbers allow users to verify that they are communicating with the intended party
 /// by comparing a shared numeric fingerprint out-of-band.
 /// </summary>
-public class FingerprintService
+public class FingerprintService(LocalStorageService storage, HttpClient http)
 {
-    private readonly LocalStorageService _storage;
-    private readonly HttpClient _http;
-
-    public FingerprintService(LocalStorageService storage, HttpClient http)
-    {
-        _storage = storage;
-        _http = http;
-    }
+    private readonly HttpClient _http = http;
 
     /// <summary>
     /// Computes the safety number for verification with a remote device.
@@ -28,12 +21,12 @@ public class FingerprintService
     public async Task<string> ComputeSafetyNumberAsync(decimal remoteDeviceId)
     {
         // 1. Load local identity key
-        var localKey = await _storage.GetAsync("identity.classical.public")
+        var localKey = await storage.GetAsync("identity.classical.public")
             ?? throw new InvalidOperationException(
                 "Local identity key not found. Please register or log in first.");
 
         // 2. Load remote device's identity key (cached during session establishment)
-        var remoteKey = await _storage.GetAsync($"remote.identity.{remoteDeviceId}")
+        var remoteKey = await storage.GetAsync($"remote.identity.{remoteDeviceId}")
             ?? throw new InvalidOperationException(
                 $"Remote identity key for device {remoteDeviceId} not found. " +
                 "A session must be established before verifying the safety number.");
@@ -49,7 +42,7 @@ public class FingerprintService
     /// <returns>True if the conversation has been marked as verified.</returns>
     public async Task<bool> IsVerifiedAsync(decimal conversationId)
     {
-        return await _storage.ContainsKeyAsync($"verified.{conversationId}");
+        return await storage.ContainsKeyAsync($"verified.{conversationId}");
     }
 
     /// <summary>
@@ -59,7 +52,7 @@ public class FingerprintService
     /// <param name="conversationId">The conversation ID to mark as verified.</param>
     public async Task MarkVerifiedAsync(decimal conversationId)
     {
-        await _storage.StoreAsync($"verified.{conversationId}", [1]);
+        await storage.StoreAsync($"verified.{conversationId}", [1]);
     }
 
     /// <summary>
@@ -69,6 +62,6 @@ public class FingerprintService
     /// <param name="conversationId">The conversation ID to mark as unverified.</param>
     public async Task MarkUnverifiedAsync(decimal conversationId)
     {
-        await _storage.DeleteAsync($"verified.{conversationId}");
+        await storage.DeleteAsync($"verified.{conversationId}");
     }
 }

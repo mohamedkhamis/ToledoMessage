@@ -1,4 +1,4 @@
-using System.Text;
+using System.Diagnostics.CodeAnalysis;
 using BenchmarkDotNet.Attributes;
 using ToledoMessage.Crypto.Classical;
 using ToledoMessage.Crypto.Hybrid;
@@ -9,6 +9,9 @@ using ToledoMessage.Crypto.Protocol;
 namespace ToledoMessage.Benchmarks;
 
 [MemoryDiagnoser]
+[SuppressMessage("ReSharper", "NotAccessedField.Local")]
+[SuppressMessage("ReSharper", "NullableWarningSuppressionIsUsed")]
+[SuppressMessage("ReSharper", "UnusedVariable")]
 public class CryptoBenchmarks
 {
     // Pre-generated key material for benchmarks
@@ -60,13 +63,13 @@ public class CryptoBenchmarks
 
         // Ed25519
         (_ed25519PublicKey, _ed25519PrivateKey) = Ed25519Signer.GenerateKeyPair();
-        _testMessage = Encoding.UTF8.GetBytes("Hello, this is a test message for benchmarking cryptographic operations.");
+        _testMessage = "Hello, this is a test message for benchmarking cryptographic operations."u8.ToArray();
         _ed25519Signature = Ed25519Signer.Sign(_ed25519PrivateKey, _testMessage);
 
         // AES-GCM
         _aesKey = new byte[32];
         _aesNonce = new byte[12];
-        _aesPlaintext = Encoding.UTF8.GetBytes("This is a plaintext message for AES-GCM benchmarking. It should be at least a few bytes long.");
+        _aesPlaintext = "This is a plaintext message for AES-GCM benchmarking. It should be at least a few bytes long."u8.ToArray();
         new Random(42).NextBytes(_aesKey);
         new Random(43).NextBytes(_aesNonce);
         _aesCiphertext = AesGcmCipher.Encrypt(_aesKey, _aesNonce, _aesPlaintext);
@@ -194,7 +197,7 @@ public class CryptoBenchmarks
     [Benchmark]
     public void DoubleRatchet_EncryptDecrypt()
     {
-        var plaintext = Encoding.UTF8.GetBytes("Benchmark message");
+        var plaintext = "Benchmark message"u8.ToArray();
         var (ciphertext, header) = _aliceRatchet.Encrypt(plaintext);
         _bobRatchet.Decrypt(ciphertext, header);
     }

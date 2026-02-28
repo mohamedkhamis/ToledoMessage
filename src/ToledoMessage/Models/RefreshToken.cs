@@ -2,6 +2,8 @@ namespace ToledoMessage.Models;
 
 public class RefreshToken
 {
+    // ReSharper disable  NullableWarningSuppressionIsUsed
+
     public decimal Id { get; set; }
     public decimal UserId { get; set; }
     public string Token { get; set; } = string.Empty;

@@ -7,15 +7,8 @@ using ToledoMessage.Shared.DTOs;
 
 namespace ToledoMessage.Services;
 
-public class PreKeyService
+public class PreKeyService(ApplicationDbContext db)
 {
-    private readonly ApplicationDbContext _db;
-
-    public PreKeyService(ApplicationDbContext db)
-    {
-        _db = db;
-    }
-
     /// <summary>Store one-time pre-keys for a device. Validates Base64 input.</summary>
     public async Task StoreOneTimePreKeys(decimal deviceId, List<OneTimePreKeyDto> preKeys)
     {
@@ -31,7 +24,7 @@ public class PreKeyService
                 throw new ArgumentException($"Invalid Base64 in one-time pre-key {pk.KeyId}.");
             }
 
-            _db.OneTimePreKeys.Add(new OneTimePreKey
+            db.OneTimePreKeys.Add(new OneTimePreKey
             {
                 Id = DecimalTools.GetNewId(),
                 DeviceId = deviceId,
@@ -41,7 +34,7 @@ public class PreKeyService
             });
         }
 
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync();
     }
 
     /// <summary>Consume one unused one-time pre-key for a device. Returns null if exhausted.</summary>
@@ -52,32 +45,31 @@ public class PreKeyService
     /// </remarks>
     public async Task<OneTimePreKey?> ConsumeOneTimePreKey(decimal deviceId)
     {
-        if (_db.Database.IsRelational())
+        if (db.Database.IsRelational())
         {
             // Atomic: claim the lowest-KeyId unused pre-key in a single UPDATE+OUTPUT statement.
             // This prevents two concurrent requests from consuming the same key.
             // Must use explicit SqlParameter with precision/scale for decimal(28,8) columns.
-            var deviceIdParam = new SqlParameter("@deviceId", System.Data.SqlDbType.Decimal)
+            new SqlParameter("@deviceId", System.Data.SqlDbType.Decimal)
             {
                 Precision = 28, Scale = 8, Value = deviceId
             };
-            var claimed = await _db.Database.SqlQueryRaw<decimal>(
+            var claimed = await db.Database.SqlQueryRaw<decimal>(
                 """
                 UPDATE TOP(1) OneTimePreKeys
                 SET IsUsed = 1
                 OUTPUT inserted.Id
                 WHERE DeviceId = @deviceId AND IsUsed = 0
-                """,
-                deviceIdParam).ToListAsync();
+                """).ToListAsync();
 
             if (claimed.Count == 0)
                 return null;
 
-            return await _db.OneTimePreKeys.FirstAsync(k => k.Id == claimed[0]);
+            return await db.OneTimePreKeys.FirstAsync(k => k.Id == claimed[0]);
         }
 
         // Fallback for in-memory provider (unit tests)
-        var key = await _db.OneTimePreKeys
+        var key = await db.OneTimePreKeys
             .Where(k => k.DeviceId == deviceId && !k.IsUsed)
             .OrderBy(k => k.KeyId)
             .FirstOrDefaultAsync();
@@ -85,7 +77,7 @@ public class PreKeyService
         if (key != null)
         {
             key.IsUsed = true;
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
         }
 
         return key;
@@ -94,6 +86,6 @@ public class PreKeyService
     /// <summary>Count remaining unused pre-keys for a device.</summary>
     public async Task<int> CountRemainingPreKeys(decimal deviceId)
     {
-        return await _db.OneTimePreKeys.CountAsync(k => k.DeviceId == deviceId && !k.IsUsed);
+        return await db.OneTimePreKeys.CountAsync(k => k.DeviceId == deviceId && !k.IsUsed);
     }
 }

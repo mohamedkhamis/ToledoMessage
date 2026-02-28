@@ -63,10 +63,7 @@ public static class FingerprintGenerator
             // Take 5 bytes (starting at offset i*5), interpret as a number, mod 100000
             int offset = i * 5;
             long value = 0;
-            for (int j = 0; j < 5; j++)
-            {
-                value = (value << 8) | hash[offset + j];
-            }
+            for (int j = 0; j < 5; j++) value = (value << 8) | hash[offset + j];
             value = value % 100000;
             sb.Append(value.ToString("D5"));
         }

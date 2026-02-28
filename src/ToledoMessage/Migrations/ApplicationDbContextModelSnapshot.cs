@@ -137,7 +137,6 @@ namespace ToledoMessage.Migrations
 
                     b.Property<byte[]>("Ciphertext")
                         .IsRequired()
-                        .HasMaxLength(10485760)
                         .HasColumnType("varbinary(max)");
 
                     b.Property<int>("ContentType")
@@ -299,6 +298,66 @@ namespace ToledoMessage.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("ToledoMessage.Models.UserPreferences", b =>
+                {
+                    b.Property<decimal>("Id")
+                        .HasPrecision(28, 8)
+                        .HasColumnType("decimal(28,8)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("FontSize")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("medium");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValue("en");
+
+                    b.Property<bool>("NotificationsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("ReadReceiptsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Theme")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("default");
+
+                    b.Property<bool>("TypingIndicatorsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<decimal>("UserId")
+                        .HasPrecision(28, 8)
+                        .HasColumnType("decimal(28,8)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserPreferences");
+                });
+
             modelBuilder.Entity("ToledoMessage.Models.ConversationParticipant", b =>
                 {
                     b.HasOne("ToledoMessage.Models.Conversation", "Conversation")
@@ -381,6 +440,17 @@ namespace ToledoMessage.Migrations
                         .IsRequired();
 
                     b.Navigation("Device");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ToledoMessage.Models.UserPreferences", b =>
+                {
+                    b.HasOne("ToledoMessage.Models.User", "User")
+                        .WithOne()
+                        .HasForeignKey("ToledoMessage.Models.UserPreferences", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });

@@ -27,7 +27,7 @@
 <div class="sidebar-list">
     @if (isLoading)
     {
-        <p class="centered-text"><span class="spinner"></span></p>
+        <SkeletonLoader Variant="SkeletonLoader.SkeletonVariant.ConversationList" />
     }
     else if (FilteredConversations.Count == 0 && string.IsNullOrEmpty(searchQuery))
     {
@@ -222,9 +222,20 @@
             SelectConversation(conversationId);
     }
 
-    private void NavigateToSettings() => Navigation.NavigateTo("/settings");
-    private void NavigateToNewConversation() => Navigation.NavigateTo("/new-conversation");
-    private void HandleLogout() => Navigation.NavigateTo("/login?logout=true", forceLoad: true);
+    private void NavigateToSettings()
+    {
+        Navigation.NavigateTo("/settings");
+    }
+
+    private void NavigateToNewConversation()
+    {
+        Navigation.NavigateTo("/new-conversation");
+    }
+
+    private void HandleLogout()
+    {
+        Navigation.NavigateTo("/login?logout=true", forceLoad: true);
+    }
 
     private async void HandleMessageReceived(MessageEnvelope envelope)
     {

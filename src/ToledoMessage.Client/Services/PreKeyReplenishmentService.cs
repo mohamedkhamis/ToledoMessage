@@ -55,10 +55,7 @@ public class PreKeyReplenishmentService : IDisposable
             var newKeys = PreKeyGenerator.GenerateOneTimePreKeys(nextKeyId, ReplenishBatchSize);
 
             // Store private keys locally
-            foreach (var key in newKeys)
-            {
-                await _storage.StoreAsync($"otpk.{key.KeyId}", key.PrivateKey);
-            }
+            foreach (var key in newKeys) await _storage.StoreAsync($"otpk.{key.KeyId}", key.PrivateKey);
 
             // Update the next key ID counter
             await _storage.StoreAsync("otpk.nextKeyId",

@@ -10,17 +10,8 @@ namespace ToledoMessage.Controllers;
 [ApiController]
 [Route("api/messages")]
 [Authorize]
-public class MessagesController : BaseApiController
+public class MessagesController(ApplicationDbContext db, MessageRelayService relayService) : BaseApiController
 {
-    private readonly ApplicationDbContext _db;
-    private readonly MessageRelayService _relayService;
-
-    public MessagesController(ApplicationDbContext db, MessageRelayService relayService)
-    {
-        _db = db;
-        _relayService = relayService;
-    }
-
     /// <summary>
     /// Store and relay an encrypted message (REST fallback when SignalR is unavailable).
     /// </summary>
@@ -39,29 +30,29 @@ public class MessagesController : BaseApiController
             return BadRequest($"Message ciphertext exceeds the maximum allowed size of {maxSize} bytes.");
 
         // Validate sender is a participant in the conversation
-        var isParticipant = await _db.ConversationParticipants
+        var isParticipant = await db.ConversationParticipants
             .AnyAsync(cp => cp.ConversationId == request.ConversationId && cp.UserId == userId);
         if (!isParticipant)
             return Forbid();
 
         // Verify the SenderDeviceId belongs to the calling user
-        var senderDeviceOwned = await _db.Devices
+        var senderDeviceOwned = await db.Devices
             .AnyAsync(d => d.Id == request.SenderDeviceId && d.UserId == userId && d.IsActive);
         if (!senderDeviceOwned)
             return BadRequest("Sender device not found or does not belong to the current user.");
 
         // Validate recipient device is active and recipient user is not deactivated
-        var recipientDevice = await _db.Devices
-            .Include(d => d.User)
+        var recipientDevice = await db.Devices
+            .Include(static d => d.User)
             .FirstOrDefaultAsync(d => d.Id == request.RecipientDeviceId && d.IsActive);
         if (recipientDevice == null || !recipientDevice.User.IsActive)
             return BadRequest("Recipient device is not available.");
 
         // Store the message
-        var message = await _relayService.StoreMessage(request.SenderDeviceId, request);
+        var message = await relayService.StoreMessage(request.SenderDeviceId, request);
 
         // Try to relay to online recipient via SignalR
-        await _relayService.TryRelayToOnlineRecipient(message);
+        await relayService.TryRelayToOnlineRecipient(message);
 
         var result = new SendMessageResult(message.Id, message.ServerTimestamp, message.SequenceNumber);
         return Ok(result);
@@ -76,13 +67,13 @@ public class MessagesController : BaseApiController
         var userId = GetUserId();
 
         // Validate the device belongs to the requesting user
-        var deviceOwned = await _db.Devices.AnyAsync(d => d.Id == deviceId && d.UserId == userId && d.IsActive);
+        var deviceOwned = await db.Devices.AnyAsync(d => d.Id == deviceId && d.UserId == userId && d.IsActive);
         if (!deviceOwned)
             return NotFound("Device not found or does not belong to the current user.");
 
-        var messages = await _relayService.GetPendingMessages(deviceId);
+        var messages = await relayService.GetPendingMessages(deviceId);
 
-        var envelopes = messages.Select(m => new MessageEnvelope(
+        var envelopes = messages.Select(static m => new MessageEnvelope(
             m.Id,
             m.ConversationId,
             m.SenderDeviceId,
@@ -106,8 +97,8 @@ public class MessagesController : BaseApiController
         var userId = GetUserId();
 
         // Validate the message recipient is one of the requesting user's devices
-        var message = await _db.EncryptedMessages
-            .Include(m => m.RecipientDevice)
+        var message = await db.EncryptedMessages
+            .Include(static m => m.RecipientDevice)
             .FirstOrDefaultAsync(m => m.Id == messageId);
 
         if (message == null)
@@ -116,11 +107,10 @@ public class MessagesController : BaseApiController
         if (message.RecipientDevice.UserId != userId)
             return Forbid();
 
-        var acknowledged = await _relayService.AcknowledgeDelivery(messageId);
+        var acknowledged = await relayService.AcknowledgeDelivery(messageId);
         if (acknowledged == null)
             return NotFound("Message not found.");
 
         return Ok(new { messageId, deliveredAt = acknowledged.DeliveredAt });
     }
-
 }

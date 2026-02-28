@@ -6,6 +6,7 @@
 @inject LocalStorageService Storage
 @inject NavigationManager Navigation
 @inject ThemeService Theme
+@inject PreferencesService Preferences
 
 <div class="panel-content-scroll">
 <div class="settings-page">
@@ -34,6 +35,62 @@
                 <div class="theme-name">@theme.DisplayName</div>
             </div>
         }
+    </div>
+
+    <h4 class="subsection-title mt-md">Font Size</h4>
+    <div class="font-size-selector">
+        @foreach (var size in fontSizes)
+        {
+            <button class="font-size-btn @(currentFontSize == size.Id ? "active" : "")"
+                    @onclick="() => SelectFontSize(size.Id)">
+                <span style="font-size:@size.Preview">A</span>
+                <span class="font-size-label">@size.Label</span>
+            </button>
+        }
+    </div>
+
+    <h3 class="section-title mt-lg">Privacy</h3>
+
+    <div class="settings-toggles">
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <span class="toggle-label">Read Receipts</span>
+                <span class="toggle-desc">Let others know when you've read their messages</span>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" checked="@readReceiptsEnabled"
+                       @onchange="e => ToggleReadReceipts((bool)e.Value!)" />
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <span class="toggle-label">Typing Indicators</span>
+                <span class="toggle-desc">Show when you're typing a message</span>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" checked="@typingIndicatorsEnabled"
+                       @onchange="e => ToggleTypingIndicators((bool)e.Value!)" />
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <h3 class="section-title mt-lg">Notifications</h3>
+
+    <div class="settings-toggles">
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <span class="toggle-label">Desktop Notifications</span>
+                <span class="toggle-desc">Receive notifications when a new message arrives</span>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" checked="@notificationsEnabled"
+                       @onchange="e => ToggleNotifications((bool)e.Value!)" />
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
     </div>
 
     <h3 class="section-title mt-lg">Linked Devices</h3>
@@ -147,16 +204,28 @@
     private string? successMessage;
     private decimal? unlinkingDeviceId;
     private string currentTheme = "default";
+    private string currentFontSize = "medium";
+    private bool notificationsEnabled = true;
+    private bool readReceiptsEnabled = true;
+    private bool typingIndicatorsEnabled = true;
     private bool showDeleteConfirmation;
     private bool isDeletingAccount;
     private bool deletionPending;
     private DateTimeOffset? deletionEndsAt;
+
+    private static readonly FontSizeOption[] fontSizes =
+    [
+        new("small", "Small", "12px"),
+        new("medium", "Medium", "15px"),
+        new("large", "Large", "18px"),
+    ];
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
             currentTheme = await Theme.GetThemeAsync();
+            currentFontSize = await Theme.GetFontSizeAsync();
 
             var deviceIdBytes = await Storage.GetAsync("local.deviceId");
             var tokenBytes = await Storage.GetAsync("auth.token");
@@ -172,6 +241,25 @@
 
             Http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+            // Load preferences from server
+            var prefs = await Preferences.GetPreferencesAsync();
+            notificationsEnabled = prefs.NotificationsEnabled;
+            readReceiptsEnabled = prefs.ReadReceiptsEnabled;
+            typingIndicatorsEnabled = prefs.TypingIndicatorsEnabled;
+
+            // Apply server theme if different from local
+            if (prefs.Theme != currentTheme && prefs.Theme != "default")
+            {
+                currentTheme = prefs.Theme;
+                await Theme.SetThemeAsync(prefs.Theme);
+            }
+
+            if (prefs.FontSize != currentFontSize)
+            {
+                currentFontSize = prefs.FontSize;
+                await Theme.SetFontSizeAsync(prefs.FontSize);
+            }
 
             await LoadDevices();
         }
@@ -189,6 +277,69 @@
     {
         currentTheme = themeId;
         await Theme.SetThemeAsync(themeId);
+        try
+        {
+            await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(Theme: themeId));
+            successMessage = "Theme saved.";
+        }
+        catch
+        {
+            // Local theme still applied even if server sync fails
+        }
+    }
+
+    private async Task SelectFontSize(string size)
+    {
+        currentFontSize = size;
+        await Theme.SetFontSizeAsync(size);
+        try
+        {
+            await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(FontSize: size));
+            successMessage = "Font size saved.";
+        }
+        catch
+        {
+            // Local change still applied
+        }
+    }
+
+    private async Task ToggleNotifications(bool enabled)
+    {
+        notificationsEnabled = enabled;
+        try
+        {
+            await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(NotificationsEnabled: enabled));
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to save: {ex.Message}";
+        }
+    }
+
+    private async Task ToggleReadReceipts(bool enabled)
+    {
+        readReceiptsEnabled = enabled;
+        try
+        {
+            await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(ReadReceiptsEnabled: enabled));
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to save: {ex.Message}";
+        }
+    }
+
+    private async Task ToggleTypingIndicators(bool enabled)
+    {
+        typingIndicatorsEnabled = enabled;
+        try
+        {
+            await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(TypingIndicatorsEnabled: enabled));
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to save: {ex.Message}";
+        }
     }
 
     private async Task LoadDevices()
@@ -262,4 +413,6 @@
             unlinkingDeviceId = null;
         }
     }
+
+    private sealed record FontSizeOption(string Id, string Label, string Preview);
 }

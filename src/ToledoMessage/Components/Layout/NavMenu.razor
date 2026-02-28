@@ -7,6 +7,7 @@
     @if (IsPublicPage())
     {
         <div class="nav-links">
+            @* ReSharper disable  Html.PathError *@
             <a href="/login" class="@ActiveClass("/login")">Sign In</a>
             <a href="/register" class="@ActiveClass("/register")">Register</a>
         </div>
@@ -14,10 +15,10 @@
     else
     {
         <button class="nav-toggle" @onclick="ToggleNav" aria-label="Toggle navigation"
-                aria-expanded="@isOpen">
+                aria-expanded="@_isOpen">
             &#9776;
         </button>
-        <div class="nav-links @(isOpen ? "open" : "")">
+        <div class="nav-links @(_isOpen ? "open" : "")">
             <a href="/chat" class="@ActiveClass("/chat")" @onclick="CloseNav"
                aria-current="@(IsActive("/chat") ? "page" : null)">Chats</a>
             <a href="/settings" class="@ActiveClass("/settings")" @onclick="CloseNav"
@@ -27,32 +28,32 @@
     }
 </nav>
 
-@if (isOpen)
+@if (_isOpen)
 {
     <div class="nav-backdrop open" @onclick="CloseNav"></div>
 }
 
 @code {
     private static readonly string[] PublicPaths = ["/", "/login", "/register"];
-    private bool isOpen;
-    private string currentUri = "";
+    private bool _isOpen;
+    private string _currentUri = "";
 
     protected override void OnInitialized()
     {
-        currentUri = Navigation.Uri;
+        _currentUri = Navigation.Uri;
         Navigation.LocationChanged += OnLocationChanged;
     }
 
-    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        currentUri = e.Location;
-        isOpen = false;
+        _currentUri = e.Location;
+        _isOpen = false;
         InvokeAsync(StateHasChanged);
     }
 
     private bool IsPublicPage()
     {
-        var path = new Uri(currentUri).AbsolutePath.TrimEnd('/');
+        var path = new Uri(_currentUri).AbsolutePath.TrimEnd('/');
         if (string.IsNullOrEmpty(path)) path = "/";
         return Array.Exists(PublicPaths, p =>
             string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
@@ -60,15 +61,24 @@
 
     private bool IsActive(string path)
     {
-        var relative = new Uri(currentUri).AbsolutePath;
+        var relative = new Uri(_currentUri).AbsolutePath;
         return relative.StartsWith(path, StringComparison.OrdinalIgnoreCase);
     }
 
-    private string ActiveClass(string path) => IsActive(path) ? "active" : "";
+    private string ActiveClass(string path)
+    {
+        return IsActive(path) ? "active" : "";
+    }
 
-    private void ToggleNav() => isOpen = !isOpen;
+    private void ToggleNav()
+    {
+        _isOpen = !_isOpen;
+    }
 
-    private void CloseNav() => isOpen = false;
+    private void CloseNav()
+    {
+        _isOpen = false;
+    }
 
     private void HandleLogout()
     {

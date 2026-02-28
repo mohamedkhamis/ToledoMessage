@@ -20,6 +20,9 @@ builder.Services.AddScoped<FingerprintService>();
 builder.Services.AddScoped<PreKeyReplenishmentService>();
 builder.Services.AddScoped<MessageExpiryService>();
 builder.Services.AddScoped<ThemeService>();
+builder.Services.AddScoped<PreferencesService>();
+builder.Services.AddScoped<MessageStoreService>();
+builder.Services.AddScoped<ToastService>();
 builder.Services.AddScoped<TabLeaderService>();
 builder.Services.AddScoped<NotificationService>();
 //builder.Services.AddSignalR(options =>

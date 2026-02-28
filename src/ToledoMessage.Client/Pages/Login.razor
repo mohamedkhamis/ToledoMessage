@@ -7,6 +7,8 @@
 @inject LocalStorageService Storage
 @inject KeyGenerationService KeyGenService
 @inject Microsoft.JSInterop.IJSRuntime JS
+@inject ThemeService Theme
+@inject PreferencesService Preferences
 
 <div class="auth-page fade-in">
     <h2>Sign In</h2>
@@ -94,7 +96,19 @@
             // 2. Store auth token
             await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse.Token));
 
-            // 3. Check if we already have a deviceId stored (returning to same browser)
+            // 3. Sync user preferences from server
+            try
+            {
+                var prefs = await Preferences.GetPreferencesAsync();
+                await Theme.SetThemeAsync(prefs.Theme);
+                await Theme.SetFontSizeAsync(prefs.FontSize);
+            }
+            catch
+            {
+                // Non-critical: preferences will use local defaults
+            }
+
+            // 4. Check if we already have a deviceId stored (returning to same browser)
             var existingDeviceId = await Storage.GetAsync("local.deviceId");
             if (existingDeviceId is not null)
             {
@@ -103,7 +117,7 @@
                 return;
             }
 
-            // 4. New device: generate crypto keys and register
+            // 5. New device: generate crypto keys and register
             statusMessage = "Generating encryption keys...";
             StateHasChanged();
 
@@ -122,7 +136,7 @@
                 await Storage.StoreAsync("local.deviceId", Encoding.UTF8.GetBytes(deviceResult.DeviceId.ToString()));
             }
 
-            // 5. Navigate to chat
+            // 6. Navigate to chat
             Navigation.NavigateTo("/chat");
         }
         catch (Exception ex)

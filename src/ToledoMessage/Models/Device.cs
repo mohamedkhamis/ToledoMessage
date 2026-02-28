@@ -2,6 +2,8 @@ namespace ToledoMessage.Models;
 
 public class Device
 {
+    // ReSharper disable  NullableWarningSuppressionIsUsed
+
     public decimal Id { get; set; }
     public decimal UserId { get; set; }
     public string DeviceName { get; set; } = string.Empty;

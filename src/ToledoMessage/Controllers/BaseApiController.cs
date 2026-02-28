@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ToledoMessage.Controllers;
 
+/// <inheritdoc />
 /// <summary>
 /// Base controller providing shared utility methods for all API controllers.
 /// </summary>
@@ -16,8 +17,8 @@ public abstract class BaseApiController : ControllerBase
     protected decimal GetUserId()
     {
         var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue("sub");
-        return decimal.Parse(sub!);
+                  ?? User.FindFirstValue("sub");
+        return sub == null ? 0 : decimal.Parse(sub);
     }
 
     /// <summary>
@@ -28,7 +29,7 @@ public abstract class BaseApiController : ControllerBase
     {
         userId = 0;
         var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue("sub");
+                  ?? User.FindFirstValue("sub");
         return sub != null && decimal.TryParse(sub, out userId);
     }
 }

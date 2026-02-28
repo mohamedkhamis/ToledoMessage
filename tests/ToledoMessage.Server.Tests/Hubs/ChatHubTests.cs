@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.SignalR;
@@ -11,6 +13,7 @@ using ToledoMessage.Shared.Enums;
 
 namespace ToledoMessage.Server.Tests.Hubs;
 
+/// <inheritdoc />
 /// <summary>
 /// Stub IGroupManager that tracks group additions for assertions.
 /// </summary>
@@ -30,37 +33,36 @@ public class StubGroupManager : IGroupManager
     }
 }
 
+/// <inheritdoc />
 /// <summary>
 /// Stub HubCallerContext with configurable user and connection ID.
 /// </summary>
-public class StubHubCallerContext : HubCallerContext
+public class StubHubCallerContext(decimal userId, string connectionId = "test-connection") : HubCallerContext
 {
-    private readonly ClaimsPrincipal _user;
-
-    public StubHubCallerContext(decimal userId, string connectionId = "test-connection")
-    {
-        _user = new ClaimsPrincipal(new ClaimsIdentity(
-        [
-            new Claim(ClaimTypes.NameIdentifier, userId.ToString())
-        ], "test"));
-        ConnectionId = connectionId;
-    }
-
-    public override string ConnectionId { get; }
+    public override string ConnectionId { get; } = connectionId;
     public override string? UserIdentifier => null;
-    public override ClaimsPrincipal? User => _user;
+
+    public override ClaimsPrincipal User { get; } = new(new ClaimsIdentity(
+    [
+        new Claim(ClaimTypes.NameIdentifier, userId.ToString(CultureInfo.InvariantCulture))
+    ], "test"));
+
     public override IDictionary<object, object?> Items { get; } = new Dictionary<object, object?>();
-    public override IFeatureCollection Features => throw new NotImplementedException();
+    public override IFeatureCollection Features => new FeatureCollection();
     public override CancellationToken ConnectionAborted => CancellationToken.None;
-    public override void Abort() { }
+
+    public override void Abort()
+    {
+    }
 }
 
+/// <inheritdoc />
 /// <summary>
 /// Stub IHubCallerClients that records sent messages for assertions.
 /// </summary>
+[SuppressMessage("ReSharper", "RemoveRedundantBraces")]
 public class StubHubCallerClients : IHubCallerClients
 {
-    public List<(string method, object?[] args)> SentToAll { get; } = [];
     public Dictionary<string, List<(string method, object?[] args)>> SentToGroups { get; } = [];
 
     private IClientProxy CreateProxy(string? groupName = null)
@@ -70,44 +72,77 @@ public class StubHubCallerClients : IHubCallerClients
 
     public IClientProxy Caller => CreateProxy();
     public IClientProxy All => CreateProxy();
-    public IClientProxy AllExcept(IReadOnlyList<string> excludedConnectionIds) => CreateProxy();
-    public IClientProxy Client(string connectionId) => CreateProxy();
-    public IClientProxy Clients(IReadOnlyList<string> connectionIds) => CreateProxy();
+
+    public IClientProxy AllExcept(IReadOnlyList<string> excludedConnectionIds)
+    {
+        return CreateProxy();
+    }
+
+    public IClientProxy Client(string connectionId)
+    {
+        return CreateProxy();
+    }
+
+    public IClientProxy Clients(IReadOnlyList<string> connectionIds)
+    {
+        return CreateProxy();
+    }
 
     public IClientProxy Group(string groupName)
     {
         if (!SentToGroups.ContainsKey(groupName))
+        {
             SentToGroups[groupName] = [];
+        }
+
         return CreateProxy(groupName);
     }
 
-    public IClientProxy GroupExcept(string groupName, IReadOnlyList<string> excludedConnectionIds) => CreateProxy(groupName);
-    public IClientProxy Groups(IReadOnlyList<string> groupNames) => CreateProxy();
-    public IClientProxy OthersInGroup(string groupName) => CreateProxy(groupName);
-    public IClientProxy Others => CreateProxy();
-    public IClientProxy User(string userId) => CreateProxy();
-    public IClientProxy Users(IReadOnlyList<string> userIds) => CreateProxy();
-}
-
-public class RecordingClientProxy : IClientProxy
-{
-    private readonly Dictionary<string, List<(string method, object?[] args)>>? _groups;
-    private readonly string? _groupName;
-
-    public RecordingClientProxy(Dictionary<string, List<(string method, object?[] args)>>? groups, string? groupName)
+    public IClientProxy GroupExcept(string groupName, IReadOnlyList<string> excludedConnectionIds)
     {
-        _groups = groups;
-        _groupName = groupName;
+        return CreateProxy(groupName);
     }
 
+    public IClientProxy Groups(IReadOnlyList<string> groupNames)
+    {
+        return CreateProxy();
+    }
+
+    public IClientProxy OthersInGroup(string groupName)
+    {
+        return CreateProxy(groupName);
+    }
+
+    public IClientProxy Others => CreateProxy();
+
+    public IClientProxy User(string userId)
+    {
+        return CreateProxy();
+    }
+
+    public IClientProxy Users(IReadOnlyList<string> userIds)
+    {
+        return CreateProxy();
+    }
+}
+
+[SuppressMessage("ReSharper", "RemoveRedundantBraces")]
+public class RecordingClientProxy(Dictionary<string, List<(string method, object?[] args)>>? groups, string? groupName)
+    : IClientProxy
+{
     public Task SendCoreAsync(string method, object?[] args, CancellationToken cancellationToken = default)
     {
-        if (_groups != null && _groupName != null)
+        // ReSharper disable once InvertIf
+        if (groups != null && groupName != null)
         {
-            if (!_groups.ContainsKey(_groupName))
-                _groups[_groupName] = [];
-            _groups[_groupName].Add((method, args));
+            if (!groups.ContainsKey(groupName))
+            {
+                groups[groupName] = [];
+            }
+
+            groups[groupName].Add((method, args));
         }
+
         return Task.CompletedTask;
     }
 }
@@ -127,9 +162,9 @@ public class ChatHubTests
         var context = new StubHubCallerContext(userId);
 
         // Set hub context using reflection (Hub properties are set by SignalR runtime normally)
-        typeof(Hub).GetProperty("Context")!.SetValue(hub, context);
-        typeof(Hub).GetProperty("Groups")!.SetValue(hub, groups);
-        typeof(Hub).GetProperty("Clients")!.SetValue(hub, clients);
+        typeof(Hub).GetProperty("Context")?.SetValue(hub, context);
+        typeof(Hub).GetProperty("Groups")?.SetValue(hub, groups);
+        typeof(Hub).GetProperty("Clients")?.SetValue(hub, clients);
 
         return (hub, db, groups, clients);
     }
@@ -146,8 +181,8 @@ public class ChatHubTests
         await hub.RegisterDevice(10m);
 
         Assert.AreEqual(2, groups.Added.Count);
-        Assert.IsTrue(groups.Added.Any(g => g.groupName == "device_10"));
-        Assert.IsTrue(groups.Added.Any(g => g.groupName == "user_1"));
+        Assert.IsTrue(groups.Added.Any(static g => g.groupName == "device_10"));
+        Assert.IsTrue(groups.Added.Any(static g => g.groupName == "user_1"));
     }
 
     [TestMethod]
@@ -261,10 +296,10 @@ public class ChatHubTests
         await hub.AcknowledgeDelivery(500m);
 
         var msg = await db.EncryptedMessages.FindAsync(500m);
-        Assert.IsTrue(msg!.IsDelivered);
+        Assert.IsTrue(msg?.IsDelivered);
         // Verify notification was sent to the sender's device group
         Assert.IsTrue(clients.SentToGroups.ContainsKey("device_20"));
-        Assert.IsTrue(clients.SentToGroups["device_20"].Any(s => s.method == "MessageDelivered"));
+        Assert.IsTrue(clients.SentToGroups["device_20"].Any(static s => s.method == "MessageDelivered"));
     }
 
     [TestMethod]
@@ -296,7 +331,7 @@ public class ChatHubTests
         await hub.AcknowledgeRead(500m);
 
         Assert.IsTrue(clients.SentToGroups.ContainsKey("device_20"));
-        Assert.IsTrue(clients.SentToGroups["device_20"].Any(s => s.method == "MessageRead"));
+        Assert.IsTrue(clients.SentToGroups["device_20"].Any(static s => s.method == "MessageRead"));
     }
 
     [TestMethod]
@@ -328,8 +363,8 @@ public class ChatHubTests
         Assert.IsTrue(clients.SentToGroups.ContainsKey("user_2"));
         Assert.IsTrue(clients.SentToGroups.ContainsKey("user_3"));
         Assert.IsFalse(clients.SentToGroups.ContainsKey("user_1"));
-        Assert.IsTrue(clients.SentToGroups["user_2"].Any(s => s.method == "UserTyping"));
-        Assert.IsTrue(clients.SentToGroups["user_3"].Any(s => s.method == "UserTyping"));
+        Assert.IsTrue(clients.SentToGroups["user_2"].Any(static s => s.method == "UserTyping"));
+        Assert.IsTrue(clients.SentToGroups["user_3"].Any(static s => s.method == "UserTyping"));
     }
 
     // --- Ownership verification tests ---
@@ -407,6 +442,5 @@ public class ChatHubTests
 
         // Should not throw
         await hub.OnDisconnectedAsync(null);
-        Assert.IsTrue(true);
     }
 }

@@ -12,92 +12,86 @@ namespace ToledoMessage.Controllers;
 [ApiController]
 [Route("api/conversations")]
 [Authorize]
-public class ConversationsController : BaseApiController
+public class ConversationsController(ApplicationDbContext db) : BaseApiController
 {
-    private readonly ApplicationDbContext _db;
-
-    public ConversationsController(ApplicationDbContext db)
-    {
-        _db = db;
-    }
-
     /// <summary>
     /// List all conversations the current user participates in.
     /// Returns conversation metadata with display names, last message time, and unread counts.
     /// Uses a single query to avoid N+1 performance issues.
     /// </summary>
+    // ReSharper disable  RemoveRedundantBraces
     [HttpGet]
     public async Task<IActionResult> ListConversations()
     {
         var userId = GetUserId();
 
         // Get the user's device IDs for unread count calculation
-        var userDeviceIds = await _db.Devices
+        var userDeviceIds = await db.Devices
             .Where(d => d.UserId == userId && d.IsActive)
-            .Select(d => d.Id)
+            .Select(static d => d.Id)
             .ToListAsync();
 
         // Single query: join conversations with participants, messages for last-message-time,
         // and unread counts — avoids the previous N+1 loop
-        var conversationIds = await _db.ConversationParticipants
+        var conversationIds = await db.ConversationParticipants
             .Where(p => p.UserId == userId)
-            .Select(p => p.ConversationId)
+            .Select(static p => p.ConversationId)
             .ToListAsync();
 
-        var conversations = await _db.Conversations
+        var conversations = await db.Conversations
             .Where(c => conversationIds.Contains(c.Id))
-            .Include(c => c.Participants)
-                .ThenInclude(p => p.User)
+            .Include(static c => c.Participants)
+            .ThenInclude(static p => p.User)
             .ToListAsync();
 
         if (conversations.Count == 0)
             return Ok(Array.Empty<ConversationListItemResponse>());
 
         // Batch: get last message timestamps per conversation
-        var lastMessageTimes = await _db.EncryptedMessages
+        var lastMessageTimes = await db.EncryptedMessages
             .Where(m => conversationIds.Contains(m.ConversationId))
-            .GroupBy(m => m.ConversationId)
-            .Select(g => new { ConversationId = g.Key, LastMessageTime = g.Max(m => m.ServerTimestamp) })
-            .ToDictionaryAsync(x => x.ConversationId, x => (DateTimeOffset?)x.LastMessageTime);
+            .GroupBy(static m => m.ConversationId)
+            .Select(static g => new { ConversationId = g.Key, LastMessageTime = g.Max(static m => m.ServerTimestamp) })
+            .ToDictionaryAsync(static x => x.ConversationId, static x => (DateTimeOffset?)x.LastMessageTime);
 
         // Batch: get unread counts per conversation
         var unreadCounts = userDeviceIds.Count > 0
-            ? await _db.EncryptedMessages
+            ? await db.EncryptedMessages
                 .Where(m => conversationIds.Contains(m.ConversationId)
-                    && userDeviceIds.Contains(m.RecipientDeviceId)
-                    && !m.IsDelivered)
-                .GroupBy(m => m.ConversationId)
-                .Select(g => new { ConversationId = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.ConversationId, x => x.Count)
+                            && userDeviceIds.Contains(m.RecipientDeviceId)
+                            && !m.IsDelivered)
+                .GroupBy(static m => m.ConversationId)
+                .Select(static g => new { ConversationId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(static x => x.ConversationId, static x => x.Count)
             : new Dictionary<decimal, int>();
 
         var results = conversations.Select(conversation =>
-        {
-            string displayName;
-            if (conversation.Type == ConversationType.Group)
             {
-                displayName = conversation.GroupName ?? "Group";
-            }
-            else
-            {
-                var otherParticipant = conversation.Participants
-                    .FirstOrDefault(p => p.UserId != userId);
-                displayName = otherParticipant?.User.DisplayName ?? "Unknown";
-            }
+                string displayName;
+                if (conversation.Type == ConversationType.Group)
+                {
+                    displayName = conversation.GroupName ?? "Group";
+                }
+                else
+                {
+                    var otherParticipant = conversation.Participants
+                        .FirstOrDefault(p => p.UserId != userId);
+                    displayName = otherParticipant?.User.DisplayName ?? "Unknown";
+                }
 
-            lastMessageTimes.TryGetValue(conversation.Id, out var lastMessageTime);
-            unreadCounts.TryGetValue(conversation.Id, out var unreadCount);
+                lastMessageTimes.TryGetValue(conversation.Id, out var lastMessageTime);
+                unreadCounts.TryGetValue(conversation.Id, out var unreadCount);
 
-            return new ConversationListItemResponse(
-                conversation.Id,
-                conversation.Type,
-                displayName,
-                lastMessageTime,
-                unreadCount);
-        })
-        .OrderByDescending(r => r.LastMessageTime.HasValue)
-        .ThenByDescending(r => r.LastMessageTime)
-        .ToList();
+                return new ConversationListItemResponse(
+                    conversation.Id,
+                    conversation.Type,
+                    displayName,
+                    lastMessageTime,
+                    unreadCount);
+            })
+            .OrderByDescending(static r => r.LastMessageTime.HasValue)
+            .ThenByDescending(static r => r.LastMessageTime)
+            .ToList();
 
         return Ok(results);
     }
@@ -116,20 +110,20 @@ public class ConversationsController : BaseApiController
         if (userId == request.ParticipantUserId)
             return BadRequest("Cannot create a conversation with yourself.");
 
-        var participantExists = await _db.Users.AnyAsync(u => u.Id == request.ParticipantUserId && u.IsActive);
+        var participantExists = await db.Users.AnyAsync(u => u.Id == request.ParticipantUserId && u.IsActive);
         if (!participantExists)
             return NotFound("Participant user not found.");
 
         // Use a transaction to atomically check-then-create
-        await using var transaction = await _db.Database.BeginTransactionAsync();
+        await using var transaction = await db.Database.BeginTransactionAsync();
         try
         {
             // Check for an existing OneToOne conversation between these two users
-            var existingConversationId = await _db.Conversations
-                .Where(c => c.Type == ConversationType.OneToOne)
+            var existingConversationId = await db.Conversations
+                .Where(static c => c.Type == ConversationType.OneToOne)
                 .Where(c => c.Participants.Any(p => p.UserId == userId))
                 .Where(c => c.Participants.Any(p => p.UserId == request.ParticipantUserId))
-                .Select(c => (decimal?)c.Id)
+                .Select(static c => (decimal?)c.Id)
                 .FirstOrDefaultAsync();
 
             if (existingConversationId.HasValue)
@@ -149,9 +143,9 @@ public class ConversationsController : BaseApiController
                 CreatedAt = now
             };
 
-            _db.Conversations.Add(conversation);
+            db.Conversations.Add(conversation);
 
-            _db.ConversationParticipants.Add(new ConversationParticipant
+            db.ConversationParticipants.Add(new ConversationParticipant
             {
                 ConversationId = conversationId,
                 UserId = userId,
@@ -159,7 +153,7 @@ public class ConversationsController : BaseApiController
                 Role = ParticipantRole.Member
             });
 
-            _db.ConversationParticipants.Add(new ConversationParticipant
+            db.ConversationParticipants.Add(new ConversationParticipant
             {
                 ConversationId = conversationId,
                 UserId = request.ParticipantUserId,
@@ -167,7 +161,7 @@ public class ConversationsController : BaseApiController
                 Role = ParticipantRole.Member
             });
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             await transaction.CommitAsync();
 
             return Created(string.Empty, new ConversationResponse(conversationId, true));
@@ -177,11 +171,11 @@ public class ConversationsController : BaseApiController
             await transaction.RollbackAsync();
 
             // If we hit a race condition, the other request won — return the existing conversation
-            var existingId = await _db.Conversations
-                .Where(c => c.Type == ConversationType.OneToOne)
+            var existingId = await db.Conversations
+                .Where(static c => c.Type == ConversationType.OneToOne)
                 .Where(c => c.Participants.Any(p => p.UserId == userId))
                 .Where(c => c.Participants.Any(p => p.UserId == request.ParticipantUserId))
-                .Select(c => (decimal?)c.Id)
+                .Select(static c => (decimal?)c.Id)
                 .FirstOrDefaultAsync();
 
             if (existingId.HasValue)
@@ -206,11 +200,13 @@ public class ConversationsController : BaseApiController
         if (request.GroupName.Trim().Length > Shared.Constants.ProtocolConstants.MaxGroupNameLength)
             return BadRequest($"Group name must not exceed {Shared.Constants.ProtocolConstants.MaxGroupNameLength} characters.");
 
-        if (request.ParticipantUserIds is null || request.ParticipantUserIds.Count < 2)
-            return BadRequest("At least 2 participant user IDs are required.");
-
-        if (request.ParticipantUserIds.Count > 100)
-            return BadRequest("A group conversation can have at most 100 participants.");
+        switch (request.ParticipantUserIds.Count)
+        {
+            case < 2:
+                return BadRequest("At least 2 participant user IDs are required.");
+            case > 100:
+                return BadRequest("A group conversation can have at most 100 participants.");
+        }
 
         // Remove duplicates and ensure the creator is not in the list (they will be added automatically)
         var participantIds = request.ParticipantUserIds
@@ -222,7 +218,7 @@ public class ConversationsController : BaseApiController
             return BadRequest("At least one other participant is required.");
 
         // Validate all participants exist and are active
-        var activeUserCount = await _db.Users
+        var activeUserCount = await db.Users
             .CountAsync(u => participantIds.Contains(u.Id) && u.IsActive);
 
         if (activeUserCount != participantIds.Count)
@@ -239,10 +235,10 @@ public class ConversationsController : BaseApiController
             CreatedAt = now
         };
 
-        _db.Conversations.Add(conversation);
+        db.Conversations.Add(conversation);
 
         // Add creator as Admin
-        _db.ConversationParticipants.Add(new ConversationParticipant
+        db.ConversationParticipants.Add(new ConversationParticipant
         {
             ConversationId = conversationId,
             UserId = userId,
@@ -253,7 +249,7 @@ public class ConversationsController : BaseApiController
         // Add all other participants as Members
         foreach (var participantId in participantIds)
         {
-            _db.ConversationParticipants.Add(new ConversationParticipant
+            db.ConversationParticipants.Add(new ConversationParticipant
             {
                 ConversationId = conversationId,
                 UserId = participantId,
@@ -262,7 +258,7 @@ public class ConversationsController : BaseApiController
             });
         }
 
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync();
 
         return Created(string.Empty, new ConversationResponse(conversationId, true));
     }
@@ -276,12 +272,12 @@ public class ConversationsController : BaseApiController
         var userId = GetUserId();
 
         // Verify the conversation exists and is a group
-        var conversation = await _db.Conversations.FindAsync(conversationId);
+        var conversation = await db.Conversations.FindAsync(conversationId);
         if (conversation is null || conversation.Type != ConversationType.Group)
             return NotFound("Group conversation not found.");
 
         // Verify the requesting user is an Admin
-        var requesterParticipant = await _db.ConversationParticipants
+        var requesterParticipant = await db.ConversationParticipants
             .FirstOrDefaultAsync(p => p.ConversationId == conversationId && p.UserId == userId);
 
         if (requesterParticipant is null)
@@ -291,25 +287,25 @@ public class ConversationsController : BaseApiController
             return Forbid();
 
         // Validate the target user exists and is active
-        var targetUserExists = await _db.Users.AnyAsync(u => u.Id == request.UserId && u.IsActive);
+        var targetUserExists = await db.Users.AnyAsync(u => u.Id == request.UserId && u.IsActive);
         if (!targetUserExists)
             return NotFound("User not found or inactive.");
 
         // Validate the target user isn't already a participant
-        var alreadyParticipant = await _db.ConversationParticipants
+        var alreadyParticipant = await db.ConversationParticipants
             .AnyAsync(p => p.ConversationId == conversationId && p.UserId == request.UserId);
 
         if (alreadyParticipant)
             return BadRequest("User is already a participant in this conversation.");
 
         // Validate max 100 participants
-        var currentCount = await _db.ConversationParticipants
+        var currentCount = await db.ConversationParticipants
             .CountAsync(p => p.ConversationId == conversationId);
 
         if (currentCount >= 100)
             return BadRequest("Group conversation has reached the maximum of 100 participants.");
 
-        _db.ConversationParticipants.Add(new ConversationParticipant
+        db.ConversationParticipants.Add(new ConversationParticipant
         {
             ConversationId = conversationId,
             UserId = request.UserId,
@@ -317,7 +313,7 @@ public class ConversationsController : BaseApiController
             Role = ParticipantRole.Member
         });
 
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync();
 
         return NoContent();
     }
@@ -332,12 +328,12 @@ public class ConversationsController : BaseApiController
         var userId = GetUserId();
 
         // Verify the conversation exists and is a group
-        var conversation = await _db.Conversations.FindAsync(conversationId);
+        var conversation = await db.Conversations.FindAsync(conversationId);
         if (conversation is null || conversation.Type != ConversationType.Group)
             return NotFound("Group conversation not found.");
 
         // Verify the requesting user is a participant
-        var requesterParticipant = await _db.ConversationParticipants
+        var requesterParticipant = await db.ConversationParticipants
             .FirstOrDefaultAsync(p => p.ConversationId == conversationId && p.UserId == userId);
 
         if (requesterParticipant is null)
@@ -348,14 +344,14 @@ public class ConversationsController : BaseApiController
             return Forbid();
 
         // Find the target participant
-        var targetParticipant = await _db.ConversationParticipants
+        var targetParticipant = await db.ConversationParticipants
             .FirstOrDefaultAsync(p => p.ConversationId == conversationId && p.UserId == targetUserId);
 
         if (targetParticipant is null)
             return NotFound("Participant not found in this conversation.");
 
-        _db.ConversationParticipants.Remove(targetParticipant);
-        await _db.SaveChangesAsync();
+        db.ConversationParticipants.Remove(targetParticipant);
+        await db.SaveChangesAsync();
 
         return NoContent();
     }
@@ -369,15 +365,15 @@ public class ConversationsController : BaseApiController
         var userId = GetUserId();
 
         // Verify the requesting user is a participant
-        var isParticipant = await _db.ConversationParticipants
+        var isParticipant = await db.ConversationParticipants
             .AnyAsync(p => p.ConversationId == conversationId && p.UserId == userId);
 
         if (!isParticipant)
             return NotFound("Conversation not found.");
 
-        var conversation = await _db.Conversations
+        var conversation = await db.Conversations
             .Where(c => c.Id == conversationId)
-            .Select(c => new ConversationDetailResponse(
+            .Select(static c => new ConversationDetailResponse(
                 c.Id,
                 c.Type,
                 c.GroupName,
@@ -401,15 +397,15 @@ public class ConversationsController : BaseApiController
         var userId = GetUserId();
 
         // Verify the requesting user is a participant
-        var isParticipant = await _db.ConversationParticipants
+        var isParticipant = await db.ConversationParticipants
             .AnyAsync(p => p.ConversationId == conversationId && p.UserId == userId);
 
         if (!isParticipant)
             return NotFound("Conversation not found.");
 
-        var participants = await _db.ConversationParticipants
+        var participants = await db.ConversationParticipants
             .Where(p => p.ConversationId == conversationId)
-            .Select(p => new ParticipantResponse(p.UserId, p.User.DisplayName, p.Role))
+            .Select(static p => new ParticipantResponse(p.UserId, p.User.DisplayName, p.Role))
             .ToListAsync();
 
         return Ok(participants);
@@ -425,25 +421,27 @@ public class ConversationsController : BaseApiController
         var userId = GetUserId();
 
         // Validate the requesting user is a participant
-        var isParticipant = await _db.ConversationParticipants
+        var isParticipant = await db.ConversationParticipants
             .AnyAsync(p => p.ConversationId == conversationId && p.UserId == userId);
 
         if (!isParticipant)
             return NotFound("Conversation not found.");
 
-        // Validate timer value: null (disable) or positive integer within allowed range
-        if (request.TimerSeconds.HasValue && request.TimerSeconds.Value <= 0)
-            return BadRequest("Timer must be a positive number of seconds, or null to disable.");
+        switch (request.TimerSeconds)
+        {
+            // Validate timer value: null (disable) or positive integer within allowed range
+            case <= 0:
+                return BadRequest("Timer must be a positive number of seconds, or null to disable.");
+            case > Shared.Constants.ProtocolConstants.MaxTimerSeconds:
+                return BadRequest($"Timer cannot exceed {Shared.Constants.ProtocolConstants.MaxTimerSeconds} seconds (1 year).");
+        }
 
-        if (request.TimerSeconds.HasValue && request.TimerSeconds.Value > Shared.Constants.ProtocolConstants.MaxTimerSeconds)
-            return BadRequest($"Timer cannot exceed {Shared.Constants.ProtocolConstants.MaxTimerSeconds} seconds (1 year).");
-
-        var conversation = await _db.Conversations.FindAsync(conversationId);
+        var conversation = await db.Conversations.FindAsync(conversationId);
         if (conversation == null)
             return NotFound("Conversation not found.");
 
         conversation.DisappearingTimerSeconds = request.TimerSeconds;
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync();
 
         return NoContent();
     }

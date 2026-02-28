@@ -13,6 +13,7 @@ public static class DecimalTools
     /// Generates a new unique decimal ID based on current timestamp and GUID.
     /// </summary>
     /// <returns>A unique decimal identifier</returns>
+    // ReSharper disable  RemoveRedundantBraces
     public static decimal GetNewId()
     {
         lock (Lock)
@@ -27,7 +28,7 @@ public static class DecimalTools
                     length = str.Length;
                 }
 
-                var num = decimal.Parse($"{ticks}.{str.Substring(0, length)}");
+                var num = decimal.Parse($"{ticks}.{str[..length]}");
                 if (num == _lastId)
                 {
                     continue;

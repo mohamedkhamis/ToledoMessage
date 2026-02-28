@@ -103,7 +103,7 @@ public static class PreKeyGenerator
     {
         var keys = new List<OneTimePreKey>(count);
 
-        for (int i = 0; i < count; i++)
+        for (var i = 0; i < count; i++)
         {
             var (publicKey, privateKey) = X25519KeyExchange.GenerateKeyPair();
 

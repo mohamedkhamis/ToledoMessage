@@ -1,4 +1,3 @@
-using System.Text;
 using ToledoMessage.Crypto.Classical;
 using ToledoMessage.Crypto.PostQuantum;
 
@@ -6,7 +5,7 @@ namespace ToledoMessage.Crypto.Hybrid;
 
 public static class HybridKeyExchange
 {
-    private static readonly byte[] HkdfInfo = Encoding.UTF8.GetBytes("ToledoMessage-HybridKEM-v1");
+    private static readonly byte[] HkdfInfo = "ToledoMessage-HybridKEM-v1"u8.ToArray();
 
     public static (byte[] classicalPublic, byte[] classicalPrivate, byte[] pqPublic, byte[] pqPrivate) GenerateKeyPair()
     {

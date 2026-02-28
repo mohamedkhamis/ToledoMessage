@@ -8,20 +8,19 @@ public class ConversationParticipantConfiguration : IEntityTypeConfiguration<Con
 {
     public void Configure(EntityTypeBuilder<ConversationParticipant> builder)
     {
-        builder.HasKey(cp => new { cp.ConversationId, cp.UserId });
-        builder.Property(cp => cp.ConversationId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
-        builder.Property(cp => cp.UserId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
-        builder.Property(cp => cp.JoinedAt).IsRequired();
-        builder.Property(cp => cp.Role).IsRequired();
-
-        builder.HasOne(cp => cp.Conversation)
-            .WithMany(c => c.Participants)
-            .HasForeignKey(cp => cp.ConversationId)
+        builder.HasKey(static cp => new { cp.ConversationId, cp.UserId });
+        builder.Property(static cp => cp.ConversationId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
+        builder.Property(static cp => cp.UserId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
+        builder.Property(static cp => cp.JoinedAt).IsRequired();
+        builder.Property(static cp => cp.Role).IsRequired();
+        builder.HasOne(static cp => cp.Conversation)
+            .WithMany(static c => c.Participants)
+            .HasForeignKey(static cp => cp.ConversationId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(cp => cp.User)
-            .WithMany(u => u.ConversationParticipants)
-            .HasForeignKey(cp => cp.UserId)
+        builder.HasOne(static cp => cp.User)
+            .WithMany(static u => u.ConversationParticipants)
+            .HasForeignKey(static cp => cp.UserId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

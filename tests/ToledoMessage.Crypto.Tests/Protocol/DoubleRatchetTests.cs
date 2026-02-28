@@ -34,7 +34,7 @@ public class DoubleRatchetTests
     public void Encrypt_Decrypt_RoundTrip()
     {
         var (alice, bob) = CreateSessionPair();
-        var plaintext = Encoding.UTF8.GetBytes("Hello, Bob!");
+        var plaintext = "Hello, Bob!"u8.ToArray();
 
         var (ciphertext, header) = alice.Encrypt(plaintext);
         var decrypted = bob.Decrypt(ciphertext, header);
@@ -64,25 +64,25 @@ public class DoubleRatchetTests
         var (alice, bob) = CreateSessionPair();
 
         // Alice sends to Bob
-        var aliceMsg = Encoding.UTF8.GetBytes("Hello Bob, from Alice");
+        var aliceMsg = "Hello Bob, from Alice"u8.ToArray();
         var (ct1, hdr1) = alice.Encrypt(aliceMsg);
         var decrypted1 = bob.Decrypt(ct1, hdr1);
         CollectionAssert.AreEqual(aliceMsg, decrypted1);
 
         // Bob sends to Alice
-        var bobMsg = Encoding.UTF8.GetBytes("Hello Alice, from Bob");
+        var bobMsg = "Hello Alice, from Bob"u8.ToArray();
         var (ct2, hdr2) = bob.Encrypt(bobMsg);
         var decrypted2 = alice.Decrypt(ct2, hdr2);
         CollectionAssert.AreEqual(bobMsg, decrypted2);
 
         // Alice sends again
-        var aliceMsg2 = Encoding.UTF8.GetBytes("Another message from Alice");
+        var aliceMsg2 = "Another message from Alice"u8.ToArray();
         var (ct3, hdr3) = alice.Encrypt(aliceMsg2);
         var decrypted3 = bob.Decrypt(ct3, hdr3);
         CollectionAssert.AreEqual(aliceMsg2, decrypted3);
 
         // Bob sends again
-        var bobMsg2 = Encoding.UTF8.GetBytes("Another message from Bob");
+        var bobMsg2 = "Another message from Bob"u8.ToArray();
         var (ct4, hdr4) = bob.Encrypt(bobMsg2);
         var decrypted4 = alice.Decrypt(ct4, hdr4);
         CollectionAssert.AreEqual(bobMsg2, decrypted4);
@@ -94,9 +94,9 @@ public class DoubleRatchetTests
         var (alice, bob) = CreateSessionPair();
 
         // Alice sends 3 messages
-        var msg1 = Encoding.UTF8.GetBytes("Message 1");
-        var msg2 = Encoding.UTF8.GetBytes("Message 2");
-        var msg3 = Encoding.UTF8.GetBytes("Message 3");
+        var msg1 = "Message 1"u8.ToArray();
+        var msg2 = "Message 2"u8.ToArray();
+        var msg3 = "Message 3"u8.ToArray();
 
         var (ct1, hdr1) = alice.Encrypt(msg1);
         var (ct2, hdr2) = alice.Encrypt(msg2);
@@ -121,7 +121,7 @@ public class DoubleRatchetTests
         var (alice, bob) = CreateSessionPair();
 
         // Alice sends a message
-        var msg1 = Encoding.UTF8.GetBytes("First from Alice");
+        var msg1 = "First from Alice"u8.ToArray();
         var (ct1, hdr1) = alice.Encrypt(msg1);
         var dec1 = bob.Decrypt(ct1, hdr1);
         CollectionAssert.AreEqual(msg1, dec1);
@@ -130,13 +130,13 @@ public class DoubleRatchetTests
         var aliceKeyBefore = alice.GetState().LocalRatchetPublicKey;
 
         // Bob replies - this triggers a DH ratchet step on Bob's side
-        var msg2 = Encoding.UTF8.GetBytes("Reply from Bob");
+        var msg2 = "Reply from Bob"u8.ToArray();
         var (ct2, hdr2) = bob.Encrypt(msg2);
         var dec2 = alice.Decrypt(ct2, hdr2);
         CollectionAssert.AreEqual(msg2, dec2);
 
         // Alice sends again - she should have performed a DH ratchet step upon decrypting Bob's reply
-        var msg3 = Encoding.UTF8.GetBytes("Second from Alice");
+        var msg3 = "Second from Alice"u8.ToArray();
         var (ct3, hdr3) = alice.Encrypt(msg3);
 
         // Alice's ratchet key should have changed after receiving Bob's message

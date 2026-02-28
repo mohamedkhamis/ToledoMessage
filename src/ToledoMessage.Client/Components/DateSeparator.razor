@@ -1,0 +1,21 @@
+<div class="date-separator">
+    <span class="date-separator-text">@FormattedDate</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public DateTimeOffset Date { get; set; }
+
+    private string FormattedDate => FormatDate(Date);
+
+    private static string FormatDate(DateTimeOffset date)
+    {
+        var today = DateTimeOffset.Now.Date;
+        var messageDate = date.LocalDateTime.Date;
+        if (messageDate == today) return "Today";
+        if (messageDate == today.AddDays(-1)) return "Yesterday";
+        if (messageDate > today.AddDays(-7)) return date.LocalDateTime.ToString("dddd");
+        if (messageDate.Year == today.Year) return date.LocalDateTime.ToString("MMMM d");
+        return date.LocalDateTime.ToString("MMMM d, yyyy");
+    }
+}

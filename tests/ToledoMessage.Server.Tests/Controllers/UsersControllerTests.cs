@@ -163,10 +163,7 @@ public class UsersControllerTests
         await TestDbContextFactory.SeedUser(db, 1m, "currentuser");
 
         // Create 60 users matching "testuser"
-        for (int i = 2; i <= 61; i++)
-        {
-            await TestDbContextFactory.SeedUser(db, (decimal)i, $"testuser{i:D3}");
-        }
+        for (int i = 2; i <= 61; i++) await TestDbContextFactory.SeedUser(db, (decimal)i, $"testuser{i:D3}");
 
         var result = await controller.Search("testuser");
         Assert.IsInstanceOfType<OkObjectResult>(result);

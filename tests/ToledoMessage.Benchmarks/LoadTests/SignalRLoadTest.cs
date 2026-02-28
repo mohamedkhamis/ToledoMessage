@@ -146,10 +146,10 @@ public static class SignalRLoadTest
         // Tear down persistent connections
         Console.WriteLine("Closing persistent connections...");
         foreach (var c in persistentConns)
-        {
             try { c?.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(5)); }
-            catch { /* best-effort */ }
-        }
+            catch {
+                /* best-effort */
+            }
 
         return EvaluateStats(stats);
     }

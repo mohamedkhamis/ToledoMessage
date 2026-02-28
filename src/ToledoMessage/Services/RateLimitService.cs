@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ToledoMessage.Services;
 
@@ -6,6 +7,7 @@ namespace ToledoMessage.Services;
 /// Simple in-memory rate limiter that tracks request counts per key within sliding time windows.
 /// Includes periodic cleanup of stale entries to prevent unbounded memory growth.
 /// </summary>
+[SuppressMessage("ReSharper", "RemoveRedundantBraces")]
 public class RateLimitService
 {
     private readonly ConcurrentDictionary<string, (int Count, DateTime WindowStart)> _clients = new();
@@ -39,10 +41,8 @@ public class RateLimitService
             (_, existing) =>
             {
                 // If the window has expired, reset the counter
-                if (now - existing.WindowStart >= window)
-                {
-                    return (1, now);
-                }
+                // ReSharper disable once ConvertIfStatementToReturnStatement
+                if (now - existing.WindowStart >= window) return (1, now);
 
                 // Window still active — increment the counter
                 return (existing.Count + 1, existing.WindowStart);
@@ -57,6 +57,7 @@ public class RateLimitService
     private void CleanupStaleEntries(DateTime now)
     {
         var staleThreshold = TimeSpan.FromMinutes(10);
+        // ReSharper disable once LoopCanBePartlyConvertedToQuery
         foreach (var kvp in _clients)
         {
             if (now - kvp.Value.WindowStart >= staleThreshold)

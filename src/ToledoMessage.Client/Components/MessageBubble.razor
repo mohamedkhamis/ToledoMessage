@@ -1,6 +1,6 @@
 @using ToledoMessage.Shared.Enums
 
-<div class="message-row @(IsMine ? "mine" : "") @(IsMine ? "msg-slide-in-right" : "msg-slide-in-left")">
+<div class="message-row @(IsMine ? "mine" : "") @GroupingClass @(IsMine ? "msg-slide-in-right" : "msg-slide-in-left")">
     <div class="message-bubble @(IsMine ? "mine" : "theirs")">
         @if (ContentType == ContentType.Image && !string.IsNullOrEmpty(MediaDataUrl))
         {
@@ -42,13 +42,16 @@
         {
             <div class="message-text">@Text</div>
         }
-        <div class="message-meta">
-            <span>@Timestamp.ToLocalTime().ToString("HH:mm")</span>
-            @if (IsMine)
-            {
-                <DeliveryStatus Status="Status" />
-            }
-        </div>
+        @if (IsLastInGroup)
+        {
+            <div class="message-meta">
+                <span>@Timestamp.ToLocalTime().ToString("HH:mm")</span>
+                @if (IsMine)
+                {
+                    <DeliveryStatus Status="Status" />
+                }
+            </div>
+        }
     </div>
 </div>
 
@@ -73,4 +76,21 @@
 
     [Parameter]
     public string? FileName { get; set; }
+
+    [Parameter]
+    public bool IsFirstInGroup { get; set; } = true;
+
+    [Parameter]
+    public bool IsLastInGroup { get; set; } = true;
+
+    private string GroupingClass
+    {
+        get
+        {
+            if (IsFirstInGroup && IsLastInGroup) return "";
+            if (IsFirstInGroup) return "group-first";
+            if (IsLastInGroup) return "group-last";
+            return "group-middle";
+        }
+    }
 }

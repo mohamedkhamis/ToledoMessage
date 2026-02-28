@@ -14,6 +14,7 @@
             }
             applyTheme();
             // Re-apply after Blazor enhanced navigation (server re-renders <html> without data-theme)
+// ReSharper disable  Html.EventNotResolved
             document.addEventListener('blazor:enhancedload', applyTheme);
         })();
     </script>
@@ -27,6 +28,7 @@
 
 <body>
     <Routes />
+    @* ReSharper disable  Html.PathError *@
     <script src="storage.js"></script>
     <script src="tab-leader.js"></script>
     <script src="notifications.js"></script>

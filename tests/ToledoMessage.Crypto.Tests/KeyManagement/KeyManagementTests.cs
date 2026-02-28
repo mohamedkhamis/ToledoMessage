@@ -28,7 +28,7 @@ public class IdentityKeyGeneratorTests
     public void Generate_CanSignAndVerify()
     {
         var identity = IdentityKeyGenerator.Generate();
-        var message = System.Text.Encoding.UTF8.GetBytes("test message");
+        var message = "test message"u8.ToArray();
 
         var signature = HybridSigner.Sign(
             identity.ClassicalPrivateKey,
@@ -153,10 +153,7 @@ public class PreKeyGeneratorTests
     {
         var keys = PreKeyGenerator.GenerateOneTimePreKeys(10, 5);
 
-        for (int i = 0; i < 5; i++)
-        {
-            Assert.AreEqual(10 + i, keys[i].KeyId);
-        }
+        for (int i = 0; i < 5; i++) Assert.AreEqual(10 + i, keys[i].KeyId);
     }
 
     [TestMethod]

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Mvc;
 using ToledoMessage.Controllers;
 using ToledoMessage.Services;
@@ -7,6 +8,7 @@ using ToledoMessage.Shared.DTOs;
 namespace ToledoMessage.Server.Tests.Controllers;
 
 [TestClass]
+[SuppressMessage("ReSharper", "UnusedVariable")]
 public class DevicesControllerTests
 {
     private static (DevicesController controller, Data.ApplicationDbContext db) CreateController(decimal userId = 1m)
@@ -46,10 +48,7 @@ public class DevicesControllerTests
         await TestDbContextFactory.SeedUser(db, 1m);
 
         // Seed 10 devices
-        for (int i = 0; i < 10; i++)
-        {
-            await TestDbContextFactory.SeedDevice(db, 100m + i, 1m, $"Device{i}");
-        }
+        for (var i = 0; i < 10; i++) await TestDbContextFactory.SeedDevice(db, 100m + i, 1m, $"Device{i}");
 
         var request = new DeviceRegistrationRequest(
             "Device11",
@@ -83,7 +82,7 @@ public class DevicesControllerTests
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<List<DeviceInfoResponse>>(ok.Value);
-        var devices = (List<DeviceInfoResponse>)ok.Value!;
+        var devices = (List<DeviceInfoResponse>)ok.Value;
         Assert.AreEqual(1, devices.Count);
         Assert.AreEqual("Active", devices[0].DeviceName);
     }
@@ -102,7 +101,7 @@ public class DevicesControllerTests
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<List<DeviceInfoResponse>>(ok.Value);
-        var devices = (List<DeviceInfoResponse>)ok.Value!;
+        var devices = (List<DeviceInfoResponse>)ok.Value;
         Assert.AreEqual(1, devices.Count);
         Assert.AreEqual("MyDevice", devices[0].DeviceName);
     }
@@ -118,7 +117,7 @@ public class DevicesControllerTests
 
         Assert.IsInstanceOfType<NoContentResult>(result);
         var device = await db.Devices.FindAsync(10m);
-        Assert.IsFalse(device!.IsActive);
+        Assert.IsFalse(device?.IsActive ?? true);
     }
 
     [TestMethod]
@@ -158,8 +157,9 @@ public class DevicesControllerTests
 
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
-        dynamic value = ok.Value!;
-        Assert.AreEqual(2, (int)value.GetType().GetProperty("count")!.GetValue(value));
+        dynamic? value = ok.Value;
+        var dynamicObject = value?.GetType().GetProperty("count").GetValue(value);
+        Assert.AreEqual(2, (int)(dynamicObject ?? throw new InvalidOperationException()));
     }
 
     [TestMethod]
@@ -201,7 +201,7 @@ public class DevicesControllerTests
         await TestDbContextFactory.SeedUser(db, 2m, "other");
         await TestDbContextFactory.SeedDevice(db, 20m, 2m);
 
-        var result = await controller.ReplenishPreKeys(20m, [new(1, Convert.ToBase64String(new byte[32]))]);
+        var result = await controller.ReplenishPreKeys(20m, [new OneTimePreKeyDto(1, Convert.ToBase64String(new byte[32]))]);
         Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 }

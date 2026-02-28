@@ -49,10 +49,7 @@ public class SignalRService : IAsyncDisposable
     /// <param name="accessToken">The JWT access token for authentication.</param>
     public async Task ConnectAsync(string hubUrl, string accessToken)
     {
-        if (_hubConnection is not null)
-        {
-            await _hubConnection.DisposeAsync();
-        }
+        if (_hubConnection is not null) await _hubConnection.DisposeAsync();
 
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(hubUrl, options =>

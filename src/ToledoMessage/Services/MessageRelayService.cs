@@ -11,17 +11,8 @@ using ToledoMessage.Shared.Enums;
 
 namespace ToledoMessage.Services;
 
-public class MessageRelayService
+public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> hubContext)
 {
-    private readonly ApplicationDbContext _db;
-    private readonly IHubContext<ChatHub> _hubContext;
-
-    public MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> hubContext)
-    {
-        _db = db;
-        _hubContext = hubContext;
-    }
-
     /// <summary>
     /// Store an encrypted message in the database with an auto-incremented sequence number per conversation.
     /// Uses atomic SQL to prevent race conditions where concurrent messages get the same sequence number.
@@ -38,17 +29,20 @@ public class MessageRelayService
 
         var messageId = DecimalTools.GetNewId();
 
-        if (_db.Database.IsRelational())
+        if (db.Database.IsRelational())
         {
             // Atomic: INSERT with subquery that computes MAX+1 in a single statement.
             // This prevents two concurrent messages from getting the same sequence number.
             // Must use explicit SqlParameter with precision/scale for decimal(28,8) columns.
-            SqlParameter DecParam(string name, decimal value) => new(name, System.Data.SqlDbType.Decimal)
+            static SqlParameter DecParam(string name, decimal value)
             {
-                Precision = 28, Scale = 8, Value = value
-            };
+                return new SqlParameter(name, System.Data.SqlDbType.Decimal)
+                {
+                    Precision = 28, Scale = 8, Value = value
+                };
+            }
 
-            await _db.Database.ExecuteSqlRawAsync(
+            await db.Database.ExecuteSqlRawAsync(
                 """
                 INSERT INTO EncryptedMessages (Id, ConversationId, SenderDeviceId, RecipientDeviceId, Ciphertext, MessageType, ContentType, FileName, MimeType, SequenceNumber, ServerTimestamp, IsDelivered)
                 VALUES (@id, @convId, @senderDevId, @recipDevId, @cipher, @msgType, @contentType, @fileName, @mimeType, ISNULL((SELECT MAX(SequenceNumber) FROM EncryptedMessages WITH (UPDLOCK) WHERE ConversationId = @convId), 0) + 1, @ts, 0)
@@ -64,14 +58,14 @@ public class MessageRelayService
                 new SqlParameter("@mimeType", System.Data.SqlDbType.NVarChar, 128) { Value = (object?)request.MimeType ?? DBNull.Value },
                 new SqlParameter("@ts", System.Data.SqlDbType.DateTimeOffset) { Value = now });
 
-            var message = await _db.EncryptedMessages.FirstAsync(m => m.Id == messageId);
+            var message = await db.EncryptedMessages.FirstAsync(m => m.Id == messageId);
             return message;
         }
 
         // Fallback for in-memory provider (unit tests)
-        var maxSequence = await _db.EncryptedMessages
+        var maxSequence = await db.EncryptedMessages
             .Where(m => m.ConversationId == request.ConversationId)
-            .Select(m => (long?)m.SequenceNumber)
+            .Select(static m => (long?)m.SequenceNumber)
             .MaxAsync() ?? 0;
 
         var msg = new EncryptedMessage
@@ -90,8 +84,8 @@ public class MessageRelayService
             IsDelivered = false
         };
 
-        _db.EncryptedMessages.Add(msg);
-        await _db.SaveChangesAsync();
+        db.EncryptedMessages.Add(msg);
+        await db.SaveChangesAsync();
 
         return msg;
     }
@@ -107,11 +101,13 @@ public class MessageRelayService
 
         var buffer = new Span<byte>(new byte[GetMaxBase64DecodedLength(input.Length)]);
         return Convert.TryFromBase64String(input, buffer, out var bytesWritten)
-            && ((result = buffer[..bytesWritten].ToArray()) is not null);
+               && (result = buffer[..bytesWritten].ToArray()) is not null;
     }
 
     private static int GetMaxBase64DecodedLength(int base64Length)
-        => (base64Length * 3 + 3) / 4;
+    {
+        return (base64Length * 3 + 3) / 4;
+    }
 
     /// <summary>
     /// Try to relay a message to the recipient if they are connected via SignalR.
@@ -120,10 +116,12 @@ public class MessageRelayService
     /// <summary>
     /// Returns the maximum allowed ciphertext size in bytes based on content type.
     /// </summary>
-    public static int GetMaxCiphertextSize(ContentType contentType) =>
-        contentType is ContentType.Text
+    public static int GetMaxCiphertextSize(ContentType contentType)
+    {
+        return contentType is ContentType.Text
             ? ProtocolConstants.MaxCiphertextSizeBytes
             : ProtocolConstants.MaxMediaCiphertextSizeBytes;
+    }
 
     public async Task TryRelayToOnlineRecipient(EncryptedMessage message)
     {
@@ -139,7 +137,7 @@ public class MessageRelayService
             message.FileName,
             message.MimeType);
 
-        await _hubContext.Clients
+        await hubContext.Clients
             .Group($"device_{message.RecipientDeviceId}")
             .SendAsync("ReceiveMessage", envelope);
     }
@@ -149,9 +147,9 @@ public class MessageRelayService
     /// </summary>
     public async Task<List<EncryptedMessage>> GetPendingMessages(decimal deviceId)
     {
-        return await _db.EncryptedMessages
+        return await db.EncryptedMessages
             .Where(m => m.RecipientDeviceId == deviceId && !m.IsDelivered)
-            .OrderBy(m => m.SequenceNumber)
+            .OrderBy(static m => m.SequenceNumber)
             .ToListAsync();
     }
 
@@ -160,13 +158,13 @@ public class MessageRelayService
     /// </summary>
     public async Task<EncryptedMessage?> AcknowledgeDelivery(decimal messageId)
     {
-        var message = await _db.EncryptedMessages.FindAsync(messageId);
+        var message = await db.EncryptedMessages.FindAsync(messageId);
         if (message == null)
             return null;
 
         message.IsDelivered = true;
         message.DeliveredAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync();
 
         return message;
     }
@@ -181,14 +179,14 @@ public class MessageRelayService
     {
         var now = DateTimeOffset.UtcNow;
 
-        if (_db.Database.IsRelational())
+        if (db.Database.IsRelational())
         {
             // Batched deletion: delete up to 1000 rows at a time to avoid memory pressure
-            int totalDeleted = 0;
+            var totalDeleted = 0;
             int batchDeleted;
             do
             {
-                batchDeleted = await _db.Database.ExecuteSqlRawAsync(
+                batchDeleted = await db.Database.ExecuteSqlRawAsync(
                     """
                     DELETE TOP(1000) em
                     FROM EncryptedMessages em
@@ -204,18 +202,18 @@ public class MessageRelayService
         }
 
         // Fallback for in-memory provider (unit tests)
-        var expiredMessages = await _db.EncryptedMessages
-            .Include(m => m.Conversation)
-            .Where(m => m.IsDelivered)
-            .Where(m => m.Conversation.DisappearingTimerSeconds != null)
-            .Where(m => m.ServerTimestamp.AddSeconds(m.Conversation.DisappearingTimerSeconds!.Value) < now)
+        var expiredMessages = await db.EncryptedMessages
+            .Include(static m => m.Conversation)
+            .Where(static m => m.IsDelivered)
+            .Where(static m => m.Conversation.DisappearingTimerSeconds != null)
+            .Where(m => m.Conversation.DisappearingTimerSeconds != null && m.ServerTimestamp.AddSeconds(m.Conversation.DisappearingTimerSeconds.Value) < now)
             .ToListAsync();
 
         if (expiredMessages.Count == 0)
             return 0;
 
-        _db.EncryptedMessages.RemoveRange(expiredMessages);
-        await _db.SaveChangesAsync();
+        db.EncryptedMessages.RemoveRange(expiredMessages);
+        await db.SaveChangesAsync();
 
         return expiredMessages.Count;
     }

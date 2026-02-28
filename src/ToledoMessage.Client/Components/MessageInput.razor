@@ -1,37 +1,80 @@
+@inject IJSRuntime JS
+
 <div class="chat-input-area">
     @if (!string.IsNullOrEmpty(errorMessage))
     {
-        <div class="media-error">@errorMessage</div>
+        <div class="input-error">@errorMessage</div>
     }
     @if (selectedFile is not null)
     {
-        <div class="media-preview">
-            <span class="media-preview-name">@selectedFile.Name (@FormatFileSize(selectedFile.Size))</span>
-            <button class="media-preview-remove" @onclick="ClearSelectedFile" aria-label="Remove attachment">&times;</button>
+        <div class="file-preview-bar">
+            @if (previewDataUrl is not null)
+            {
+                <img src="@previewDataUrl" class="file-preview-thumb" alt="Preview" />
+            }
+            else
+            {
+                <div class="file-preview-icon">@GetFileIcon(selectedContentType)</div>
+            }
+            <div class="file-preview-info">
+                <span class="file-preview-name">@selectedFile.Name</span>
+                <span class="file-preview-size">@FormatFileSize(selectedFile.Size)</span>
+            </div>
+            <button class="file-preview-remove" @onclick="ClearSelectedFile" aria-label="Remove attachment">&times;</button>
         </div>
     }
     <div class="chat-input-row">
-        <label class="attach-btn" title="Send image" aria-label="Attach image">
-            &#128247;
-            <InputFile accept="image/*" OnChange="OnImageSelected" style="display:none" />
-        </label>
-        <label class="attach-btn" title="Send audio" aria-label="Attach audio">
-            &#127908;
-            <InputFile accept="audio/*" OnChange="OnAudioSelected" style="display:none" />
-        </label>
-        <textarea @bind="messageText"
+        <div class="attach-menu-wrapper">
+            @if (showAttachMenu)
+            {
+                <div class="attach-menu-backdrop" @onclick="CloseAttachMenu"></div>
+                <div class="attach-menu-popup" role="menu">
+                    <label class="attach-menu-item" role="menuitem" tabindex="0">
+                        <span class="attach-menu-icon">&#128247;</span>
+                        <span>Photo or Video</span>
+                        <InputFile accept="image/*,video/*" OnChange="OnMediaSelected" style="display:none" />
+                    </label>
+                    <label class="attach-menu-item" role="menuitem" tabindex="0">
+                        <span class="attach-menu-icon">&#127908;</span>
+                        <span>Audio</span>
+                        <InputFile accept="audio/*" OnChange="OnAudioSelected" style="display:none" />
+                    </label>
+                    <label class="attach-menu-item" role="menuitem" tabindex="0">
+                        <span class="attach-menu-icon">&#128196;</span>
+                        <span>Document</span>
+                        <InputFile OnChange="OnDocumentSelected" style="display:none" />
+                    </label>
+                </div>
+            }
+            <button class="attach-btn" @onclick="ToggleAttachMenu"
+                    aria-label="Attach file" title="Attach file"
+                    aria-expanded="@showAttachMenu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+                </svg>
+            </button>
+        </div>
+
+        <textarea @ref="textareaRef"
+                  @bind="messageText"
                   @bind:event="oninput"
-                  @bind:after="HandleTyping"
+                  @bind:after="OnTextInput"
                   @onkeydown="HandleKeyDown"
                   placeholder="Type a message..."
                   rows="1"
-                  class="msg-textarea" />
+                  class="msg-textarea"
+                  aria-label="Message input" />
+
         <button @onclick="SendMessage"
-                disabled="@(string.IsNullOrWhiteSpace(messageText) && selectedFile is null)"
-                class="btn-primary send-btn"
+                disabled="@(!CanSend)"
+                class="send-btn @(CanSend ? "send-btn-active" : "")"
                 aria-label="Send message"
                 title="Send">
-            &#10148;
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+            </svg>
         </button>
     </div>
 </div>
@@ -39,8 +82,14 @@
 @code {
     private string messageText = "";
     private IBrowserFile? selectedFile;
+    private byte[]? selectedFileBytes;
     private ContentType selectedContentType = ContentType.Text;
+    private string? previewDataUrl;
     private string? errorMessage;
+    private bool showAttachMenu;
+    private ElementReference textareaRef;
+
+    private bool CanSend => !string.IsNullOrWhiteSpace(messageText) || selectedFile is not null;
 
     [Parameter]
     public EventCallback<ChatInputMessage> OnSend { get; set; }
@@ -48,16 +97,32 @@
     [Parameter]
     public EventCallback OnTyping { get; set; }
 
+    private void ToggleAttachMenu() => showAttachMenu = !showAttachMenu;
+
+    private void CloseAttachMenu() => showAttachMenu = false;
+
     private async Task HandleKeyDown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter" && !e.ShiftKey)
-        {
             await SendMessage();
-        }
+    }
+
+    private async Task OnTextInput()
+    {
+        await ResizeTextarea();
+        await OnTyping.InvokeAsync();
+    }
+
+    private async Task ResizeTextarea()
+    {
+        try { await JS.InvokeVoidAsync("mediaHelpers.autoResize", textareaRef); } catch { }
     }
 
     private async Task SendMessage()
     {
+        if (!CanSend)
+            return;
+
         var text = messageText?.Trim() ?? "";
         byte[]? mediaBytes = null;
         string? fileName = null;
@@ -66,24 +131,18 @@
 
         if (selectedFile is not null)
         {
-            var maxSize = ProtocolConstants.MaxMediaCiphertextSizeBytes;
-            if (selectedFile.Size > maxSize)
+            if (selectedFileBytes is null)
             {
-                errorMessage = $"File too large. Maximum size is {FormatFileSize(maxSize)}.";
+                errorMessage = "Could not read the selected file. Please try again.";
                 return;
             }
 
-            errorMessage = null;
-            using var stream = selectedFile.OpenReadStream(maxAllowedSize: maxSize);
-            mediaBytes = new byte[selectedFile.Size];
-            await stream.ReadExactlyAsync(mediaBytes);
-
+            mediaBytes = selectedFileBytes;
             fileName = selectedFile.Name;
             mimeType = selectedFile.ContentType;
             contentType = selectedContentType;
         }
 
-        // Must have text or media (or both)
         if (string.IsNullOrEmpty(text) && mediaBytes is null)
             return;
 
@@ -98,40 +157,86 @@
 
         messageText = "";
         ClearSelectedFile();
+        try { await JS.InvokeVoidAsync("mediaHelpers.resetHeight", textareaRef); } catch { }
         await OnSend.InvokeAsync(msg);
     }
 
-    private void OnImageSelected(InputFileChangeEventArgs e)
+    private async Task OnMediaSelected(InputFileChangeEventArgs e)
     {
-        selectedFile = e.File;
-        selectedContentType = ContentType.Image;
-        errorMessage = null;
+        showAttachMenu = false;
+        var file = e.File;
+        selectedContentType = file.ContentType.StartsWith("video/") ? ContentType.Video : ContentType.Image;
+        await SetSelectedFile(file, createPreview: selectedContentType == ContentType.Image);
     }
 
-    private void OnAudioSelected(InputFileChangeEventArgs e)
+    private async Task OnAudioSelected(InputFileChangeEventArgs e)
     {
-        selectedFile = e.File;
+        showAttachMenu = false;
         selectedContentType = ContentType.Audio;
+        await SetSelectedFile(e.File, createPreview: false);
+    }
+
+    private async Task OnDocumentSelected(InputFileChangeEventArgs e)
+    {
+        showAttachMenu = false;
+        selectedContentType = ContentType.File;
+        await SetSelectedFile(e.File, createPreview: false);
+    }
+
+    private async Task SetSelectedFile(IBrowserFile file, bool createPreview)
+    {
+        ClearSelectedFile();
         errorMessage = null;
+
+        var maxSize = ProtocolConstants.MaxMediaCiphertextSizeBytes;
+        if (file.Size > maxSize)
+        {
+            errorMessage = $"File too large. Maximum is {FormatFileSize(maxSize)}.";
+            return;
+        }
+
+        // Read bytes eagerly — avoids double-read on send and enables preview
+        using var stream = file.OpenReadStream(maxAllowedSize: maxSize);
+        selectedFileBytes = new byte[file.Size];
+        await stream.ReadExactlyAsync(selectedFileBytes);
+        selectedFile = file;
+
+        if (createPreview)
+        {
+            try
+            {
+                previewDataUrl = await JS.InvokeAsync<string>(
+                    "mediaHelpers.createObjectUrl", selectedFileBytes, file.ContentType);
+            }
+            catch { }
+        }
     }
 
     private void ClearSelectedFile()
     {
+        if (previewDataUrl is not null)
+        {
+            _ = JS.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", previewDataUrl);
+            previewDataUrl = null;
+        }
         selectedFile = null;
+        selectedFileBytes = null;
         selectedContentType = ContentType.Text;
+        errorMessage = null;
     }
 
-    private async Task HandleTyping()
+    private static string GetFileIcon(ContentType type) => type switch
     {
-        await OnTyping.InvokeAsync();
-    }
+        ContentType.Audio => "🎵",
+        ContentType.Video => "🎬",
+        ContentType.Image => "🖼️",
+        _ => "📄"
+    };
 
     private static string FormatFileSize(long bytes)
     {
-        if (bytes < 1024)
-            return $"{bytes} B";
-        if (bytes < 1024 * 1024)
-            return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
         return $"{bytes / (1024.0 * 1024.0):F1} MB";
     }
 

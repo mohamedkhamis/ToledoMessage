@@ -531,11 +531,11 @@
 
     private async Task<ChatMessage> DecryptEnvelopeToChatMessage(MessageEnvelope envelope, bool isMine)
     {
-        if (envelope.ContentType is ContentType.Image or ContentType.Audio)
+        if (envelope.ContentType is ContentType.Image or ContentType.Audio or ContentType.Video or ContentType.File)
         {
             var bytes = await Crypto.DecryptToBytesAsync(
                 envelope.SenderDeviceId, envelope.Ciphertext, envelope.MessageType);
-            var mimeType = envelope.MimeType ?? (envelope.ContentType == ContentType.Image ? "image/png" : "audio/mpeg");
+            var mimeType = envelope.MimeType ?? GetDefaultMimeType(envelope.ContentType);
             var blobUrl = await CreateMediaBlobUrl(mimeType, bytes);
             return new ChatMessage
             {
@@ -564,6 +564,15 @@
             };
         }
     }
+
+    private static string GetDefaultMimeType(ContentType contentType) => contentType switch
+    {
+        ContentType.Image => "image/png",
+        ContentType.Audio => "audio/mpeg",
+        ContentType.Video => "video/mp4",
+        ContentType.File  => "application/octet-stream",
+        _                 => "application/octet-stream"
+    };
 
     private readonly List<string> _blobUrls = [];
 

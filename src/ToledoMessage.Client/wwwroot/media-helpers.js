@@ -8,5 +8,14 @@ window.mediaHelpers = {
         if (url && url.startsWith('blob:')) {
             URL.revokeObjectURL(url);
         }
+    },
+    autoResize: function (element) {
+        if (!element) return;
+        element.style.height = 'auto';
+        element.style.height = Math.min(element.scrollHeight, 150) + 'px';
+    },
+    resetHeight: function (element) {
+        if (!element) return;
+        element.style.height = '';
     }
 };

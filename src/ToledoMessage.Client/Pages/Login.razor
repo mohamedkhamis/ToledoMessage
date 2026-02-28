@@ -65,8 +65,8 @@
         var uri = new Uri(Navigation.Uri);
         if (uri.Query.Contains("logout", StringComparison.OrdinalIgnoreCase))
         {
-            // Clear all stored auth and crypto data
-            await JS.InvokeVoidAsync("localStorage.clear");
+            // Clear auth and crypto data but preserve UI preferences (theme, fontSize)
+            await JS.InvokeVoidAsync("toledoStorage.clearAuthData");
             Http.DefaultRequestHeaders.Authorization = null;
         }
     }

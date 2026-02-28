@@ -41,6 +41,19 @@ window.toledoStorage = {
     },
     getFontSize: function () {
         return localStorage.getItem('app.fontSize') || 'medium';
+    },
+    clearAuthData: function () {
+        // Clear auth/crypto keys but preserve UI preferences (theme, fontSize)
+        var preserve = ['app.theme', 'app.fontSize'];
+        var saved = {};
+        for (var i = 0; i < preserve.length; i++) {
+            var v = localStorage.getItem(preserve[i]);
+            if (v !== null) saved[preserve[i]] = v;
+        }
+        localStorage.clear();
+        for (var key in saved) {
+            localStorage.setItem(key, saved[key]);
+        }
     }
 };
 

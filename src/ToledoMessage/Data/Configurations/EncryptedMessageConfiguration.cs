@@ -15,7 +15,7 @@ public class EncryptedMessageConfiguration : IEntityTypeConfiguration<EncryptedM
         builder.Property(m => m.RecipientDeviceId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
         builder.HasIndex(m => new { m.RecipientDeviceId, m.IsDelivered });
         builder.HasIndex(m => new { m.ConversationId, m.SequenceNumber }).IsUnique();
-        builder.Property(m => m.Ciphertext).IsRequired().HasMaxLength(10_485_760);
+        builder.Property(m => m.Ciphertext).IsRequired().HasColumnType("varbinary(max)");
         builder.Property(m => m.MessageType).IsRequired();
         builder.Property(m => m.ContentType).IsRequired();
         builder.Property(m => m.FileName).HasMaxLength(256);

@@ -84,10 +84,10 @@ builder.Services.AddAuthentication(options =>
 });
 builder.Services.AddAuthorization();
 
-// SignalR — increase max message size to support encrypted media (images/audio up to 10 MB)
+// SignalR — increase max message size to support encrypted media (up to 15 MB file + Base64 overhead = ~25 MB JSON)
 builder.Services.AddSignalR(options =>
 {
-    options.MaximumReceiveMessageSize = 15 * 1024 * 1024; // 15 MB (10 MB media + encryption overhead + Base64)
+    options.MaximumReceiveMessageSize = 25 * 1024 * 1024; // 25 MB (15 MB ciphertext as Base64 ≈ 20 MB + JSON overhead)
 });
 
 // Controllers (for REST API endpoints)

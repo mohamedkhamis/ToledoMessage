@@ -121,9 +121,9 @@ public class MessageRelayService
     /// Returns the maximum allowed ciphertext size in bytes based on content type.
     /// </summary>
     public static int GetMaxCiphertextSize(ContentType contentType) =>
-        contentType is ContentType.Image or ContentType.Audio
-            ? ProtocolConstants.MaxMediaCiphertextSizeBytes
-            : ProtocolConstants.MaxCiphertextSizeBytes;
+        contentType is ContentType.Text
+            ? ProtocolConstants.MaxCiphertextSizeBytes
+            : ProtocolConstants.MaxMediaCiphertextSizeBytes;
 
     public async Task TryRelayToOnlineRecipient(EncryptedMessage message)
     {

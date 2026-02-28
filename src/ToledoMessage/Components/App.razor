@@ -6,9 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <script>
-        (function() {
-            var t = localStorage.getItem('app.theme');
-            if (t) document.documentElement.setAttribute('data-theme', t);
+        (function () {
+            function applyTheme() {
+                var t = localStorage.getItem('app.theme');
+                if (t) document.documentElement.setAttribute('data-theme', t);
+                else document.documentElement.removeAttribute('data-theme');
+            }
+            applyTheme();
+            // Re-apply after Blazor enhanced navigation (server re-renders <html> without data-theme)
+            document.addEventListener('blazor:enhancedload', applyTheme);
         })();
     </script>
     <ResourcePreloader />

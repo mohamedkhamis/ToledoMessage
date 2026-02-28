@@ -33,7 +33,7 @@ public static class ProtocolConstants
     // Message limits
     public const int MaxMessageSizeBytes = 65_536; // 64 KB plaintext limit
     public const int MaxCiphertextSizeBytes = 67_584; // ~66 KB (64 KB plaintext + encryption overhead)
-    public const int MaxMediaCiphertextSizeBytes = 10_485_760; // 10 MB for image/audio media
+    public const int MaxMediaCiphertextSizeBytes = 15_728_640; // 15 MB for image/audio/video/file media
 
     // Input length limits
     public const int MaxDeviceNameLength = 64;

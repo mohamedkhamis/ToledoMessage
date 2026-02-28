@@ -6,7 +6,7 @@
 /* 1. Default (blue/white) — applied via :root in app.css */
 
 /* 2. Default Dark */
-[data-theme="default-dark"] {
+:root[data-theme="default-dark"] {
     --bg-primary: #1a1a2e;
     --bg-secondary: #16213e;
     --bg-chat: #0f3460;
@@ -33,7 +33,7 @@
 }
 
 /* 3. WhatsApp */
-[data-theme="whatsapp"] {
+:root[data-theme="whatsapp"] {
     --bg-primary: #f0f2f5;
     --bg-secondary: #ffffff;
     --bg-chat: #efeae2;
@@ -59,7 +59,7 @@
 }
 
 /* 4. WhatsApp Dark */
-[data-theme="whatsapp-dark"] {
+:root[data-theme="whatsapp-dark"] {
     --bg-primary: #0b141a;
     --bg-secondary: #111b21;
     --bg-chat: #0b141a;
@@ -86,7 +86,7 @@
 }
 
 /* 5. Telegram */
-[data-theme="telegram"] {
+:root[data-theme="telegram"] {
     --bg-primary: #f4f4f5;
     --bg-secondary: #ffffff;
     --bg-chat: #c8d9e6;
@@ -112,7 +112,7 @@
 }
 
 /* 6. Signal */
-[data-theme="signal"] {
+:root[data-theme="signal"] {
     --bg-primary: #f6f6f6;
     --bg-secondary: #ffffff;
     --bg-chat: #eeeee4;
@@ -138,7 +138,7 @@
 }
 
 /* 7. Signal Dark */
-[data-theme="signal-dark"] {
+:root[data-theme="signal-dark"] {
     --bg-primary: #1b1c1f;
     --bg-secondary: #121214;
     --bg-chat: #1b1c1f;

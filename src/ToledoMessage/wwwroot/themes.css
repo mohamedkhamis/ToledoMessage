@@ -28,7 +28,7 @@
     --shadow-md: 0 4px 6px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2);
     --card-bg: #16213e;
     --hover-bg: #1a1a3e;
-    --accent-light: rgba(25, 118, 210, 0.2);
+    --accent-light: #1a3a6b;
     color-scheme: dark;
 }
 
@@ -81,7 +81,7 @@
     --shadow-md: 0 2px 5px rgba(0,0,0,0.4);
     --card-bg: #111b21;
     --hover-bg: #202c33;
-    --accent-light: rgba(37, 211, 102, 0.15);
+    --accent-light: #0d3b2a;
     color-scheme: dark;
 }
 
@@ -160,6 +160,6 @@
     --shadow-md: 0 2px 5px rgba(0,0,0,0.4);
     --card-bg: #252528;
     --hover-bg: #303033;
-    --accent-light: rgba(58, 118, 240, 0.2);
+    --accent-light: #1e2d4f;
     color-scheme: dark;
 }

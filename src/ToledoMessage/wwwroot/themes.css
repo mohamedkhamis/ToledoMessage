@@ -28,6 +28,7 @@
     --shadow-md: 0 4px 6px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2);
     --card-bg: #16213e;
     --hover-bg: #1a1a3e;
+    --accent-light: rgba(25, 118, 210, 0.2);
     color-scheme: dark;
 }
 
@@ -54,6 +55,7 @@
     --shadow-md: 0 2px 5px rgba(0,0,0,0.1);
     --card-bg: #ffffff;
     --hover-bg: #f5f6f6;
+    --accent-light: #dcf8c6;
 }
 
 /* 4. WhatsApp Dark */
@@ -79,6 +81,7 @@
     --shadow-md: 0 2px 5px rgba(0,0,0,0.4);
     --card-bg: #111b21;
     --hover-bg: #202c33;
+    --accent-light: rgba(37, 211, 102, 0.15);
     color-scheme: dark;
 }
 
@@ -105,6 +108,7 @@
     --shadow-md: 0 2px 4px rgba(0,0,0,0.1);
     --card-bg: #ffffff;
     --hover-bg: #f4f4f5;
+    --accent-light: #d6e8ff;
 }
 
 /* 6. Signal */
@@ -130,6 +134,7 @@
     --shadow-md: 0 2px 4px rgba(0,0,0,0.08);
     --card-bg: #ffffff;
     --hover-bg: #f0f0f0;
+    --accent-light: #e8effc;
 }
 
 /* 7. Signal Dark */
@@ -155,5 +160,6 @@
     --shadow-md: 0 2px 5px rgba(0,0,0,0.4);
     --card-bg: #252528;
     --hover-bg: #303033;
+    --accent-light: rgba(58, 118, 240, 0.2);
     color-scheme: dark;
 }

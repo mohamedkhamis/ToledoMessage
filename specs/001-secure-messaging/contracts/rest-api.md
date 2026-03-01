@@ -485,3 +485,135 @@ Set or disable the disappearing message timer.
 ```
 
 **Response 204**: No content
+
+---
+
+## Key Backup (Authorized) — FR-024 / CE-001
+
+### POST /api/keys/backup
+
+Upload or replace the encrypted identity key backup.
+
+**Request**:
+```json
+{
+  "encryptedBlob": "base64 (max 50 KB)",
+  "salt": "base64 (16 bytes, PBKDF2 salt)",
+  "nonce": "base64 (12 bytes, AES-GCM nonce)"
+}
+```
+
+**Response 200**: OK
+
+**Errors**: 400 (validation, size exceeds 50 KB), 401 (not authenticated)
+
+---
+
+### GET /api/keys/backup
+
+Download the encrypted identity key backup for the authenticated user.
+
+**Response 200**:
+```json
+{
+  "encryptedBlob": "base64",
+  "salt": "base64",
+  "nonce": "base64",
+  "version": "int"
+}
+```
+
+**Errors**: 404 (no backup exists), 401 (not authenticated)
+
+---
+
+### DELETE /api/keys/backup
+
+Delete the encrypted identity key backup for the authenticated user.
+
+**Response 204**: No content
+
+**Errors**: 401 (not authenticated)
+
+---
+
+## Preferences (Authorized)
+
+### GET /api/preferences
+
+Get user preferences.
+
+**Response 200**:
+```json
+{
+  "theme": "string (light|dark|system)",
+  "fontSize": "string (small|medium|large)",
+  "readReceiptsEnabled": true,
+  "sharedKeysEnabled": true
+}
+```
+
+**Notes**: Returns defaults if no preferences exist.
+
+---
+
+### PUT /api/preferences
+
+Update user preferences (partial update — only provided fields are changed).
+
+**Request**:
+```json
+{
+  "theme": "string? (optional)",
+  "fontSize": "string? (optional)",
+  "readReceiptsEnabled": "bool? (optional)",
+  "sharedKeysEnabled": "bool? (optional)"
+}
+```
+
+**Response 204**: No content
+
+---
+
+## Reactions (Authorized) — FR-026
+
+### POST /api/messages/{messageId}/reactions
+
+Toggle a reaction on a message (add if absent, remove if present).
+
+**Request**:
+```json
+{
+  "emoji": "string (single emoji, max 8 chars)"
+}
+```
+
+**Response 200**:
+```json
+{
+  "added": true,
+  "emoji": "string",
+  "totalCount": "int"
+}
+```
+
+**Notes**: The server broadcasts `ReactionToggled` via SignalR to all conversation participants.
+
+---
+
+### GET /api/messages/{messageId}/reactions
+
+Get all reactions for a message.
+
+**Response 200**:
+```json
+[
+  {
+    "emoji": "string",
+    "count": "int",
+    "users": [
+      { "userId": "decimal", "displayName": "string" }
+    ]
+  }
+]
+```

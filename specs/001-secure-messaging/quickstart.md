@@ -47,7 +47,8 @@ dotnet ef database update
 
 This creates the database with all tables: Users, Devices,
 OneTimePreKeys, Conversations, ConversationParticipants,
-EncryptedMessages, RefreshTokens.
+EncryptedMessages, RefreshTokens, UserPreferences,
+EncryptedKeyBackups, MessageReactions.
 
 ## 4. Build and Run
 

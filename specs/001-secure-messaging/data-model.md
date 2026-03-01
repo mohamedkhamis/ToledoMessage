@@ -207,6 +207,64 @@ message to a user with 3 devices, 3 EncryptedMessage rows are created,
 each with different RecipientDeviceId and independently encrypted
 ciphertext.
 
+### EncryptedKeyBackup
+
+| Field | Type | Constraints | Notes |
+|-------|------|-------------|-------|
+| Id | decimal | PK, auto-generated | |
+| UserId | decimal | FK → User, required, unique | One backup per user |
+| EncryptedBlob | byte[] | Required, max 50 KB | AES-256-GCM encrypted identity keys |
+| Salt | byte[] | Required, 16 bytes | PBKDF2 salt |
+| Nonce | byte[] | Required, 12 bytes | AES-GCM nonce |
+| Version | int | Required, default: 1 | Schema version for forward compat |
+| CreatedAt | DateTimeOffset | Required | |
+| UpdatedAt | DateTimeOffset | Required | |
+
+**Relationships**: Belongs to `User` (cascade delete)
+
+**Lifecycle**:
+1. Created on first login with SharedKeysEnabled=true (after key generation)
+2. Replaced on subsequent logins if keys change
+3. Deleted when user disables SharedKeysEnabled in Settings
+4. Cascade-deleted when user account is deactivated
+
+**Constitution**: Authorized under CE-001. Blob encrypted client-side with PBKDF2 (100K iterations, SHA-256) + AES-256-GCM. Server never sees plaintext keys.
+
+---
+
+### UserPreferences
+
+| Field | Type | Constraints | Notes |
+|-------|------|-------------|-------|
+| Id | decimal | PK, auto-generated | |
+| UserId | decimal | FK → User, required, unique | One prefs record per user |
+| Theme | string | Required, default: "system" | "light", "dark", "system" |
+| FontSize | string | Required, default: "medium" | "small", "medium", "large" |
+| ReadReceiptsEnabled | bool | Required, default: true | |
+| SharedKeysEnabled | bool | Required, default: true | FR-024 key backup opt-in |
+
+**Relationships**: Belongs to `User`
+
+---
+
+### MessageReaction
+
+| Field | Type | Constraints | Notes |
+|-------|------|-------------|-------|
+| Id | decimal | PK, auto-generated | |
+| MessageId | decimal | FK → EncryptedMessage, required | |
+| UserId | decimal | FK → User, required | |
+| Emoji | string | Required, max 8 chars | Single emoji character |
+| CreatedAt | DateTimeOffset | Required | |
+
+**Relationships**: Belongs to `EncryptedMessage`, belongs to `User`
+
+**Validation rules**:
+- Unique constraint on (MessageId, UserId, Emoji) — one reaction per emoji per user per message
+- Toggle behavior: if reaction exists, remove it; if not, add it
+
+---
+
 ### RefreshToken
 
 | Field | Type | Constraints | Notes |
@@ -233,7 +291,7 @@ ciphertext.
 | Enum | Values | Usage |
 |------|--------|-------|
 | MessageType | PreKeyMessage (0), NormalMessage (1) | First vs. subsequent messages in session |
-| ContentType | Text (0) | MVP text; extensible for Image, Audio, File |
+| ContentType | Text (0), Image (1), Video (2), Audio (3), File (4) | FR-023: media message types |
 | ConversationType | OneToOne (0), Group (1) | Conversation type discriminator |
 | DeliveryStatus | Sending (0), Sent (1), Delivered (2), Read (3) | Client-side UI state |
 | ParticipantRole | Member (0), Admin (1) | Group permission level |
@@ -250,8 +308,9 @@ never sent to the server:
 | signed_pre_key | Signed pre-key private key | Session establishment |
 | one_time_pre_keys | OTP private keys (keyed by KeyId) | Session establishment |
 | sessions | RatchetState per remote device | Double Ratchet state |
-| messages | Decrypted message content | Chat history display |
+| messages | Decrypted message content + media base64 + MIME type | Chat history display (FR-023) |
 | preferences | User settings (theme, notification permission) | UI preferences |
+| fingerprints | Stored identity key fingerprints per contact | Key change detection (FR-009/010) |
 
 ## Protocol Constants
 

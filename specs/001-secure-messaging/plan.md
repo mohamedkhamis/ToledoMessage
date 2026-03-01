@@ -5,7 +5,7 @@
 
 ## Summary
 
-Build a secure messaging application using hybrid post-quantum cryptography (classical X25519/Ed25519 + post-quantum ML-KEM-768/ML-DSA-65) to protect conversations against current and future quantum computing threats. The system implements the Signal Protocol (X3DH + Double Ratchet) with hybrid extensions, Sender Keys for groups, and a zero-trust server model where all crypto executes client-side in Blazor WebAssembly via BouncyCastle.Cryptography.
+Build a secure messaging application using hybrid post-quantum cryptography (classical X25519/Ed25519 + post-quantum ML-KEM-768/ML-DSA-65) to protect conversations against current and future quantum computing threats. The system implements the Signal Protocol (X3DH + Double Ratchet) with hybrid extensions, Sender Keys for groups, and a zero-trust server model where all crypto executes client-side in Blazor WebAssembly via BouncyCastle.Cryptography. Supports media attachments (image, video, audio, file), message reactions, replies, forwarding, link previews, in-conversation search, and opt-in encrypted key backup for multi-device identity continuity (see Constitution Exception CE-001).
 
 ## Technical Context
 
@@ -25,7 +25,7 @@ Build a secure messaging application using hybrid post-quantum cryptography (cla
 
 | # | Principle | Status | Notes |
 |---|-----------|--------|-------|
-| I | Zero-Trust Server | ✅ PASS | All crypto client-side in Blazor WASM. Server stores only ciphertext, public keys, pre-key bundles. 90-day auto-purge. No plaintext logging (Serilog configured). |
+| I | Zero-Trust Server | ✅ PASS (CE-001) | All crypto client-side in Blazor WASM. Server stores only ciphertext, public keys, pre-key bundles, and encrypted key backup blobs (CE-001). 90-day auto-purge. No plaintext logging (Serilog configured). |
 | II | Hybrid Cryptography | ✅ PASS | X25519 + ML-KEM-768 for KEM, Ed25519 + ML-DSA-65 for signatures, AES-256-GCM for AEAD, HKDF-SHA256 for KDF. Both layers must be broken for compromise. |
 | III | Established Libraries Only | ✅ PASS | BouncyCastle.Cryptography 2.6.2 for all crypto (classical + PQ). No custom primitives. Single library for WASM compatibility. |
 | IV | Signal Protocol Fidelity | ✅ PASS | X3DH + Double Ratchet with hybrid PQ extensions. Sender Keys for groups with membership-change rotation. |
@@ -33,7 +33,7 @@ Build a secure messaging application using hybrid post-quantum cryptography (cla
 | VI | Test-First Development | ✅ PASS | TDD (red-green-refactor). >=80% coverage, >=90% crypto. Dedicated crypto test suites. Integration tests for E2E flow. |
 | VII | Open-Source Transparency | ✅ PASS | All source code and protocol documentation public. Security from algorithm strength, not obscurity. |
 
-All gates PASS. No violations to justify.
+All gates PASS. One authorized exception documented: CE-001 (encrypted key backup extends server-stored data types). See constitution v1.2.0.
 
 ## Project Structure
 
@@ -61,7 +61,9 @@ src/
 │   │   ├── DevicesController.cs      # POST/GET/DELETE /api/devices, pre-key endpoints
 │   │   ├── UsersController.cs        # GET /api/users/search, pre-key bundle, devices
 │   │   ├── ConversationsController.cs # GET/POST /api/conversations, group, participants, timer
-│   │   └── MessagesController.cs     # POST/GET /api/messages, pending, acknowledge
+│   │   ├── MessagesController.cs     # POST/GET /api/messages, pending, acknowledge
+│   │   ├── KeyBackupController.cs    # POST/GET/DELETE /api/keys/backup (encrypted key backup)
+│   │   └── PreferencesController.cs  # GET/PUT /api/preferences (theme, fontSize, sharedKeys)
 │   ├── Hubs/
 │   │   └── ChatHub.cs                # SignalR: SendMessage, ReceiveMessage, delivery/read acks
 │   ├── Models/
@@ -71,7 +73,10 @@ src/
 │   │   ├── Conversation.cs           # Conversation entity
 │   │   ├── ConversationParticipant.cs # Join table with roles
 │   │   ├── EncryptedMessage.cs       # Encrypted message entity
-│   │   └── RefreshToken.cs           # Refresh token entity
+│   │   ├── RefreshToken.cs           # Refresh token entity
+│   │   ├── EncryptedKeyBackup.cs    # Encrypted identity key backup (CE-001)
+│   │   ├── UserPreferences.cs       # User preferences (theme, fontSize, sharedKeys)
+│   │   └── MessageReaction.cs       # Per-user emoji reactions on messages
 │   ├── Data/
 │   │   ├── ApplicationDbContext.cs   # EF Core DbContext
 │   │   └── Configurations/          # Fluent API entity configurations
@@ -177,10 +182,12 @@ tests/
 
 ## Complexity Tracking
 
-No constitution violations to justify. All architectural decisions align with the 7 principles.
+One authorized exception documented (CE-001). All other architectural decisions align with the 7 principles.
 
 | Decision | Justification | Simpler Alternative Rejected |
 |----------|--------------|------------------------------|
 | 5 source projects | Crypto isolation for independent testing + reuse; Shared DTOs prevent duplication; Client/Server separation enforces zero-trust boundary | Single project would mix server and client crypto code, violating zero-trust boundary |
 | Leader election (BroadcastChannel) | Prevents ratchet state corruption from concurrent IndexedDB writes across tabs | No tab handling would cause duplicate SignalR connections and potential crypto state corruption |
 | Account deletion grace period | 7-day window prevents accidental permanent data loss while maintaining security (permanent deactivation after grace) | Immediate deletion is simpler but provides no recourse for accidental clicks |
+| Encrypted key backup (CE-001) | Multi-device usability requires identity key continuity; encrypted client-side with PBKDF2+AES-GCM before upload; server stores only opaque blob | No backup (simpler, stricter zero-trust) but new devices appear as different users to contacts |
+| Media as encrypted payload | Media bytes encrypted inside the same per-message E2E envelope, persisted to IndexedDB as base64 | Separate media upload service adds complexity; inline approach reuses existing crypto pipeline |

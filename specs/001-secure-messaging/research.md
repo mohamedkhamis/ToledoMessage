@@ -258,6 +258,48 @@ Worker are deferred post-MVP.
 - No notifications: Rejected — messaging apps require notification
   support for basic usability.
 
+### 14. Key Backup Encryption (FR-024 / CE-001)
+
+**Decision**: PBKDF2 (100K iterations, SHA-256) + AES-256-GCM for encrypting
+identity key backups client-side before server upload.
+
+**Rationale**: The user's password (already available during login) serves as
+the key derivation input. PBKDF2 with 100,000 iterations and SHA-256 derives
+a 256-bit AES key from the password + random 16-byte salt. The identity keys
+(classical Ed25519/X25519 private + public, post-quantum ML-DSA-65/ML-KEM-768
+private + public) are serialized to a JSON payload, encrypted with AES-256-GCM
+(random 12-byte nonce), and the (blob, salt, nonce) triple is uploaded. The
+server stores only opaque ciphertext. Uses BouncyCastle's `Pkcs5S2ParametersGenerator`
+for PBKDF2 and the existing `AesGcmCipher` from `ToledoMessage.Crypto`.
+
+**Alternatives considered**:
+- Argon2id: Rejected — BouncyCastle.Cryptography 2.6.2 does not include Argon2.
+  Would require an additional dependency (`Konscious.Security.Cryptography`),
+  violating the single-crypto-library constraint.
+- scrypt: Rejected — same dependency issue as Argon2.
+- Higher PBKDF2 iterations (500K+): Rejected — would add multi-second delay
+  on login in Blazor WASM (single-threaded). 100K is OWASP-recommended minimum.
+- No backup (strict zero-trust): Rejected — unacceptable UX. Each new device
+  gets a different identity, breaking contact trust chains. Constitution
+  exception CE-001 documents this authorized trade-off.
+
+### 15. Media Encryption Approach (FR-023)
+
+**Decision**: Media bytes encrypted inline within the per-message E2E payload.
+
+**Rationale**: Media content (image, video, audio, file) is included as base64
+in the plaintext message payload before Double Ratchet encryption. This reuses
+the existing per-message key derivation and AES-256-GCM encryption pipeline
+without any additional crypto code. On the client, media is persisted to
+IndexedDB as base64 alongside the message text and rendered via blob URLs.
+
+**Alternatives considered**:
+- Separate media upload with attachment keys: Rejected for MVP — adds server
+  endpoints for encrypted blob storage, key distribution for media, and
+  increases implementation complexity significantly.
+- WebRTC data channels for large media: Rejected — overkill for file sharing;
+  adds peer-to-peer complexity.
+
 ## Unresolved Items
 
-None — all technical decisions are resolved. Proceed to Phase 1 design.
+None — all technical decisions are resolved.

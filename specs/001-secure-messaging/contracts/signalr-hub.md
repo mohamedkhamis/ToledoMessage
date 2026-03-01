@@ -169,6 +169,30 @@ Task UserTyping(decimal conversationId, decimal userId)
 **Target group**: `user_{participantUserId}` (all participants
 except the typing user)
 
+### ReactionToggled — FR-026
+
+Notifies conversation participants that a reaction was added or removed.
+
+```csharp
+Task ReactionToggled(decimal messageId, decimal conversationId, decimal userId, string emoji, bool added)
+```
+
+**Target group**: `user_{participantUserId}` (all participants in the conversation)
+
+---
+
+### MessageForwarded — FR-026
+
+Notifies the target conversation that a forwarded message has arrived.
+Uses the same `ReceiveMessage` event with the `IsForwarded` flag in the envelope.
+
+```csharp
+// Uses standard ReceiveMessage with extended MessageEnvelope:
+// { ..., "isForwarded": true, "originalSenderName": "string?" }
+```
+
+---
+
 ## Message Flow Diagram
 
 ```text

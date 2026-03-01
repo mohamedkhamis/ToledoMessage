@@ -26,8 +26,8 @@ C# / .NET 10 (LTS): Follow standard conventions
 
 ## Recent Changes
 - 001-secure-messaging: Added C# / .NET 10 (LTS) + BouncyCastle.Cryptography 2.6.2, ASP.NET Core Identity, SignalR, EF Core 10, Serilog
+- 001-secure-messaging: Added C# / .NET 10 (LTS) + BouncyCastle.Cryptography 2.6.2, ASP.NET Core Identity, SignalR, EF Core 10, Serilog
 - 001-secure-messaging: Added C# / .NET 10 (LTS) + BouncyCastle.Cryptography 2.6.2, ASP.NET Core
-- 001-secure-messaging: Added C# / .NET 10 (LTS) + BouncyCastle.Cryptography 2.6.2, ASP.NET Core Identity, SignalR, EF Core 10
 
 
 <!-- MANUAL ADDITIONS START -->

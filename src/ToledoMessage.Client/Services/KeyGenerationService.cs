@@ -10,6 +10,46 @@ namespace ToledoMessage.Client.Services;
 public class KeyGenerationService(LocalStorageService storage)
 {
     /// <summary>
+    /// Restores identity keys from a backup payload, generates fresh pre-keys,
+    /// and returns a <see cref="DeviceRegistrationRequest"/> ready to send to the server.
+    /// </summary>
+    public async Task<DeviceRegistrationRequest> RestoreKeysAndBuildRequest(KeyBackupPayload payload, string deviceName)
+    {
+        // Identity keys are already stored in localStorage by KeyBackupService.TryRestoreBackupAsync
+        // Generate fresh signed pre-key (X25519, keyId = 1)
+        var signedPreKey = PreKeyGenerator.GenerateSignedPreKey(
+            1, payload.ClassicalPrivateKey, payload.PostQuantumPrivateKey);
+
+        // Generate fresh Kyber pre-key (ML-KEM-768)
+        var kyberPreKey = PreKeyGenerator.GenerateKyberPreKey(
+            payload.ClassicalPrivateKey, payload.PostQuantumPrivateKey);
+
+        // Generate fresh batch of one-time pre-keys
+        var oneTimePreKeys = PreKeyGenerator.GenerateOneTimePreKeys(0, 100);
+
+        // Store pre-key private keys in local storage
+        await storage.StoreAsync("signedPreKey.private", signedPreKey.PrivateKey);
+        await storage.StoreAsync("signedPreKey.public", signedPreKey.PublicKey);
+        await storage.StoreAsync("kyberPreKey.private", kyberPreKey.PrivateKey);
+
+        foreach (var otpk in oneTimePreKeys) await storage.StoreAsync($"otpk.{otpk.KeyId}", otpk.PrivateKey);
+
+        // Build registration request with restored identity public keys
+        return new DeviceRegistrationRequest(
+            deviceName,
+            Convert.ToBase64String(payload.ClassicalPublicKey),
+            Convert.ToBase64String(payload.PostQuantumPublicKey),
+            Convert.ToBase64String(signedPreKey.PublicKey),
+            Convert.ToBase64String(signedPreKey.Signature),
+            signedPreKey.KeyId,
+            Convert.ToBase64String(kyberPreKey.PublicKey),
+            Convert.ToBase64String(kyberPreKey.Signature),
+            oneTimePreKeys
+                .Select(static k => new OneTimePreKeyDto(k.KeyId, Convert.ToBase64String(k.PublicKey)))
+                .ToList());
+    }
+
+    /// <summary>
     /// Generates all key material for device registration and stores private keys locally.
     /// Returns a <see cref="DeviceRegistrationRequest"/> ready to send to the server.
     /// </summary>
@@ -42,15 +82,15 @@ public class KeyGenerationService(LocalStorageService storage)
 
         // 6. Build DeviceRegistrationRequest with base64-encoded public keys
         return new DeviceRegistrationRequest(
-            DeviceName: deviceName,
-            IdentityPublicKeyClassical: Convert.ToBase64String(identity.ClassicalPublicKey),
-            IdentityPublicKeyPostQuantum: Convert.ToBase64String(identity.PostQuantumPublicKey),
-            SignedPreKeyPublic: Convert.ToBase64String(signedPreKey.PublicKey),
-            SignedPreKeySignature: Convert.ToBase64String(signedPreKey.Signature),
-            SignedPreKeyId: signedPreKey.KeyId,
-            KyberPreKeyPublic: Convert.ToBase64String(kyberPreKey.PublicKey),
-            KyberPreKeySignature: Convert.ToBase64String(kyberPreKey.Signature),
-            OneTimePreKeys: oneTimePreKeys
+            deviceName,
+            Convert.ToBase64String(identity.ClassicalPublicKey),
+            Convert.ToBase64String(identity.PostQuantumPublicKey),
+            Convert.ToBase64String(signedPreKey.PublicKey),
+            Convert.ToBase64String(signedPreKey.Signature),
+            signedPreKey.KeyId,
+            Convert.ToBase64String(kyberPreKey.PublicKey),
+            Convert.ToBase64String(kyberPreKey.Signature),
+            oneTimePreKeys
                 .Select(k => new OneTimePreKeyDto(k.KeyId, Convert.ToBase64String(k.PublicKey)))
                 .ToList());
     }

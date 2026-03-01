@@ -11,6 +11,7 @@ public class UserPreferences
     public bool NotificationsEnabled { get; set; } = true;
     public bool ReadReceiptsEnabled { get; set; } = true;
     public bool TypingIndicatorsEnabled { get; set; } = true;
+    public bool SharedKeysEnabled { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 

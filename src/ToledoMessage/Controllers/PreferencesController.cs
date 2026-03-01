@@ -32,11 +32,12 @@ public class PreferencesController(ApplicationDbContext db) : BaseApiController
             .FirstOrDefaultAsync(p => p.UserId == userId);
 
         if (prefs is null)
-            return Ok(new UserPreferencesResponse("default", "medium", "en", true, true, true));
+            return Ok(new UserPreferencesResponse("default", "medium", "en", true, true, true, true));
 
         return Ok(new UserPreferencesResponse(
             prefs.Theme, prefs.FontSize, prefs.Language,
-            prefs.NotificationsEnabled, prefs.ReadReceiptsEnabled, prefs.TypingIndicatorsEnabled));
+            prefs.NotificationsEnabled, prefs.ReadReceiptsEnabled, prefs.TypingIndicatorsEnabled,
+            prefs.SharedKeysEnabled));
     }
 
     [HttpPut]
@@ -93,12 +94,18 @@ public class PreferencesController(ApplicationDbContext db) : BaseApiController
             prefs.TypingIndicatorsEnabled = request.TypingIndicatorsEnabled.Value;
         }
 
+        if (request.SharedKeysEnabled.HasValue)
+        {
+            prefs.SharedKeysEnabled = request.SharedKeysEnabled.Value;
+        }
+
         prefs.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync();
 
         return Ok(new UserPreferencesResponse(
             prefs.Theme, prefs.FontSize, prefs.Language,
-            prefs.NotificationsEnabled, prefs.ReadReceiptsEnabled, prefs.TypingIndicatorsEnabled));
+            prefs.NotificationsEnabled, prefs.ReadReceiptsEnabled, prefs.TypingIndicatorsEnabled,
+            prefs.SharedKeysEnabled));
     }
 }

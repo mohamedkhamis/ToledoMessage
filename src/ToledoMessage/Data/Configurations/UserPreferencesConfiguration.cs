@@ -19,6 +19,7 @@ public class UserPreferencesConfiguration : IEntityTypeConfiguration<UserPrefere
         builder.Property(static p => p.NotificationsEnabled).HasDefaultValue(true);
         builder.Property(static p => p.ReadReceiptsEnabled).HasDefaultValue(true);
         builder.Property(static p => p.TypingIndicatorsEnabled).HasDefaultValue(true);
+        builder.Property(static p => p.SharedKeysEnabled).HasDefaultValue(true);
         builder.Property(static p => p.CreatedAt).IsRequired();
         builder.Property(static p => p.UpdatedAt).IsRequired();
     }

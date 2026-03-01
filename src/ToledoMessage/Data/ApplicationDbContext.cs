@@ -14,6 +14,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<UserPreferences> UserPreferences => Set<UserPreferences>();
     public DbSet<MessageReaction> MessageReactions => Set<MessageReaction>();
+    public DbSet<EncryptedKeyBackup> EncryptedKeyBackups => Set<EncryptedKeyBackup>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

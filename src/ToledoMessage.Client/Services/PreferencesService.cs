@@ -20,17 +20,19 @@ public sealed class PreferencesService(HttpClient http)
             // Fallback to defaults if API unreachable
         }
 
-        return _cached ?? new UserPreferencesResponse("default", "medium", "en", true, true, true);
+        return _cached ?? new UserPreferencesResponse("default", "medium", "en", true, true, true, true);
     }
 
-    public async Task<UserPreferencesResponse> UpdatePreferencesAsync(UpdatePreferencesRequest request)
+    public async Task<UserPreferencesResponse?> UpdatePreferencesAsync(UpdatePreferencesRequest request)
     {
         var response = await http.PutAsJsonAsync("/api/preferences", request);
         response.EnsureSuccessStatusCode();
         _cached = await response.Content.ReadFromJsonAsync<UserPreferencesResponse>();
-        return _cached!;
+        var userPreferencesResponse = _cached;
+        return userPreferencesResponse;
     }
 
+    // ReSharper disable once UnusedMember.Global
     public void InvalidateCache()
     {
         _cached = null;

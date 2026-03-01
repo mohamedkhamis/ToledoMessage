@@ -6,4 +6,5 @@ public sealed record UpdatePreferencesRequest(
     string? Language = null,
     bool? NotificationsEnabled = null,
     bool? ReadReceiptsEnabled = null,
-    bool? TypingIndicatorsEnabled = null);
+    bool? TypingIndicatorsEnabled = null,
+    bool? SharedKeysEnabled = null);

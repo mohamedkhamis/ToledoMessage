@@ -9,6 +9,7 @@
 @inject PreferencesService Preferences
 @inject IJSRuntime Js
 @inject MessageStoreService MessageStore
+@inject KeyBackupService KeyBackup
 
 <div class="panel-content-scroll">
 <div class="settings-page">
@@ -74,6 +75,22 @@
             <label class="toggle-switch">
                 <input type="checkbox" checked="@_typingIndicatorsEnabled"
                        @onchange="e => ToggleTypingIndicators((bool)e.Value!)" />
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <h3 class="section-title mt-lg">Security</h3>
+
+    <div class="settings-toggles">
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <span class="toggle-label">Share Keys Across Devices</span>
+                <span class="toggle-desc">Back up your identity keys (encrypted with your password) so new devices can decrypt previous conversations</span>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" checked="@_sharedKeysEnabled"
+                       @onchange="e => ToggleSharedKeys((bool)e.Value!)" />
                 <span class="toggle-slider"></span>
             </label>
         </div>
@@ -212,6 +229,7 @@
     private bool _notificationsEnabled = true;
     private bool _readReceiptsEnabled = true;
     private bool _typingIndicatorsEnabled = true;
+    private bool _sharedKeysEnabled = true;
     private bool _showDeleteConfirmation;
     private bool _isDeletingAccount;
     private bool _deletionPending;
@@ -251,6 +269,7 @@
             _notificationsEnabled = prefs.NotificationsEnabled;
             _readReceiptsEnabled = prefs.ReadReceiptsEnabled;
             _typingIndicatorsEnabled = prefs.TypingIndicatorsEnabled;
+            _sharedKeysEnabled = prefs.SharedKeysEnabled;
 
             // Sync local theme TO server if different (local is source of truth)
             if (prefs.Theme != _currentTheme)
@@ -339,6 +358,37 @@
         try
         {
             await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(TypingIndicatorsEnabled: enabled));
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to save: {ex.Message}";
+        }
+    }
+
+    private async Task ToggleSharedKeys(bool enabled)
+    {
+        _sharedKeysEnabled = enabled;
+        try
+        {
+            await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(SharedKeysEnabled: enabled));
+
+            if (!enabled)
+            {
+                // Delete the server-side backup when disabling
+                try
+                {
+                    await KeyBackup.DeleteBackupAsync();
+                    _successMessage = "Key sharing disabled. Server backup deleted.";
+                }
+                catch
+                {
+                    _successMessage = "Key sharing disabled.";
+                }
+            }
+            else
+            {
+                _successMessage = "Key sharing enabled. Backup will be created on next login.";
+            }
         }
         catch (Exception ex)
         {

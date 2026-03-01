@@ -6,4 +6,5 @@ public sealed record UserPreferencesResponse(
     string Language,
     bool NotificationsEnabled,
     bool ReadReceiptsEnabled,
-    bool TypingIndicatorsEnabled);
+    bool TypingIndicatorsEnabled,
+    bool SharedKeysEnabled);

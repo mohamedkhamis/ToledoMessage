@@ -12,6 +12,8 @@ builder.Services.AddScoped(sp =>
     return new HttpClient(handler) { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
 });
 builder.Services.AddScoped<KeyGenerationService>();
+builder.Services.AddScoped<KeyBackupCryptoService>();
+builder.Services.AddScoped<KeyBackupService>();
 builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<CryptoService>();
 builder.Services.AddScoped<MessageEncryptionService>();

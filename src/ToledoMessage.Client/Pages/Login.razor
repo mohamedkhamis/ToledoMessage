@@ -1,14 +1,15 @@
 @page "/login"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using System.Globalization
 @using System.Text
-@using ToledoMessage.Shared.DTOs
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject LocalStorageService Storage
 @inject KeyGenerationService KeyGenService
-@inject Microsoft.JSInterop.IJSRuntime Js
+@inject IJSRuntime Js
 @inject ThemeService Theme
 @inject PreferencesService Preferences
+@inject KeyBackupService KeyBackup
 
 <div class="auth-page fade-in">
     <h2>Sign In</h2>
@@ -52,7 +53,7 @@
 
     <p class="auth-footer">Don't have an account? <a href="/register">Create one</a></p>
 
-    <div class="app-version-footer">Toledo Message v@(ToledoMessage.Shared.Constants.AppVersion.Current)</div>
+    <div class="app-version-footer">Toledo Message v@(AppVersion.Current)</div>
 </div>
 
 @code {
@@ -119,11 +120,50 @@
                 return;
             }
 
-            // 5. New device: generate crypto keys and register
-            _statusMessage = "Generating encryption keys...";
+            // 5. New device: check shared keys preference and try restore
+            _statusMessage = "Setting up encryption keys...";
             StateHasChanged();
 
-            var deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+            DeviceRegistrationRequest deviceRequest;
+            var prefs2 = await Preferences.GetPreferencesAsync();
+
+            if (prefs2.SharedKeysEnabled)
+            {
+                // Try to restore keys from server backup
+                try
+                {
+                    var restored = await KeyBackup.TryRestoreBackupAsync(_password);
+                    if (restored is not null)
+                    {
+                        // Keys restored from backup — generate fresh pre-keys with shared identity
+                        _statusMessage = "Restoring encryption keys...";
+                        StateHasChanged();
+                        deviceRequest = await KeyGenService.RestoreKeysAndBuildRequest(restored, "Web Browser");
+                    }
+                    else
+                    {
+                        // No backup exists (first device) — generate new keys and upload backup
+                        _statusMessage = "Generating encryption keys...";
+                        StateHasChanged();
+                        deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+                    }
+                }
+                catch
+                {
+                    // Backup restore failed — fall back to fresh keys
+                    _statusMessage = "Generating encryption keys...";
+                    StateHasChanged();
+                    deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+                }
+            }
+            else
+            {
+                // Shared keys disabled — generate fresh keys (original behavior)
+                _statusMessage = "Generating encryption keys...";
+                StateHasChanged();
+                deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+            }
+
             var deviceResponse = await Http.PostAsJsonAsync("/api/devices", deviceRequest);
 
             if (!deviceResponse.IsSuccessStatusCode)
@@ -135,10 +175,23 @@
             var deviceResult = await deviceResponse.Content.ReadFromJsonAsync<DeviceRegistrationResult>();
             if (deviceResult is not null)
             {
-                await Storage.StoreAsync("local.deviceId", Encoding.UTF8.GetBytes(deviceResult.DeviceId.ToString()));
+                await Storage.StoreAsync("local.deviceId", Encoding.UTF8.GetBytes(deviceResult.DeviceId.ToString(CultureInfo.InvariantCulture)));
             }
 
-            // 6. Navigate to chat
+            // 6. Upload backup if shared keys enabled and this is the first device (no backup existed)
+            if (prefs2.SharedKeysEnabled)
+            {
+                try
+                {
+                    await KeyBackup.UploadBackupAsync(_password);
+                }
+                catch
+                {
+                    // Non-critical: backup upload failure doesn't block login
+                }
+            }
+
+            // 7. Navigate to chat
             Navigation.NavigateTo("/chat");
         }
         catch (Exception ex)

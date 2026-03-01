@@ -71,16 +71,13 @@
                 }
             </div>
         }
-        @if (IsLastInGroup)
-        {
-            <div class="message-meta">
-                <span>@Timestamp.ToLocalTime().ToString("HH:mm")</span>
-                @if (IsMine)
-                {
-                    <DeliveryStatus Status="Status" />
-                }
-            </div>
-        }
+        <div class="message-meta">
+            <span>@Timestamp.ToLocalTime().ToString("HH:mm")</span>
+            @if (IsMine)
+            {
+                <DeliveryStatus Status="Status" />
+            }
+        </div>
     </div>
     <div class="message-actions">
         <button class="msg-action-btn" @onclick="() => OnReply.InvokeAsync()" title="Reply">&#8617;</button>

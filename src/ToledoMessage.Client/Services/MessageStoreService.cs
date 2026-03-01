@@ -62,6 +62,7 @@ public sealed class StoredMessage
     public int ContentType { get; set; }
     public string? FileName { get; set; }
     public string? MediaDataBase64 { get; set; }
+    public string? MimeType { get; set; }
     public int Status { get; set; }
     public string? SenderDisplayName { get; set; }
     public string? ReplyToMessageId { get; set; }

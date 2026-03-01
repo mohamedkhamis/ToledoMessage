@@ -444,7 +444,7 @@
                     ContentType = (ContentType)stored.ContentType,
                     FileName = stored.FileName,
                     MediaDataUrl = stored.MediaDataBase64 is not null
-                        ? await CreateMediaBlobUrlFromBase64(stored.MediaDataBase64, stored.FileName)
+                        ? await CreateMediaBlobUrlFromBase64(stored.MediaDataBase64, stored.MimeType, stored.FileName)
                         : null,
                     Status = (Shared.Enums.DeliveryStatus)stored.Status,
                     ReplyToMessageId = decimal.TryParse(stored.ReplyToMessageId, out var rid) ? rid : null,
@@ -459,12 +459,13 @@
         }
     }
 
-    private async Task<string?> CreateMediaBlobUrlFromBase64(string base64Data, string? fileName)
+    private async Task<string?> CreateMediaBlobUrlFromBase64(string base64Data, string? storedMimeType, string? fileName)
     {
         try
         {
             var bytes = Convert.FromBase64String(base64Data);
-            var mimeType = fileName is not null ? GetMimeTypeFromFileName(fileName) : "application/octet-stream";
+            var mimeType = storedMimeType
+                           ?? (fileName is not null ? GetMimeTypeFromFileName(fileName) : "application/octet-stream");
             return await CreateMediaBlobUrl(mimeType, bytes);
         }
         catch
@@ -577,6 +578,8 @@
                 IsMine = chatMsg.IsMine,
                 ContentType = (int)chatMsg.ContentType,
                 FileName = chatMsg.FileName,
+                MediaDataBase64 = chatMsg.MediaBytes is not null ? Convert.ToBase64String(chatMsg.MediaBytes) : null,
+                MimeType = chatMsg.MimeType,
                 Status = (int)chatMsg.Status,
                 ReplyToMessageId = chatMsg.ReplyToMessageId?.ToString(),
                 ReplyToText = chatMsg.ReplyToText,
@@ -802,6 +805,8 @@
             ContentType = input.ContentType,
             FileName = input.FileName,
             MediaDataUrl = hasMedia ? await CreateMediaBlobUrl(input.MimeType!, input.MediaBytes!) : null,
+            MediaBytes = hasMedia ? input.MediaBytes : null,
+            MimeType = hasMedia ? input.MimeType : null,
             Status = Shared.Enums.DeliveryStatus.Sending,
             ReplyToMessageId = _replyingTo?.MessageId,
             ReplyToSenderName = _replyingTo is not null ? (_replyingTo.IsMine ? "You" : GetSenderDisplayName(_replyingTo)) : null,
@@ -1001,6 +1006,8 @@
                 ContentType = envelope.ContentType,
                 FileName = envelope.FileName,
                 MediaDataUrl = blobUrl,
+                MediaBytes = bytes,
+                MimeType = mimeType,
                 Status = Shared.Enums.DeliveryStatus.Delivered,
                 ReplyToMessageId = envelope.ReplyToMessageId,
                 ReplyToText = replyToText,
@@ -1550,6 +1557,8 @@
                         ContentType = contentType,
                         FileName = fileName,
                         MediaDataUrl = await CreateMediaBlobUrl(mimeType, mediaBytes),
+                        MediaBytes = mediaBytes,
+                        MimeType = mimeType,
                         Status = Shared.Enums.DeliveryStatus.Sending,
                         IsForwarded = true
                     };
@@ -1624,6 +1633,8 @@
         public Shared.Enums.DeliveryStatus Status { get; set; }
         public ContentType ContentType { get; init; } = ContentType.Text;
         public string? MediaDataUrl { get; init; }
+        public byte[]? MediaBytes { get; init; }
+        public string? MimeType { get; init; }
         public string? FileName { get; init; }
         public decimal? ReplyToMessageId { get; init; }
         public string? ReplyToText { get; init; }

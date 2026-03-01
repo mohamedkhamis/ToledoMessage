@@ -33,6 +33,7 @@ public class KeyGenerationService(LocalStorageService storage)
         await storage.StoreAsync("kyberPreKey.private", kyberPreKey.PrivateKey);
 
         foreach (var otpk in oneTimePreKeys) await storage.StoreAsync($"otpk.{otpk.KeyId}", otpk.PrivateKey);
+        // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
 
         // Build registration request with restored identity public keys
         return new DeviceRegistrationRequest(
@@ -46,7 +47,7 @@ public class KeyGenerationService(LocalStorageService storage)
             Convert.ToBase64String(kyberPreKey.Signature),
             oneTimePreKeys
                 .Select(static k => new OneTimePreKeyDto(k.KeyId, Convert.ToBase64String(k.PublicKey)))
-                .ToList());
+                ?.ToList());
     }
 
     /// <summary>
@@ -90,8 +91,6 @@ public class KeyGenerationService(LocalStorageService storage)
             signedPreKey.KeyId,
             Convert.ToBase64String(kyberPreKey.PublicKey),
             Convert.ToBase64String(kyberPreKey.Signature),
-            oneTimePreKeys
-                .Select(k => new OneTimePreKeyDto(k.KeyId, Convert.ToBase64String(k.PublicKey)))
-                .ToList());
+            [.. oneTimePreKeys.Select(static k => new OneTimePreKeyDto(k.KeyId, Convert.ToBase64String(k.PublicKey)))]);
     }
 }

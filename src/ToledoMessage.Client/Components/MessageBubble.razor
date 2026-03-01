@@ -13,41 +13,69 @@
                 <div class="reply-quote-text">@(ReplyToText ?? "")</div>
             </div>
         }
-        @if (ContentType == ContentType.Image && !string.IsNullOrEmpty(MediaDataUrl))
+        @if (ContentType == ContentType.Image)
         {
-            <div class="message-media message-image-clickable" @onclick="() => OnImageClick.InvokeAsync(MediaDataUrl)">
-                <img src="@MediaDataUrl" alt="@(FileName ?? "Image")" class="message-image" />
-            </div>
-        }
-        else if (ContentType == ContentType.Video && !string.IsNullOrEmpty(MediaDataUrl))
-        {
-            <div class="message-media">
-                <video controls src="@MediaDataUrl" class="message-video"
-                       preload="metadata" aria-label="@(FileName ?? "Video")">
-                    Your browser does not support video playback.
-                </video>
-            </div>
-        }
-        else if (ContentType == ContentType.Audio && !string.IsNullOrEmpty(MediaDataUrl))
-        {
-            <div class="message-media">
-                <audio controls src="@MediaDataUrl" class="message-audio" aria-label="@(FileName ?? "Audio")">
-                    Your browser does not support audio playback.
-                </audio>
-            </div>
-        }
-        else if (ContentType == ContentType.File && !string.IsNullOrEmpty(MediaDataUrl))
-        {
-            <div class="message-file-card">
-                <div class="message-file-icon">&#128196;</div>
-                <div class="message-file-info">
-                    <span class="message-file-name">@(FileName ?? "File")</span>
-                    <a href="@MediaDataUrl" download="@(FileName ?? "file")"
-                       class="message-file-download" aria-label="Download @(FileName ?? "file")">
-                        &#8595; Download
-                    </a>
+            if (!string.IsNullOrEmpty(MediaDataUrl))
+            {
+                <div class="message-media message-image-clickable" @onclick="() => OnImageClick.InvokeAsync(MediaDataUrl)">
+                    <img src="@MediaDataUrl" alt="@(FileName ?? "Image")" class="message-image" />
                 </div>
-            </div>
+            }
+            else
+            {
+                <div class="message-media-placeholder">&#128247; @(FileName ?? "Image unavailable")</div>
+            }
+        }
+        else if (ContentType == ContentType.Video)
+        {
+            if (!string.IsNullOrEmpty(MediaDataUrl))
+            {
+                <div class="message-media">
+                    <video controls src="@MediaDataUrl" class="message-video"
+                           preload="metadata" aria-label="@(FileName ?? "Video")">
+                        Your browser does not support video playback.
+                    </video>
+                </div>
+            }
+            else
+            {
+                <div class="message-media-placeholder">&#127909; @(FileName ?? "Video unavailable")</div>
+            }
+        }
+        else if (ContentType == ContentType.Audio)
+        {
+            if (!string.IsNullOrEmpty(MediaDataUrl))
+            {
+                <div class="message-media">
+                    <audio controls src="@MediaDataUrl" class="message-audio" aria-label="@(FileName ?? "Audio")">
+                        Your browser does not support audio playback.
+                    </audio>
+                </div>
+            }
+            else
+            {
+                <div class="message-media-placeholder">&#127911; @(FileName ?? "Audio unavailable")</div>
+            }
+        }
+        else if (ContentType == ContentType.File)
+        {
+            if (!string.IsNullOrEmpty(MediaDataUrl))
+            {
+                <div class="message-file-card">
+                    <div class="message-file-icon">&#128196;</div>
+                    <div class="message-file-info">
+                        <span class="message-file-name">@(FileName ?? "File")</span>
+                        <a href="@MediaDataUrl" download="@(FileName ?? "file")"
+                           class="message-file-download" aria-label="Download @(FileName ?? "file")">
+                            &#8595; Download
+                        </a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="message-media-placeholder">&#128196; @(FileName ?? "File unavailable")</div>
+            }
         }
         @if (!string.IsNullOrEmpty(Text))
         {

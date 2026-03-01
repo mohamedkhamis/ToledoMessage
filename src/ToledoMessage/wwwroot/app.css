@@ -745,6 +745,14 @@ label {
     margin-top: 0;
 }
 
+/* Placeholder for media that couldn't be loaded */
+.message-media-placeholder {
+    padding: 12px 16px;
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 0.9em;
+}
+
 /* Audio stays compact */
 .message-audio {
     max-width: 100%;

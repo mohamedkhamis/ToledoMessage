@@ -67,7 +67,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
         var recipientDevice = await db.Devices
             .Include(static d => d.User)
             .FirstOrDefaultAsync(d => d.Id == request.RecipientDeviceId && d.IsActive);
-        if (recipientDevice == null || !recipientDevice.User.IsActive)
+        if (recipientDevice is null || !recipientDevice.User.IsActive)
             throw new HubException("Recipient device is not available.");
 
         // Store the message
@@ -87,16 +87,14 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
         var userId = GetUserId();
 
         var msg = await db.EncryptedMessages
-            .Include(static m => m.RecipientDevice)
-            .FirstOrDefaultAsync(m => m.Id == messageId);
-        if (msg == null)
-            throw new HubException("Message not found.");
+                      .Include(static m => m.RecipientDevice)
+                      .FirstOrDefaultAsync(m => m.Id == messageId)
+                  ?? throw new HubException("Message not found.");
         if (msg.RecipientDevice.UserId != userId)
             throw new HubException("Message does not belong to the current user.");
 
-        var message = await relayService.AcknowledgeDelivery(messageId);
-        if (message == null)
-            throw new HubException("Message not found.");
+        var message = await relayService.AcknowledgeDelivery(messageId)
+                      ?? throw new HubException("Message not found.");
 
         // Notify the sender's device that the message was delivered
         await Clients.Group($"device_{message.SenderDeviceId}")
@@ -111,10 +109,9 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
         var userId = GetUserId();
 
         var message = await db.EncryptedMessages
-            .Include(static m => m.RecipientDevice)
-            .FirstOrDefaultAsync(m => m.Id == messageId);
-        if (message == null)
-            throw new HubException("Message not found.");
+                          .Include(static m => m.RecipientDevice)
+                          .FirstOrDefaultAsync(m => m.Id == messageId)
+                      ?? throw new HubException("Message not found.");
         if (message.RecipientDevice.UserId != userId)
             throw new HubException("Message does not belong to the current user.");
 
@@ -157,9 +154,8 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
 
         // Validate the message exists and user is a participant in its conversation
         var message = await db.EncryptedMessages
-            .FirstOrDefaultAsync(m => m.Id == messageId);
-        if (message == null)
-            throw new HubException("Message not found.");
+                          .FirstOrDefaultAsync(m => m.Id == messageId)
+                      ?? throw new HubException("Message not found.");
 
         var isParticipant = await db.ConversationParticipants
             .AnyAsync(cp => cp.ConversationId == message.ConversationId && cp.UserId == userId);
@@ -208,7 +204,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
 
         var reaction = await db.MessageReactions
             .FirstOrDefaultAsync(r => r.MessageId == messageId && r.UserId == userId && r.Emoji == emoji);
-        if (reaction == null) return;
+        if (reaction is null) return;
 
         var conversationId = await db.EncryptedMessages
             .Where(m => m.Id == messageId)
@@ -238,10 +234,9 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
         var userId = GetUserId();
 
         var message = await db.EncryptedMessages
-            .Include(static m => m.SenderDevice)
-            .FirstOrDefaultAsync(m => m.Id == messageId);
-        if (message == null)
-            throw new HubException("Message not found.");
+                          .Include(static m => m.SenderDevice)
+                          .FirstOrDefaultAsync(m => m.Id == messageId)
+                      ?? throw new HubException("Message not found.");
 
         // Only the sender can delete for everyone
         if (message.SenderDevice.UserId != userId)

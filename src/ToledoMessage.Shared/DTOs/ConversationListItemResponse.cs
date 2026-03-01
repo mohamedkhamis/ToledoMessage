@@ -7,7 +7,4 @@ public sealed record ConversationListItemResponse(
     ConversationType Type,
     string DisplayName,
     DateTimeOffset? LastMessageTime,
-    int UnreadCount)
-{
-    public string? LastMessage { get; init; }
-}
+    int UnreadCount);

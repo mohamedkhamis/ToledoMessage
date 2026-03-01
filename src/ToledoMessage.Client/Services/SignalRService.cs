@@ -159,7 +159,14 @@ public class SignalRService : IAsyncDisposable
 
         _hubConnection.Reconnected += async _ =>
         {
-            try { await _hubConnection.InvokeAsync("RegisterDevice", deviceId); } catch { }
+            try
+            {
+                await _hubConnection.InvokeAsync("RegisterDevice", deviceId);
+            }
+            catch
+            {
+                // ignored
+            }
         };
 
         await _hubConnection.InvokeAsync("RegisterDevice", deviceId);
@@ -264,5 +271,7 @@ public class SignalRService : IAsyncDisposable
             await _hubConnection.DisposeAsync();
             _hubConnection = null;
         }
+
+        GC.SuppressFinalize(this);
     }
 }

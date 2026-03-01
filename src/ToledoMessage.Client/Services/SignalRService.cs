@@ -49,6 +49,9 @@ public class SignalRService : IAsyncDisposable
     /// <summary>Raised when a reaction is removed. Parameters: messageId, userId, emoji.</summary>
     public event Action<decimal, decimal, string>? OnReactionRemoved;
 
+    /// <summary>Raised when a message is deleted for everyone. Parameters: messageId, conversationId.</summary>
+    public event Action<decimal, decimal>? OnMessageDeleted;
+
     /// <summary>
     /// Whether the hub connection is currently active.
     /// </summary>
@@ -136,6 +139,11 @@ public class SignalRService : IAsyncDisposable
             OnReactionRemoved?.Invoke(messageId, userId, emoji);
         });
 
+        _hubConnection.On<decimal, decimal>("MessageDeleted", (messageId, conversationId) =>
+        {
+            OnMessageDeleted?.Invoke(messageId, conversationId);
+        });
+
         await _hubConnection.StartAsync();
     }
 
@@ -221,6 +229,22 @@ public class SignalRService : IAsyncDisposable
             throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
 
         await _hubConnection.InvokeAsync("RemoveReaction", messageId, emoji);
+    }
+
+    public async Task DeleteForEveryoneAsync(decimal messageId)
+    {
+        if (_hubConnection is null)
+            throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
+
+        await _hubConnection.InvokeAsync("DeleteForEveryone", messageId);
+    }
+
+    public async Task ClearMessagesAsync(decimal conversationId, DateTimeOffset cutoff)
+    {
+        if (_hubConnection is null)
+            throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
+
+        await _hubConnection.InvokeAsync("ClearMessages", conversationId, cutoff);
     }
 
     /// <inheritdoc />

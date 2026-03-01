@@ -150,6 +150,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// <summary>
     /// Add a reaction to a message.
     /// </summary>
+    // ReSharper disable once UnusedMember.Global
     public async Task AddReaction(decimal messageId, string emoji)
     {
         var userId = GetUserId();
@@ -200,6 +201,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// <summary>
     /// Remove a reaction from a message.
     /// </summary>
+    // ReSharper disable once UnusedMember.Global
     public async Task RemoveReaction(decimal messageId, string emoji)
     {
         var userId = GetUserId();
@@ -228,8 +230,82 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     }
 
     /// <summary>
+    /// Delete a message for everyone in the conversation.
+    /// </summary>
+    // ReSharper disable once UnusedMember.Global
+    public async Task DeleteForEveryone(decimal messageId)
+    {
+        var userId = GetUserId();
+
+        var message = await db.EncryptedMessages
+            .Include(static m => m.SenderDevice)
+            .FirstOrDefaultAsync(m => m.Id == messageId);
+        if (message == null)
+            throw new HubException("Message not found.");
+
+        // Only the sender can delete for everyone
+        if (message.SenderDevice.UserId != userId)
+            throw new HubException("You can only delete your own messages for everyone.");
+
+        var conversationId = message.ConversationId;
+
+        // Remove reactions for this message
+        var reactions = await db.MessageReactions.Where(r => r.MessageId == messageId).ToListAsync();
+        db.MessageReactions.RemoveRange(reactions);
+
+        db.EncryptedMessages.Remove(message);
+        await db.SaveChangesAsync();
+
+        // Broadcast to all participants
+        var participantUserIds = await db.ConversationParticipants
+            .Where(cp => cp.ConversationId == conversationId)
+            .Select(static cp => cp.UserId)
+            .ToListAsync();
+
+        foreach (var pid in participantUserIds)
+            await Clients.Group($"user_{pid}")
+                .SendAsync("MessageDeleted", messageId, conversationId);
+    }
+
+    /// <summary>
+    /// Clear messages in a conversation up to a given cutoff time. Server-side deletion for the requesting user.
+    /// </summary>
+    // ReSharper disable once UnusedMember.Global
+    public async Task ClearMessages(decimal conversationId, DateTimeOffset cutoff)
+    {
+        var userId = GetUserId();
+
+        var isParticipant = await db.ConversationParticipants
+            .AnyAsync(cp => cp.ConversationId == conversationId && cp.UserId == userId);
+        if (!isParticipant)
+            throw new HubException("You are not a participant in this conversation.");
+
+        // Get user's device IDs to find messages they sent or received
+        var userDeviceIds = await db.Devices
+            .Where(d => d.UserId == userId && d.IsActive)
+            .Select(static d => d.Id)
+            .ToListAsync();
+
+        var messagesToDelete = await db.EncryptedMessages
+            .Where(m => m.ConversationId == conversationId
+                        && m.ServerTimestamp <= cutoff
+                        && (userDeviceIds.Contains(m.SenderDeviceId) || userDeviceIds.Contains(m.RecipientDeviceId)))
+            .ToListAsync();
+
+        if (messagesToDelete.Count > 0)
+        {
+            var messageIds = messagesToDelete.Select(static m => m.Id).ToList();
+            var reactions = await db.MessageReactions.Where(r => messageIds.Contains(r.MessageId)).ToListAsync();
+            db.MessageReactions.RemoveRange(reactions);
+            db.EncryptedMessages.RemoveRange(messagesToDelete);
+            await db.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
     /// Check if a specific user is online.
     /// </summary>
+    // ReSharper disable once UnusedMember.Global
     public Task<bool> IsUserOnline(decimal userId)
     {
         return Task.FromResult(presence.IsOnline(userId));

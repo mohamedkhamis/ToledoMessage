@@ -1,6 +1,7 @@
 @page "/chat/{ConversationId:decimal}"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @layout ChatLayout
+@using System.Globalization
 @using System.Text
 @using System.Text.Json
 @inject HttpClient Http
@@ -8,6 +9,7 @@
 @inject CryptoService Crypto
 @inject SignalRService SignalR
 @inject LocalStorageService Storage
+@* ReSharper disable  UnusedMember.Local *@
 @inject PreKeyReplenishmentService PreKeyReplenishment
 @inject IJSRuntime Js
 @inject MessageStoreService MessageStore
@@ -17,37 +19,49 @@
     <div class="chat-header">
         <a href="/chat" class="back-link back-link-desktop-hidden" aria-label="Back to conversations">&larr;</a>
         @{
-            var headerName = conversationDetail?.Type == ConversationType.Group
-                ? (conversationDetail.GroupName ?? "Group")
-                : (participants.FirstOrDefault(p => p.UserId != localUserId)?.DisplayName ?? "Conversation");
+            var headerName = _conversationDetail?.Type == ConversationType.Group
+                ? (_conversationDetail.GroupName ?? "Group")
+                : (_participants.FirstOrDefault(p => p.UserId != _localUserId)?.DisplayName ?? "Conversation");
         }
         <AvatarInitials DisplayName="@headerName" Size="38" />
         <div>
             <h3 class="chat-header-title">@headerName</h3>
-            @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
+            @if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group)
             {
-                <span class="chat-header-subtitle">@participants.Count members</span>
+                <span class="chat-header-subtitle">@_participants.Count members</span>
             }
-            else if (peerIsOnline)
+            else if (_peerIsOnline)
             {
                 <span class="chat-header-subtitle presence-online">online</span>
             }
-            else if (peerLastSeen.HasValue)
+            else if (_peerLastSeen.HasValue)
             {
-                <span class="chat-header-subtitle presence-text">last seen @peerLastSeen.Value.ToLocalTime().ToString("MMM d, HH:mm")</span>
+                <span class="chat-header-subtitle presence-text">last seen @_peerLastSeen.Value.ToLocalTime().ToString("MMM d, HH:mm")</span>
             }
         </div>
-        @if (!string.IsNullOrEmpty(typingIndicator))
+        @if (!string.IsNullOrEmpty(_typingIndicator))
         {
-            <span class="chat-typing-indicator">@typingIndicator</span>
+            <span class="chat-typing-indicator">@_typingIndicator</span>
         }
+        <div style="margin-left:auto;">
+            <button class="msg-action-btn" @onclick="() => _showChatMenu = !_showChatMenu" title="More options">&#8942;</button>
+            @if (_showChatMenu)
+            {
+                <div class="context-menu-backdrop" @onclick="() => _showChatMenu = false"></div>
+                <div class="context-menu chat-header-menu">
+                    <button class="context-menu-item danger" @onclick="OpenClearChatDialog">
+                        <span class="context-menu-icon">&#128465;</span> Clear chat
+                    </button>
+                </div>
+            }
+        </div>
     </div>
 
-    @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group && showParticipants)
+    @if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group && _showParticipants)
     {
         <div class="participants-panel">
             <div class="participants-list">
-                @foreach (var p in participants)
+                @foreach (var p in _participants)
                 {
                     <span class="participant-tag">
                         @p.DisplayName
@@ -61,27 +75,27 @@
         </div>
     }
 
-    @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
+    @if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group)
     {
         <div class="toggle-participants-row">
             <button class="toggle-participants-btn"
-                    @onclick="() => showParticipants = !showParticipants">
-                @(showParticipants ? "Hide participants" : "Show participants")
+                    @onclick="() => _showParticipants = !_showParticipants">
+                @(_showParticipants ? "Hide participants" : "Show participants")
             </button>
         </div>
     }
 
-    @if (!string.IsNullOrEmpty(errorMessage))
+    @if (!string.IsNullOrEmpty(_errorMessage))
     {
-        <div class="alert alert-error mx-chat" role="alert">@errorMessage</div>
+        <div class="alert alert-error mx-chat" role="alert">@_errorMessage</div>
     }
 
-    <div class="chat-messages" @ref="messageContainer" role="log" aria-live="polite">
-        @if (isLoading)
+    <div class="chat-messages" @ref="_messageContainer" role="log" aria-live="polite">
+        @if (_isLoading)
         {
             <SkeletonLoader Variant="SkeletonLoader.SkeletonVariant.ChatMessages" />
         }
-        else if (messages.Count == 0)
+        else if (_messages.Count == 0)
         {
             <div class="empty-state">
                 <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -93,11 +107,11 @@
         }
         else
         {
-            @for (int i = 0; i < messages.Count; i++)
+            @for (int i = 0; i < _messages.Count; i++)
             {
-                var msg = messages[i];
-                var prevMsg = i > 0 ? messages[i - 1] : null;
-                var nextMsg = i < messages.Count - 1 ? messages[i + 1] : null;
+                var msg = _messages[i];
+                var prevMsg = i > 0 ? _messages[i - 1] : null;
+                var nextMsg = i < _messages.Count - 1 ? _messages[i + 1] : null;
 
                 bool showDateSeparator = prevMsg is null ||
                     msg.Timestamp.LocalDateTime.Date != prevMsg.Timestamp.LocalDateTime.Date;
@@ -107,9 +121,9 @@
                     <DateSeparator Date="msg.Timestamp" />
                 }
 
-                @if (firstUnreadMessageId.HasValue && msg.MessageId == firstUnreadMessageId.Value)
+                @if (_firstUnreadMessageId.HasValue && msg.MessageId == _firstUnreadMessageId.Value)
                 {
-                    var unreadCount = messages.Count - i;
+                    var unreadCount = _messages.Count - i;
                     <div class="unread-divider">
                         <span>@unreadCount new message@(unreadCount == 1 ? "" : "s")</span>
                     </div>
@@ -141,68 +155,93 @@
         }
     </div>
 
-    <ScrollToBottom Visible="showScrollButton" OnClick="ScrollToBottom" />
+    <ScrollToBottom Visible="_showScrollButton" OnClick="ScrollToBottom" />
     <MessageInput OnSend="HandleSend" OnTyping="HandleTyping"
-                  ReplyContext="@replyContext" OnCancelReply="CancelReply" />
+                  ReplyContext="@_replyContext" OnCancelReply="CancelReply" />
 </div>
 
-<ImageLightbox IsVisible="lightboxVisible"
-               ImageUrls="lightboxImageUrls"
-               CurrentIndex="lightboxIndex"
+<ImageLightbox IsVisible="_lightboxVisible"
+               ImageUrls="_lightboxImageUrls"
+               CurrentIndex="_lightboxIndex"
                OnClose="CloseLightbox"
                OnIndexChanged="SetLightboxIndex" />
 
-@if (showContextMenu && contextMenuMessage is not null)
+@if (_showContextMenu && _contextMenuMessage is not null)
 {
     <div class="context-menu-backdrop" @onclick="CloseContextMenu"></div>
-    <div class="context-menu" style="left: @(contextMenuX)px; top: @(contextMenuY)px;">
+    <div class="context-menu" style="left: @(_contextMenuX)px; top: @(_contextMenuY)px;">
         <button class="context-menu-item" @onclick="CopyMessageText">
             <span class="context-menu-icon">&#128203;</span> Copy
         </button>
         <button class="context-menu-item" @onclick="ReplyFromContextMenu">
             <span class="context-menu-icon">&#8617;</span> Reply
         </button>
-        @if (contextMenuMessage.IsMine)
+        <button class="context-menu-item danger" @onclick="DeleteForMe">
+            <span class="context-menu-icon">&#128465;</span> Delete for me
+        </button>
+        @if (_contextMenuMessage.IsMine)
         {
-            <button class="context-menu-item danger" @onclick="DeleteMessage">
-                <span class="context-menu-icon">&#128465;</span> Delete
+            <button class="context-menu-item danger" @onclick="DeleteForEveryone">
+                <span class="context-menu-icon">&#128465;</span> Delete for everyone
             </button>
         }
     </div>
 }
 
+@if (_showClearChatDialog)
+{
+    <div class="context-menu-backdrop" @onclick="() => _showClearChatDialog = false"></div>
+    <div class="clear-chat-dialog">
+        <h4>Clear chat messages</h4>
+        <p>Choose which messages to delete:</p>
+        <div class="clear-chat-options">
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromHours(1))">Last hour</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromHours(24))">Last 24 hours</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromDays(7))">Last 7 days</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromDays(30))">Last 30 days</button>
+            <button class="clear-chat-option danger" @onclick="() => ClearChat(TimeSpan.Zero)">All messages</button>
+        </div>
+        <button class="clear-chat-cancel" @onclick="() => _showClearChatDialog = false">Cancel</button>
+    </div>
+}
+
+@* ReSharper disable NotAccessedField.Local *@
 @code {
     [Parameter]
     public decimal ConversationId { get; set; }
 
-    private readonly List<ChatMessage> messages = [];
-    private ElementReference messageContainer;
-    private string? errorMessage;
-    private bool isLoading = true;
-    private string? typingIndicator;
-    private decimal localDeviceId;
-    private decimal localUserId;
-    private string? accessToken;
-    private System.Timers.Timer? typingTimer;
-    private ConversationDetailResponse? conversationDetail;
-    private List<ParticipantResponse> participants = [];
-    private bool showParticipants;
-    private bool showScrollButton;
-    private decimal? firstUnreadMessageId;
-    private bool lightboxVisible;
-    private List<string> lightboxImageUrls = [];
-    private int lightboxIndex;
-    private ChatMessage? replyingTo;
+    private readonly List<ChatMessage> _messages = [];
+    private ElementReference _messageContainer;
+    private string? _errorMessage;
+    private bool _isLoading = true;
+    private string? _typingIndicator;
+    private decimal _localDeviceId;
+    private decimal _localUserId;
+    private string? _accessToken;
+    private System.Timers.Timer? _typingTimer;
+    private ConversationDetailResponse? _conversationDetail;
+    private List<ParticipantResponse> _participants = [];
+    private bool _showParticipants;
+    private bool _showScrollButton;
+    private decimal? _firstUnreadMessageId;
+    private bool _lightboxVisible;
+    private List<string> _lightboxImageUrls = [];
+    private int _lightboxIndex;
+    private ChatMessage? _replyingTo;
 
     // Context menu state
-    private bool showContextMenu;
-    private double contextMenuX;
-    private double contextMenuY;
-    private ChatMessage? contextMenuMessage;
+    private bool _showContextMenu;
+    private double _contextMenuX;
+    private double _contextMenuY;
+    private ChatMessage? _contextMenuMessage;
 
     // Presence state
-    private bool peerIsOnline;
-    private DateTimeOffset? peerLastSeen;
+    private bool _peerIsOnline;
+    private DateTimeOffset? _peerLastSeen;
+
+    // Clear chat / header menu state
+    private bool _showChatMenu;
+    private bool _showClearChatDialog;
 
     protected override async Task OnInitializedAsync()
     {
@@ -218,15 +257,15 @@
                 return;
             }
 
-            localDeviceId = decimal.Parse(Encoding.UTF8.GetString(deviceIdBytes));
-            accessToken = Encoding.UTF8.GetString(tokenBytes);
+            _localDeviceId = decimal.Parse(Encoding.UTF8.GetString(deviceIdBytes));
+            _accessToken = Encoding.UTF8.GetString(tokenBytes);
 
             // Extract userId from JWT token
-            localUserId = ExtractUserIdFromJwt(accessToken);
+            _localUserId = ExtractUserIdFromJwt(_accessToken);
 
             // Set auth header for HTTP requests
             Http.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
 
             // Initialize message store
             await MessageStore.InitializeAsync();
@@ -243,8 +282,8 @@
 
             // Connect to SignalR hub
             var hubUrl = Navigation.ToAbsoluteUri("/hubs/chat").ToString();
-            await SignalR.ConnectAsync(hubUrl, accessToken);
-            await SignalR.RegisterDeviceAsync(localDeviceId);
+            await SignalR.ConnectAsync(hubUrl, _accessToken);
+            await SignalR.RegisterDeviceAsync(_localDeviceId);
 
             // Subscribe to real-time events
             SignalR.OnMessageReceived += HandleMessageReceived;
@@ -257,14 +296,15 @@
             SignalR.OnUserOffline += HandleUserOffline;
             SignalR.OnReactionAdded += HandleReactionAdded;
             SignalR.OnReactionRemoved += HandleReactionRemoved;
+            SignalR.OnMessageDeleted += HandleMessageDeleted;
         }
         catch (Exception ex)
         {
-            errorMessage = $"Failed to initialize chat: {ex.Message}";
+            _errorMessage = $"Failed to initialize chat: {ex.Message}";
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
         }
     }
 
@@ -272,12 +312,12 @@
     {
         try
         {
-            conversationDetail = await Http.GetFromJsonAsync<ConversationDetailResponse>(
+            _conversationDetail = await Http.GetFromJsonAsync<ConversationDetailResponse>(
                 $"/api/conversations/{ConversationId}");
         }
         catch (Exception ex)
         {
-            errorMessage = $"Failed to load conversation details: {ex.Message}";
+            _errorMessage = $"Failed to load conversation details: {ex.Message}";
         }
     }
 
@@ -285,12 +325,12 @@
     {
         try
         {
-            participants = await Http.GetFromJsonAsync<List<ParticipantResponse>>(
+            _participants = await Http.GetFromJsonAsync<List<ParticipantResponse>>(
                 $"/api/conversations/{ConversationId}/participants") ?? [];
         }
         catch (Exception ex)
         {
-            errorMessage = $"Failed to load participants: {ex.Message}";
+            _errorMessage = $"Failed to load participants: {ex.Message}";
         }
     }
 
@@ -298,16 +338,16 @@
     {
         try
         {
-            var conversationKey = ConversationId.ToString();
+            var conversationKey = ConversationId.ToString(CultureInfo.InvariantCulture);
             var cached = await MessageStore.GetMessagesAsync(conversationKey);
 
             foreach (var stored in cached)
             {
                 // Skip if already in messages list (shouldn't happen, but guard against duplicates)
-                if (messages.Any(m => m.MessageId.ToString() == stored.MessageId))
+                if (_messages.Any(m => m.MessageId.ToString(CultureInfo.InvariantCulture) == stored.MessageId))
                     continue;
 
-                messages.Add(new ChatMessage
+                _messages.Add(new ChatMessage
                 {
                     MessageId = decimal.TryParse(stored.MessageId, out var mid) ? mid : 0,
                     Text = stored.Text,
@@ -318,7 +358,7 @@
                     MediaDataUrl = stored.MediaDataBase64 is not null
                         ? await CreateMediaBlobUrlFromBase64(stored.MediaDataBase64, stored.FileName)
                         : null,
-                    Status = (ToledoMessage.Shared.Enums.DeliveryStatus)stored.Status,
+                    Status = (Shared.Enums.DeliveryStatus)stored.Status,
                     ReplyToMessageId = decimal.TryParse(stored.ReplyToMessageId, out var rid) ? rid : null,
                     ReplyToText = stored.ReplyToText,
                     ReplyToSenderName = stored.ReplyToSenderName
@@ -347,7 +387,7 @@
 
     private static string GetMimeTypeFromFileName(string fileName)
     {
-        var ext = System.IO.Path.GetExtension(fileName)?.ToLowerInvariant();
+        var ext = Path.GetExtension(fileName).ToLowerInvariant();
         return ext switch
         {
             ".jpg" or ".jpeg" => "image/jpeg",
@@ -369,7 +409,7 @@
         try
         {
             var envelopes = await Http.GetFromJsonAsync<List<MessageEnvelope>>(
-                $"/api/messages/pending?deviceId={localDeviceId}");
+                $"/api/messages/pending?deviceId={_localDeviceId}");
 
             if (envelopes is null)
                 return;
@@ -377,10 +417,15 @@
             foreach (var envelope in envelopes.Where(e => e.ConversationId == ConversationId))
             {
                 // Skip if already loaded from cache
-                if (messages.Any(m => m.MessageId == envelope.MessageId))
+                if (_messages.Any(m => m.MessageId == envelope.MessageId))
                 {
                     // Still acknowledge
-                    try { await Http.PostAsync($"/api/messages/{envelope.MessageId}/acknowledge", null); } catch { }
+                    try { await Http.PostAsync($"/api/messages/{envelope.MessageId}/acknowledge", null); }
+                    catch
+                    {
+                        // ignored
+                    }
+
                     continue;
                 }
 
@@ -398,16 +443,16 @@
                         Timestamp = envelope.ServerTimestamp,
                         IsMine = false,
                         ContentType = ContentType.Text,
-                        Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered
+                        Status = Shared.Enums.DeliveryStatus.Delivered
                     };
                 }
 
-                messages.Add(chatMsg);
+                _messages.Add(chatMsg);
 
                 // Track the first new unread message for the divider
-                if (!chatMsg.IsMine && !firstUnreadMessageId.HasValue)
+                if (!chatMsg.IsMine && !_firstUnreadMessageId.HasValue)
                 {
-                    firstUnreadMessageId = chatMsg.MessageId;
+                    _firstUnreadMessageId = chatMsg.MessageId;
                 }
 
                 // Persist to IndexedDB
@@ -427,7 +472,7 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Failed to load messages: {ex.Message}";
+            _errorMessage = $"Failed to load messages: {ex.Message}";
         }
     }
 
@@ -437,8 +482,8 @@
         {
             await MessageStore.StoreMessageAsync(new StoredMessage
             {
-                MessageId = chatMsg.MessageId.ToString(),
-                ConversationId = ConversationId.ToString(),
+                MessageId = chatMsg.MessageId.ToString(CultureInfo.InvariantCulture),
+                ConversationId = ConversationId.ToString(CultureInfo.InvariantCulture),
                 Text = chatMsg.Text,
                 Timestamp = chatMsg.Timestamp.ToString("O"),
                 IsMine = chatMsg.IsMine,
@@ -456,6 +501,7 @@
         }
     }
 
+    // ReSharper disable once AsyncVoidMethod
     private async void HandleMessageReceived(MessageEnvelope envelope)
     {
         if (envelope.ConversationId != ConversationId)
@@ -466,7 +512,7 @@
             await InvokeAsync(async () =>
             {
                 // Skip duplicates
-                if (messages.Any(m => m.MessageId == envelope.MessageId))
+                if (_messages.Any(m => m.MessageId == envelope.MessageId))
                     return;
 
                 ChatMessage chatMsg;
@@ -483,11 +529,11 @@
                         Timestamp = envelope.ServerTimestamp,
                         IsMine = false,
                         ContentType = ContentType.Text,
-                        Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered
+                        Status = Shared.Enums.DeliveryStatus.Delivered
                     };
                 }
 
-                messages.Add(chatMsg);
+                _messages.Add(chatMsg);
                 await PersistMessageAsync(chatMsg);
                 StateHasChanged();
             });
@@ -502,29 +548,41 @@
         }
     }
 
+    // ReSharper disable once AsyncVoidMethod
     private async void HandleMessageDelivered(decimal messageId)
     {
         await InvokeAsync(async () =>
         {
-            var msg = messages.FirstOrDefault(m => m.MessageId == messageId);
+            var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
             if (msg is not null)
             {
-                msg.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered;
-                try { await MessageStore.UpdateMessageStatusAsync(messageId.ToString(), (int)msg.Status); } catch { }
+                msg.Status = Shared.Enums.DeliveryStatus.Delivered;
+                try { await MessageStore.UpdateMessageStatusAsync(messageId.ToString(CultureInfo.InvariantCulture), (int)msg.Status); }
+                catch
+                {
+                    // ignored
+                }
+
                 StateHasChanged();
             }
         });
     }
 
+    // ReSharper disable  AsyncVoidMethod
     private async void HandleMessageRead(decimal messageId)
     {
         await InvokeAsync(async () =>
         {
-            var msg = messages.FirstOrDefault(m => m.MessageId == messageId);
+            var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
             if (msg is not null)
             {
-                msg.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Read;
-                try { await MessageStore.UpdateMessageStatusAsync(messageId.ToString(), (int)msg.Status); } catch { }
+                msg.Status = Shared.Enums.DeliveryStatus.Read;
+                try { await MessageStore.UpdateMessageStatusAsync(messageId.ToString(CultureInfo.InvariantCulture), (int)msg.Status); }
+                catch
+                {
+                    // ignored
+                }
+
                 StateHasChanged();
             }
         });
@@ -537,24 +595,24 @@
 
         await InvokeAsync(() =>
         {
-            typingIndicator = $"{displayName} is typing...";
+            _typingIndicator = $"{displayName} is typing...";
             StateHasChanged();
         });
 
         // Clear typing indicator after 3 seconds
-        typingTimer?.Stop();
-        typingTimer?.Dispose();
-        typingTimer = new System.Timers.Timer(3000);
-        typingTimer.AutoReset = false;
-        typingTimer.Elapsed += async (_, _) =>
+        _typingTimer?.Stop();
+        _typingTimer?.Dispose();
+        _typingTimer = new System.Timers.Timer(3000);
+        _typingTimer.AutoReset = false;
+        _typingTimer.Elapsed += async (_, _) =>
         {
             await InvokeAsync(() =>
             {
-                typingIndicator = null;
+                _typingIndicator = null;
                 StateHasChanged();
             });
         };
-        typingTimer.Start();
+        _typingTimer.Start();
     }
 
     private async void HandleParticipantAdded(decimal conversationId, decimal userId, string displayName)
@@ -565,9 +623,9 @@
         await InvokeAsync(() =>
         {
             // Add to the local participant list if not already present
-            if (!participants.Any(p => p.UserId == userId))
+            if (_participants.All(p => p.UserId != userId))
             {
-                participants.Add(new ParticipantResponse(userId, displayName, ParticipantRole.Member));
+                _participants.Add(new ParticipantResponse(userId, displayName, ParticipantRole.Member));
             }
             StateHasChanged();
         });
@@ -580,19 +638,19 @@
 
         await InvokeAsync(() =>
         {
-            participants.RemoveAll(p => p.UserId == userId);
+            _participants.RemoveAll(p => p.UserId == userId);
             StateHasChanged();
         });
     }
 
     private async void HandleUserOnline(decimal userId)
     {
-        var peer = participants.FirstOrDefault(p => p.UserId != localUserId);
+        var peer = _participants.FirstOrDefault(p => p.UserId != _localUserId);
         if (peer is not null && peer.UserId == userId)
         {
             await InvokeAsync(() =>
             {
-                peerIsOnline = true;
+                _peerIsOnline = true;
                 StateHasChanged();
             });
         }
@@ -600,13 +658,13 @@
 
     private async void HandleUserOffline(decimal userId, DateTimeOffset lastSeen)
     {
-        var peer = participants.FirstOrDefault(p => p.UserId != localUserId);
+        var peer = _participants.FirstOrDefault(p => p.UserId != _localUserId);
         if (peer is not null && peer.UserId == userId)
         {
             await InvokeAsync(() =>
             {
-                peerIsOnline = false;
-                peerLastSeen = lastSeen;
+                _peerIsOnline = false;
+                _peerLastSeen = lastSeen;
                 StateHasChanged();
             });
         }
@@ -616,10 +674,10 @@
     {
         await InvokeAsync(() =>
         {
-            if (!messageReactions.TryGetValue(messageId, out var reactions))
+            if (!_messageReactions.TryGetValue(messageId, out var reactions))
             {
                 reactions = [];
-                messageReactions[messageId] = reactions;
+                _messageReactions[messageId] = reactions;
             }
 
             if (!reactions.Any(r => r.UserId == userId && r.Emoji == emoji))
@@ -635,7 +693,7 @@
     {
         await InvokeAsync(() =>
         {
-            if (messageReactions.TryGetValue(messageId, out var reactions))
+            if (_messageReactions.TryGetValue(messageId, out var reactions))
             {
                 reactions.RemoveAll(r => r.UserId == userId && r.Emoji == emoji);
             }
@@ -656,13 +714,13 @@
             ContentType = input.ContentType,
             FileName = input.FileName,
             MediaDataUrl = hasMedia ? await CreateMediaBlobUrl(input.MimeType!, input.MediaBytes!) : null,
-            Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sending,
-            ReplyToMessageId = replyingTo?.MessageId,
-            ReplyToSenderName = replyingTo is not null ? (replyingTo.IsMine ? "You" : GetSenderDisplayName(replyingTo)) : null,
-            ReplyToText = replyingTo is not null ? (replyingTo.ContentType != ContentType.Text ? $"[{replyingTo.ContentType}]" : (replyingTo.Text.Length > 80 ? replyingTo.Text[..80] + "..." : replyingTo.Text)) : null
+            Status = Shared.Enums.DeliveryStatus.Sending,
+            ReplyToMessageId = _replyingTo?.MessageId,
+            ReplyToSenderName = _replyingTo is not null ? (_replyingTo.IsMine ? "You" : GetSenderDisplayName(_replyingTo)) : null,
+            ReplyToText = _replyingTo is not null ? (_replyingTo.ContentType != ContentType.Text ? $"[{_replyingTo.ContentType}]" : (_replyingTo.Text.Length > 80 ? _replyingTo.Text[..80] + "..." : _replyingTo.Text)) : null
         };
         CancelReply();
-        messages.Add(tempMessage);
+        _messages.Add(tempMessage);
         StateHasChanged();
 
         try
@@ -684,7 +742,7 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Failed to send message: {ex.Message}";
+            _errorMessage = $"Failed to send message: {ex.Message}";
         }
 
         StateHasChanged();
@@ -692,9 +750,9 @@
 
     private async Task SendTextToRecipients(string text, ChatMessage tempMessage, decimal? replyToMessageId = null)
     {
-        if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
+        if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group)
         {
-            var requests = await Crypto.EncryptGroupMessageAsync(ConversationId, localUserId, localDeviceId, text);
+            var requests = await Crypto.EncryptGroupMessageAsync(ConversationId, _localUserId, _localDeviceId, text);
 
             SendMessageResult? lastResult = null;
             foreach (var request in requests)
@@ -706,15 +764,15 @@
             {
                 tempMessage.MessageId = lastResult.MessageId;
                 tempMessage.Timestamp = lastResult.ServerTimestamp;
-                tempMessage.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sent;
+                tempMessage.Status = Shared.Enums.DeliveryStatus.Sent;
             }
         }
         else
         {
-            var recipient = participants.FirstOrDefault(p => p.UserId != localUserId);
+            var recipient = _participants.FirstOrDefault(p => p.UserId != _localUserId);
             if (recipient is null)
             {
-                errorMessage = "Could not determine the recipient.";
+                _errorMessage = "Could not determine the recipient.";
                 return;
             }
 
@@ -725,7 +783,7 @@
             {
                 var request = new SendMessageRequest(
                     ConversationId,
-                    localDeviceId,
+                    _localDeviceId,
                     deviceId,
                     ciphertextBase64,
                     messageType,
@@ -739,17 +797,17 @@
             {
                 tempMessage.MessageId = lastResult.MessageId;
                 tempMessage.Timestamp = lastResult.ServerTimestamp;
-                tempMessage.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sent;
+                tempMessage.Status = Shared.Enums.DeliveryStatus.Sent;
             }
         }
     }
 
     private async Task SendMediaToRecipients(MessageInput.ChatInputMessage input, ChatMessage tempMessage)
     {
-        if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
+        if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group)
         {
             var requests = await Crypto.EncryptGroupBytesAsync(
-                ConversationId, localUserId, localDeviceId,
+                ConversationId, _localUserId, _localDeviceId,
                 input.MediaBytes!, input.ContentType, input.FileName, input.MimeType);
 
             SendMessageResult? lastResult = null;
@@ -762,15 +820,15 @@
             {
                 tempMessage.MessageId = lastResult.MessageId;
                 tempMessage.Timestamp = lastResult.ServerTimestamp;
-                tempMessage.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sent;
+                tempMessage.Status = Shared.Enums.DeliveryStatus.Sent;
             }
         }
         else
         {
-            var recipient = participants.FirstOrDefault(p => p.UserId != localUserId);
+            var recipient = _participants.FirstOrDefault(p => p.UserId != _localUserId);
             if (recipient is null)
             {
-                errorMessage = "Could not determine the recipient.";
+                _errorMessage = "Could not determine the recipient.";
                 return;
             }
 
@@ -781,7 +839,7 @@
             {
                 var request = new SendMessageRequest(
                     ConversationId,
-                    localDeviceId,
+                    _localDeviceId,
                     deviceId,
                     ciphertextBase64,
                     messageType,
@@ -797,7 +855,7 @@
             {
                 tempMessage.MessageId = lastResult.MessageId;
                 tempMessage.Timestamp = lastResult.ServerTimestamp;
-                tempMessage.Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sent;
+                tempMessage.Status = Shared.Enums.DeliveryStatus.Sent;
             }
         }
 
@@ -811,9 +869,9 @@
                 Timestamp = DateTimeOffset.UtcNow,
                 IsMine = true,
                 ContentType = ContentType.Text,
-                Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sending
+                Status = Shared.Enums.DeliveryStatus.Sending
             };
-            messages.Add(captionMessage);
+            _messages.Add(captionMessage);
             StateHasChanged();
 
             await SendTextToRecipients(input.Text, captionMessage);
@@ -827,7 +885,7 @@
         string? replyToSenderName = null;
         if (envelope.ReplyToMessageId.HasValue)
         {
-            var replyMsg = messages.FirstOrDefault(m => m.MessageId == envelope.ReplyToMessageId.Value);
+            var replyMsg = _messages.FirstOrDefault(m => m.MessageId == envelope.ReplyToMessageId.Value);
             if (replyMsg is not null)
             {
                 replyToSenderName = replyMsg.IsMine ? "You" : GetSenderDisplayName(replyMsg);
@@ -855,7 +913,7 @@
                 ContentType = envelope.ContentType,
                 FileName = envelope.FileName,
                 MediaDataUrl = blobUrl,
-                Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered,
+                Status = Shared.Enums.DeliveryStatus.Delivered,
                 ReplyToMessageId = envelope.ReplyToMessageId,
                 ReplyToText = replyToText,
                 ReplyToSenderName = replyToSenderName
@@ -872,7 +930,7 @@
                 Timestamp = envelope.ServerTimestamp,
                 IsMine = isMine,
                 ContentType = ContentType.Text,
-                Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered,
+                Status = Shared.Enums.DeliveryStatus.Delivered,
                 ReplyToMessageId = envelope.ReplyToMessageId,
                 ReplyToText = replyToText,
                 ReplyToSenderName = replyToSenderName
@@ -887,27 +945,30 @@
             ContentType.Image => "image/png",
             ContentType.Audio => "audio/mpeg",
             ContentType.Video => "video/mp4",
-            ContentType.File => "application/octet-stream",
             _ => "application/octet-stream"
         };
     }
 
-    private readonly List<string> blobUrls = [];
+    private readonly List<string> _blobUrls = [];
 
     private async Task<string> CreateMediaBlobUrl(string mimeType, byte[] data)
     {
         var url = await Js.InvokeAsync<string>("mediaHelpers.createObjectUrl", data, mimeType);
-        blobUrls.Add(url);
+        _blobUrls.Add(url);
         return url;
     }
 
     private async Task RevokeBlobUrls()
     {
-        foreach (var url in blobUrls)
+        foreach (var url in _blobUrls)
         {
-            try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", url); } catch { }
+            try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", url); }
+            catch
+            {
+                // ignored
+            }
         }
-        blobUrls.Clear();
+        _blobUrls.Clear();
     }
 
     private async Task ScrollToBottom()
@@ -916,15 +977,18 @@
         {
             await Js.InvokeVoidAsync("eval",
                 "document.querySelector('.chat-messages')?.scrollTo({top: document.querySelector('.chat-messages').scrollHeight, behavior: 'smooth'})");
-            showScrollButton = false;
+            _showScrollButton = false;
         }
-        catch { }
+        catch
+        {
+            // ignored
+        }
     }
 
     [JSInvokable]
     public void OnScrollPositionChanged(bool isNearBottom)
     {
-        showScrollButton = !isNearBottom;
+        _showScrollButton = !isNearBottom;
         InvokeAsync(StateHasChanged);
     }
 
@@ -977,27 +1041,27 @@
         throw new InvalidOperationException("JWT token does not contain a user ID claim.");
     }
 
-    private MessageInput.ReplyContextModel? replyContext;
+    private MessageInput.ReplyContextModel? _replyContext;
 
     // Reaction state: messageId -> list of (userId, emoji)
-    private readonly Dictionary<decimal, List<(decimal UserId, string Emoji, string DisplayName)>> messageReactions = [];
+    private readonly Dictionary<decimal, List<(decimal UserId, string Emoji, string DisplayName)>> _messageReactions = [];
 
     private void SetReplyTo(ChatMessage msg)
     {
-        replyingTo = msg;
-        replyContext = new MessageInput.ReplyContextModel
+        _replyingTo = msg;
+        _replyContext = new MessageInput.ReplyContextModel
         {
             MessageId = msg.MessageId,
             SenderName = msg.IsMine ? "You" : GetSenderDisplayName(msg),
             Text = msg.ContentType != ContentType.Text ? $"[{msg.ContentType}]" : (msg.Text.Length > 80 ? msg.Text[..80] + "..." : msg.Text)
         };
-        showContextMenu = false;
+        _showContextMenu = false;
     }
 
     private void CancelReply()
     {
-        replyingTo = null;
-        replyContext = null;
+        _replyingTo = null;
+        _replyContext = null;
     }
 
     private static string GetSenderDisplayName(ChatMessage msg)
@@ -1007,42 +1071,126 @@
 
     private void ShowContextMenu(double x, double y, ChatMessage msg)
     {
-        contextMenuX = x;
-        contextMenuY = y;
-        contextMenuMessage = msg;
-        showContextMenu = true;
+        _contextMenuX = x;
+        _contextMenuY = y;
+        _contextMenuMessage = msg;
+        _showContextMenu = true;
     }
 
     private void CloseContextMenu()
     {
-        showContextMenu = false;
-        contextMenuMessage = null;
+        _showContextMenu = false;
+        _contextMenuMessage = null;
     }
 
     private async Task CopyMessageText()
     {
-        if (contextMenuMessage is not null)
+        if (_contextMenuMessage is not null)
         {
-            try { await Js.InvokeAsync<bool>("mediaHelpers.copyToClipboard", contextMenuMessage.Text); } catch { }
+            try { await Js.InvokeAsync<bool>("mediaHelpers.copyToClipboard", _contextMenuMessage.Text); }
+            catch
+            {
+                // ignored
+            }
         }
         CloseContextMenu();
     }
 
     private void ReplyFromContextMenu()
     {
-        if (contextMenuMessage is not null)
-            SetReplyTo(contextMenuMessage);
+        if (_contextMenuMessage is not null)
+            SetReplyTo(_contextMenuMessage);
         CloseContextMenu();
     }
 
-    private async Task DeleteMessage()
+    private async Task DeleteForMe()
     {
-        if (contextMenuMessage is not null && contextMenuMessage.IsMine)
+        if (_contextMenuMessage is not null)
         {
-            messages.Remove(contextMenuMessage);
-            try { await MessageStore.UpdateMessageStatusAsync(contextMenuMessage.MessageId.ToString(), -1); } catch { }
+            _messages.Remove(_contextMenuMessage);
+            _messageReactions.Remove(_contextMenuMessage.MessageId);
+            try { await MessageStore.UpdateMessageStatusAsync(_contextMenuMessage.MessageId.ToString(CultureInfo.InvariantCulture), -1); }
+            catch
+            {
+                // ignored
+            }
         }
         CloseContextMenu();
+    }
+
+    private async Task DeleteForEveryone()
+    {
+        if (_contextMenuMessage is not null && _contextMenuMessage.IsMine)
+        {
+            try
+            {
+                await SignalR.DeleteForEveryoneAsync(_contextMenuMessage.MessageId);
+                // Local removal will happen via the MessageDeleted event
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+        CloseContextMenu();
+    }
+
+    private async void HandleMessageDeleted(decimal messageId, decimal conversationId)
+    {
+        if (conversationId != ConversationId)
+            return;
+
+        await InvokeAsync(async () =>
+        {
+            var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
+            if (msg is not null)
+                _messages.Remove(msg);
+            _messageReactions.Remove(messageId);
+            try { await MessageStore.UpdateMessageStatusAsync(messageId.ToString(CultureInfo.InvariantCulture), -1); }
+            catch
+            {
+                // ignored
+            }
+            StateHasChanged();
+        });
+    }
+
+    private void OpenClearChatDialog()
+    {
+        _showChatMenu = false;
+        _showClearChatDialog = true;
+    }
+
+    private async Task ClearChat(TimeSpan span)
+    {
+        _showClearChatDialog = false;
+        var cutoff = span == TimeSpan.Zero
+            ? DateTimeOffset.UtcNow.AddYears(1) // far future = clear all
+            : DateTimeOffset.UtcNow;
+
+        var threshold = span == TimeSpan.Zero
+            ? DateTimeOffset.MinValue
+            : DateTimeOffset.UtcNow - span;
+
+        // Remove from local UI
+        _messages.RemoveAll(m => m.Timestamp >= threshold);
+        _messageReactions.Clear();
+
+        // Clear from IndexedDB
+        try { await MessageStore.DeleteConversationMessagesAsync(ConversationId.ToString(CultureInfo.InvariantCulture)); }
+        catch
+        {
+            // ignored
+        }
+
+        // Clear from server
+        try { await SignalR.ClearMessagesAsync(ConversationId, cutoff); }
+        catch
+        {
+            // ignored
+        }
+
+        StateHasChanged();
     }
 
     private async Task ScrollToMessage(decimal messageId)
@@ -1052,12 +1200,15 @@
             await Js.InvokeVoidAsync("eval",
                 $"document.querySelector('[data-msg-id=\"{messageId}\"]')?.scrollIntoView({{behavior:'smooth',block:'center'}})");
         }
-        catch { }
+        catch
+        {
+            // ignored
+        }
     }
 
     private List<MessageBubble.ReactionBadgeModel> GetReactionBadges(decimal messageId)
     {
-        if (!messageReactions.TryGetValue(messageId, out var reactions) || reactions.Count == 0)
+        if (!_messageReactions.TryGetValue(messageId, out var reactions) || reactions.Count == 0)
             return [];
 
         return reactions
@@ -1066,7 +1217,7 @@
             {
                 Emoji = g.Key,
                 Count = g.Count(),
-                IncludesMine = g.Any(r => r.UserId == localUserId)
+                IncludesMine = g.Any(r => r.UserId == _localUserId)
             })
             .ToList();
     }
@@ -1078,8 +1229,8 @@
             if (SignalR.IsConnected)
             {
                 // Check if we already reacted with this emoji
-                if (messageReactions.TryGetValue(messageId, out var reactions) &&
-                    reactions.Any(r => r.UserId == localUserId && r.Emoji == emoji))
+                if (_messageReactions.TryGetValue(messageId, out var reactions) &&
+                    reactions.Any(r => r.UserId == _localUserId && r.Emoji == emoji))
                 {
                     await SignalR.RemoveReactionAsync(messageId, emoji);
                 }
@@ -1089,28 +1240,31 @@
                 }
             }
         }
-        catch { }
+        catch
+        {
+            // ignored
+        }
     }
 
     private void HandleImageClick(string imageUrl)
     {
-        lightboxImageUrls = messages
+        _lightboxImageUrls = _messages
             .Where(m => m.ContentType == ContentType.Image && !string.IsNullOrEmpty(m.MediaDataUrl))
             .Select(m => m.MediaDataUrl!)
             .ToList();
-        lightboxIndex = lightboxImageUrls.IndexOf(imageUrl);
-        if (lightboxIndex < 0) lightboxIndex = 0;
-        lightboxVisible = true;
+        _lightboxIndex = _lightboxImageUrls.IndexOf(imageUrl);
+        if (_lightboxIndex < 0) _lightboxIndex = 0;
+        _lightboxVisible = true;
     }
 
     private void CloseLightbox()
     {
-        lightboxVisible = false;
+        _lightboxVisible = false;
     }
 
     private void SetLightboxIndex(int index)
     {
-        lightboxIndex = index;
+        _lightboxIndex = index;
     }
 
     public async ValueTask DisposeAsync()
@@ -1126,9 +1280,10 @@
         SignalR.OnUserOffline -= HandleUserOffline;
         SignalR.OnReactionAdded -= HandleReactionAdded;
         SignalR.OnReactionRemoved -= HandleReactionRemoved;
+        SignalR.OnMessageDeleted -= HandleMessageDeleted;
 
-        typingTimer?.Stop();
-        typingTimer?.Dispose();
+        _typingTimer?.Stop();
+        _typingTimer?.Dispose();
 
         // Revoke blob URLs to free browser memory
         await RevokeBlobUrls();
@@ -1142,15 +1297,15 @@
     private sealed class ChatMessage
     {
         public decimal MessageId { get; set; }
-        public string Text { get; set; } = "";
+        public string Text { get; init; } = "";
         public DateTimeOffset Timestamp { get; set; }
-        public bool IsMine { get; set; }
-        public ToledoMessage.Shared.Enums.DeliveryStatus Status { get; set; }
-        public ContentType ContentType { get; set; } = ContentType.Text;
-        public string? MediaDataUrl { get; set; }
-        public string? FileName { get; set; }
-        public decimal? ReplyToMessageId { get; set; }
-        public string? ReplyToText { get; set; }
-        public string? ReplyToSenderName { get; set; }
+        public bool IsMine { get; init; }
+        public Shared.Enums.DeliveryStatus Status { get; set; }
+        public ContentType ContentType { get; init; } = ContentType.Text;
+        public string? MediaDataUrl { get; init; }
+        public string? FileName { get; init; }
+        public decimal? ReplyToMessageId { get; init; }
+        public string? ReplyToText { get; init; }
+        public string? ReplyToSenderName { get; init; }
     }
 }

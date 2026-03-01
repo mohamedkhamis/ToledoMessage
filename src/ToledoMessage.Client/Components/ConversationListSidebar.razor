@@ -4,12 +4,12 @@
 @inject LocalStorageService Storage
 @inject HttpClient Http
 @inject SignalRService SignalR
-@inject IJSRuntime JS
+@inject IJSRuntime Js
 @implements IAsyncDisposable
 
 <div class="sidebar-header">
-    <AvatarInitials DisplayName="@userName" Size="40" />
-    <span class="sidebar-user-name">@(string.IsNullOrEmpty(userName) ? "You" : userName)</span>
+    <AvatarInitials DisplayName="@_userName" Size="40" />
+    <span class="sidebar-user-name">@(string.IsNullOrEmpty(_userName) ? "You" : _userName)</span>
     <div class="sidebar-header-actions">
         <button class="sidebar-icon-btn" @onclick="NavigateToSettings" title="Settings">⚙</button>
         <button class="sidebar-icon-btn" @onclick="NavigateToNewConversation" title="New conversation">✏</button>
@@ -19,17 +19,17 @@
 
 <div class="sidebar-search">
     <input placeholder="Search conversations..."
-           value="@searchQuery"
+           value="@_searchQuery"
            @oninput="OnSearchInput"
            aria-label="Search conversations" />
 </div>
 
 <div class="sidebar-list">
-    @if (isLoading)
+    @if (_isLoading)
     {
         <SkeletonLoader Variant="SkeletonLoader.SkeletonVariant.ConversationList" />
     }
-    else if (FilteredConversations.Count == 0 && string.IsNullOrEmpty(searchQuery))
+    else if (FilteredConversations.Count == 0 && string.IsNullOrEmpty(_searchQuery))
     {
         <div style="text-align:center;padding:32px 16px;">
             <p class="centered-text" style="padding:0 0 16px;">No conversations yet</p>
@@ -40,7 +40,7 @@
     }
     else if (FilteredConversations.Count == 0)
     {
-        <p class="centered-text" style="padding:24px 16px;">No results for "@searchQuery"</p>
+        <p class="centered-text" style="padding:24px 16px;">No results for "@_searchQuery"</p>
     }
     else
     {
@@ -75,24 +75,24 @@
 </div>
 
 @code {
-    private List<ConversationSummary> conversations = [];
-    private string searchQuery = "";
-    private bool isLoading = true;
-    private string? accessToken;
-    private decimal localDeviceId;
-    private string userName = "";
-    private string currentPath = "";
+    private List<ConversationListItemResponse> _conversations = [];
+    private string _searchQuery = "";
+    private bool _isLoading = true;
+    private string? _accessToken;
+    private decimal _localDeviceId;
+    private string _userName = "";
+    private string _currentPath = "";
 
-    private List<ConversationSummary> FilteredConversations =>
-        string.IsNullOrWhiteSpace(searchQuery)
-            ? conversations
-            : conversations
-                .Where(c => c.DisplayName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
+    private List<ConversationListItemResponse> FilteredConversations =>
+        string.IsNullOrWhiteSpace(_searchQuery)
+            ? _conversations
+            : _conversations
+                .Where(c => c.DisplayName.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
     protected override async Task OnInitializedAsync()
     {
-        currentPath = new Uri(Navigation.Uri).AbsolutePath;
+        _currentPath = new Uri(Navigation.Uri).AbsolutePath;
         Navigation.LocationChanged += OnLocationChanged;
 
         try
@@ -104,24 +104,24 @@
                 return;
             }
 
-            accessToken = Encoding.UTF8.GetString(tokenBytes);
-            userName = ExtractDisplayNameFromJwt(accessToken);
+            _accessToken = Encoding.UTF8.GetString(tokenBytes);
+            _userName = ExtractDisplayNameFromJwt(_accessToken);
 
             var deviceIdBytes = await Storage.GetAsync("local.deviceId");
             if (deviceIdBytes is not null)
-                localDeviceId = decimal.Parse(Encoding.UTF8.GetString(deviceIdBytes));
+                _localDeviceId = decimal.Parse(Encoding.UTF8.GetString(deviceIdBytes));
 
             Http.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
 
             await LoadConversations();
 
             try
             {
                 var hubUrl = Navigation.ToAbsoluteUri("/hubs/chat").ToString();
-                await SignalR.ConnectAsync(hubUrl, accessToken);
-                if (localDeviceId != 0)
-                    await SignalR.RegisterDeviceAsync(localDeviceId);
+                await SignalR.ConnectAsync(hubUrl, _accessToken);
+                if (_localDeviceId != 0)
+                    await SignalR.RegisterDeviceAsync(_localDeviceId);
                 SignalR.OnMessageReceived += HandleMessageReceived;
             }
             catch
@@ -135,7 +135,7 @@
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
         }
 
         await UpdateMobileLayout();
@@ -148,38 +148,34 @@
             var serverConversations = await Http.GetFromJsonAsync<List<ConversationListItemResponse>>(
                 "/api/conversations");
 
-            conversations = serverConversations?.Select(c => new ConversationSummary
-            {
-                ConversationId = c.ConversationId,
-                DisplayName = c.DisplayName,
-                LastMessage = c.LastMessageTime.HasValue ? "New message" : null,
-                UnreadCount = c.UnreadCount,
-                LastMessageTime = c.LastMessageTime
-            }).ToList() ?? [];
+            _conversations = serverConversations?
+                .Select(c => c with { LastMessage = c.LastMessageTime.HasValue ? "New message" : null })
+                .ToList() ?? [];
         }
         catch
         {
-            conversations = [];
+            _conversations = [];
         }
     }
 
     private bool IsActiveConversation(decimal conversationId)
     {
-        return currentPath.Equals($"/chat/{conversationId}", StringComparison.OrdinalIgnoreCase);
+        return _currentPath.Equals($"/chat/{conversationId}", StringComparison.OrdinalIgnoreCase);
     }
 
     private bool IsInChatPage()
     {
-        var path = currentPath.TrimEnd('/');
+        var path = _currentPath.TrimEnd('/');
         if (!path.StartsWith("/chat/", StringComparison.OrdinalIgnoreCase))
             return false;
         var segment = path["/chat/".Length..];
         return decimal.TryParse(segment, out _);
     }
 
-    private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    // ReSharper disable  AsyncVoidEventHandlerMethod
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        currentPath = new Uri(e.Location).AbsolutePath;
+        _currentPath = new Uri(e.Location).AbsolutePath;
         await InvokeAsync(StateHasChanged);
         await UpdateMobileLayout();
     }
@@ -189,7 +185,7 @@
         try
         {
             var inChat = IsInChatPage();
-            await JS.InvokeVoidAsync("eval",
+            await Js.InvokeVoidAsync("eval",
                 "(function(){" +
                 "var s=document.getElementById('chat-sidebar');" +
                 "var p=document.getElementById('chat-panel');" +
@@ -205,14 +201,14 @@
 
     private void OnSearchInput(ChangeEventArgs e)
     {
-        searchQuery = e.Value?.ToString() ?? "";
+        _searchQuery = e.Value?.ToString() ?? "";
     }
 
     private void SelectConversation(decimal conversationId)
     {
-        var conv = conversations.FirstOrDefault(c => c.ConversationId == conversationId);
-        if (conv is not null && IsActiveConversation(conversationId))
-            conv.UnreadCount = 0;
+        var index = _conversations.FindIndex(c => c.ConversationId == conversationId);
+        if (index >= 0 && IsActiveConversation(conversationId))
+            _conversations[index] = _conversations[index] with { UnreadCount = 0 };
         Navigation.NavigateTo($"/chat/{conversationId}");
     }
 
@@ -237,32 +233,35 @@
         Navigation.NavigateTo("/login?logout=true", forceLoad: true);
     }
 
+    // ReSharper disable once AsyncVoidMethod
     private async void HandleMessageReceived(MessageEnvelope envelope)
     {
         await InvokeAsync(() =>
         {
-            var existing = conversations.FirstOrDefault(c => c.ConversationId == envelope.ConversationId);
+            var index = _conversations.FindIndex(c => c.ConversationId == envelope.ConversationId);
             var isViewing = IsActiveConversation(envelope.ConversationId);
 
-            if (existing is not null)
+            if (index >= 0)
             {
-                if (!isViewing)
-                    existing.UnreadCount++;
-                existing.LastMessage = "New message";
-                existing.LastMessageTime = envelope.ServerTimestamp;
-                conversations.Remove(existing);
-                conversations.Insert(0, existing);
+                var existing = _conversations[index];
+                var updated = existing with
+                {
+                    UnreadCount = isViewing ? existing.UnreadCount : existing.UnreadCount + 1,
+                    LastMessage = "New message",
+                    LastMessageTime = envelope.ServerTimestamp
+                };
+                _conversations.RemoveAt(index);
+                _conversations.Insert(0, updated);
             }
             else
             {
-                conversations.Insert(0, new ConversationSummary
-                {
-                    ConversationId = envelope.ConversationId,
-                    DisplayName = "New conversation",
-                    LastMessage = "New message",
-                    UnreadCount = isViewing ? 0 : 1,
-                    LastMessageTime = envelope.ServerTimestamp
-                });
+                _conversations.Insert(0, new ConversationListItemResponse(
+                        envelope.ConversationId,
+                        ConversationType.OneToOne,
+                        "New conversation",
+                        envelope.ServerTimestamp,
+                        isViewing ? 0 : 1)
+                    { LastMessage = "New message" });
             }
 
             StateHasChanged();
@@ -318,12 +317,4 @@
         await Task.CompletedTask;
     }
 
-    private sealed class ConversationSummary
-    {
-        public decimal ConversationId { get; init; }
-        public string DisplayName { get; init; } = "";
-        public string? LastMessage { get; set; }
-        public int UnreadCount { get; set; }
-        public DateTimeOffset? LastMessageTime { get; set; }
     }
-}

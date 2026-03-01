@@ -7,7 +7,7 @@
 
 <div class="panel-content-scroll">
 
-@if (!isAuthenticated)
+@if (!_isAuthenticated)
 {
     <p class="centered-text"><span class="spinner"></span> Loading...</p>
 }
@@ -20,26 +20,26 @@ else
 <div class="card mb-md">
     <div class="form-group mb-0">
         <input placeholder="Search users by name..."
-               @bind="searchQuery"
+               @bind="_searchQuery"
                @bind:event="oninput"
                @bind:after="OnSearchInputChanged"
                aria-label="Search users" />
     </div>
 </div>
 
-@if (!string.IsNullOrEmpty(errorMessage))
+@if (!string.IsNullOrEmpty(_errorMessage))
 {
-    <div class="alert alert-error">@errorMessage</div>
+    <div class="alert alert-error">@_errorMessage</div>
 }
 
-@if (isSearching)
+@if (_isSearching)
 {
     <p class="centered-text"><span class="spinner"></span> Searching...</p>
 }
-else if (searchResults is not null && searchResults.Count > 0)
+else if (_searchResults is not null && _searchResults.Count > 0)
 {
     <div class="card card-flush">
-        @foreach (var user in searchResults)
+        @foreach (var user in _searchResults)
         {
             <div class="search-result-item">
                 <div>
@@ -48,14 +48,14 @@ else if (searchResults is not null && searchResults.Count > 0)
                 </div>
                 <button class="btn-primary btn-sm"
                         @onclick="() => StartConversation(user)"
-                        disabled="@isCreating">
-                    @(isCreating && creatingUserId == user.UserId ? "Creating..." : "Message")
+                        disabled="@_isCreating">
+                    @(_isCreating && _creatingUserId == user.UserId ? "Creating..." : "Message")
                 </button>
             </div>
         }
     </div>
 }
-else if (searchResults is not null && searchResults.Count == 0 && !string.IsNullOrWhiteSpace(searchQuery))
+else if (_searchResults is not null && _searchResults.Count == 0 && !string.IsNullOrWhiteSpace(_searchQuery))
 {
     <p class="centered-text">No users found.</p>
 }
@@ -64,13 +64,13 @@ else if (searchResults is not null && searchResults.Count == 0 && !string.IsNull
 </div>
 
 @code {
-    private bool isAuthenticated;
-    private string searchQuery = "";
-    private string? errorMessage;
-    private bool isSearching;
-    private bool isCreating;
-    private decimal? creatingUserId;
-    private List<UserSearchResult>? searchResults;
+    private bool _isAuthenticated;
+    private string _searchQuery = "";
+    private string? _errorMessage;
+    private bool _isSearching;
+    private bool _isCreating;
+    private decimal? _creatingUserId;
+    private List<UserSearchResult>? _searchResults;
     private CancellationTokenSource? _debounceCts;
 
     protected override async Task OnInitializedAsync()
@@ -81,7 +81,7 @@ else if (searchResults is not null && searchResults.Count == 0 && !string.IsNull
             Navigation.NavigateTo("/login", forceLoad: true);
             return;
         }
-        isAuthenticated = true;
+        _isAuthenticated = true;
     }
 
     private async Task OnSearchInputChanged()
@@ -90,9 +90,9 @@ else if (searchResults is not null && searchResults.Count == 0 && !string.IsNull
         _debounceCts = new CancellationTokenSource();
         var token = _debounceCts.Token;
 
-        if (string.IsNullOrWhiteSpace(searchQuery) || searchQuery.Length < 2)
+        if (string.IsNullOrWhiteSpace(_searchQuery) || _searchQuery.Length < 2)
         {
-            searchResults = null;
+            _searchResults = null;
             return;
         }
 
@@ -103,16 +103,16 @@ else if (searchResults is not null && searchResults.Count == 0 && !string.IsNull
             if (token.IsCancellationRequested)
                 return;
 
-            isSearching = true;
-            errorMessage = null;
+            _isSearching = true;
+            _errorMessage = null;
             StateHasChanged();
 
             var response = await Http.GetFromJsonAsync<UserSearchResponse>(
-                $"/api/users/search?q={Uri.EscapeDataString(searchQuery)}", token);
+                $"/api/users/search?q={Uri.EscapeDataString(_searchQuery)}", token);
 
             if (!token.IsCancellationRequested)
             {
-                searchResults = response?.Users ?? [];
+                _searchResults = response?.Users ?? [];
             }
         }
         catch (OperationCanceledException)
@@ -123,14 +123,14 @@ else if (searchResults is not null && searchResults.Count == 0 && !string.IsNull
         {
             if (!token.IsCancellationRequested)
             {
-                errorMessage = $"Search failed: {ex.Message}";
+                _errorMessage = $"Search failed: {ex.Message}";
             }
         }
         finally
         {
             if (!token.IsCancellationRequested)
             {
-                isSearching = false;
+                _isSearching = false;
                 StateHasChanged();
             }
         }
@@ -138,9 +138,9 @@ else if (searchResults is not null && searchResults.Count == 0 && !string.IsNull
 
     private async Task StartConversation(UserSearchResult user)
     {
-        isCreating = true;
-        creatingUserId = user.UserId;
-        errorMessage = null;
+        _isCreating = true;
+        _creatingUserId = user.UserId;
+        _errorMessage = null;
 
         try
         {
@@ -149,7 +149,7 @@ else if (searchResults is not null && searchResults.Count == 0 && !string.IsNull
 
             if (!response.IsSuccessStatusCode)
             {
-                errorMessage = "Failed to create conversation.";
+                _errorMessage = "Failed to create conversation.";
                 return;
             }
 
@@ -161,12 +161,12 @@ else if (searchResults is not null && searchResults.Count == 0 && !string.IsNull
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error: {ex.Message}";
+            _errorMessage = $"Error: {ex.Message}";
         }
         finally
         {
-            isCreating = false;
-            creatingUserId = null;
+            _isCreating = false;
+            _creatingUserId = null;
         }
     }
 }

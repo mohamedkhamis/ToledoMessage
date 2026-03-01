@@ -23,6 +23,7 @@ public class EncryptedMessageConfiguration : IEntityTypeConfiguration<EncryptedM
         builder.Property(static m => m.SequenceNumber).IsRequired();
         builder.Property(static m => m.ServerTimestamp).IsRequired();
         builder.Property(static m => m.IsDelivered).IsRequired().HasDefaultValue(false);
+        builder.Property(static m => m.ReplyToMessageId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
         builder.HasOne(static m => m.Conversation)
             .WithMany(static c => c.Messages)
             .HasForeignKey(static m => m.ConversationId)

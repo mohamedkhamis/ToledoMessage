@@ -14,14 +14,14 @@
         <h2>Settings</h2>
     </div>
 
-    @if (!string.IsNullOrEmpty(errorMessage))
+    @if (!string.IsNullOrEmpty(_errorMessage))
     {
-        <div class="alert alert-error" role="alert">@errorMessage</div>
+        <div class="alert alert-error" role="alert">@_errorMessage</div>
     }
 
-    @if (!string.IsNullOrEmpty(successMessage))
+    @if (!string.IsNullOrEmpty(_successMessage))
     {
-        <div class="alert alert-success" role="status">@successMessage</div>
+        <div class="alert alert-success" role="status">@_successMessage</div>
     }
 
     <h3 class="section-title">Appearance</h3>
@@ -29,7 +29,7 @@
     <div class="theme-grid">
         @foreach (var theme in ThemeService.GetAvailableThemes())
         {
-            <div class="theme-card @(currentTheme == theme.Id ? "active" : "")"
+            <div class="theme-card @(_currentTheme == theme.Id ? "active" : "")"
                  @onclick="() => SelectTheme(theme.Id)">
                 <div class="theme-swatch" style="background:@theme.SwatchColor;"></div>
                 <div class="theme-name">@theme.DisplayName</div>
@@ -39,9 +39,9 @@
 
     <h4 class="subsection-title mt-md">Font Size</h4>
     <div class="font-size-selector">
-        @foreach (var size in fontSizes)
+        @foreach (var size in FontSizes)
         {
-            <button class="font-size-btn @(currentFontSize == size.Id ? "active" : "")"
+            <button class="font-size-btn @(_currentFontSize == size.Id ? "active" : "")"
                     @onclick="() => SelectFontSize(size.Id)">
                 <span style="font-size:@size.Preview">A</span>
                 <span class="font-size-label">@size.Label</span>
@@ -58,7 +58,7 @@
                 <span class="toggle-desc">Let others know when you've read their messages</span>
             </div>
             <label class="toggle-switch">
-                <input type="checkbox" checked="@readReceiptsEnabled"
+                <input type="checkbox" checked="@_readReceiptsEnabled"
                        @onchange="e => ToggleReadReceipts((bool)e.Value!)" />
                 <span class="toggle-slider"></span>
             </label>
@@ -70,7 +70,7 @@
                 <span class="toggle-desc">Show when you're typing a message</span>
             </div>
             <label class="toggle-switch">
-                <input type="checkbox" checked="@typingIndicatorsEnabled"
+                <input type="checkbox" checked="@_typingIndicatorsEnabled"
                        @onchange="e => ToggleTypingIndicators((bool)e.Value!)" />
                 <span class="toggle-slider"></span>
             </label>
@@ -86,7 +86,7 @@
                 <span class="toggle-desc">Receive notifications when a new message arrives</span>
             </div>
             <label class="toggle-switch">
-                <input type="checkbox" checked="@notificationsEnabled"
+                <input type="checkbox" checked="@_notificationsEnabled"
                        @onchange="e => ToggleNotifications((bool)e.Value!)" />
                 <span class="toggle-slider"></span>
             </label>
@@ -95,24 +95,24 @@
 
     <h3 class="section-title mt-lg">Linked Devices</h3>
 
-    @if (isLoading)
+    @if (_isLoading)
     {
         <p class="loading-text"><span class="spinner"></span> Loading devices...</p>
     }
-    else if (devices.Count == 0)
+    else if (_devices.Count == 0)
     {
         <p class="loading-text">No active devices found.</p>
     }
     else
     {
         <div class="device-list">
-            @foreach (var device in devices)
+            @foreach (var device in _devices)
             {
                 <div class="device-card">
                     <div>
                         <div class="device-name">
                             @device.DeviceName
-                            @if (device.DeviceId == currentDeviceId)
+                            @if (device.DeviceId == _currentDeviceId)
                             {
                                 <span class="device-current">(this device)</span>
                             }
@@ -125,12 +125,12 @@
                         </div>
                     </div>
 
-                    @if (device.DeviceId != currentDeviceId)
+                    @if (device.DeviceId != _currentDeviceId)
                     {
                         <button class="btn-unlink"
                                 @onclick="() => UnlinkDevice(device.DeviceId)"
-                                disabled="@unlinkingDeviceId.HasValue">
-                            @if (unlinkingDeviceId == device.DeviceId)
+                                disabled="@_unlinkingDeviceId.HasValue">
+                            @if (_unlinkingDeviceId == device.DeviceId)
                             {
                                 <span>Unlinking...</span>
                             }
@@ -154,24 +154,24 @@
 
     <h3 class="section-title mt-lg danger-text">Account Deletion</h3>
 
-    @if (deletionPending)
+    @if (_deletionPending)
     {
         <div class="alert alert-warning" role="status">
             <p>Account deletion is scheduled. Your account will be permanently deactivated
-               on <strong>@deletionEndsAt?.ToString("MMM dd, yyyy HH:mm") UTC</strong>.</p>
+               on <strong>@_deletionEndsAt?.ToString("MMM dd, yyyy HH:mm") UTC</strong>.</p>
             <p>Log in again to cancel the deletion.</p>
         </div>
     }
     else
     {
         <div class="danger-zone">
-            @if (!showDeleteConfirmation)
+            @if (!_showDeleteConfirmation)
             {
                 <p class="danger-description">
                     Permanently delete your account and all associated data.
                     You will have a 7-day grace period to cancel by logging in.
                 </p>
-                <button class="btn-danger" @onclick="() => showDeleteConfirmation = true">
+                <button class="btn-danger" @onclick="() => _showDeleteConfirmation = true">
                     Delete Account
                 </button>
             }
@@ -182,11 +182,11 @@
                     All your devices, keys, and messages will be permanently removed.
                 </p>
                 <div class="danger-actions">
-                    <button class="btn-danger" @onclick="DeleteAccount" disabled="@isDeletingAccount">
-                        @(isDeletingAccount ? "Deleting..." : "Yes, Delete My Account")
+                    <button class="btn-danger" @onclick="DeleteAccount" disabled="@_isDeletingAccount">
+                        @(_isDeletingAccount ? "Deleting..." : "Yes, Delete My Account")
                     </button>
-                    <button class="btn-secondary" @onclick="() => showDeleteConfirmation = false"
-                            disabled="@isDeletingAccount">
+                    <button class="btn-secondary" @onclick="() => _showDeleteConfirmation = false"
+                            disabled="@_isDeletingAccount">
                         Cancel
                     </button>
                 </div>
@@ -197,23 +197,23 @@
 </div>
 
 @code {
-    private List<DeviceInfoResponse> devices = [];
-    private decimal currentDeviceId;
-    private bool isLoading = true;
-    private string? errorMessage;
-    private string? successMessage;
-    private decimal? unlinkingDeviceId;
-    private string currentTheme = "default";
-    private string currentFontSize = "medium";
-    private bool notificationsEnabled = true;
-    private bool readReceiptsEnabled = true;
-    private bool typingIndicatorsEnabled = true;
-    private bool showDeleteConfirmation;
-    private bool isDeletingAccount;
-    private bool deletionPending;
-    private DateTimeOffset? deletionEndsAt;
+    private List<DeviceInfoResponse> _devices = [];
+    private decimal _currentDeviceId;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string? _successMessage;
+    private decimal? _unlinkingDeviceId;
+    private string _currentTheme = "default";
+    private string _currentFontSize = "medium";
+    private bool _notificationsEnabled = true;
+    private bool _readReceiptsEnabled = true;
+    private bool _typingIndicatorsEnabled = true;
+    private bool _showDeleteConfirmation;
+    private bool _isDeletingAccount;
+    private bool _deletionPending;
+    private DateTimeOffset? _deletionEndsAt;
 
-    private static readonly FontSizeOption[] fontSizes =
+    private static readonly FontSizeOption[] FontSizes =
     [
         new("small", "Small", "12px"),
         new("medium", "Medium", "15px"),
@@ -224,8 +224,8 @@
     {
         try
         {
-            currentTheme = await Theme.GetThemeAsync();
-            currentFontSize = await Theme.GetFontSizeAsync();
+            _currentTheme = await Theme.GetThemeAsync();
+            _currentFontSize = await Theme.GetFontSizeAsync();
 
             var deviceIdBytes = await Storage.GetAsync("local.deviceId");
             var tokenBytes = await Storage.GetAsync("auth.token");
@@ -236,7 +236,7 @@
                 return;
             }
 
-            currentDeviceId = decimal.Parse(Encoding.UTF8.GetString(deviceIdBytes));
+            _currentDeviceId = decimal.Parse(Encoding.UTF8.GetString(deviceIdBytes));
             var accessToken = Encoding.UTF8.GetString(tokenBytes);
 
             Http.DefaultRequestHeaders.Authorization =
@@ -244,20 +244,20 @@
 
             // Load preferences from server
             var prefs = await Preferences.GetPreferencesAsync();
-            notificationsEnabled = prefs.NotificationsEnabled;
-            readReceiptsEnabled = prefs.ReadReceiptsEnabled;
-            typingIndicatorsEnabled = prefs.TypingIndicatorsEnabled;
+            _notificationsEnabled = prefs.NotificationsEnabled;
+            _readReceiptsEnabled = prefs.ReadReceiptsEnabled;
+            _typingIndicatorsEnabled = prefs.TypingIndicatorsEnabled;
 
             // Sync local theme TO server if different (local is source of truth)
-            if (prefs.Theme != currentTheme)
+            if (prefs.Theme != _currentTheme)
             {
-                try { await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(Theme: currentTheme)); }
+                try { await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(Theme: _currentTheme)); }
                 catch { /* best effort */ }
             }
 
-            if (prefs.FontSize != currentFontSize)
+            if (prefs.FontSize != _currentFontSize)
             {
-                currentFontSize = prefs.FontSize;
+                _currentFontSize = prefs.FontSize;
                 await Theme.SetFontSizeAsync(prefs.FontSize);
             }
 
@@ -265,22 +265,22 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Failed to load settings: {ex.Message}";
+            _errorMessage = $"Failed to load settings: {ex.Message}";
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
         }
     }
 
     private async Task SelectTheme(string themeId)
     {
-        currentTheme = themeId;
+        _currentTheme = themeId;
         await Theme.SetThemeAsync(themeId);
         try
         {
             await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(Theme: themeId));
-            successMessage = "Theme saved.";
+            _successMessage = "Theme saved.";
         }
         catch
         {
@@ -290,12 +290,12 @@
 
     private async Task SelectFontSize(string size)
     {
-        currentFontSize = size;
+        _currentFontSize = size;
         await Theme.SetFontSizeAsync(size);
         try
         {
             await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(FontSize: size));
-            successMessage = "Font size saved.";
+            _successMessage = "Font size saved.";
         }
         catch
         {
@@ -305,53 +305,53 @@
 
     private async Task ToggleNotifications(bool enabled)
     {
-        notificationsEnabled = enabled;
+        _notificationsEnabled = enabled;
         try
         {
             await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(NotificationsEnabled: enabled));
         }
         catch (Exception ex)
         {
-            errorMessage = $"Failed to save: {ex.Message}";
+            _errorMessage = $"Failed to save: {ex.Message}";
         }
     }
 
     private async Task ToggleReadReceipts(bool enabled)
     {
-        readReceiptsEnabled = enabled;
+        _readReceiptsEnabled = enabled;
         try
         {
             await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(ReadReceiptsEnabled: enabled));
         }
         catch (Exception ex)
         {
-            errorMessage = $"Failed to save: {ex.Message}";
+            _errorMessage = $"Failed to save: {ex.Message}";
         }
     }
 
     private async Task ToggleTypingIndicators(bool enabled)
     {
-        typingIndicatorsEnabled = enabled;
+        _typingIndicatorsEnabled = enabled;
         try
         {
             await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(TypingIndicatorsEnabled: enabled));
         }
         catch (Exception ex)
         {
-            errorMessage = $"Failed to save: {ex.Message}";
+            _errorMessage = $"Failed to save: {ex.Message}";
         }
     }
 
     private async Task LoadDevices()
     {
-        devices = await Http.GetFromJsonAsync<List<DeviceInfoResponse>>("/api/devices") ?? [];
+        _devices = await Http.GetFromJsonAsync<List<DeviceInfoResponse>>("/api/devices") ?? [];
     }
 
     private async Task DeleteAccount()
     {
-        errorMessage = null;
-        successMessage = null;
-        isDeletingAccount = true;
+        _errorMessage = null;
+        _successMessage = null;
+        _isDeletingAccount = true;
 
         try
         {
@@ -363,32 +363,32 @@
                     .ReadFromJsonAsync<AccountDeletionResponse>();
                 if (result is not null)
                 {
-                    deletionPending = true;
-                    deletionEndsAt = result.GracePeriodEndsAt;
-                    showDeleteConfirmation = false;
-                    successMessage = "Account deletion scheduled. Log in again within 7 days to cancel.";
+                    _deletionPending = true;
+                    _deletionEndsAt = result.GracePeriodEndsAt;
+                    _showDeleteConfirmation = false;
+                    _successMessage = "Account deletion scheduled. Log in again within 7 days to cancel.";
                 }
             }
             else
             {
-                errorMessage = "Failed to initiate account deletion.";
+                _errorMessage = "Failed to initiate account deletion.";
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error deleting account: {ex.Message}";
+            _errorMessage = $"Error deleting account: {ex.Message}";
         }
         finally
         {
-            isDeletingAccount = false;
+            _isDeletingAccount = false;
         }
     }
 
     private async Task UnlinkDevice(decimal deviceId)
     {
-        errorMessage = null;
-        successMessage = null;
-        unlinkingDeviceId = deviceId;
+        _errorMessage = null;
+        _successMessage = null;
+        _unlinkingDeviceId = deviceId;
 
         try
         {
@@ -396,21 +396,21 @@
 
             if (response.IsSuccessStatusCode)
             {
-                successMessage = "Device unlinked successfully.";
+                _successMessage = "Device unlinked successfully.";
                 await LoadDevices();
             }
             else
             {
-                errorMessage = "Failed to unlink device.";
+                _errorMessage = "Failed to unlink device.";
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error unlinking device: {ex.Message}";
+            _errorMessage = $"Error unlinking device: {ex.Message}";
         }
         finally
         {
-            unlinkingDeviceId = null;
+            _unlinkingDeviceId = null;
         }
     }
 

@@ -1,0 +1,73 @@
+@inject HttpClient Http
+
+@if (_preview is not null)
+{
+    <a href="@Url" target="_blank" rel="noopener noreferrer" class="link-preview-card">
+        @if (!string.IsNullOrEmpty(_preview.ImageUrl))
+        {
+            <img src="@_preview.ImageUrl" class="link-preview-image" alt="" loading="lazy" />
+        }
+        <div class="link-preview-info">
+            @if (!string.IsNullOrEmpty(_preview.Title))
+            {
+                <div class="link-preview-title">@_preview.Title</div>
+            }
+            @if (!string.IsNullOrEmpty(_preview.Description))
+            {
+                <div class="link-preview-desc">@_preview.Description</div>
+            }
+            @if (!string.IsNullOrEmpty(_preview.Domain))
+            {
+                <div class="link-preview-domain">@_preview.Domain</div>
+            }
+        </div>
+    </a>
+}
+else if (_isLoading)
+{
+    <div class="link-preview-loading">Loading preview...</div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string Url { get; set; } = "";
+
+    private LinkPreviewResponse? _preview;
+    private bool _isLoading;
+
+    // Static cache to avoid re-fetching across renders
+    private static readonly Dictionary<string, LinkPreviewResponse?> Cache = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(Url)) return;
+
+        if (Cache.TryGetValue(Url, out var cached))
+        {
+            _preview = cached;
+            return;
+        }
+
+        _isLoading = true;
+        try
+        {
+            var encoded = Uri.EscapeDataString(Url);
+            var response = await Http.GetAsync($"/api/link-preview?url={encoded}");
+            if (response.IsSuccessStatusCode)
+            {
+                _preview = await response.Content.ReadFromJsonAsync<LinkPreviewResponse>();
+            }
+            Cache[Url] = _preview;
+        }
+        catch
+        {
+            Cache[Url] = null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private sealed record LinkPreviewResponse(string? Title, string? Description, string? ImageUrl, string? Domain);
+}

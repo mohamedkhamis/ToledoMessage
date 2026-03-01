@@ -34,15 +34,15 @@
                 requestAnimationFrame(applyTheme);
             });
             // MutationObserver: catch Blazor stripping data-theme during DOM patching
-            var _applying = false;
+            var applying = false;
             new MutationObserver(function () {
-                if (_applying) return;
+                if (applying) return;
                 var theme = getDesiredTheme();
                 var current = document.documentElement.getAttribute('data-theme');
                 if (theme && current !== theme) {
-                    _applying = true;
+                    applying = true;
                     document.documentElement.setAttribute('data-theme', theme);
-                    _applying = false;
+                    applying = false;
                 }
             }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'lang'] });
         })();
@@ -62,6 +62,7 @@
     <script src="tab-leader.js"></script>
     <script src="notifications.js"></script>
     <script src="media-helpers.js"></script>
+    <script src="voice-recorder.js"></script>
     <script src="@Assets["_framework/blazor.web.js"]"></script>
 </body>
 

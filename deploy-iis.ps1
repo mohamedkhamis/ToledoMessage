@@ -235,7 +235,8 @@ function Write-AppSettingsProduction {
     param(
         [string]$OutputPath,
         [string]$ConnStr,
-        [string]$JwtKey
+        [string]$JwtKey,
+        [int]$PortNum = 8080
     )
 
     $settingsPath = Join-Path $OutputPath "appsettings.Production.json"
@@ -245,6 +246,11 @@ function Write-AppSettingsProduction {
         }
         Jwt = @{
             SecretKey = $JwtKey
+            Issuer = "ToledoMessage"
+            Audience = "ToledoMessage"
+        }
+        Cors = @{
+            AllowedOrigins = @("http://localhost:$PortNum")
         }
         Logging = @{
             LogLevel = @{
@@ -423,7 +429,7 @@ function Invoke-Deploy {
     Write-WebConfig -OutputPath $PublishPath -Env $Environment
 
     # appsettings.Production.json
-    Write-AppSettingsProduction -OutputPath $PublishPath -ConnStr $connStr -JwtKey $JwtSecretKey
+    Write-AppSettingsProduction -OutputPath $PublishPath -ConnStr $connStr -JwtKey $JwtSecretKey -PortNum $selectedPort
 
     # App Pool
     Setup-AppPool -Name $SiteName

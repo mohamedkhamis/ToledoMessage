@@ -12,36 +12,36 @@
     <h2>Create Account</h2>
 
     <div class="card">
-        @if (!string.IsNullOrEmpty(errorMessage))
+        @if (!string.IsNullOrEmpty(_errorMessage))
         {
-            <div class="alert alert-error" role="alert">@errorMessage</div>
+            <div class="alert alert-error" role="alert">@_errorMessage</div>
         }
 
         <form @onsubmit="HandleRegister">
             <div class="form-group">
                 <label for="displayName">Display Name</label>
-                <input id="displayName" @bind="displayName" placeholder="Choose a display name"
+                <input id="displayName" @bind="_displayName" placeholder="Choose a display name"
                        autocomplete="username" required aria-required="true" />
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
                 <div class="password-wrapper">
-                    <input id="password" type="password" @bind="password" @bind:event="oninput"
+                    <input id="password" type="password" @bind="_password" @bind:event="oninput"
                            @bind:after="OnPasswordChanged"
                            placeholder="Minimum 8 characters"
                            autocomplete="new-password" required aria-required="true" />
                 </div>
                 <div class="strength-bar">
-                    <div class="strength-bar-fill @passwordStrengthClass"></div>
+                    <div class="strength-bar-fill @_passwordStrengthClass"></div>
                 </div>
-                @if (!string.IsNullOrEmpty(passwordStrengthText))
+                @if (!string.IsNullOrEmpty(_passwordStrengthText))
                 {
-                    <div class="strength-text" style="color: @passwordStrengthColor">@passwordStrengthText</div>
+                    <div class="strength-text" style="color: @_passwordStrengthColor">@_passwordStrengthText</div>
                 }
             </div>
-            <button type="submit" class="btn-primary btn-full" disabled="@isLoading"
-                    aria-busy="@isLoading">
-                @if (isLoading)
+            <button type="submit" class="btn-primary btn-full" disabled="@_isLoading"
+                    aria-busy="@_isLoading">
+                @if (_isLoading)
                 {
                     <span class="spinner spinner-sm"></span>
                     <text> Creating account...</text>
@@ -58,66 +58,66 @@
 </div>
 
 @code {
-    private string displayName = "";
-    private string password = "";
-    private string? errorMessage;
-    private bool isLoading;
-    private string passwordStrengthClass = "";
-    private string passwordStrengthText = "";
-    private string passwordStrengthColor = "";
+    private string _displayName = "";
+    private string _password = "";
+    private string? _errorMessage;
+    private bool _isLoading;
+    private string _passwordStrengthClass = "";
+    private string _passwordStrengthText = "";
+    private string _passwordStrengthColor = "";
 
     private void OnPasswordChanged()
     {
-        if (string.IsNullOrEmpty(password))
+        if (string.IsNullOrEmpty(_password))
         {
-            passwordStrengthClass = "";
-            passwordStrengthText = "";
-            passwordStrengthColor = "";
+            _passwordStrengthClass = "";
+            _passwordStrengthText = "";
+            _passwordStrengthColor = "";
             return;
         }
 
         var score = 0;
-        if (password.Length >= 8) score++;
-        if (password.Length >= 12) score++;
-        if (password.Any(char.IsUpper) && password.Any(char.IsLower)) score++;
-        if (password.Any(char.IsDigit)) score++;
-        if (password.Any(c => !char.IsLetterOrDigit(c))) score++;
+        if (_password.Length >= 8) score++;
+        if (_password.Length >= 12) score++;
+        if (_password.Any(char.IsUpper) && _password.Any(char.IsLower)) score++;
+        if (_password.Any(char.IsDigit)) score++;
+        if (_password.Any(c => !char.IsLetterOrDigit(c))) score++;
 
         if (score <= 2)
         {
-            passwordStrengthClass = "weak";
-            passwordStrengthText = "Weak";
-            passwordStrengthColor = "var(--danger)";
+            _passwordStrengthClass = "weak";
+            _passwordStrengthText = "Weak";
+            _passwordStrengthColor = "var(--danger)";
         }
         else if (score <= 3)
         {
-            passwordStrengthClass = "medium";
-            passwordStrengthText = "Fair";
-            passwordStrengthColor = "var(--warning)";
+            _passwordStrengthClass = "medium";
+            _passwordStrengthText = "Fair";
+            _passwordStrengthColor = "var(--warning)";
         }
         else
         {
-            passwordStrengthClass = "strong";
-            passwordStrengthText = "Strong";
-            passwordStrengthColor = "var(--success)";
+            _passwordStrengthClass = "strong";
+            _passwordStrengthText = "Strong";
+            _passwordStrengthColor = "var(--success)";
         }
     }
 
     private async Task HandleRegister()
     {
-        isLoading = true;
-        errorMessage = null;
+        _isLoading = true;
+        _errorMessage = null;
 
         try
         {
             // 1. Register account
-            var registerRequest = new RegisterRequest(displayName, password);
+            var registerRequest = new RegisterRequest(_displayName, _password);
             var response = await Http.PostAsJsonAsync("/api/auth/register", registerRequest);
 
             if (!response.IsSuccessStatusCode)
             {
                 var body = await response.Content.ReadAsStringAsync();
-                errorMessage = response.StatusCode == System.Net.HttpStatusCode.Conflict
+                _errorMessage = response.StatusCode == System.Net.HttpStatusCode.Conflict
                     ? "Display name already taken."
                     : $"Registration failed: {body}";
                 return;
@@ -135,7 +135,7 @@
 
             if (!deviceResponse.IsSuccessStatusCode)
             {
-                errorMessage = "Device registration failed.";
+                _errorMessage = "Device registration failed.";
                 return;
             }
 
@@ -154,11 +154,11 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error: {ex.Message}";
+            _errorMessage = $"Error: {ex.Message}";
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
         }
     }
 

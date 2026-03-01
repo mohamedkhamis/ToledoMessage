@@ -12,4 +12,5 @@ public sealed record MessageEnvelope(
     long SequenceNumber,
     DateTimeOffset ServerTimestamp,
     string? FileName = null,
-    string? MimeType = null);
+    string? MimeType = null,
+    decimal? ReplyToMessageId = null);

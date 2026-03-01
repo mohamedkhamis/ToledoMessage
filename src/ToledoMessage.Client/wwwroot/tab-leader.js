@@ -6,9 +6,9 @@ window.toledoTabLeader = (function () {
     let leaderTabId = null;
     let isLeader = false;
 
-    const CHANNEL_NAME = 'toledo-tab-leader';
-    const HEARTBEAT_MS = 3000;
-    const LEADER_TIMEOUT_MS = 6000;
+    const channelName = 'toledo-tab-leader';
+    const heartbeatMs = 3000;
+    const leaderTimeoutMs = 6000;
     let lastLeaderHeartbeat = 0;
 
     function initialize(id, ref) {
@@ -21,7 +21,7 @@ window.toledoTabLeader = (function () {
             return;
         }
 
-        channel = new BroadcastChannel(CHANNEL_NAME);
+        channel = new BroadcastChannel(channelName);
         channel.onmessage = handleMessage;
 
         // Announce presence and request leader status
@@ -38,11 +38,11 @@ window.toledoTabLeader = (function () {
         heartbeatInterval = setInterval(function () {
             if (isLeader) {
                 channel.postMessage({ type: 'heartbeat', tabId: tabId });
-            } else if (Date.now() - lastLeaderHeartbeat > LEADER_TIMEOUT_MS) {
+            } else if (Date.now() - lastLeaderHeartbeat > leaderTimeoutMs) {
                 // Leader seems dead, start election
                 becomeLeader();
             }
-        }, HEARTBEAT_MS);
+        }, heartbeatMs);
 
         // When this tab closes, notify others
         window.addEventListener('beforeunload', function () {

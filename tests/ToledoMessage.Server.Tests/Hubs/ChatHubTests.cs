@@ -155,7 +155,8 @@ public class ChatHubTests
         var db = TestDbContextFactory.Create();
         var hubContext = new StubHubContext();
         var relayService = new MessageRelayService(db, hubContext);
-        var hub = new ChatHub(relayService, db);
+        var presence = new PresenceService();
+        var hub = new ChatHub(relayService, db, presence);
 
         var groups = new StubGroupManager();
         var clients = new StubHubCallerClients();
@@ -291,7 +292,7 @@ public class ChatHubTests
             Ciphertext = [1, 2], SequenceNumber = 1, ServerTimestamp = DateTimeOffset.UtcNow,
             IsDelivered = false
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.CancellationToken);
 
         await hub.AcknowledgeDelivery(500m);
 
@@ -443,4 +444,6 @@ public class ChatHubTests
         // Should not throw
         await hub.OnDisconnectedAsync(null);
     }
+
+    public TestContext TestContext { get; set; }
 }

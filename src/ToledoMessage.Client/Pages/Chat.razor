@@ -9,7 +9,7 @@
 @inject SignalRService SignalR
 @inject LocalStorageService Storage
 @inject PreKeyReplenishmentService PreKeyReplenishment
-@inject IJSRuntime JS
+@inject IJSRuntime Js
 @inject MessageStoreService MessageStore
 @implements IAsyncDisposable
 
@@ -27,6 +27,14 @@
             @if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
             {
                 <span class="chat-header-subtitle">@participants.Count members</span>
+            }
+            else if (peerIsOnline)
+            {
+                <span class="chat-header-subtitle presence-online">online</span>
+            }
+            else if (peerLastSeen.HasValue)
+            {
+                <span class="chat-header-subtitle presence-text">last seen @peerLastSeen.Value.ToLocalTime().ToString("MMM d, HH:mm")</span>
             }
         </div>
         @if (!string.IsNullOrEmpty(typingIndicator))
@@ -119,14 +127,49 @@
                                MediaDataUrl="@msg.MediaDataUrl"
                                FileName="@msg.FileName"
                                IsFirstInGroup="isFirstInGroup"
-                               IsLastInGroup="isLastInGroup" />
+                               IsLastInGroup="isLastInGroup"
+                               OnImageClick="HandleImageClick"
+                               OnReply="() => SetReplyTo(msg)"
+                               OnContextMenu="(pos) => ShowContextMenu(pos.X, pos.Y, msg)"
+                               ReplyToMessageId="msg.ReplyToMessageId"
+                               ReplyToSenderName="@msg.ReplyToSenderName"
+                               ReplyToText="@msg.ReplyToText"
+                               OnReplyQuoteClick="ScrollToMessage"
+                               ReactionBadges="GetReactionBadges(msg.MessageId)"
+                               OnReactionToggle="(emoji) => ToggleReaction(msg.MessageId, emoji)" />
             }
         }
     </div>
 
     <ScrollToBottom Visible="showScrollButton" OnClick="ScrollToBottom" />
-    <MessageInput OnSend="HandleSend" OnTyping="HandleTyping" />
+    <MessageInput OnSend="HandleSend" OnTyping="HandleTyping"
+                  ReplyContext="@replyContext" OnCancelReply="CancelReply" />
 </div>
+
+<ImageLightbox IsVisible="lightboxVisible"
+               ImageUrls="lightboxImageUrls"
+               CurrentIndex="lightboxIndex"
+               OnClose="CloseLightbox"
+               OnIndexChanged="SetLightboxIndex" />
+
+@if (showContextMenu && contextMenuMessage is not null)
+{
+    <div class="context-menu-backdrop" @onclick="CloseContextMenu"></div>
+    <div class="context-menu" style="left: @(contextMenuX)px; top: @(contextMenuY)px;">
+        <button class="context-menu-item" @onclick="CopyMessageText">
+            <span class="context-menu-icon">&#128203;</span> Copy
+        </button>
+        <button class="context-menu-item" @onclick="ReplyFromContextMenu">
+            <span class="context-menu-icon">&#8617;</span> Reply
+        </button>
+        @if (contextMenuMessage.IsMine)
+        {
+            <button class="context-menu-item danger" @onclick="DeleteMessage">
+                <span class="context-menu-icon">&#128465;</span> Delete
+            </button>
+        }
+    </div>
+}
 
 @code {
     [Parameter]
@@ -146,6 +189,20 @@
     private bool showParticipants;
     private bool showScrollButton;
     private decimal? firstUnreadMessageId;
+    private bool lightboxVisible;
+    private List<string> lightboxImageUrls = [];
+    private int lightboxIndex;
+    private ChatMessage? replyingTo;
+
+    // Context menu state
+    private bool showContextMenu;
+    private double contextMenuX;
+    private double contextMenuY;
+    private ChatMessage? contextMenuMessage;
+
+    // Presence state
+    private bool peerIsOnline;
+    private DateTimeOffset? peerLastSeen;
 
     protected override async Task OnInitializedAsync()
     {
@@ -196,6 +253,10 @@
             SignalR.OnTypingIndicator += HandleTypingIndicator;
             SignalR.OnParticipantAdded += HandleParticipantAdded;
             SignalR.OnParticipantRemoved += HandleParticipantRemoved;
+            SignalR.OnUserOnline += HandleUserOnline;
+            SignalR.OnUserOffline += HandleUserOffline;
+            SignalR.OnReactionAdded += HandleReactionAdded;
+            SignalR.OnReactionRemoved += HandleReactionRemoved;
         }
         catch (Exception ex)
         {
@@ -257,7 +318,10 @@
                     MediaDataUrl = stored.MediaDataBase64 is not null
                         ? await CreateMediaBlobUrlFromBase64(stored.MediaDataBase64, stored.FileName)
                         : null,
-                    Status = (ToledoMessage.Shared.Enums.DeliveryStatus)stored.Status
+                    Status = (ToledoMessage.Shared.Enums.DeliveryStatus)stored.Status,
+                    ReplyToMessageId = decimal.TryParse(stored.ReplyToMessageId, out var rid) ? rid : null,
+                    ReplyToText = stored.ReplyToText,
+                    ReplyToSenderName = stored.ReplyToSenderName
                 });
             }
         }
@@ -380,7 +444,10 @@
                 IsMine = chatMsg.IsMine,
                 ContentType = (int)chatMsg.ContentType,
                 FileName = chatMsg.FileName,
-                Status = (int)chatMsg.Status
+                Status = (int)chatMsg.Status,
+                ReplyToMessageId = chatMsg.ReplyToMessageId?.ToString(),
+                ReplyToText = chatMsg.ReplyToText,
+                ReplyToSenderName = chatMsg.ReplyToSenderName
             });
         }
         catch
@@ -518,6 +585,65 @@
         });
     }
 
+    private async void HandleUserOnline(decimal userId)
+    {
+        var peer = participants.FirstOrDefault(p => p.UserId != localUserId);
+        if (peer is not null && peer.UserId == userId)
+        {
+            await InvokeAsync(() =>
+            {
+                peerIsOnline = true;
+                StateHasChanged();
+            });
+        }
+    }
+
+    private async void HandleUserOffline(decimal userId, DateTimeOffset lastSeen)
+    {
+        var peer = participants.FirstOrDefault(p => p.UserId != localUserId);
+        if (peer is not null && peer.UserId == userId)
+        {
+            await InvokeAsync(() =>
+            {
+                peerIsOnline = false;
+                peerLastSeen = lastSeen;
+                StateHasChanged();
+            });
+        }
+    }
+
+    private async void HandleReactionAdded(decimal messageId, decimal userId, string displayName, string emoji)
+    {
+        await InvokeAsync(() =>
+        {
+            if (!messageReactions.TryGetValue(messageId, out var reactions))
+            {
+                reactions = [];
+                messageReactions[messageId] = reactions;
+            }
+
+            if (!reactions.Any(r => r.UserId == userId && r.Emoji == emoji))
+            {
+                reactions.Add((userId, emoji, displayName));
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    private async void HandleReactionRemoved(decimal messageId, decimal userId, string emoji)
+    {
+        await InvokeAsync(() =>
+        {
+            if (messageReactions.TryGetValue(messageId, out var reactions))
+            {
+                reactions.RemoveAll(r => r.UserId == userId && r.Emoji == emoji);
+            }
+
+            StateHasChanged();
+        });
+    }
+
     private async Task HandleSend(MessageInput.ChatInputMessage input)
     {
         var hasMedia = input.HasMedia;
@@ -530,8 +656,12 @@
             ContentType = input.ContentType,
             FileName = input.FileName,
             MediaDataUrl = hasMedia ? await CreateMediaBlobUrl(input.MimeType!, input.MediaBytes!) : null,
-            Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sending
+            Status = ToledoMessage.Shared.Enums.DeliveryStatus.Sending,
+            ReplyToMessageId = replyingTo?.MessageId,
+            ReplyToSenderName = replyingTo is not null ? (replyingTo.IsMine ? "You" : GetSenderDisplayName(replyingTo)) : null,
+            ReplyToText = replyingTo is not null ? (replyingTo.ContentType != ContentType.Text ? $"[{replyingTo.ContentType}]" : (replyingTo.Text.Length > 80 ? replyingTo.Text[..80] + "..." : replyingTo.Text)) : null
         };
+        CancelReply();
         messages.Add(tempMessage);
         StateHasChanged();
 
@@ -546,7 +676,7 @@
             }
             else
             {
-                await SendTextToRecipients(input.Text, tempMessage);
+                await SendTextToRecipients(input.Text, tempMessage, input.ReplyToMessageId);
             }
 
             // Persist sent message to IndexedDB
@@ -560,7 +690,7 @@
         StateHasChanged();
     }
 
-    private async Task SendTextToRecipients(string text, ChatMessage tempMessage)
+    private async Task SendTextToRecipients(string text, ChatMessage tempMessage, decimal? replyToMessageId = null)
     {
         if (conversationDetail is not null && conversationDetail.Type == ConversationType.Group)
         {
@@ -599,7 +729,8 @@
                     deviceId,
                     ciphertextBase64,
                     messageType,
-                    ContentType.Text);
+                    ContentType.Text,
+                    ReplyToMessageId: replyToMessageId);
 
                 lastResult = await SignalR.SendMessageAsync(request);
             }
@@ -656,7 +787,8 @@
                     messageType,
                     input.ContentType,
                     input.FileName,
-                    input.MimeType);
+                    input.MimeType,
+                    input.ReplyToMessageId);
 
                 lastResult = await SignalR.SendMessageAsync(request);
             }
@@ -690,6 +822,24 @@
 
     private async Task<ChatMessage> DecryptEnvelopeToChatMessage(MessageEnvelope envelope, bool isMine)
     {
+        // Resolve reply info from local messages
+        string? replyToText = null;
+        string? replyToSenderName = null;
+        if (envelope.ReplyToMessageId.HasValue)
+        {
+            var replyMsg = messages.FirstOrDefault(m => m.MessageId == envelope.ReplyToMessageId.Value);
+            if (replyMsg is not null)
+            {
+                replyToSenderName = replyMsg.IsMine ? "You" : GetSenderDisplayName(replyMsg);
+                replyToText = replyMsg.ContentType != ContentType.Text ? $"[{replyMsg.ContentType}]" : (replyMsg.Text.Length > 80 ? replyMsg.Text[..80] + "..." : replyMsg.Text);
+            }
+            else
+            {
+                replyToSenderName = "...";
+                replyToText = "...";
+            }
+        }
+
         if (envelope.ContentType is ContentType.Image or ContentType.Audio or ContentType.Video or ContentType.File)
         {
             var bytes = await Crypto.DecryptToBytesAsync(
@@ -705,7 +855,10 @@
                 ContentType = envelope.ContentType,
                 FileName = envelope.FileName,
                 MediaDataUrl = blobUrl,
-                Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered
+                Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered,
+                ReplyToMessageId = envelope.ReplyToMessageId,
+                ReplyToText = replyToText,
+                ReplyToSenderName = replyToSenderName
             };
         }
         else
@@ -719,7 +872,10 @@
                 Timestamp = envelope.ServerTimestamp,
                 IsMine = isMine,
                 ContentType = ContentType.Text,
-                Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered
+                Status = ToledoMessage.Shared.Enums.DeliveryStatus.Delivered,
+                ReplyToMessageId = envelope.ReplyToMessageId,
+                ReplyToText = replyToText,
+                ReplyToSenderName = replyToSenderName
             };
         }
     }
@@ -736,29 +892,29 @@
         };
     }
 
-    private readonly List<string> _blobUrls = [];
+    private readonly List<string> blobUrls = [];
 
     private async Task<string> CreateMediaBlobUrl(string mimeType, byte[] data)
     {
-        var url = await JS.InvokeAsync<string>("mediaHelpers.createObjectUrl", data, mimeType);
-        _blobUrls.Add(url);
+        var url = await Js.InvokeAsync<string>("mediaHelpers.createObjectUrl", data, mimeType);
+        blobUrls.Add(url);
         return url;
     }
 
     private async Task RevokeBlobUrls()
     {
-        foreach (var url in _blobUrls)
+        foreach (var url in blobUrls)
         {
-            try { await JS.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", url); } catch { }
+            try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", url); } catch { }
         }
-        _blobUrls.Clear();
+        blobUrls.Clear();
     }
 
     private async Task ScrollToBottom()
     {
         try
         {
-            await JS.InvokeVoidAsync("eval",
+            await Js.InvokeVoidAsync("eval",
                 "document.querySelector('.chat-messages')?.scrollTo({top: document.querySelector('.chat-messages').scrollHeight, behavior: 'smooth'})");
             showScrollButton = false;
         }
@@ -821,6 +977,142 @@
         throw new InvalidOperationException("JWT token does not contain a user ID claim.");
     }
 
+    private MessageInput.ReplyContextModel? replyContext;
+
+    // Reaction state: messageId -> list of (userId, emoji)
+    private readonly Dictionary<decimal, List<(decimal UserId, string Emoji, string DisplayName)>> messageReactions = [];
+
+    private void SetReplyTo(ChatMessage msg)
+    {
+        replyingTo = msg;
+        replyContext = new MessageInput.ReplyContextModel
+        {
+            MessageId = msg.MessageId,
+            SenderName = msg.IsMine ? "You" : GetSenderDisplayName(msg),
+            Text = msg.ContentType != ContentType.Text ? $"[{msg.ContentType}]" : (msg.Text.Length > 80 ? msg.Text[..80] + "..." : msg.Text)
+        };
+        showContextMenu = false;
+    }
+
+    private void CancelReply()
+    {
+        replyingTo = null;
+        replyContext = null;
+    }
+
+    private static string GetSenderDisplayName(ChatMessage msg)
+    {
+        return msg.ReplyToSenderName ?? "User";
+    }
+
+    private void ShowContextMenu(double x, double y, ChatMessage msg)
+    {
+        contextMenuX = x;
+        contextMenuY = y;
+        contextMenuMessage = msg;
+        showContextMenu = true;
+    }
+
+    private void CloseContextMenu()
+    {
+        showContextMenu = false;
+        contextMenuMessage = null;
+    }
+
+    private async Task CopyMessageText()
+    {
+        if (contextMenuMessage is not null)
+        {
+            try { await Js.InvokeAsync<bool>("mediaHelpers.copyToClipboard", contextMenuMessage.Text); } catch { }
+        }
+        CloseContextMenu();
+    }
+
+    private void ReplyFromContextMenu()
+    {
+        if (contextMenuMessage is not null)
+            SetReplyTo(contextMenuMessage);
+        CloseContextMenu();
+    }
+
+    private async Task DeleteMessage()
+    {
+        if (contextMenuMessage is not null && contextMenuMessage.IsMine)
+        {
+            messages.Remove(contextMenuMessage);
+            try { await MessageStore.UpdateMessageStatusAsync(contextMenuMessage.MessageId.ToString(), -1); } catch { }
+        }
+        CloseContextMenu();
+    }
+
+    private async Task ScrollToMessage(decimal messageId)
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("eval",
+                $"document.querySelector('[data-msg-id=\"{messageId}\"]')?.scrollIntoView({{behavior:'smooth',block:'center'}})");
+        }
+        catch { }
+    }
+
+    private List<MessageBubble.ReactionBadgeModel> GetReactionBadges(decimal messageId)
+    {
+        if (!messageReactions.TryGetValue(messageId, out var reactions) || reactions.Count == 0)
+            return [];
+
+        return reactions
+            .GroupBy(r => r.Emoji)
+            .Select(g => new MessageBubble.ReactionBadgeModel
+            {
+                Emoji = g.Key,
+                Count = g.Count(),
+                IncludesMine = g.Any(r => r.UserId == localUserId)
+            })
+            .ToList();
+    }
+
+    private async Task ToggleReaction(decimal messageId, string emoji)
+    {
+        try
+        {
+            if (SignalR.IsConnected)
+            {
+                // Check if we already reacted with this emoji
+                if (messageReactions.TryGetValue(messageId, out var reactions) &&
+                    reactions.Any(r => r.UserId == localUserId && r.Emoji == emoji))
+                {
+                    await SignalR.RemoveReactionAsync(messageId, emoji);
+                }
+                else
+                {
+                    await SignalR.AddReactionAsync(messageId, emoji);
+                }
+            }
+        }
+        catch { }
+    }
+
+    private void HandleImageClick(string imageUrl)
+    {
+        lightboxImageUrls = messages
+            .Where(m => m.ContentType == ContentType.Image && !string.IsNullOrEmpty(m.MediaDataUrl))
+            .Select(m => m.MediaDataUrl!)
+            .ToList();
+        lightboxIndex = lightboxImageUrls.IndexOf(imageUrl);
+        if (lightboxIndex < 0) lightboxIndex = 0;
+        lightboxVisible = true;
+    }
+
+    private void CloseLightbox()
+    {
+        lightboxVisible = false;
+    }
+
+    private void SetLightboxIndex(int index)
+    {
+        lightboxIndex = index;
+    }
+
     public async ValueTask DisposeAsync()
     {
         // Unsubscribe from events
@@ -830,6 +1122,10 @@
         SignalR.OnTypingIndicator -= HandleTypingIndicator;
         SignalR.OnParticipantAdded -= HandleParticipantAdded;
         SignalR.OnParticipantRemoved -= HandleParticipantRemoved;
+        SignalR.OnUserOnline -= HandleUserOnline;
+        SignalR.OnUserOffline -= HandleUserOffline;
+        SignalR.OnReactionAdded -= HandleReactionAdded;
+        SignalR.OnReactionRemoved -= HandleReactionRemoved;
 
         typingTimer?.Stop();
         typingTimer?.Dispose();
@@ -853,5 +1149,8 @@
         public ContentType ContentType { get; set; } = ContentType.Text;
         public string? MediaDataUrl { get; set; }
         public string? FileName { get; set; }
+        public decimal? ReplyToMessageId { get; set; }
+        public string? ReplyToText { get; set; }
+        public string? ReplyToSenderName { get; set; }
     }
 }

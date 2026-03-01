@@ -6,7 +6,7 @@
 @inject NavigationManager Navigation
 @inject LocalStorageService Storage
 @inject KeyGenerationService KeyGenService
-@inject Microsoft.JSInterop.IJSRuntime JS
+@inject Microsoft.JSInterop.IJSRuntime Js
 @inject ThemeService Theme
 @inject PreferencesService Preferences
 
@@ -14,30 +14,30 @@
     <h2>Sign In</h2>
 
     <div class="card">
-        @if (!string.IsNullOrEmpty(errorMessage))
+        @if (!string.IsNullOrEmpty(_errorMessage))
         {
-            <div class="alert alert-error" role="alert">@errorMessage</div>
+            <div class="alert alert-error" role="alert">@_errorMessage</div>
         }
 
-        @if (!string.IsNullOrEmpty(statusMessage))
+        @if (!string.IsNullOrEmpty(_statusMessage))
         {
-            <div class="alert alert-info" role="status">@statusMessage</div>
+            <div class="alert alert-info" role="status">@_statusMessage</div>
         }
 
         <form @onsubmit="HandleLogin">
             <div class="form-group">
                 <label for="displayName">Display Name</label>
-                <input id="displayName" @bind="displayName" placeholder="Enter your display name"
+                <input id="displayName" @bind="_displayName" placeholder="Enter your display name"
                        autocomplete="username" required aria-required="true" />
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
-                <input id="password" type="password" @bind="password" placeholder="Enter your password"
+                <input id="password" type="password" @bind="_password" placeholder="Enter your password"
                        autocomplete="current-password" required aria-required="true" />
             </div>
-            <button type="submit" class="btn-primary btn-full" disabled="@isLoading"
-                    aria-busy="@isLoading">
-                @if (isLoading)
+            <button type="submit" class="btn-primary btn-full" disabled="@_isLoading"
+                    aria-busy="@_isLoading">
+                @if (_isLoading)
                 {
                     <span class="spinner spinner-sm"></span>
                     <text> Signing in...</text>
@@ -54,11 +54,11 @@
 </div>
 
 @code {
-    private string displayName = "";
-    private string password = "";
-    private string? errorMessage;
-    private string? statusMessage;
-    private bool isLoading;
+    private string _displayName = "";
+    private string _password = "";
+    private string? _errorMessage;
+    private string? _statusMessage;
+    private bool _isLoading;
 
     protected override async Task OnInitializedAsync()
     {
@@ -66,26 +66,26 @@
         if (uri.Query.Contains("logout", StringComparison.OrdinalIgnoreCase))
         {
             // Clear auth and crypto data but preserve UI preferences (theme, fontSize)
-            await JS.InvokeVoidAsync("toledoStorage.clearAuthData");
+            await Js.InvokeVoidAsync("toledoStorage.clearAuthData");
             Http.DefaultRequestHeaders.Authorization = null;
         }
     }
 
     private async Task HandleLogin()
     {
-        isLoading = true;
-        errorMessage = null;
-        statusMessage = null;
+        _isLoading = true;
+        _errorMessage = null;
+        _statusMessage = null;
 
         try
         {
             // 1. Authenticate
-            var request = new LoginRequest(displayName, password);
+            var request = new LoginRequest(_displayName, _password);
             var response = await Http.PostAsJsonAsync("/api/auth/login", request);
 
             if (!response.IsSuccessStatusCode)
             {
-                errorMessage = "Invalid credentials.";
+                _errorMessage = "Invalid credentials.";
                 return;
             }
 
@@ -118,7 +118,7 @@
             }
 
             // 5. New device: generate crypto keys and register
-            statusMessage = "Generating encryption keys...";
+            _statusMessage = "Generating encryption keys...";
             StateHasChanged();
 
             var deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
@@ -126,7 +126,7 @@
 
             if (!deviceResponse.IsSuccessStatusCode)
             {
-                errorMessage = "Device registration failed.";
+                _errorMessage = "Device registration failed.";
                 return;
             }
 
@@ -141,11 +141,11 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error: {ex.Message}";
+            _errorMessage = $"Error: {ex.Message}";
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
         }
     }
 

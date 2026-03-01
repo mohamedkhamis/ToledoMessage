@@ -1,0 +1,93 @@
+@inject IJSRuntime Js
+@implements IAsyncDisposable
+
+<div class="voice-recorder-bar">
+    <button class="voice-cancel-btn" @onclick="Cancel" title="Cancel">&#128465;</button>
+    <div class="recording-indicator"></div>
+    <span class="recording-timer">@FormatDuration(_elapsedSeconds)</span>
+    <button class="voice-send-btn" @onclick="Send" title="Send voice message">&#10148;</button>
+</div>
+
+@code {
+    private int _elapsedSeconds;
+    private System.Timers.Timer? _timer;
+    private DotNetObjectReference<VoiceRecorder>? _objRef;
+
+    [Parameter]
+    public EventCallback<byte[]> OnRecorded { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelled { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _objRef = DotNetObjectReference.Create(this);
+        _elapsedSeconds = 0;
+
+        _timer = new System.Timers.Timer(1000);
+        _timer.Elapsed += (_, _) =>
+        {
+            _elapsedSeconds++;
+            InvokeAsync(StateHasChanged);
+        };
+
+        try
+        {
+            await Js.InvokeVoidAsync("voiceRecorder.start", _objRef);
+            _timer.Start();
+        }
+        catch
+        {
+            await OnCancelled.InvokeAsync();
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnRecordingComplete(byte[] audioData)
+    {
+        _timer?.Stop();
+        await OnRecorded.InvokeAsync(audioData);
+    }
+
+    private async Task Send()
+    {
+        _timer?.Stop();
+        try { await Js.InvokeVoidAsync("voiceRecorder.stop"); }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private async Task Cancel()
+    {
+        _timer?.Stop();
+        try { await Js.InvokeVoidAsync("voiceRecorder.cancel"); }
+        catch
+        {
+            // ignored
+        }
+
+        await OnCancelled.InvokeAsync();
+    }
+
+    private static string FormatDuration(int totalSeconds)
+    {
+        var m = totalSeconds / 60;
+        var s = totalSeconds % 60;
+        return $"{m}:{s:D2}";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _timer?.Stop();
+        _timer?.Dispose();
+        try { await Js.InvokeVoidAsync("voiceRecorder.cancel"); }
+        catch
+        {
+            // ignored
+        }
+
+        _objRef?.Dispose();
+    }
+}

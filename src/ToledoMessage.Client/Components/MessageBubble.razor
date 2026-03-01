@@ -1,10 +1,18 @@
 @using ToledoMessage.Shared.Enums
 
-<div class="message-row @(IsMine ? "mine" : "") @GroupingClass @(IsMine ? "msg-slide-in-right" : "msg-slide-in-left")">
+<div class="message-row @(IsMine ? "mine" : "") @GroupingClass @(IsMine ? "msg-slide-in-right" : "msg-slide-in-left")"
+     @oncontextmenu="HandleContextMenu" @oncontextmenu:preventDefault="true">
     <div class="message-bubble @(IsMine ? "mine" : "theirs")">
+        @if (!string.IsNullOrEmpty(ReplyToSenderName))
+        {
+            <div class="reply-quote-block" @onclick="() => OnReplyQuoteClick.InvokeAsync(ReplyToMessageId ?? 0)">
+                <div class="reply-sender-name">@ReplyToSenderName</div>
+                <div class="reply-quote-text">@(ReplyToText ?? "")</div>
+            </div>
+        }
         @if (ContentType == ContentType.Image && !string.IsNullOrEmpty(MediaDataUrl))
         {
-            <div class="message-media">
+            <div class="message-media message-image-clickable" @onclick="() => OnImageClick.InvokeAsync(MediaDataUrl)">
                 <img src="@MediaDataUrl" alt="@(FileName ?? "Image")" class="message-image" />
             </div>
         }
@@ -41,6 +49,24 @@
         @if (!string.IsNullOrEmpty(Text))
         {
             <div class="message-text">@Text</div>
+            var firstUrl = ExtractFirstUrl(Text);
+            if (firstUrl is not null)
+            {
+                <LinkPreview Url="@firstUrl" />
+            }
+        }
+        @if (ReactionBadges.Count > 0)
+        {
+            <div class="reaction-badges">
+                @foreach (var badge in ReactionBadges)
+                {
+                    <button class="reaction-badge @(badge.IncludesMine ? "mine" : "")"
+                            @onclick="() => OnReactionToggle.InvokeAsync(badge.Emoji)">
+                        <span class="reaction-badge-emoji">@badge.Emoji</span>
+                        <span class="reaction-badge-count">@badge.Count</span>
+                    </button>
+                }
+            </div>
         }
         @if (IsLastInGroup)
         {
@@ -52,6 +78,9 @@
                 }
             </div>
         }
+    </div>
+    <div class="message-actions">
+        <button class="msg-action-btn" @onclick="() => OnReply.InvokeAsync()" title="Reply">&#8617;</button>
     </div>
 </div>
 
@@ -83,6 +112,38 @@
     [Parameter]
     public bool IsLastInGroup { get; set; } = true;
 
+    [Parameter]
+    public EventCallback<string> OnImageClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnReply { get; set; }
+
+    [Parameter]
+    public EventCallback<(double X, double Y)> OnContextMenu { get; set; }
+
+    [Parameter]
+    public decimal? ReplyToMessageId { get; set; }
+
+    [Parameter]
+    public string? ReplyToSenderName { get; set; }
+
+    [Parameter]
+    public string? ReplyToText { get; set; }
+
+    [Parameter]
+    public EventCallback<decimal> OnReplyQuoteClick { get; set; }
+
+    [Parameter]
+    public List<ReactionBadgeModel> ReactionBadges { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<string> OnReactionToggle { get; set; }
+
+    private async Task HandleContextMenu(MouseEventArgs e)
+    {
+        await OnContextMenu.InvokeAsync((e.ClientX, e.ClientY));
+    }
+
     private string GroupingClass
     {
         get
@@ -92,5 +153,18 @@
             if (IsLastInGroup) return "group-last";
             return "group-middle";
         }
+    }
+
+    private static string? ExtractFirstUrl(string text)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(text, @"https?://[^\s<>""]+");
+        return match.Success ? match.Value : null;
+    }
+
+    public sealed class ReactionBadgeModel
+    {
+        public string Emoji { get; set; } = "";
+        public int Count { get; set; }
+        public bool IncludesMine { get; set; }
     }
 }

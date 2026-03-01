@@ -22,7 +22,7 @@ public sealed class MessageStoreService(IJSRuntime js)
     public async Task<List<StoredMessage>> GetMessagesAsync(string conversationId, int limit = 200)
     {
         return await js.InvokeAsync<List<StoredMessage>>(
-            "toledoMessageStore.getMessages", conversationId, limit, null) ?? [];
+            "toledoMessageStore.getMessages", conversationId, limit, null);
     }
 
     public async Task UpdateMessageStatusAsync(string messageId, int status)
@@ -30,6 +30,7 @@ public sealed class MessageStoreService(IJSRuntime js)
         await js.InvokeVoidAsync("toledoMessageStore.updateMessageStatus", messageId, status);
     }
 
+    // ReSharper disable  UnusedMember.Global
     public async Task DeleteConversationMessagesAsync(string conversationId)
     {
         await js.InvokeVoidAsync("toledoMessageStore.deleteConversationMessages", conversationId);
@@ -63,4 +64,7 @@ public sealed class StoredMessage
     public string? MediaDataBase64 { get; set; }
     public int Status { get; set; }
     public string? SenderDisplayName { get; set; }
+    public string? ReplyToMessageId { get; set; }
+    public string? ReplyToText { get; set; }
+    public string? ReplyToSenderName { get; set; }
 }

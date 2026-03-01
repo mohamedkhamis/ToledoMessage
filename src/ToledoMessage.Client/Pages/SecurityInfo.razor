@@ -3,7 +3,7 @@
 @layout ChatLayout
 @inject FingerprintService Fingerprint
 @inject NavigationManager Navigation
-@inject IJSRuntime JS
+@inject IJSRuntime Js
 
 <div class="panel-content-scroll">
 <div class="security-page fade-in">
@@ -12,11 +12,11 @@
         <h3>Security Verification</h3>
     </div>
 
-    @if (!string.IsNullOrEmpty(errorMessage))
+    @if (!string.IsNullOrEmpty(_errorMessage))
     {
-        <div class="alert alert-error" role="alert">@errorMessage</div>
+        <div class="alert alert-error" role="alert">@_errorMessage</div>
     }
-    else if (isLoading)
+    else if (_isLoading)
     {
         <p class="centered-text"><span class="spinner"></span> Computing safety number...</p>
     }
@@ -25,16 +25,16 @@
         <div class="safety-number-card">
             <p class="safety-number-label">Safety Number</p>
             <div class="safety-number-value">
-                @safetyNumber
+                @_safetyNumber
             </div>
-            <button class="btn-copy @(copied ? "copied" : "")" @onclick="CopySafetyNumber"
+            <button class="btn-copy @(_copied ? "copied" : "")" @onclick="CopySafetyNumber"
                     aria-label="Copy safety number">
-                @(copied ? "Copied!" : "Copy")
+                @(_copied ? "Copied!" : "Copy")
             </button>
         </div>
 
         <div class="verify-actions">
-            @if (isVerified)
+            @if (_isVerified)
             {
                 <div class="verification-badge verified">
                     <span>Verified</span>
@@ -49,7 +49,7 @@
         </div>
 
         <div class="verify-actions">
-            @if (isVerified)
+            @if (_isVerified)
             {
                 <button class="btn-unverify" @onclick="HandleMarkUnverified">
                     Mark as Unverified
@@ -85,30 +85,30 @@
     [SupplyParameterFromQuery]
     public decimal? ConversationId { get; set; }
 
-    private string? safetyNumber;
-    private bool isVerified;
-    private bool isLoading = true;
-    private string? errorMessage;
-    private bool copied;
+    private string? _safetyNumber;
+    private bool _isVerified;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private bool _copied;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            safetyNumber = await Fingerprint.ComputeSafetyNumberAsync(DeviceId);
+            _safetyNumber = await Fingerprint.ComputeSafetyNumberAsync(DeviceId);
 
             if (ConversationId.HasValue)
             {
-                isVerified = await Fingerprint.IsVerifiedAsync(ConversationId.Value);
+                _isVerified = await Fingerprint.IsVerifiedAsync(ConversationId.Value);
             }
         }
         catch (Exception ex)
         {
-            errorMessage = ex.Message;
+            _errorMessage = ex.Message;
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
         }
     }
 
@@ -117,7 +117,7 @@
         if (ConversationId.HasValue)
         {
             await Fingerprint.MarkVerifiedAsync(ConversationId.Value);
-            isVerified = true;
+            _isVerified = true;
         }
     }
 
@@ -126,19 +126,19 @@
         if (ConversationId.HasValue)
         {
             await Fingerprint.MarkUnverifiedAsync(ConversationId.Value);
-            isVerified = false;
+            _isVerified = false;
         }
     }
 
     private async Task CopySafetyNumber()
     {
-        if (!string.IsNullOrEmpty(safetyNumber))
+        if (!string.IsNullOrEmpty(_safetyNumber))
         {
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", safetyNumber);
-            copied = true;
+            await Js.InvokeVoidAsync("navigator.clipboard.writeText", _safetyNumber);
+            _copied = true;
             StateHasChanged();
             await Task.Delay(2000);
-            copied = false;
+            _copied = false;
         }
     }
 

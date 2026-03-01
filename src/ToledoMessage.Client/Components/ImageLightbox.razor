@@ -1,0 +1,92 @@
+@inject IJSRuntime Js
+
+@if (IsVisible)
+{
+    <div class="lightbox-overlay" @onclick="HandleBackdropClick">
+        <button class="lightbox-close" @onclick="Close" aria-label="Close">&times;</button>
+
+        @if (ImageUrls.Count > 1)
+        {
+            <div class="lightbox-counter">@(CurrentIndex + 1) / @ImageUrls.Count</div>
+        }
+
+        @if (ImageUrls.Count > 1 && CurrentIndex > 0)
+        {
+            <button class="lightbox-nav lightbox-nav-left" @onclick="Previous" @onclick:stopPropagation="true" aria-label="Previous image">
+                &#8249;
+            </button>
+        }
+
+        <div class="lightbox-image-wrapper" @onclick:stopPropagation="true" @ref="_imageWrapper">
+            <img src="@ImageUrls[CurrentIndex]"
+                 class="lightbox-image"
+                 alt="Full size preview"
+                 @onclick:stopPropagation="true"
+                 draggable="false" />
+        </div>
+
+        @if (ImageUrls.Count > 1 && CurrentIndex < ImageUrls.Count - 1)
+        {
+            <button class="lightbox-nav lightbox-nav-right" @onclick="Next" @onclick:stopPropagation="true" aria-label="Next image">
+                &#8250;
+            </button>
+        }
+    </div>
+}
+
+@code {
+    private ElementReference _imageWrapper;
+
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public List<string> ImageUrls { get; set; } = [];
+
+    [Parameter]
+    public int CurrentIndex { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnIndexChanged { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsVisible)
+        {
+            // ReSharper disable  EmptyGeneralCatchClause
+            try { await Js.InvokeVoidAsync("mediaHelpers.initLightboxZoom", _imageWrapper); } catch { }
+        }
+    }
+
+    private async Task Close()
+    {
+        try { await Js.InvokeVoidAsync("mediaHelpers.destroyLightboxZoom"); } catch { }
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await Close();
+    }
+
+    private async Task Previous()
+    {
+        if (CurrentIndex > 0)
+        {
+            try { await Js.InvokeVoidAsync("mediaHelpers.resetLightboxZoom"); } catch { }
+            await OnIndexChanged.InvokeAsync(CurrentIndex - 1);
+        }
+    }
+
+    private async Task Next()
+    {
+        if (CurrentIndex < ImageUrls.Count - 1)
+        {
+            try { await Js.InvokeVoidAsync("mediaHelpers.resetLightboxZoom"); } catch { }
+            await OnIndexChanged.InvokeAsync(CurrentIndex + 1);
+        }
+    }
+}

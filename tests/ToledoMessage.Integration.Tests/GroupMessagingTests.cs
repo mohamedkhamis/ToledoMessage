@@ -13,6 +13,7 @@ public class GroupMessagingTests
         // ================================================================
         // 1. Alice, Bob, and Charlie each generate identity + pre-keys
         // ================================================================
+        // ReSharper disable once UnusedVariable
         var aliceIdentity = IdentityKeyGenerator.Generate();
 
         var bobIdentity = IdentityKeyGenerator.Generate();
@@ -91,7 +92,7 @@ public class GroupMessagingTests
         // ================================================================
         // 4. Alice sends a group message by encrypting independently for Bob and Charlie
         // ================================================================
-        var groupMessage = "Hello group! This is Alice.";
+        const string groupMessage = "Hello group! This is Alice.";
         var plaintext = Encoding.UTF8.GetBytes(groupMessage);
 
         var (ciphertextForBob, headerForBob) = aliceToBobRatchet.Encrypt(plaintext);
@@ -149,7 +150,7 @@ public class GroupMessagingTests
             charlieFromBobRootKey, charlieSignedPreKey.PrivateKey, charlieSignedPreKey.PublicKey);
 
         // Bob sends reply to the group
-        var bobReply = "Hey everyone, Bob here!";
+        const string bobReply = "Hey everyone, Bob here!";
         var replyPlaintext = Encoding.UTF8.GetBytes(bobReply);
 
         // Encrypt for Alice (via existing session)
@@ -177,6 +178,7 @@ public class GroupMessagingTests
         // the Double Ratchet advances correctly in a pairwise group context.
 
         // Setup three users
+        // ReSharper disable once UnusedVariable
         var aliceIdentity = IdentityKeyGenerator.Generate();
         var bobIdentity = IdentityKeyGenerator.Generate();
         var charlieIdentity = IdentityKeyGenerator.Generate();

@@ -44,8 +44,8 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
 
             await db.Database.ExecuteSqlRawAsync(
                 """
-                INSERT INTO EncryptedMessages (Id, ConversationId, SenderDeviceId, RecipientDeviceId, Ciphertext, MessageType, ContentType, FileName, MimeType, SequenceNumber, ServerTimestamp, IsDelivered)
-                VALUES (@id, @convId, @senderDevId, @recipDevId, @cipher, @msgType, @contentType, @fileName, @mimeType, ISNULL((SELECT MAX(SequenceNumber) FROM EncryptedMessages WITH (UPDLOCK) WHERE ConversationId = @convId), 0) + 1, @ts, 0)
+                INSERT INTO EncryptedMessages (Id, ConversationId, SenderDeviceId, RecipientDeviceId, Ciphertext, MessageType, ContentType, FileName, MimeType, ReplyToMessageId, SequenceNumber, ServerTimestamp, IsDelivered)
+                VALUES (@id, @convId, @senderDevId, @recipDevId, @cipher, @msgType, @contentType, @fileName, @mimeType, @replyTo, ISNULL((SELECT MAX(SequenceNumber) FROM EncryptedMessages WITH (UPDLOCK) WHERE ConversationId = @convId), 0) + 1, @ts, 0)
                 """,
                 DecParam("@id", messageId),
                 DecParam("@convId", request.ConversationId),
@@ -56,6 +56,7 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
                 new SqlParameter("@contentType", System.Data.SqlDbType.Int) { Value = (int)request.ContentType },
                 new SqlParameter("@fileName", System.Data.SqlDbType.NVarChar, 256) { Value = (object?)request.FileName ?? DBNull.Value },
                 new SqlParameter("@mimeType", System.Data.SqlDbType.NVarChar, 128) { Value = (object?)request.MimeType ?? DBNull.Value },
+                new SqlParameter("@replyTo", System.Data.SqlDbType.Decimal) { Precision = 28, Scale = 8, Value = (object?)request.ReplyToMessageId ?? DBNull.Value },
                 new SqlParameter("@ts", System.Data.SqlDbType.DateTimeOffset) { Value = now });
 
             var message = await db.EncryptedMessages.FirstAsync(m => m.Id == messageId);
@@ -79,6 +80,7 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
             ContentType = request.ContentType,
             FileName = request.FileName,
             MimeType = request.MimeType,
+            ReplyToMessageId = request.ReplyToMessageId,
             SequenceNumber = maxSequence + 1,
             ServerTimestamp = now,
             IsDelivered = false
@@ -135,7 +137,8 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
             message.SequenceNumber,
             message.ServerTimestamp,
             message.FileName,
-            message.MimeType);
+            message.MimeType,
+            message.ReplyToMessageId);
 
         await hubContext.Clients
             .Group($"device_{message.RecipientDeviceId}")

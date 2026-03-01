@@ -3,6 +3,7 @@ using ToledoMessage.Shared.DTOs;
 
 namespace ToledoMessage.Client.Services;
 
+/// <inheritdoc />
 /// <summary>
 /// Client-side SignalR hub connection wrapper.
 /// Manages the real-time connection to the chat hub and exposes events
@@ -35,6 +36,18 @@ public class SignalRService : IAsyncDisposable
 
     /// <summary>Raised when a participant is removed from a group conversation. Parameters: conversationId, userId.</summary>
     public event Action<decimal, decimal>? OnParticipantRemoved;
+
+    /// <summary>Raised when a user is online. Parameter: userId.</summary>
+    public event Action<decimal>? OnUserOnline;
+
+    /// <summary>Raised when a user goes offline. Parameters: userId, lastSeenAt.</summary>
+    public event Action<decimal, DateTimeOffset>? OnUserOffline;
+
+    /// <summary>Raised when a reaction is added. Parameters: messageId, userId, displayName, emoji.</summary>
+    public event Action<decimal, decimal, string, string>? OnReactionAdded;
+
+    /// <summary>Raised when a reaction is removed. Parameters: messageId, userId, emoji.</summary>
+    public event Action<decimal, decimal, string>? OnReactionRemoved;
 
     /// <summary>
     /// Whether the hub connection is currently active.
@@ -103,6 +116,26 @@ public class SignalRService : IAsyncDisposable
             OnParticipantRemoved?.Invoke(conversationId, userId);
         });
 
+        _hubConnection.On<decimal>("UserOnline", userId =>
+        {
+            OnUserOnline?.Invoke(userId);
+        });
+
+        _hubConnection.On<decimal, DateTimeOffset>("UserOffline", (userId, lastSeenAt) =>
+        {
+            OnUserOffline?.Invoke(userId, lastSeenAt);
+        });
+
+        _hubConnection.On<decimal, decimal, string, string>("ReactionAdded", (messageId, userId, displayName, emoji) =>
+        {
+            OnReactionAdded?.Invoke(messageId, userId, displayName, emoji);
+        });
+
+        _hubConnection.On<decimal, decimal, string>("ReactionRemoved", (messageId, userId, emoji) =>
+        {
+            OnReactionRemoved?.Invoke(messageId, userId, emoji);
+        });
+
         await _hubConnection.StartAsync();
     }
 
@@ -147,6 +180,7 @@ public class SignalRService : IAsyncDisposable
     /// Acknowledges that a message has been read by the user.
     /// </summary>
     /// <param name="messageId">The ID of the read message.</param>
+    // ReSharper disable once UnusedMember.Global
     public async Task AcknowledgeReadAsync(decimal messageId)
     {
         if (_hubConnection is null)
@@ -167,6 +201,29 @@ public class SignalRService : IAsyncDisposable
         await _hubConnection.InvokeAsync("TypingIndicator", conversationId);
     }
 
+    /// <summary>
+    /// Adds a reaction to a message.
+    /// </summary>
+    public async Task AddReactionAsync(decimal messageId, string emoji)
+    {
+        if (_hubConnection is null)
+            throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
+
+        await _hubConnection.InvokeAsync("AddReaction", messageId, emoji);
+    }
+
+    /// <summary>
+    /// Removes a reaction from a message.
+    /// </summary>
+    public async Task RemoveReactionAsync(decimal messageId, string emoji)
+    {
+        if (_hubConnection is null)
+            throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
+
+        await _hubConnection.InvokeAsync("RemoveReaction", messageId, emoji);
+    }
+
+    /// <inheritdoc />
     /// <summary>
     /// Disposes the hub connection.
     /// </summary>

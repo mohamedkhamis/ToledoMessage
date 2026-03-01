@@ -41,6 +41,14 @@ builder.Services.AddScoped<AccountDeletionService>();
 builder.Services.AddHostedService<MessageCleanupHostedService>();
 builder.Services.AddHostedService<AccountDeletionHostedService>();
 builder.Services.AddSingleton<RateLimitService>();
+builder.Services.AddSingleton<PresenceService>();
+builder.Services.AddHttpClient("LinkPreview", static client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(5);
+    client.MaxResponseContentBufferSize = 1_048_576;
+});
+builder.Services.AddScoped<LinkPreviewService>();
+builder.Services.AddMemoryCache();
 
 // Client services needed during SSR (static server-side rendering)
 builder.Services.AddScoped<ToastService>();

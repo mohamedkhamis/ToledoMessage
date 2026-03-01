@@ -3,17 +3,20 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ToledoMessage.Data;
 
 #nullable disable
 
-namespace ToledoMessage.Migrations
+namespace ToledoMessage.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260301003552_AddReplyToMessage")]
+    partial class AddReplyToMessage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -195,38 +198,6 @@ namespace ToledoMessage.Migrations
                     b.ToTable("EncryptedMessages");
                 });
 
-            modelBuilder.Entity("ToledoMessage.Models.MessageReaction", b =>
-                {
-                    b.Property<decimal>("Id")
-                        .HasPrecision(28, 8)
-                        .HasColumnType("decimal(28,8)");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("Emoji")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<decimal>("MessageId")
-                        .HasPrecision(28, 8)
-                        .HasColumnType("decimal(28,8)");
-
-                    b.Property<decimal>("UserId")
-                        .HasPrecision(28, 8)
-                        .HasColumnType("decimal(28,8)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("MessageId", "UserId", "Emoji")
-                        .IsUnique();
-
-                    b.ToTable("MessageReactions");
-                });
-
             modelBuilder.Entity("ToledoMessage.Models.OneTimePreKey", b =>
                 {
                     b.Property<decimal>("Id")
@@ -320,9 +291,6 @@ namespace ToledoMessage.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
-
-                    b.Property<DateTimeOffset?>("LastSeenAt")
-                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -452,25 +420,6 @@ namespace ToledoMessage.Migrations
                     b.Navigation("RecipientDevice");
 
                     b.Navigation("SenderDevice");
-                });
-
-            modelBuilder.Entity("ToledoMessage.Models.MessageReaction", b =>
-                {
-                    b.HasOne("ToledoMessage.Models.EncryptedMessage", "Message")
-                        .WithMany()
-                        .HasForeignKey("MessageId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("ToledoMessage.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("Message");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("ToledoMessage.Models.OneTimePreKey", b =>

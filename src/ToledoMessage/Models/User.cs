@@ -10,6 +10,7 @@ public class User
     public DateTimeOffset CreatedAt { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTimeOffset? DeletionRequestedAt { get; set; }
+    public DateTimeOffset? LastSeenAt { get; set; }
 
     public ICollection<Device> Devices { get; set; } = new List<Device>();
     public ICollection<ConversationParticipant> ConversationParticipants { get; set; } = new List<ConversationParticipant>();

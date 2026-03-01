@@ -1,31 +1,41 @@
-@inject IJSRuntime JS
+@inject IJSRuntime Js
 
 <div class="chat-input-area">
-    @if (!string.IsNullOrEmpty(errorMessage))
+    @if (!string.IsNullOrEmpty(_errorMessage))
     {
-        <div class="input-error">@errorMessage</div>
+        <div class="input-error">@_errorMessage</div>
     }
-    @if (selectedFile is not null)
+    @if (ReplyContext is not null)
+    {
+        <div class="reply-preview-bar">
+            <div class="reply-preview-content">
+                <div class="reply-sender-name">@ReplyContext.SenderName</div>
+                <div class="reply-quote-text">@ReplyContext.Text</div>
+            </div>
+            <button class="reply-preview-close" @onclick="() => OnCancelReply.InvokeAsync()" aria-label="Cancel reply">&times;</button>
+        </div>
+    }
+    @if (_selectedFile is not null)
     {
         <div class="file-preview-bar">
-            @if (previewDataUrl is not null)
+            @if (_previewDataUrl is not null)
             {
-                <img src="@previewDataUrl" class="file-preview-thumb" alt="Preview" />
+                <img src="@_previewDataUrl" class="file-preview-thumb" alt="Preview" />
             }
             else
             {
-                <div class="file-preview-icon">@GetFileIcon(selectedContentType)</div>
+                <div class="file-preview-icon">@GetFileIcon(_selectedContentType)</div>
             }
             <div class="file-preview-info">
-                <span class="file-preview-name">@selectedFile.Name</span>
-                <span class="file-preview-size">@FormatFileSize(selectedFile.Size)</span>
+                <span class="file-preview-name">@_selectedFile.Name</span>
+                <span class="file-preview-size">@FormatFileSize(_selectedFile.Size)</span>
             </div>
             <button class="file-preview-remove" @onclick="ClearSelectedFile" aria-label="Remove attachment">&times;</button>
         </div>
     }
     <div class="chat-input-row">
         <div class="attach-menu-wrapper">
-            @if (showAttachMenu)
+            @if (_showAttachMenu)
             {
                 <div class="attach-menu-backdrop" @onclick="CloseAttachMenu"></div>
                 <div class="attach-menu-popup" role="menu">
@@ -48,7 +58,7 @@
             }
             <button class="attach-btn" @onclick="ToggleAttachMenu"
                     aria-label="Attach file" title="Attach file"
-                    aria-expanded="@showAttachMenu">
+                    aria-expanded="@_showAttachMenu">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="2"
                      stroke-linecap="round" stroke-linejoin="round">
@@ -57,8 +67,26 @@
             </button>
         </div>
 
-        <textarea @ref="textareaRef"
-                  @bind="messageText"
+        <div class="attach-menu-wrapper">
+            @if (_showEmojiPicker)
+            {
+                <div class="attach-menu-backdrop" @onclick="() => _showEmojiPicker = false"></div>
+                <EmojiPicker OnEmojiSelected="InsertEmoji" />
+            }
+            <button class="emoji-btn" @onclick="() => _showEmojiPicker = !_showEmojiPicker"
+                    aria-label="Emoji" title="Emoji">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                    <line x1="9" y1="9" x2="9.01" y2="9"/>
+                    <line x1="15" y1="9" x2="15.01" y2="9"/>
+                </svg>
+            </button>
+        </div>
+
+        <textarea @ref="_textareaRef"
+                  @bind="_messageText"
                   @bind:event="oninput"
                   @bind:after="OnTextInput"
                   @onkeydown="HandleKeyDown"
@@ -67,29 +95,51 @@
                   class="msg-textarea"
                   aria-label="Message input" />
 
-        <button @onclick="SendMessage"
-                disabled="@(!CanSend)"
-                class="send-btn @(CanSend ? "send-btn-active" : "")"
-                aria-label="Send message"
-                title="Send">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-            </svg>
-        </button>
+        @if (_isRecording)
+        {
+            <VoiceRecorder OnRecorded="HandleVoiceRecorded" OnCancelled="() => _isRecording = false" />
+        }
+
+        @if (CanSend)
+        {
+            <button @onclick="SendMessage"
+                    class="send-btn send-btn-active"
+                    aria-label="Send message"
+                    title="Send">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                </svg>
+            </button>
+        }
+        else if (!_isRecording)
+        {
+            <button class="mic-btn" @onclick="StartRecording"
+                    aria-label="Record voice message" title="Record voice message">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+                    <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/>
+                    <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+            </button>
+        }
     </div>
 </div>
 
 @code {
-    private string messageText = "";
-    private IBrowserFile? selectedFile;
-    private byte[]? selectedFileBytes;
-    private ContentType selectedContentType = ContentType.Text;
-    private string? previewDataUrl;
-    private string? errorMessage;
-    private bool showAttachMenu;
-    private ElementReference textareaRef;
+    private string _messageText = "";
+    private IBrowserFile? _selectedFile;
+    private byte[]? _selectedFileBytes;
+    private ContentType _selectedContentType = ContentType.Text;
+    private string? _previewDataUrl;
+    private string? _errorMessage;
+    private bool _showAttachMenu;
+    private bool _showEmojiPicker;
+    private bool _isRecording;
+    private ElementReference _textareaRef;
 
-    private bool CanSend => !string.IsNullOrWhiteSpace(messageText) || selectedFile is not null;
+    private bool CanSend => !string.IsNullOrWhiteSpace(_messageText) || _selectedFile is not null;
 
     [Parameter]
     public EventCallback<ChatInputMessage> OnSend { get; set; }
@@ -97,14 +147,26 @@
     [Parameter]
     public EventCallback OnTyping { get; set; }
 
+    [Parameter]
+    public ReplyContextModel? ReplyContext { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelReply { get; set; }
+
     private void ToggleAttachMenu()
     {
-        showAttachMenu = !showAttachMenu;
+        _showAttachMenu = !_showAttachMenu;
     }
 
     private void CloseAttachMenu()
     {
-        showAttachMenu = false;
+        _showAttachMenu = false;
+    }
+
+    private async Task InsertEmoji(string emoji)
+    {
+        _showEmojiPicker = false;
+        try { await Js.InvokeVoidAsync("mediaHelpers.insertTextAtCursor", _textareaRef, emoji); } catch { }
     }
 
     private async Task HandleKeyDown(KeyboardEventArgs e)
@@ -121,7 +183,7 @@
 
     private async Task ResizeTextarea()
     {
-        try { await JS.InvokeVoidAsync("mediaHelpers.autoResize", textareaRef); } catch { }
+        try { await Js.InvokeVoidAsync("mediaHelpers.autoResize", _textareaRef); } catch { }
     }
 
     private async Task SendMessage()
@@ -129,24 +191,24 @@
         if (!CanSend)
             return;
 
-        var text = messageText?.Trim() ?? "";
+        var text = _messageText?.Trim() ?? "";
         byte[]? mediaBytes = null;
         string? fileName = null;
         string? mimeType = null;
         var contentType = ContentType.Text;
 
-        if (selectedFile is not null)
+        if (_selectedFile is not null)
         {
-            if (selectedFileBytes is null)
+            if (_selectedFileBytes is null)
             {
-                errorMessage = "Could not read the selected file. Please try again.";
+                _errorMessage = "Could not read the selected file. Please try again.";
                 return;
             }
 
-            mediaBytes = selectedFileBytes;
-            fileName = selectedFile.Name;
-            mimeType = selectedFile.ContentType;
-            contentType = selectedContentType;
+            mediaBytes = _selectedFileBytes;
+            fileName = _selectedFile.Name;
+            mimeType = _selectedFile.ContentType;
+            contentType = _selectedContentType;
         }
 
         if (string.IsNullOrEmpty(text) && mediaBytes is null)
@@ -158,61 +220,62 @@
             MediaBytes = mediaBytes,
             FileName = fileName,
             MimeType = mimeType,
-            ContentType = contentType
+            ContentType = contentType,
+            ReplyToMessageId = ReplyContext?.MessageId
         };
 
-        messageText = "";
+        _messageText = "";
         ClearSelectedFile();
-        try { await JS.InvokeVoidAsync("mediaHelpers.resetHeight", textareaRef); } catch { }
+        try { await Js.InvokeVoidAsync("mediaHelpers.resetHeight", _textareaRef); } catch { }
         await OnSend.InvokeAsync(msg);
     }
 
     private async Task OnMediaSelected(InputFileChangeEventArgs e)
     {
-        showAttachMenu = false;
+        _showAttachMenu = false;
         var file = e.File;
-        selectedContentType = file.ContentType.StartsWith("video/") ? ContentType.Video : ContentType.Image;
-        await SetSelectedFile(file, createPreview: selectedContentType == ContentType.Image);
+        _selectedContentType = file.ContentType.StartsWith("video/") ? ContentType.Video : ContentType.Image;
+        await SetSelectedFile(file, createPreview: _selectedContentType == ContentType.Image);
     }
 
     private async Task OnAudioSelected(InputFileChangeEventArgs e)
     {
-        showAttachMenu = false;
-        selectedContentType = ContentType.Audio;
+        _showAttachMenu = false;
+        _selectedContentType = ContentType.Audio;
         await SetSelectedFile(e.File, createPreview: false);
     }
 
     private async Task OnDocumentSelected(InputFileChangeEventArgs e)
     {
-        showAttachMenu = false;
-        selectedContentType = ContentType.File;
+        _showAttachMenu = false;
+        _selectedContentType = ContentType.File;
         await SetSelectedFile(e.File, createPreview: false);
     }
 
     private async Task SetSelectedFile(IBrowserFile file, bool createPreview)
     {
         ClearSelectedFile();
-        errorMessage = null;
+        _errorMessage = null;
 
         var maxSize = ProtocolConstants.MaxMediaCiphertextSizeBytes;
         if (file.Size > maxSize)
         {
-            errorMessage = $"File too large. Maximum is {FormatFileSize(maxSize)}.";
+            _errorMessage = $"File too large. Maximum is {FormatFileSize(maxSize)}.";
             return;
         }
 
         // Read bytes eagerly — avoids double-read on send and enables preview
         using var stream = file.OpenReadStream(maxAllowedSize: maxSize);
-        selectedFileBytes = new byte[file.Size];
-        await stream.ReadExactlyAsync(selectedFileBytes);
-        selectedFile = file;
+        _selectedFileBytes = new byte[file.Size];
+        await stream.ReadExactlyAsync(_selectedFileBytes);
+        _selectedFile = file;
 
         if (createPreview)
         {
             try
             {
-                previewDataUrl = await JS.InvokeAsync<string>(
-                    "mediaHelpers.createObjectUrl", selectedFileBytes, file.ContentType);
+                _previewDataUrl = await Js.InvokeAsync<string>(
+                    "mediaHelpers.createObjectUrl", _selectedFileBytes, file.ContentType);
             }
             catch { }
         }
@@ -220,15 +283,37 @@
 
     private void ClearSelectedFile()
     {
-        if (previewDataUrl is not null)
+        if (_previewDataUrl is not null)
         {
-            _ = JS.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", previewDataUrl);
-            previewDataUrl = null;
+            _ = Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _previewDataUrl);
+            _previewDataUrl = null;
         }
-        selectedFile = null;
-        selectedFileBytes = null;
-        selectedContentType = ContentType.Text;
-        errorMessage = null;
+        _selectedFile = null;
+        _selectedFileBytes = null;
+        _selectedContentType = ContentType.Text;
+        _errorMessage = null;
+    }
+
+    private void StartRecording()
+    {
+        _isRecording = true;
+    }
+
+    private async Task HandleVoiceRecorded(byte[] audioData)
+    {
+        _isRecording = false;
+
+        var msg = new ChatInputMessage
+        {
+            Text = "",
+            MediaBytes = audioData,
+            FileName = $"voice_{DateTimeOffset.UtcNow:yyyyMMdd_HHmmss}.webm",
+            MimeType = "audio/webm",
+            ContentType = ContentType.Audio,
+            ReplyToMessageId = ReplyContext?.MessageId
+        };
+
+        await OnSend.InvokeAsync(msg);
     }
 
     private static string GetFileIcon(ContentType type)
@@ -257,5 +342,13 @@
         public string? MimeType { get; set; }
         public ContentType ContentType { get; set; } = ContentType.Text;
         public bool HasMedia => MediaBytes is not null;
+        public decimal? ReplyToMessageId { get; set; }
+    }
+
+    public sealed class ReplyContextModel
+    {
+        public decimal MessageId { get; set; }
+        public string SenderName { get; set; } = "";
+        public string Text { get; set; } = "";
     }
 }

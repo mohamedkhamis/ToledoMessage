@@ -83,7 +83,8 @@ public class MessagesController(ApplicationDbContext db, MessageRelayService rel
             m.SequenceNumber,
             m.ServerTimestamp,
             m.FileName,
-            m.MimeType)).ToList();
+            m.MimeType,
+            m.ReplyToMessageId)).ToList();
 
         return Ok(envelopes);
     }

@@ -10,4 +10,5 @@ public sealed record SendMessageRequest(
     MessageType MessageType,
     ContentType ContentType,
     string? FileName = null,
-    string? MimeType = null);
+    string? MimeType = null,
+    decimal? ReplyToMessageId = null);

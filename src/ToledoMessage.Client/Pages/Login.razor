@@ -115,9 +115,33 @@
             var existingDeviceId = await Storage.GetAsync("local.deviceId");
             if (existingDeviceId is not null)
             {
-                // Already have a device registered on this browser
-                Navigation.NavigateTo("/chat");
-                return;
+                // Validate the stored device still exists on the server
+                var storedId = Encoding.UTF8.GetString(existingDeviceId);
+                var devicesResponse = await Http.GetAsync("/api/devices");
+                if (devicesResponse.IsSuccessStatusCode)
+                {
+                    var devices = await devicesResponse.Content.ReadFromJsonAsync<List<DeviceRegistrationResult>>();
+                    var stillValid = devices?.Any(d =>
+                        d.DeviceId.ToString(CultureInfo.InvariantCulture) == storedId) == true;
+
+                    if (stillValid)
+                    {
+                        Navigation.NavigateTo("/chat");
+                        return;
+                    }
+                }
+                else
+                {
+                    // Can't verify — assume valid to avoid blocking login
+                    Navigation.NavigateTo("/chat");
+                    return;
+                }
+
+                // Device no longer exists on server — clear stale data and re-register below
+                await Js.InvokeVoidAsync("toledoStorage.clearAuthData");
+                await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse.Token));
+                Http.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authResponse.Token);
             }
 
             // 5. New device: check shared keys preference and try restore

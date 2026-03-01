@@ -2611,11 +2611,11 @@ html[data-font-size="large"] { font-size: 17px; }
     height: 4px;
     border-radius: 2px;
 }
-.voice-progress::-moz-range-track {
-    height: 4px;
-    border-radius: 2px;
-    background: var(--border);
-}
+    .voice-progress::-webkit-slider-runnable-track {
+        height: 4px;
+        border-radius: 2px;
+        background: var(--border);
+    }
 
 /* ============ Link Preview ============ */
 .link-preview-card {

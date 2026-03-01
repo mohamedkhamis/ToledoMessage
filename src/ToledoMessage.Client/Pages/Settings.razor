@@ -7,6 +7,8 @@
 @inject NavigationManager Navigation
 @inject ThemeService Theme
 @inject PreferencesService Preferences
+@inject IJSRuntime Js
+@inject MessageStoreService MessageStore
 
 <div class="panel-content-scroll">
 <div class="settings-page">
@@ -365,6 +367,14 @@
                     .ReadFromJsonAsync<AccountDeletionResponse>();
                 if (result is not null)
                 {
+                    // Full wipe: clear all local data (device, keys, sessions, messages)
+                    try
+                    {
+                        await Js.InvokeVoidAsync("toledoStorage.clearAllData");
+                        await MessageStore.ClearAllAsync();
+                    }
+                    catch { /* best effort */ }
+
                     _deletionPending = true;
                     _deletionEndsAt = result.GracePeriodEndsAt;
                     _showDeleteConfirmation = false;

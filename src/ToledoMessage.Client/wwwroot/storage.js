@@ -43,7 +43,13 @@ window.toledoStorage = {
         return localStorage.getItem('app.fontSize') || 'medium';
     },
     clearAuthData: function () {
-        // Clear auth/crypto keys but preserve UI preferences (theme, fontSize)
+        // Only clear the auth token — preserve device identity, crypto keys, sessions,
+        // and preferences so the same device is reused on re-login and old messages
+        // remain decryptable (Signal Protocol sessions are forward-secret).
+        localStorage.removeItem('auth.token');
+    },
+    clearAllData: function () {
+        // Full wipe for account deletion — clear everything except UI preferences
         var preserve = ['app.theme', 'app.fontSize'];
         var saved = {};
         for (var i = 0; i < preserve.length; i++) {

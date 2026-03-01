@@ -976,8 +976,7 @@
     {
         try
         {
-            await Js.InvokeVoidAsync("eval",
-                "document.querySelector('.chat-messages')?.scrollTo({top: document.querySelector('.chat-messages').scrollHeight, behavior: 'smooth'})");
+            await Js.InvokeVoidAsync("mediaHelpers.scrollToBottom", ".chat-messages");
             _showScrollButton = false;
         }
         catch
@@ -1114,6 +1113,7 @@
             {
                 try { await Js.InvokeVoidAsync("URL.revokeObjectURL", _contextMenuMessage.MediaDataUrl); }
                 catch { /* ignored */ }
+                _blobUrls.Remove(_contextMenuMessage.MediaDataUrl);
             }
 
             _messages.Remove(_contextMenuMessage);
@@ -1159,6 +1159,7 @@
                 {
                     try { await Js.InvokeVoidAsync("URL.revokeObjectURL", msg.MediaDataUrl); }
                     catch { /* ignored */ }
+                    _blobUrls.Remove(msg.MediaDataUrl);
                 }
 
                 _messages.Remove(msg);
@@ -1228,8 +1229,7 @@
     {
         try
         {
-            await Js.InvokeVoidAsync("eval",
-                $"document.querySelector('[data-msg-id=\"{messageId}\"]')?.scrollIntoView({{behavior:'smooth',block:'center'}})");
+            await Js.InvokeVoidAsync("mediaHelpers.scrollToElement", $"[data-msg-id=\"{messageId}\"]");
         }
         catch
         {

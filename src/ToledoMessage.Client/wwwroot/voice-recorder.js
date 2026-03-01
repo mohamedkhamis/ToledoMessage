@@ -57,11 +57,13 @@ window.voiceRecorder = {
 
     cancel: function () {
         this._chunks = [];
-        this._dotNetRef = null;
+        // Don't nullify _dotNetRef here — let onstop/cleanup handle it
+        // so the onstop handler sees empty chunks and skips the callback
         if (this._mediaRecorder && this._mediaRecorder.state === 'recording') {
             this._mediaRecorder.stop();
+        } else {
+            this._cleanup();
         }
-        this._cleanup();
     },
 
     _cleanup: function () {

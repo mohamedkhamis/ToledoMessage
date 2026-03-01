@@ -1,4 +1,5 @@
 @inject IJSRuntime Js
+@implements IAsyncDisposable
 
 <div class="chat-input-area">
     @if (!string.IsNullOrEmpty(_errorMessage))
@@ -170,7 +171,7 @@
         try
         {
             await Js.InvokeVoidAsync("mediaHelpers.insertTextAtCursor", _textareaRef, emoji);
-            _messageText = await Js.InvokeAsync<string>("eval", "document.querySelector('.msg-textarea')?.value ?? ''");
+            _messageText = await Js.InvokeAsync<string>("mediaHelpers.getTextareaValue", ".msg-textarea");
         }
         catch
         {
@@ -364,6 +365,15 @@
         public ContentType ContentType { get; set; } = ContentType.Text;
         public bool HasMedia => MediaBytes is not null;
         public decimal? ReplyToMessageId { get; set; }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_previewDataUrl is not null)
+        {
+            try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _previewDataUrl); }
+            catch { /* ignored */ }
+        }
     }
 
     public sealed class ReplyContextModel

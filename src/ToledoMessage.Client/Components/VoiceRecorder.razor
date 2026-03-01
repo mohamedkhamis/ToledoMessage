@@ -52,6 +52,8 @@
     private async Task Send()
     {
         _timer?.Stop();
+        _timer?.Dispose();
+        _timer = null;
         try { await Js.InvokeVoidAsync("voiceRecorder.stop"); }
         catch
         {

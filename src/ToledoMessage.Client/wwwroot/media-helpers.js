@@ -155,6 +155,24 @@ window.mediaHelpers = {
         textarea.dispatchEvent(new Event('input', { bubbles: true }));
     },
 
+    // Scroll chat container to bottom
+    scrollToBottom: function (selector) {
+        var el = document.querySelector(selector);
+        if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    },
+
+    // Scroll to a specific element by data attribute
+    scrollToElement: function (selector) {
+        var el = document.querySelector(selector);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    },
+
+    // Get textarea value (avoids eval)
+    getTextareaValue: function (selector) {
+        var el = document.querySelector(selector);
+        return el ? el.value : '';
+    },
+
     // Long press registration
     registerLongPress: function (element, dotNetRef, methodName, delay) {
         if (!element) return;

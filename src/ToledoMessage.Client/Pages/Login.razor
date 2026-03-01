@@ -120,7 +120,7 @@
                 var devicesResponse = await Http.GetAsync("/api/devices");
                 if (devicesResponse.IsSuccessStatusCode)
                 {
-                    var devices = await devicesResponse.Content.ReadFromJsonAsync<List<DeviceRegistrationResult>>();
+                    var devices = await devicesResponse.Content.ReadFromJsonAsync<List<DeviceInfoResponse>>();
                     var stillValid = devices?.Any(d =>
                         d.DeviceId.ToString(CultureInfo.InvariantCulture) == storedId) == true;
 

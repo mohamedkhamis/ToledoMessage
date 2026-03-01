@@ -363,7 +363,17 @@
             // Connect to SignalR hub
             var hubUrl = Navigation.ToAbsoluteUri("/hubs/chat").ToString();
             await SignalR.ConnectAsync(hubUrl, _accessToken);
-            await SignalR.RegisterDeviceAsync(_localDeviceId);
+            try
+            {
+                await SignalR.RegisterDeviceAsync(_localDeviceId);
+            }
+            catch (Exception ex) when (ex.Message.Contains("Device not found"))
+            {
+                // Stale device ID — clear local data and redirect to login to re-register
+                await Js.InvokeVoidAsync("toledoStorage.clearAuthData");
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
 
             // Subscribe to real-time events
             SignalR.OnMessageReceived += HandleMessageReceived;

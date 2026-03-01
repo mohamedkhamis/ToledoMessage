@@ -124,6 +124,12 @@
                     await SignalR.RegisterDeviceAsync(_localDeviceId);
                 SignalR.OnMessageReceived += HandleMessageReceived;
             }
+            catch (Exception ex) when (ex.Message.Contains("Device not found"))
+            {
+                await Js.InvokeVoidAsync("toledoStorage.clearAuthData");
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
             catch
             {
                 // Non-critical for sidebar

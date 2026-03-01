@@ -93,7 +93,8 @@
                   placeholder="Type a message..."
                   rows="1"
                   class="msg-textarea"
-                  aria-label="Message input" />
+                  style="@(_isRecording ? "display:none" : "")"
+                  aria-label="Message input"></textarea>
 
         @if (_isRecording)
         {
@@ -166,7 +167,15 @@
     private async Task InsertEmoji(string emoji)
     {
         _showEmojiPicker = false;
-        try { await Js.InvokeVoidAsync("mediaHelpers.insertTextAtCursor", _textareaRef, emoji); } catch { }
+        try
+        {
+            await Js.InvokeVoidAsync("mediaHelpers.insertTextAtCursor", _textareaRef, emoji);
+            _messageText = await Js.InvokeAsync<string>("eval", "document.querySelector('.msg-textarea')?.value ?? ''");
+        }
+        catch
+        {
+            // ignored
+        }
     }
 
     private async Task HandleKeyDown(KeyboardEventArgs e)
@@ -183,7 +192,11 @@
 
     private async Task ResizeTextarea()
     {
-        try { await Js.InvokeVoidAsync("mediaHelpers.autoResize", _textareaRef); } catch { }
+        try { await Js.InvokeVoidAsync("mediaHelpers.autoResize", _textareaRef); }
+        catch
+        {
+            // ignored
+        }
     }
 
     private async Task SendMessage()
@@ -191,7 +204,7 @@
         if (!CanSend)
             return;
 
-        var text = _messageText?.Trim() ?? "";
+        var text = _messageText.Trim();
         byte[]? mediaBytes = null;
         string? fileName = null;
         string? mimeType = null;
@@ -226,7 +239,12 @@
 
         _messageText = "";
         ClearSelectedFile();
-        try { await Js.InvokeVoidAsync("mediaHelpers.resetHeight", _textareaRef); } catch { }
+        try { await Js.InvokeVoidAsync("mediaHelpers.resetHeight", _textareaRef); }
+        catch
+        {
+            // ignored
+        }
+
         await OnSend.InvokeAsync(msg);
     }
 
@@ -265,7 +283,7 @@
         }
 
         // Read bytes eagerly — avoids double-read on send and enables preview
-        using var stream = file.OpenReadStream(maxAllowedSize: maxSize);
+        await using var stream = file.OpenReadStream(maxAllowedSize: maxSize);
         _selectedFileBytes = new byte[file.Size];
         await stream.ReadExactlyAsync(_selectedFileBytes);
         _selectedFile = file;
@@ -277,7 +295,10 @@
                 _previewDataUrl = await Js.InvokeAsync<string>(
                     "mediaHelpers.createObjectUrl", _selectedFileBytes, file.ContentType);
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
         }
     }
 

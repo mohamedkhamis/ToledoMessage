@@ -34,13 +34,15 @@ else if (_isLoading)
 
     private LinkPreviewResponse? _preview;
     private bool _isLoading;
+    private string? _loadedUrl;
 
-    // Static cache to avoid re-fetching across renders
-    private static readonly Dictionary<string, LinkPreviewResponse?> Cache = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, LinkPreviewResponse?> Cache = new();
+    private const int MaxCacheSize = 200;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
-        if (string.IsNullOrEmpty(Url)) return;
+        if (string.IsNullOrEmpty(Url) || Url == _loadedUrl) return;
+        _loadedUrl = Url;
 
         if (Cache.TryGetValue(Url, out var cached))
         {
@@ -57,6 +59,11 @@ else if (_isLoading)
             {
                 _preview = await response.Content.ReadFromJsonAsync<LinkPreviewResponse>();
             }
+
+            // Evict oldest entries if cache is too large
+            if (Cache.Count >= MaxCacheSize)
+                Cache.Clear();
+
             Cache[Url] = _preview;
         }
         catch

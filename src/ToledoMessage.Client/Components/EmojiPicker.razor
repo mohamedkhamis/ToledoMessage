@@ -2,7 +2,7 @@
 
 <div class="emoji-picker-popup">
     <div class="emoji-picker-search">
-        <input type="text" @bind="_searchText" @bind:event="oninput" placeholder="Search emoji..." />
+        <input type="text" value="@_searchText" @oninput="OnSearchInput" placeholder="Search emoji..." />
     </div>
 
     <div class="emoji-category-tabs">
@@ -68,8 +68,6 @@
     private List<string> _recentEmojis = [];
     private List<(string Emoji, string Name)> _searchResults = [];
 
-    private string? _previousSearch;
-
     protected override async Task OnInitializedAsync()
     {
         try
@@ -85,13 +83,10 @@
         }
     }
 
-    protected override void OnParametersSet()
+    private void OnSearchInput(ChangeEventArgs e)
     {
-        if (_searchText != _previousSearch)
-        {
-            _previousSearch = _searchText;
-            UpdateSearch();
-        }
+        _searchText = e.Value?.ToString() ?? "";
+        UpdateSearch();
     }
 
     private void UpdateSearch()

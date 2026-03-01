@@ -149,12 +149,18 @@ public class SignalRService : IAsyncDisposable
 
     /// <summary>
     /// Registers this device with the hub so that messages can be routed to it.
+    /// Also sets up automatic re-registration on reconnect.
     /// </summary>
     /// <param name="deviceId">The local device ID.</param>
     public async Task RegisterDeviceAsync(decimal deviceId)
     {
         if (_hubConnection is null)
             throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
+
+        _hubConnection.Reconnected += async _ =>
+        {
+            try { await _hubConnection.InvokeAsync("RegisterDevice", deviceId); } catch { }
+        };
 
         await _hubConnection.InvokeAsync("RegisterDevice", deviceId);
     }
@@ -239,12 +245,12 @@ public class SignalRService : IAsyncDisposable
         await _hubConnection.InvokeAsync("DeleteForEveryone", messageId);
     }
 
-    public async Task ClearMessagesAsync(decimal conversationId, DateTimeOffset cutoff)
+    public async Task ClearMessagesAsync(decimal conversationId, DateTimeOffset from, DateTimeOffset to)
     {
         if (_hubConnection is null)
             throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
 
-        await _hubConnection.InvokeAsync("ClearMessages", conversationId, cutoff);
+        await _hubConnection.InvokeAsync("ClearMessages", conversationId, from, to);
     }
 
     /// <inheritdoc />

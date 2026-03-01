@@ -1,6 +1,5 @@
-@using ToledoMessage.Shared.Enums
-
-<div class="message-row @(IsMine ? "mine" : "") @GroupingClass @(IsMine ? "msg-slide-in-right" : "msg-slide-in-left")"
+<div class="message-row @(IsMine ? "mine" : "") @GroupingClass"
+     data-msg-id="@MessageId"
      @oncontextmenu="HandleContextMenu" @oncontextmenu:preventDefault="true">
     <div class="message-bubble @(IsMine ? "mine" : "theirs")">
         @if (!string.IsNullOrEmpty(ReplyToSenderName))
@@ -85,6 +84,9 @@
 </div>
 
 @code {
+    [Parameter]
+    public decimal MessageId { get; set; }
+
     [Parameter, EditorRequired]
     public string Text { get; set; } = "";
 

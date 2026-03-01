@@ -6,43 +6,47 @@ public class PresenceService
 {
     private readonly ConcurrentDictionary<decimal, HashSet<string>> _userConnections = new();
 
+    private readonly object _lock = new();
+
     public void AddConnection(decimal userId, string connectionId)
     {
-        _userConnections.AddOrUpdate(
-            userId,
-            _ => [connectionId],
-            (_, connections) =>
+        lock (_lock)
+        {
+            if (_userConnections.TryGetValue(userId, out var connections))
             {
-                lock (connections)
-                {
-                    connections.Add(connectionId);
-                }
-
-                return connections;
-            });
+                connections.Add(connectionId);
+            }
+            else
+            {
+                _userConnections[userId] = [connectionId];
+            }
+        }
     }
 
     public bool RemoveConnection(decimal userId, string connectionId)
     {
-        if (!_userConnections.TryGetValue(userId, out var connections))
-            return false;
-
-        bool isNowOffline;
-        lock (connections)
+        lock (_lock)
         {
+            if (!_userConnections.TryGetValue(userId, out var connections))
+                return false;
+
             connections.Remove(connectionId);
-            isNowOffline = connections.Count == 0;
+            if (connections.Count == 0)
+            {
+                _userConnections.TryRemove(userId, out _);
+                return true;
+            }
+
+            return false;
         }
-
-        if (isNowOffline)
-            _userConnections.TryRemove(userId, out _);
-
-        return isNowOffline;
     }
 
     public bool IsOnline(decimal userId)
     {
-        return _userConnections.TryGetValue(userId, out var connections) && connections.Count > 0;
+        lock (_lock)
+        {
+            return _userConnections.TryGetValue(userId, out var connections) && connections.Count > 0;
+        }
     }
 
     // ReSharper disable once UnusedMember.Global

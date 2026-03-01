@@ -120,14 +120,28 @@ public partial class LinkPreviewService(IHttpClientFactory httpClientFactory, IM
         if (!IPAddress.TryParse(host, out var ip))
             return false;
 
-        var bytes = ip.GetAddressBytes();
-        if (bytes.Length != 4) return false;
+        // Map IPv6-mapped IPv4 (::ffff:x.x.x.x) to IPv4 for consistent checks
+        if (ip.IsIPv4MappedToIPv6)
+            ip = ip.MapToIPv4();
 
-        // 10.x.x.x, 172.16-31.x.x, 192.168.x.x, 127.x.x.x
+        // Block IPv6 loopback (::1) and link-local (fe80::/10) and unique-local (fc00::/7)
+        if (IPAddress.IsLoopback(ip))
+            return true;
+
+        var bytes = ip.GetAddressBytes();
+        if (bytes.Length == 16)
+        {
+            // fc00::/7 (unique local) or fe80::/10 (link local)
+            return (bytes[0] & 0xFE) == 0xFC || (bytes[0] == 0xFE && (bytes[1] & 0xC0) == 0x80);
+        }
+
+        // IPv4: 10.x, 172.16-31.x, 192.168.x, 127.x, 169.254.x (link-local), 0.x.x.x
         return bytes[0] == 10
                || (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31)
                || (bytes[0] == 192 && bytes[1] == 168)
-               || bytes[0] == 127;
+               || bytes[0] == 127
+               || (bytes[0] == 169 && bytes[1] == 254)
+               || bytes[0] == 0;
     }
 
     // ReSharper disable once RedundantVerbatimStringPrefix

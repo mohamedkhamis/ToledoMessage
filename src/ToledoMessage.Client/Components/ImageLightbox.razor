@@ -52,18 +52,33 @@
     [Parameter]
     public EventCallback<int> OnIndexChanged { get; set; }
 
+    private bool _zoomInitialized;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (IsVisible)
+        if (IsVisible && !_zoomInitialized)
         {
-            // ReSharper disable  EmptyGeneralCatchClause
-            try { await Js.InvokeVoidAsync("mediaHelpers.initLightboxZoom", _imageWrapper); } catch { }
+            _zoomInitialized = true;
+            try { await Js.InvokeVoidAsync("mediaHelpers.initLightboxZoom", _imageWrapper); }
+            catch
+            {
+                // ignored
+            }
+        }
+        else if (!IsVisible && _zoomInitialized)
+        {
+            _zoomInitialized = false;
         }
     }
 
     private async Task Close()
     {
-        try { await Js.InvokeVoidAsync("mediaHelpers.destroyLightboxZoom"); } catch { }
+        try { await Js.InvokeVoidAsync("mediaHelpers.destroyLightboxZoom"); }
+        catch
+        {
+            // ignored
+        }
+
         await OnClose.InvokeAsync();
     }
 
@@ -76,7 +91,12 @@
     {
         if (CurrentIndex > 0)
         {
-            try { await Js.InvokeVoidAsync("mediaHelpers.resetLightboxZoom"); } catch { }
+            try { await Js.InvokeVoidAsync("mediaHelpers.resetLightboxZoom"); }
+            catch
+            {
+                // ignored
+            }
+
             await OnIndexChanged.InvokeAsync(CurrentIndex - 1);
         }
     }
@@ -85,7 +105,12 @@
     {
         if (CurrentIndex < ImageUrls.Count - 1)
         {
-            try { await Js.InvokeVoidAsync("mediaHelpers.resetLightboxZoom"); } catch { }
+            try { await Js.InvokeVoidAsync("mediaHelpers.resetLightboxZoom"); }
+            catch
+            {
+                // ignored
+            }
+
             await OnIndexChanged.InvokeAsync(CurrentIndex + 1);
         }
     }

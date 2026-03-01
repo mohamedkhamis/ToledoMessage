@@ -133,7 +133,8 @@
                 bool isLastInGroup = nextMsg is null || nextMsg.IsMine != msg.IsMine ||
                     nextMsg.Timestamp.LocalDateTime.Date != msg.Timestamp.LocalDateTime.Date;
 
-                <MessageBubble Text="@msg.Text"
+                <MessageBubble MessageId="msg.MessageId"
+                               Text="@msg.Text"
                                Timestamp="msg.Timestamp"
                                IsMine="msg.IsMine"
                                Status="msg.Status"
@@ -1064,9 +1065,10 @@
         _replyContext = null;
     }
 
-    private static string GetSenderDisplayName(ChatMessage msg)
+    private string GetSenderDisplayName(ChatMessage msg)
     {
-        return msg.ReplyToSenderName ?? "User";
+        // For 1:1 chats, the sender of a non-mine message is always the peer
+        return _participants.FirstOrDefault(p => p.UserId != _localUserId)?.DisplayName ?? "User";
     }
 
     private void ShowContextMenu(double x, double y, ChatMessage msg)
@@ -1107,6 +1109,13 @@
     {
         if (_contextMenuMessage is not null)
         {
+            // Revoke blob URL to prevent memory leak
+            if (_contextMenuMessage.MediaDataUrl is not null && _contextMenuMessage.MediaDataUrl.StartsWith("blob:"))
+            {
+                try { await Js.InvokeVoidAsync("URL.revokeObjectURL", _contextMenuMessage.MediaDataUrl); }
+                catch { /* ignored */ }
+            }
+
             _messages.Remove(_contextMenuMessage);
             _messageReactions.Remove(_contextMenuMessage.MessageId);
             try { await MessageStore.UpdateMessageStatusAsync(_contextMenuMessage.MessageId.ToString(CultureInfo.InvariantCulture), -1); }
@@ -1144,7 +1153,16 @@
         {
             var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
             if (msg is not null)
+            {
+                // Revoke blob URL to prevent memory leak
+                if (msg.MediaDataUrl is not null && msg.MediaDataUrl.StartsWith("blob:"))
+                {
+                    try { await Js.InvokeVoidAsync("URL.revokeObjectURL", msg.MediaDataUrl); }
+                    catch { /* ignored */ }
+                }
+
                 _messages.Remove(msg);
+            }
             _messageReactions.Remove(messageId);
             try { await MessageStore.UpdateMessageStatusAsync(messageId.ToString(CultureInfo.InvariantCulture), -1); }
             catch
@@ -1164,13 +1182,26 @@
     private async Task ClearChat(TimeSpan span)
     {
         _showClearChatDialog = false;
-        var cutoff = span == TimeSpan.Zero
-            ? DateTimeOffset.UtcNow.AddYears(1) // far future = clear all
-            : DateTimeOffset.UtcNow;
+        // For "all messages" (TimeSpan.Zero), use far future cutoff to delete everything
+        // For time-bounded, cutoff = now so server deletes up to now
+        var cutoff = DateTimeOffset.UtcNow.AddYears(1);
+        var threshold = DateTimeOffset.MinValue;
 
-        var threshold = span == TimeSpan.Zero
-            ? DateTimeOffset.MinValue
-            : DateTimeOffset.UtcNow - span;
+        if (span != TimeSpan.Zero)
+        {
+            threshold = DateTimeOffset.UtcNow - span;
+            cutoff = DateTimeOffset.UtcNow;
+        }
+
+        // Revoke blob URLs for messages being removed
+        foreach (var msg in _messages.Where(m => m.Timestamp >= threshold && !string.IsNullOrEmpty(m.MediaDataUrl)))
+        {
+            try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", msg.MediaDataUrl); }
+            catch
+            {
+                // ignored
+            }
+        }
 
         // Remove from local UI
         _messages.RemoveAll(m => m.Timestamp >= threshold);
@@ -1184,7 +1215,7 @@
         }
 
         // Clear from server
-        try { await SignalR.ClearMessagesAsync(ConversationId, cutoff); }
+        try { await SignalR.ClearMessagesAsync(ConversationId, threshold, cutoff); }
         catch
         {
             // ignored

@@ -9,7 +9,17 @@ window.voiceRecorder = {
         this._chunks = [];
 
         this._stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        this._mediaRecorder = new window.MediaRecorder(this._stream, { mimeType: 'audio/webm;codecs=opus' });
+        var mimeType = 'audio/webm;codecs=opus';
+        if (typeof MediaRecorder.isTypeSupported === 'function') {
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) mimeType = 'audio/ogg;codecs=opus';
+                else if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+                else mimeType = '';
+            }
+        }
+        this._mediaRecorder = mimeType
+            ? new window.MediaRecorder(this._stream, { mimeType: mimeType })
+            : new window.MediaRecorder(this._stream);
 
         this._mediaRecorder.ondataavailable = (e) => {
             if (e.data.size > 0) {

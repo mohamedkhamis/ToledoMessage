@@ -271,7 +271,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// Clear messages in a conversation up to a given cutoff time. Server-side deletion for the requesting user.
     /// </summary>
     // ReSharper disable once UnusedMember.Global
-    public async Task ClearMessages(decimal conversationId, DateTimeOffset cutoff)
+    public async Task ClearMessages(decimal conversationId, DateTimeOffset from, DateTimeOffset to)
     {
         var userId = GetUserId();
 
@@ -288,7 +288,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
 
         var messagesToDelete = await db.EncryptedMessages
             .Where(m => m.ConversationId == conversationId
-                        && m.ServerTimestamp <= cutoff
+                        && m.ServerTimestamp >= from && m.ServerTimestamp <= to
                         && (userDeviceIds.Contains(m.SenderDeviceId) || userDeviceIds.Contains(m.RecipientDeviceId)))
             .ToListAsync();
 

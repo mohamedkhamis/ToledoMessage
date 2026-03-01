@@ -9,6 +9,15 @@ window.mediaHelpers = {
             URL.revokeObjectURL(url);
         }
     },
+    preventEnterNewline: function (element) {
+        if (!element || element._enterHandlerSet) return;
+        element._enterHandlerSet = true;
+        element.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+            }
+        });
+    },
     autoResize: function (element) {
         if (!element) return;
         element.style.height = 'auto';
@@ -171,6 +180,13 @@ window.mediaHelpers = {
     getTextareaValue: function (selector) {
         var el = document.querySelector(selector);
         return el ? el.value : '';
+    },
+
+    // Fetch blob URL contents as byte array (for forwarding media)
+    fetchBlobAsBytes: async function (blobUrl) {
+        var response = await fetch(blobUrl);
+        var buffer = await response.arrayBuffer();
+        return new Uint8Array(buffer);
     },
 
     // Long press registration

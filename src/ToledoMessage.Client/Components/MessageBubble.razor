@@ -1,7 +1,11 @@
-<div class="message-row @(IsMine ? "mine" : "") @GroupingClass"
+<div class="message-row @(IsMine ? "mine" : "") @GroupingClass @(IsSearchHighlight ? "message-highlight" : "")"
      data-msg-id="@MessageId"
      @oncontextmenu="HandleContextMenu" @oncontextmenu:preventDefault="true">
     <div class="message-bubble @(IsMine ? "mine" : "theirs")">
+        @if (IsForwarded)
+        {
+            <div class="forwarded-label">Forwarded</div>
+        }
         @if (!string.IsNullOrEmpty(ReplyToSenderName))
         {
             <div class="reply-quote-block" @onclick="() => OnReplyQuoteClick.InvokeAsync(ReplyToMessageId ?? 0)">
@@ -140,6 +144,12 @@
 
     [Parameter]
     public EventCallback<string> OnReactionToggle { get; set; }
+
+    [Parameter]
+    public bool IsForwarded { get; set; }
+
+    [Parameter]
+    public bool IsSearchHighlight { get; set; }
 
     private async Task HandleContextMenu(MouseEventArgs e)
     {

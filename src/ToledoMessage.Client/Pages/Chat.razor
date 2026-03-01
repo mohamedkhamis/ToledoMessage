@@ -43,7 +43,8 @@
         {
             <span class="chat-typing-indicator">@_typingIndicator</span>
         }
-        <div style="margin-left:auto;">
+        <div style="margin-left:auto; display:flex; align-items:center; gap:4px;">
+            <button class="msg-action-btn" @onclick="ToggleSearch" title="Search messages">&#128269;</button>
             <button class="msg-action-btn" @onclick="() => _showChatMenu = !_showChatMenu" title="More options">&#8942;</button>
             @if (_showChatMenu)
             {
@@ -56,6 +57,26 @@
             }
         </div>
     </div>
+
+    @if (_showSearch)
+    {
+        <div class="chat-search-bar">
+            <input type="text" class="chat-search-input" placeholder="Search messages..."
+                   @bind="_searchQuery" @bind:event="oninput" @bind:after="UpdateSearchResults"
+                   @onkeydown="HandleSearchKeyDown" />
+            @if (_searchResults.Count > 0)
+            {
+                <span class="chat-search-count">@(_searchIndex + 1) / @_searchResults.Count</span>
+            }
+            else if (!string.IsNullOrEmpty(_searchQuery))
+            {
+                <span class="chat-search-count">0 / 0</span>
+            }
+            <button class="msg-action-btn" @onclick="SearchPrevious" title="Previous match" disabled="@(_searchResults.Count == 0)">&#9650;</button>
+            <button class="msg-action-btn" @onclick="SearchNext" title="Next match" disabled="@(_searchResults.Count == 0)">&#9660;</button>
+            <button class="msg-action-btn" @onclick="CloseSearch" title="Close search">&#10005;</button>
+        </div>
+    }
 
     @if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group && _showParticipants)
     {
@@ -143,6 +164,8 @@
                                FileName="@msg.FileName"
                                IsFirstInGroup="isFirstInGroup"
                                IsLastInGroup="isLastInGroup"
+                               IsForwarded="msg.IsForwarded"
+                               IsSearchHighlight="IsSearchHighlighted(msg.MessageId)"
                                OnImageClick="HandleImageClick"
                                OnReply="() => SetReplyTo(msg)"
                                OnContextMenu="(pos) => ShowContextMenu(pos.X, pos.Y, msg)"
@@ -177,6 +200,9 @@
         <button class="context-menu-item" @onclick="ReplyFromContextMenu">
             <span class="context-menu-icon">&#8617;</span> Reply
         </button>
+        <button class="context-menu-item" @onclick="ForwardFromContextMenu">
+            <span class="context-menu-icon">&#10150;</span> Forward
+        </button>
         <button class="context-menu-item danger" @onclick="DeleteForMe">
             <span class="context-menu-icon">&#128465;</span> Delete for me
         </button>
@@ -203,6 +229,44 @@
             <button class="clear-chat-option danger" @onclick="() => ClearChat(TimeSpan.Zero)">All messages</button>
         </div>
         <button class="clear-chat-cancel" @onclick="() => _showClearChatDialog = false">Cancel</button>
+    </div>
+}
+
+@if (_showForwardDialog && _forwardingMessage is not null)
+{
+    <div class="forward-dialog-overlay" @onclick="CloseForwardDialog">
+        <div class="forward-dialog" @onclick:stopPropagation="true">
+            <div class="forward-dialog-header">
+                <h4>Forward message</h4>
+                <button class="msg-action-btn" @onclick="CloseForwardDialog">&#10005;</button>
+            </div>
+            <input type="text" class="forward-search-input" placeholder="Search conversations..."
+                   @bind="_forwardSearchQuery" @bind:event="oninput" />
+            <div class="forward-conversation-list">
+                @if (_forwardConversations is null)
+                {
+                    <p style="padding:16px; color:var(--text-secondary);">Loading...</p>
+                }
+                else
+                {
+                    var filtered = string.IsNullOrWhiteSpace(_forwardSearchQuery)
+                        ? _forwardConversations
+                        : _forwardConversations.Where(c => c.DisplayName.Contains(_forwardSearchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
+                    @foreach (var conv in filtered)
+                    {
+                        if (conv.ConversationId == ConversationId) continue;
+                        <button class="forward-conversation-item" @onclick="() => ForwardToConversation(conv.ConversationId)">
+                            <AvatarInitials DisplayName="@conv.DisplayName" Size="36" />
+                            <span>@conv.DisplayName</span>
+                        </button>
+                    }
+                    @if (filtered.All(c => c.ConversationId == ConversationId))
+                    {
+                        <p style="padding:16px; color:var(--text-secondary);">No conversations found.</p>
+                    }
+                }
+            </div>
+        </div>
     </div>
 }
 
@@ -243,6 +307,21 @@
     // Clear chat / header menu state
     private bool _showChatMenu;
     private bool _showClearChatDialog;
+
+    // Search state
+    private bool _showSearch;
+    private string _searchQuery = "";
+    private List<ChatMessage> _searchResults = [];
+    private int _searchIndex;
+
+    // Forward state
+    private bool _showForwardDialog;
+    private ChatMessage? _forwardingMessage;
+    private string _forwardSearchQuery = "";
+    private List<ConversationListItemResponse>? _forwardConversations;
+
+    // Static pending forward — survives navigation between chat pages
+    internal static (string Text, ContentType ContentType, string? FileName, string? MediaDataUrl, bool IsForwarded)? PendingForward;
 
     protected override async Task OnInitializedAsync()
     {
@@ -306,6 +385,14 @@
         finally
         {
             _isLoading = false;
+        }
+
+        // Check for pending forwarded message
+        if (PendingForward is not null)
+        {
+            var fwd = PendingForward.Value;
+            PendingForward = null;
+            await SendForwardedMessage(fwd.Text, fwd.ContentType, fwd.FileName, fwd.MediaDataUrl);
         }
     }
 
@@ -1064,6 +1151,7 @@
         _replyContext = null;
     }
 
+    // ReSharper disable once UnusedParameter.Local
     private string GetSenderDisplayName(ChatMessage msg)
     {
         // For 1:1 chats, the sender of a non-mine message is always the peer
@@ -1298,6 +1386,208 @@
         _lightboxIndex = index;
     }
 
+    // ─── Search methods ───
+
+    private void ToggleSearch()
+    {
+        _showSearch = !_showSearch;
+        if (!_showSearch)
+        {
+            _searchQuery = "";
+            _searchResults.Clear();
+            _searchIndex = 0;
+        }
+    }
+
+    private void CloseSearch()
+    {
+        _showSearch = false;
+        _searchQuery = "";
+        _searchResults.Clear();
+        _searchIndex = 0;
+    }
+
+    private async Task UpdateSearchResults()
+    {
+        if (string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            _searchResults.Clear();
+            _searchIndex = 0;
+            return;
+        }
+
+        _searchResults = _messages
+            .Where(m => !string.IsNullOrEmpty(m.Text) && m.Text.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        _searchIndex = _searchResults.Count > 0 ? _searchResults.Count - 1 : 0;
+
+        if (_searchResults.Count > 0)
+            await ScrollToMessage(_searchResults[_searchIndex].MessageId);
+    }
+
+    private async Task HandleSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            CloseSearch();
+        }
+        else if (e.Key == "Enter")
+        {
+            if (e.ShiftKey)
+                await SearchPrevious();
+            else
+                await SearchNext();
+        }
+    }
+
+    private async Task SearchNext()
+    {
+        if (_searchResults.Count == 0) return;
+        _searchIndex = (_searchIndex + 1) % _searchResults.Count;
+        await ScrollToMessage(_searchResults[_searchIndex].MessageId);
+    }
+
+    private async Task SearchPrevious()
+    {
+        if (_searchResults.Count == 0) return;
+        _searchIndex = (_searchIndex - 1 + _searchResults.Count) % _searchResults.Count;
+        await ScrollToMessage(_searchResults[_searchIndex].MessageId);
+    }
+
+    private bool IsSearchHighlighted(decimal messageId)
+    {
+        return _searchResults.Count > 0 && _searchResults[_searchIndex].MessageId == messageId;
+    }
+
+    // ─── Forward methods ───
+
+    private void ForwardFromContextMenu()
+    {
+        if (_contextMenuMessage is not null)
+        {
+            _forwardingMessage = _contextMenuMessage;
+            _showForwardDialog = true;
+            _forwardSearchQuery = "";
+            _forwardConversations = null;
+            CloseContextMenu();
+            _ = LoadForwardConversations();
+        }
+    }
+
+    private async Task LoadForwardConversations()
+    {
+        try
+        {
+            _forwardConversations = await Http.GetFromJsonAsync<List<ConversationListItemResponse>>(
+                "/api/conversations");
+            await InvokeAsync(StateHasChanged);
+        }
+        catch
+        {
+            _forwardConversations = [];
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void CloseForwardDialog()
+    {
+        _showForwardDialog = false;
+        _forwardingMessage = null;
+        _forwardSearchQuery = "";
+    }
+
+    private void ForwardToConversation(decimal targetConversationId)
+    {
+        if (_forwardingMessage is null) return;
+
+        PendingForward = (
+            _forwardingMessage.Text,
+            _forwardingMessage.ContentType,
+            _forwardingMessage.FileName,
+            _forwardingMessage.MediaDataUrl,
+            true
+        );
+
+        CloseForwardDialog();
+        Navigation.NavigateTo($"/chat/{targetConversationId}", forceLoad: false);
+    }
+
+    private async Task SendForwardedMessage(string text, ContentType contentType, string? fileName, string? mediaDataUrl)
+    {
+        try
+        {
+            if (contentType != ContentType.Text && !string.IsNullOrEmpty(mediaDataUrl))
+            {
+                // For media: read bytes from blob URL via JS, then re-encrypt and send
+                byte[]? mediaBytes = null;
+                try
+                {
+                    mediaBytes = await Js.InvokeAsync<byte[]>("mediaHelpers.fetchBlobAsBytes", mediaDataUrl);
+                }
+                catch
+                {
+                    // If blob URL is no longer valid, fall back to text-only forward
+                }
+
+                if (mediaBytes is not null)
+                {
+                    var mimeType = fileName is not null ? GetMimeTypeFromFileName(fileName) : GetDefaultMimeType(contentType);
+                    var input = new MessageInput.ChatInputMessage
+                    {
+                        Text = text,
+                        ContentType = contentType,
+                        FileName = fileName,
+                        MimeType = mimeType,
+                        MediaBytes = mediaBytes
+                    };
+                    var tempMessage = new ChatMessage
+                    {
+                        MessageId = 0,
+                        Text = text,
+                        Timestamp = DateTimeOffset.UtcNow,
+                        IsMine = true,
+                        ContentType = contentType,
+                        FileName = fileName,
+                        MediaDataUrl = await CreateMediaBlobUrl(mimeType, mediaBytes),
+                        Status = Shared.Enums.DeliveryStatus.Sending,
+                        IsForwarded = true
+                    };
+                    _messages.Add(tempMessage);
+                    StateHasChanged();
+                    await SendMediaToRecipients(input, tempMessage);
+                    await PersistMessageAsync(tempMessage);
+                    StateHasChanged();
+                    return;
+                }
+            }
+
+            // Text-only forward
+            if (!string.IsNullOrEmpty(text))
+            {
+                var tempMessage = new ChatMessage
+                {
+                    MessageId = 0,
+                    Text = text,
+                    Timestamp = DateTimeOffset.UtcNow,
+                    IsMine = true,
+                    ContentType = ContentType.Text,
+                    Status = Shared.Enums.DeliveryStatus.Sending,
+                    IsForwarded = true
+                };
+                _messages.Add(tempMessage);
+                StateHasChanged();
+                await SendTextToRecipients(text, tempMessage);
+                await PersistMessageAsync(tempMessage);
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to forward message: {ex.Message}";
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         // Unsubscribe from events
@@ -1338,5 +1628,6 @@
         public decimal? ReplyToMessageId { get; init; }
         public string? ReplyToText { get; init; }
         public string? ReplyToSenderName { get; init; }
+        public bool IsForwarded { get; init; }
     }
 }

@@ -50,7 +50,7 @@ param(
 
     [string]$SiteName = "ToledoMessage",
 
-    [int]$Port = 0,
+    [int]$Port = 8080,
 
     [string]$PublishPath = "C:\inetpub\ToledoMessage",
 

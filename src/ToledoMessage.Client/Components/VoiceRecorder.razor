@@ -1,26 +1,82 @@
 @inject IJSRuntime Js
 @implements IAsyncDisposable
 
-<div class="voice-recorder-bar">
-    <button class="voice-cancel-btn" @onclick="Cancel" title="Cancel recording">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"/>
-            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-        </svg>
-    </button>
-    <div class="recording-indicator"></div>
-    <span class="recording-timer">@FormatDuration(_elapsedSeconds)</span>
-    <button class="voice-send-btn" @onclick="Send" title="Send voice message">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-        </svg>
-    </button>
-</div>
+@if (_phase == Phase.Recording)
+{
+    <div class="voice-recorder-bar">
+        <button class="voice-cancel-btn" @onclick="Cancel" title="Cancel recording">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+            </svg>
+        </button>
+        <div class="recording-indicator"></div>
+        <span class="recording-timer">@FormatDuration(_elapsedSeconds)</span>
+        <div class="voice-waveform-bars">
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+        </div>
+        <button class="voice-stop-btn" @onclick="StopRecording" title="Stop recording">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="4" y="4" width="16" height="16" rx="2"/>
+            </svg>
+        </button>
+    </div>
+}
+else if (_phase == Phase.Preview)
+{
+    <div class="voice-preview-bar">
+        <button class="voice-cancel-btn" @onclick="Delete" title="Delete recording">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+            </svg>
+        </button>
+        <button class="voice-play-btn" @onclick="TogglePlayback" title="@(_isPlaying ? "Pause" : "Play")">
+            @if (_isPlaying)
+            {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="4" width="4" height="16" rx="1"/>
+                    <rect x="14" y="4" width="4" height="16" rx="1"/>
+                </svg>
+            }
+            else
+            {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+            }
+        </button>
+        <input type="range" class="voice-progress" min="0" max="@_previewDuration.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
+               step="0.1" value="@_previewCurrentTime.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
+               @oninput="OnSeek" />
+        <span class="recording-timer">@FormatDuration((int)Math.Ceiling(_previewDuration))</span>
+        <button class="voice-send-btn" @onclick="Send" title="Send voice message">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+        </button>
+    </div>
+    <audio @ref="_audioRef" preload="auto" @onended="OnPlaybackEnded" @ontimeupdate="OnTimeUpdate"
+           @onloadedmetadata="OnMetadataLoaded" style="display:none"></audio>
+}
 
 @code {
+    private enum Phase { Recording, Preview }
+    private Phase _phase = Phase.Recording;
+
     private int _elapsedSeconds;
     private System.Timers.Timer? _timer;
     private DotNetObjectReference<VoiceRecorder>? _objRef;
+
+    // Preview state
+    private bool _isPlaying;
+    private double _previewCurrentTime;
+    private double _previewDuration;
+    private ElementReference _audioRef;
 
     [Parameter]
     public EventCallback<byte[]> OnRecorded { get; set; }
@@ -52,22 +108,134 @@
     }
 
     [JSInvokable]
-    public async Task OnRecordingComplete(byte[] audioData)
-    {
-        _timer?.Stop();
-        await OnRecorded.InvokeAsync(audioData);
-    }
-
-    private async Task Send()
+    public async Task OnRecordingStopped()
     {
         _timer?.Stop();
         _timer?.Dispose();
         _timer = null;
+        _phase = Phase.Preview;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_phase == Phase.Preview)
+        {
+            try
+            {
+                await Js.InvokeVoidAsync("voiceRecorder.initPreviewAudio", _audioRef);
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+    }
+
+    private async Task StopRecording()
+    {
+        _timer?.Stop();
         try { await Js.InvokeVoidAsync("voiceRecorder.stop"); }
         catch
         {
             // ignored
         }
+    }
+
+    private async Task TogglePlayback()
+    {
+        if (_isPlaying)
+        {
+            await Js.InvokeVoidAsync("voiceRecorder.pausePreview");
+            _isPlaying = false;
+        }
+        else
+        {
+            await Js.InvokeVoidAsync("voiceRecorder.playPreview");
+            _isPlaying = true;
+        }
+    }
+
+    private async Task OnSeek(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var time))
+        {
+            _previewCurrentTime = time;
+            await Js.InvokeVoidAsync("voiceRecorder.seekPreview", time);
+        }
+    }
+
+    private void OnTimeUpdate()
+    {
+        // Updated via JS interop polling would be complex; use the onTimeUdate event
+        // We'll read from JS synchronously-ish via a small helper
+        _ = UpdateTimeAsync();
+    }
+
+    private async Task UpdateTimeAsync()
+    {
+        try
+        {
+            _previewCurrentTime = await Js.InvokeAsync<double>("voiceRecorder.getPreviewCurrentTime");
+            await InvokeAsync(StateHasChanged);
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private void OnMetadataLoaded()
+    {
+        _ = LoadDurationAsync();
+    }
+
+    private async Task LoadDurationAsync()
+    {
+        try
+        {
+            _previewDuration = await Js.InvokeAsync<double>("voiceRecorder.getPreviewDuration");
+            await InvokeAsync(StateHasChanged);
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private void OnPlaybackEnded()
+    {
+        _isPlaying = false;
+        _previewCurrentTime = 0;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task Send()
+    {
+        try
+        {
+            var bytes = await Js.InvokeAsync<byte[]>("voiceRecorder.getRecordedBytes");
+            if (bytes is { Length: > 0 })
+            {
+                await Js.InvokeVoidAsync("voiceRecorder.revokePreview");
+                await OnRecorded.InvokeAsync(bytes);
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private async Task Delete()
+    {
+        try { await Js.InvokeVoidAsync("voiceRecorder.revokePreview"); }
+        catch
+        {
+            // ignored
+        }
+
+        await OnCancelled.InvokeAsync();
     }
 
     private async Task Cancel()

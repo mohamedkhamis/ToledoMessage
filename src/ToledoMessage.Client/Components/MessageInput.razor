@@ -156,6 +156,15 @@
     [Parameter]
     public EventCallback OnCancelReply { get; set; }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try { await Js.InvokeVoidAsync("mediaHelpers.preventEnterNewline", _textareaRef); }
+            catch { /* ignored */ }
+        }
+    }
+
     private void ToggleAttachMenu()
     {
         _showAttachMenu = !_showAttachMenu;

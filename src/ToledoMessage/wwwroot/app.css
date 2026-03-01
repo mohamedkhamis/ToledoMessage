@@ -330,6 +330,16 @@ label {
     color: var(--text-secondary);
 }
 
+/* App version footer */
+.app-version-footer {
+    text-align: center;
+    font-size: 0.75em;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    padding: 24px 0 12px;
+    letter-spacing: 0.3px;
+}
+
 /* ============ Conversations list ============ */
 .conversation-list {
     display: flex;
@@ -2422,49 +2432,30 @@ html[data-font-size="large"] { font-size: 17px; }
 }
 
 /* ============ Voice Recorder ============ */
-.voice-recorder-bar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 12px;
-    background: var(--hover-bg);
-    border-radius: 20px;
-    flex: 1;
-}
-.recording-indicator {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: var(--danger);
-    animation: pulse 1s ease-in-out infinite;
-    flex-shrink: 0;
-}
-.recording-timer {
-    font-family: monospace;
-    font-size: 0.95em;
-    color: var(--text-primary);
-    min-width: 44px;
-}
-.voice-cancel-btn, .voice-send-btn {
+
+/* Shared button styles */
+.voice-cancel-btn, .voice-send-btn, .voice-stop-btn, .voice-play-btn {
     border: none;
     border-radius: 50%;
-    width: 42px;
-    height: 42px;
-    min-width: 42px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 1.2em;
-    transition: background 0.15s;
+    transition: opacity 0.15s, transform 0.1s;
     flex-shrink: 0;
 }
+.voice-cancel-btn:active, .voice-send-btn:active, .voice-stop-btn:active, .voice-play-btn:active {
+    transform: scale(0.93);
+}
 .voice-cancel-btn {
-    background: var(--danger);
-    color: #fff;
+    background: transparent;
+    color: var(--danger);
 }
 .voice-cancel-btn:hover {
-    opacity: 0.85;
+    background: rgba(255, 59, 48, 0.1);
 }
 .voice-send-btn {
     background: var(--accent);
@@ -2474,6 +2465,33 @@ html[data-font-size="large"] { font-size: 17px; }
 .voice-send-btn:hover {
     opacity: 0.85;
 }
+.voice-stop-btn {
+    background: var(--danger);
+    color: #fff;
+    margin-left: auto;
+}
+.voice-stop-btn:hover {
+    opacity: 0.85;
+}
+.voice-play-btn {
+    background: var(--accent);
+    color: #fff;
+}
+.voice-play-btn:hover {
+    opacity: 0.85;
+}
+
+/* Recording timer */
+.recording-timer {
+    font-family: monospace;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    min-width: 40px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+/* Mic button (in message input) */
 .mic-btn {
     border-radius: 50%;
     width: 42px;
@@ -2497,12 +2515,38 @@ html[data-font-size="large"] { font-size: 17px; }
     background: var(--danger);
     color: white;
 }
+
+/* --- Recording Phase --- */
+.voice-recorder-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    background: var(--hover-bg);
+    border-radius: 24px;
+    flex: 1;
+}
+.recording-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--danger);
+    animation: rec-pulse 1.2s ease-in-out infinite;
+    flex-shrink: 0;
+}
+@keyframes rec-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(0.8); }
+}
+
+/* Waveform bars */
 .voice-waveform-bars {
     display: flex;
     align-items: center;
-    gap: 2px;
-    height: 32px;
-    padding: 0 4px;
+    gap: 3px;
+    height: 28px;
+    flex: 1;
+    justify-content: center;
 }
 .voice-waveform-bars .bar {
     width: 3px;
@@ -2511,13 +2555,66 @@ html[data-font-size="large"] { font-size: 17px; }
     min-height: 4px;
     animation: waveform 0.8s ease-in-out infinite alternate;
 }
-.voice-waveform-bars .bar:nth-child(2) { animation-delay: 0.1s; }
-.voice-waveform-bars .bar:nth-child(3) { animation-delay: 0.2s; }
-.voice-waveform-bars .bar:nth-child(4) { animation-delay: 0.3s; }
-.voice-waveform-bars .bar:nth-child(5) { animation-delay: 0.4s; }
+.voice-waveform-bars .bar:nth-child(1) { animation-delay: 0s; }
+.voice-waveform-bars .bar:nth-child(2) { animation-delay: 0.15s; }
+.voice-waveform-bars .bar:nth-child(3) { animation-delay: 0.3s; }
+.voice-waveform-bars .bar:nth-child(4) { animation-delay: 0.15s; }
+.voice-waveform-bars .bar:nth-child(5) { animation-delay: 0s; }
 @keyframes waveform {
     from { height: 4px; }
-    to { height: 24px; }
+    to { height: 22px; }
+}
+
+/* --- Preview Phase --- */
+.voice-preview-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    background: var(--hover-bg);
+    border-radius: 24px;
+    flex: 1;
+}
+
+/* Progress slider */
+.voice-progress {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+.voice-progress::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.voice-progress::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.voice-progress::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 2px;
+}
+.voice-progress::-moz-range-track {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
 }
 
 /* ============ Link Preview ============ */
@@ -2709,4 +2806,118 @@ html[data-font-size="large"] { font-size: 17px; }
 }
 .clear-chat-cancel:hover {
     color: var(--text-primary);
+}
+
+/* ============ Message Search Bar ============ */
+.chat-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+}
+.chat-search-input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius);
+    background: var(--input-bg);
+    color: var(--text-primary);
+    font-size: 0.9em;
+    outline: none;
+}
+.chat-search-input:focus {
+    border-color: var(--accent);
+}
+.chat-search-count {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    min-width: 40px;
+    text-align: center;
+}
+
+/* Search highlight on currently focused match */
+.message-highlight {
+    animation: search-highlight-flash 1.5s ease;
+}
+@keyframes search-highlight-flash {
+    0%, 30% { background-color: var(--accent-light); }
+    100% { background-color: transparent; }
+}
+
+/* ============ Forward Dialog ============ */
+.forward-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.forward-dialog {
+    background: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    width: 90%;
+    max-width: 420px;
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.forward-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+}
+.forward-dialog-header h4 {
+    margin: 0;
+    font-size: 1em;
+}
+.forward-search-input {
+    margin: 10px 12px;
+    padding: 8px 12px;
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius);
+    background: var(--input-bg);
+    color: var(--text-primary);
+    font-size: 0.9em;
+    outline: none;
+}
+.forward-search-input:focus {
+    border-color: var(--accent);
+}
+.forward-conversation-list {
+    flex: 1;
+    overflow-y: auto;
+}
+.forward-conversation-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 16px;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    text-align: left;
+    font-size: 0.95em;
+}
+.forward-conversation-item:hover {
+    background: var(--hover-bg);
+}
+
+/* ============ Forwarded Label ============ */
+.forwarded-label {
+    font-size: 0.75em;
+    font-style: italic;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+    opacity: 0.8;
 }

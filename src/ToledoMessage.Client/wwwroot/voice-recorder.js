@@ -3,10 +3,14 @@ window.voiceRecorder = {
     _chunks: [],
     _dotNetRef: null,
     _stream: null,
+    _blobUrl: null,
+    _blob: null,
+    _audioEl: null,
 
     start: async function (dotNetRef) {
         this._dotNetRef = dotNetRef;
         this._chunks = [];
+        this._revokePreview();
 
         this._stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         var mimeType = 'audio/webm;codecs=opus';
@@ -27,23 +31,29 @@ window.voiceRecorder = {
             }
         };
 
-        this._mediaRecorder.onstop = async () => {
-            if (this._chunks.length === 0 || !this._dotNetRef) {
+        this._mediaRecorder.onstop = () => {
+            // Stop mic tracks immediately
+            if (this._stream) {
+                this._stream.getTracks().forEach(track => track.stop());
+                this._stream = null;
+            }
+
+            if (this._chunks.length === 0) {
                 this._cleanup();
                 return;
             }
 
-            const blob = new Blob(this._chunks, { type: 'audio/webm' });
-            const arrayBuffer = await blob.arrayBuffer();
-            const byteArray = new Uint8Array(arrayBuffer);
+            // Create blob + URL for preview (don't send to .NET yet)
+            this._blob = new Blob(this._chunks, { type: 'audio/webm' });
+            this._blobUrl = URL.createObjectURL(this._blob);
 
-            try {
-                await this._dotNetRef.invokeMethodAsync('OnRecordingComplete', Array.from(byteArray));
-            } catch (e) {
-                // Component may have been disposed
+            if (this._dotNetRef) {
+                try {
+                    this._dotNetRef.invokeMethodAsync('OnRecordingStopped');
+                } catch (e) {
+                    // Component may have been disposed
+                }
             }
-
-            this._cleanup();
         };
 
         this._mediaRecorder.start();
@@ -57,8 +67,6 @@ window.voiceRecorder = {
 
     cancel: function () {
         this._chunks = [];
-        // Don't nullify _dotNetRef here — let onstop/cleanup handle it
-        // so the onstop handler sees empty chunks and skips the callback
         if (this._mediaRecorder && this._mediaRecorder.state === 'recording') {
             this._mediaRecorder.stop();
         } else {
@@ -66,11 +74,75 @@ window.voiceRecorder = {
         }
     },
 
+    getPreviewUrl: function () {
+        return this._blobUrl;
+    },
+
+    getRecordedBytes: async function () {
+        if (!this._blob) return null;
+        const arrayBuffer = await this._blob.arrayBuffer();
+        return Array.from(new Uint8Array(arrayBuffer));
+    },
+
+    initPreviewAudio: function (audioElement) {
+        this._audioEl = audioElement;
+        if (this._blobUrl && audioElement) {
+            audioElement.src = this._blobUrl;
+        }
+    },
+
+    playPreview: function () {
+        if (this._audioEl) {
+            this._audioEl.play();
+        }
+    },
+
+    pausePreview: function () {
+        if (this._audioEl) {
+            this._audioEl.pause();
+        }
+    },
+
+    seekPreview: function (time) {
+        if (this._audioEl) {
+            this._audioEl.currentTime = time;
+        }
+    },
+
+    getPreviewCurrentTime: function () {
+        return this._audioEl ? this._audioEl.currentTime : 0;
+    },
+
+    getPreviewDuration: function () {
+        if (!this._audioEl) return 0;
+        var d = this._audioEl.duration;
+        return isFinite(d) ? d : 0;
+    },
+
+    _revokePreview: function () {
+        if (this._audioEl) {
+            this._audioEl.pause();
+            this._audioEl.src = '';
+            this._audioEl = null;
+        }
+        if (this._blobUrl) {
+            URL.revokeObjectURL(this._blobUrl);
+            this._blobUrl = null;
+        }
+        this._blob = null;
+    },
+
+    revokePreview: function () {
+        this._revokePreview();
+    },
+
     _cleanup: function () {
+        this._revokePreview();
         if (this._stream) {
             this._stream.getTracks().forEach(track => track.stop());
             this._stream = null;
         }
         this._mediaRecorder = null;
+        this._chunks = [];
     }
 };

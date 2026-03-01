@@ -1,23 +1,20 @@
 <!--
   Sync Impact Report
   ===================
-  Version change: 1.0.1 → 1.1.0
-  Modified principles:
-    - I. Zero-Trust Server: Added server-side data retention policy —
-      undelivered encrypted messages MUST be purged after 90 days.
-      Codifies the data lifecycle boundary for server-stored ciphertext.
-    - IV. Signal Protocol Fidelity: Added Sender Keys protocol requirement
-      for group messaging. Each member generates a sender key distributed
-      via pairwise sessions; O(1) encrypt per send; key rotation on
-      membership change.
-  Added sections: None
+  Version change: 1.1.0 → 1.2.0
+  Modified principles: None
+  Added sections:
+    - Authorized Exceptions: CE-001 (Encrypted Key Backup / FR-024).
+      Documents that the server stores an encrypted identity key backup
+      blob as an exception to Principle I (Zero-Trust Server). The blob
+      is encrypted client-side with PBKDF2+AES-256-GCM; the server
+      never sees plaintext keys. Users can opt out.
   Removed sections: None
   Templates requiring updates:
-    - .specify/templates/plan-template.md: ✅ No changes needed (generic Constitution Check)
-    - .specify/templates/spec-template.md: ✅ No changes needed (generic structure)
-    - .specify/templates/tasks-template.md: ✅ No changes needed (generic structure)
-    - CLAUDE.md: ✅ No changes needed (no constitution references to update)
-    - docs/contribution_explained_simple.md: ✅ No changes needed (general overview doc)
+    - .specify/templates/plan-template.md: ✅ No changes needed
+    - .specify/templates/spec-template.md: ✅ No changes needed
+    - .specify/templates/tasks-template.md: ✅ No changes needed
+    - CLAUDE.md: ✅ No changes needed
   Follow-up TODOs: None
 -->
 
@@ -179,6 +176,33 @@ obscurity.
   authentication tag (AES-256-GCM). Messages with invalid tags
   MUST be rejected and discarded without processing.
 
+## Authorized Exceptions
+
+### CE-001: Encrypted Key Backup (FR-024)
+
+**Principle affected**: I. Zero-Trust Server
+
+**Exception**: The server stores an additional data type beyond "encrypted
+ciphertext, public keys, and pre-key bundles" — an encrypted identity key
+backup blob uploaded by the client.
+
+**Justification**: Multi-device usability requires identity key continuity.
+Without shared identity keys, each new device appears as a different user
+to contacts. The backup is encrypted client-side with AES-256-GCM using a
+key derived from the user's password via PBKDF2 (100,000 iterations,
+SHA-256). The server never receives the password or derived key. The
+encrypted blob is opaque to the server — a server compromise reveals only
+ciphertext that cannot be decrypted without the user's password.
+
+**Mitigations**:
+- Encryption is performed entirely client-side before upload
+- The server stores only: encrypted blob + salt + nonce (no plaintext keys)
+- Users can opt out (disable in Settings), which deletes the backup
+- PBKDF2 with 100K iterations provides brute-force resistance
+- The feature is opt-in by default but can be toggled off per user
+
+**Approved**: 2026-03-01
+
 ## Development Workflow & Quality Gates
 
 - **Branch strategy**: Feature branches follow the `NNN-short-name`
@@ -222,4 +246,4 @@ code), the constitution prevails.
   > IV (Signal Fidelity) > VI (Test-First) > V (.NET Ecosystem)
   > VII (Transparency).
 
-**Version**: 1.1.0 | **Ratified**: 2026-02-25 | **Last Amended**: 2026-02-26
+**Version**: 1.2.0 | **Ratified**: 2026-02-25 | **Last Amended**: 2026-03-01

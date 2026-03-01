@@ -164,7 +164,7 @@ A user sets a disappearing message timer on a conversation (e.g., 24 hours, 7 da
 - **FR-003**: System MUST publish pre-key bundles (identity key, signed pre-key, and a set of one-time pre-keys) to the server for each registered user.
 - **FR-004**: System MUST perform a hybrid key exchange combining classical Diffie-Hellman operations with a post-quantum key encapsulation mechanism when establishing a new session between two users.
 - **FR-005**: System MUST encrypt every message individually using authenticated encryption with a unique per-message key derived from a forward-secret ratcheting mechanism.
-- **FR-018**: System MUST support text messages for MVP. The message format MUST be extensible to accommodate future content types (images, audio, files) without requiring protocol changes.
+- **FR-018**: System MUST support text messages as the primary content type. The message format MUST be extensible to accommodate additional content types without requiring protocol changes. Media content types (Image, Video, Audio, File) are supported per FR-023.
 - **FR-019**: System MUST enforce a maximum plaintext message size of 64 KB. Both client and server MUST validate and reject messages exceeding this limit before encryption or storage.
 - **FR-020**: System MUST allow users to self-deactivate their account via Settings. Upon initiating deletion, the account enters a pending-deletion state with a 7-day grace period. Logging in during the grace period re-activates the account. After 7 days, the account is permanently deactivated: all device keys are revoked, the user cannot log in, and contacts see a key change warning.
 - **FR-021**: System MUST use the Browser Notification API to show desktop notifications for incoming messages when the application tab is unfocused or minimized. Notification display MUST require explicit user permission. Notification content MUST show sender name and a generic alert (not decrypted message preview) to protect privacy.
@@ -181,6 +181,11 @@ A user sets a disappearing message timer on a conversation (e.g., 24 hours, 7 da
 - **FR-015**: System MUST automatically replenish one-time pre-keys when the supply on the server runs low.
 - **FR-016**: System MUST provide forward secrecy — compromise of long-term keys MUST NOT allow decryption of past messages.
 - **FR-017**: System MUST provide post-compromise security — after a key compromise is detected and new keys are established, future messages MUST be protected.
+- **FR-023**: System MUST support media message types: Image, Video, Audio, and File. Media content is encrypted as part of the message payload using the same per-message keys. Images are displayed inline with click-to-expand. Videos and audio use native browser playback controls. Files display a download card. Media data MUST be persisted to IndexedDB (base64-encoded) for offline access.
+- **FR-024**: System MUST provide an opt-in (default ON) encrypted key backup feature. Identity keys (classical + post-quantum) are encrypted client-side using AES-256-GCM with a key derived from the user's password via PBKDF2 (100,000 iterations, SHA-256). The encrypted blob, salt, and nonce are uploaded to the server. On new device login, the system attempts to restore identity keys from the backup, generating fresh pre-keys and one-time pre-keys per device. Users can disable this feature in Settings, which deletes the server-side backup. See Constitution Exception CE-001.
+- **FR-025**: System MUST support conversation search (sidebar search filtering by display name) and in-conversation message search (highlight matching messages, navigate between results).
+- **FR-026**: System MUST support message reactions (emoji reactions with per-user toggle, aggregated badge display), message replies (quote the original message with sender name and preview text, click-to-scroll to original), and message forwarding (forward a message to another conversation with "Forwarded" label).
+- **FR-027**: System MUST support link previews for URLs detected in message text. When a message contains a URL, the system displays a preview card below the message text.
 
 ### Non-Functional Requirements
 
@@ -222,16 +227,19 @@ A user sets a disappearing message timer on a conversation (e.g., 24 hours, 7 da
 - **SC-009**: The system supports simultaneous use from at least 2 devices per user without message loss or decryption failures.
 - **SC-010**: Group conversations support at least 100 participants with all members able to decrypt messages correctly.
 
-## Out of Scope (MVP)
+## Out of Scope
 
-- Image, audio, video, and file attachments (architecture must be extensible to add these later)
 - Voice and video calling
-- Account recovery or key backup/export
 - Contact list management or phone number-based discovery
-- Message search across conversations
 - User profile pictures or status updates
 - Push notifications via service worker (when browser is fully closed)
 - Read-only message archival or export
+
+### Previously Out of Scope — Now Implemented
+
+- ~~Image, audio, video, and file attachments~~ → Implemented (see FR-023)
+- ~~Account recovery or key backup/export~~ → Implemented as opt-in encrypted key backup (see FR-024)
+- ~~Message search across conversations~~ → Implemented as conversation-level search and sidebar filtering (see FR-025)
 
 ## Assumptions
 

@@ -101,6 +101,11 @@ src/
 │   │   ├── PreKeyReplenishmentService.cs # Auto-replenish OTPs
 │   │   ├── MessageExpiryService.cs   # Client-side disappearing message timer
 │   │   ├── ThemeService.cs           # Dark/light mode
+│   │   ├── PreferencesService.cs     # User preferences sync
+│   │   ├── MessageStoreService.cs    # IndexedDB message persistence
+│   │   ├── KeyBackupCryptoService.cs # PBKDF2 + AES-GCM key backup encryption
+│   │   ├── KeyBackupService.cs       # Upload/restore/delete key backups
+│   │   ├── ToastService.cs           # In-app toast notifications
 │   │   ├── AuthTokenHandler.cs       # JWT refresh interceptor
 │   │   ├── TabLeaderService.cs       # BroadcastChannel leader election
 │   │   └── NotificationService.cs    # Browser Notification API
@@ -116,9 +121,14 @@ src/
 │   │   ├── MessageBubble.razor
 │   │   ├── MessageInput.razor
 │   │   ├── DeliveryStatus.razor
-│   │   ├── ConversationListItem.razor
+│   │   ├── ConversationListSidebar.razor
+│   │   ├── AvatarInitials.razor
+│   │   ├── LinkPreview.razor
+│   │   ├── SkeletonLoader.razor
 │   │   ├── KeyChangeWarning.razor
 │   │   └── DisappearingTimerConfig.razor
+│   ├── Components/Layout/
+│   │   └── ChatLayout.razor
 │   └── Program.cs                    # Client DI + HttpClient + auth
 │
 ├── ToledoMessage.Crypto/             # Cryptographic library (BouncyCastle)

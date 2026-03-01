@@ -342,18 +342,130 @@
 
 ---
 
-## Phase 11: Polish & Cross-Cutting Concerns
+## Phase 11: FR-023 — Media Attachments (Image, Video, Audio, File)
+
+**Goal**: Users can send and receive media messages (images, videos, audio, files) with E2E encryption. Max 10 MB per attachment. Client-side MIME validation.
+
+**Independent Test**: Send an image in a 1:1 conversation → recipient sees inline image → click to expand → send a file → recipient can download.
+
+### Server Implementation
+
+- [X] T137 [P] [US8] Add ContentType enum values (Image=1, Video=2, Audio=3, File=4) in src/ToledoMessage.Shared/Enums/ContentType.cs
+- [X] T138 [US8] Update ChatHub SendMessage to accept media content types and validate attachment size ≤10 MB in src/ToledoMessage/Hubs/ChatHub.cs
+- [X] T139 [US8] Update MessagesController POST /api/messages to accept media content types and validate attachment size ≤10 MB in src/ToledoMessage/Controllers/MessagesController.cs
+
+### Client Implementation
+
+- [X] T140 [US8] Add media selection UI to MessageInput component (file picker, camera capture, accept image/video/audio/file types, validate MIME type via file header magic bytes, reject unsupported/corrupted files with user-facing error, enforce 10 MB limit) in src/ToledoMessage.Client/Components/MessageInput.razor
+- [X] T141 [US8] Update Chat.razor HandleSend to encrypt media bytes inline within message payload, carry MediaBytes and MimeType through ChatMessage, persist base64-encoded media + MimeType to IndexedDB via MessageStoreService in src/ToledoMessage.Client/Pages/Chat.razor
+- [X] T142 [US8] Update MessageBubble to render media types: inline image with click-to-expand, video with native controls, audio with native controls, file download card with filename; show placeholder for unavailable media in src/ToledoMessage.Client/Components/MessageBubble.razor
+- [X] T143 [US8] Add MimeType field to StoredMessage in MessageStoreService and update CreateMediaBlobUrlFromBase64 to use stored MIME type in src/ToledoMessage.Client/Services/MessageStoreService.cs
+- [ ] T144 [US8] Implement client-side MIME validation by checking file header magic bytes (JPEG FFD8, PNG 89504E47, PDF 25504446, etc.) before encryption; reject with specific error ("Unsupported file type" or "File appears corrupted") in src/ToledoMessage.Client/Components/MessageInput.razor
+
+**Checkpoint**: Media messages work end-to-end. Images display inline, videos/audio play, files download. 10 MB limit enforced. MIME validated.
+
+---
+
+## Phase 12: FR-024 — Encrypted Key Backup (CE-001)
+
+**Goal**: Identity keys are backed up to server encrypted with user's password (PBKDF2+AES-GCM). New devices restore shared identity instead of generating fresh keys.
+
+**Independent Test**: Register user A on browser 1 → send messages → open browser 2 → login as A → keys restored → same identity, contacts don't see key change.
+
+### Server Implementation
+
+- [X] T145 [P] [US9] Add SharedKeysEnabled property (default true) to UserPreferences model in src/ToledoMessage/Models/UserPreferences.cs
+- [X] T146 [P] [US9] Create EncryptedKeyBackup model (Id, UserId unique FK, EncryptedBlob byte[], Salt byte[16], Nonce byte[12], Version int, CreatedAt, UpdatedAt) in src/ToledoMessage/Models/EncryptedKeyBackup.cs
+- [X] T147 [US9] Create EncryptedKeyBackupConfiguration (unique index on UserId, cascade delete, max lengths) in src/ToledoMessage/Data/Configurations/EncryptedKeyBackupConfiguration.cs
+- [X] T148 [US9] Add DbSet<EncryptedKeyBackup> to ApplicationDbContext in src/ToledoMessage/Data/ApplicationDbContext.cs
+- [X] T149 [US9] Create EF migration for AddEncryptedKeyBackup in src/ToledoMessage/Migrations/
+- [X] T150 [US9] Create KeyBackupController with POST /api/keys/backup (upload/replace, 50KB max), GET /api/keys/backup (download, 404 if none), DELETE /api/keys/backup in src/ToledoMessage/Controllers/KeyBackupController.cs
+- [X] T151 [US9] Add SharedKeysEnabled to PreferencesController GET response, GET mapping, and PUT handler in src/ToledoMessage/Controllers/PreferencesController.cs
+- [X] T152 [P] [US9] Add SharedKeysEnabled field to UpdatePreferencesRequest and UserPreferencesResponse DTOs in src/ToledoMessage.Shared/DTOs/
+- [X] T153 [P] [US9] Create UploadKeyBackupRequest and KeyBackupResponse DTOs in src/ToledoMessage.Shared/DTOs/KeyBackupDtos.cs
+
+### Client Implementation
+
+- [X] T154 [US9] Implement KeyBackupCryptoService (PBKDF2 100K iterations SHA-256 + AES-256-GCM encrypt/decrypt of KeyBackupPayload containing 4 identity key byte arrays) in src/ToledoMessage.Client/Services/KeyBackupCryptoService.cs
+- [X] T155 [US9] Implement KeyBackupService (UploadBackupAsync: read identity keys from localStorage → encrypt → POST; TryRestoreBackupAsync: GET → decrypt → store; DeleteBackupAsync: DELETE) in src/ToledoMessage.Client/Services/KeyBackupService.cs
+- [X] T156 [US9] Add RestoreKeysAndBuildRequest method to KeyGenerationService (use restored identity keys with fresh pre-keys/OTPKs, return DeviceRegistrationRequest) in src/ToledoMessage.Client/Services/KeyGenerationService.cs
+- [X] T157 [US9] Update Login.razor to check SharedKeysEnabled preference, try TryRestoreBackupAsync on new device, fall back to GenerateAndStoreKeys, upload backup after first device registration in src/ToledoMessage.Client/Pages/Login.razor
+- [X] T158 [US9] Add Security section to Settings.razor with "Share Keys Across Devices" toggle (disable → DeleteBackupAsync, enable → show next-login message) in src/ToledoMessage.Client/Pages/Settings.razor
+- [X] T159 [US9] Register KeyBackupCryptoService and KeyBackupService in DI in src/ToledoMessage.Client/Program.cs
+
+**Checkpoint**: Key backup works. New devices restore identity. Toggle in Settings controls backup. Server stores only encrypted blobs.
+
+---
+
+## Phase 13: FR-025 — Conversation & Message Search
+
+**Goal**: Users can filter conversations by display name in sidebar and search messages within a conversation.
+
+**Independent Test**: Type a name in sidebar search → list filters → open conversation → search for keyword → matching messages highlighted → navigate between results.
+
+### Client Implementation
+
+- [X] T160 [US10] Implement sidebar search in ConversationListSidebar (text input filters conversations by display name, case-insensitive partial match) in src/ToledoMessage.Client/Components/ConversationListSidebar.razor
+- [X] T161 [US10] Implement in-conversation message search in Chat.razor (search input, filter cached messages by text content, highlight matching messages with message-highlight CSS class, navigate between results with up/down buttons, scroll to highlighted message) in src/ToledoMessage.Client/Pages/Chat.razor
+
+**Checkpoint**: Sidebar filters conversations. In-conversation search highlights and navigates between matching messages.
+
+---
+
+## Phase 14: FR-026 — Reactions, Replies, and Forwarding
+
+**Goal**: Users can react to messages with emoji, reply with quote blocks, and forward messages to other conversations.
+
+**Independent Test**: React to a message → badge appears with count → reply to a message → quote block shown → forward a message → appears in target conversation with "Forwarded" label.
+
+### Server Implementation
+
+- [X] T162 [P] [US11] Create MessageReaction model (Id, MessageId FK, UserId FK, Emoji, CreatedAt) with unique constraint on (MessageId, UserId, Emoji) in src/ToledoMessage/Models/MessageReaction.cs
+- [X] T163 [US11] Add POST /api/messages/{messageId}/reactions (toggle: add if absent, remove if present) and GET /api/messages/{messageId}/reactions endpoints in src/ToledoMessage/Controllers/MessagesController.cs
+- [X] T164 [US11] Add ReactionToggled SignalR broadcast (messageId, conversationId, userId, emoji, added) to ChatHub in src/ToledoMessage/Hubs/ChatHub.cs
+
+### Client Implementation
+
+- [X] T165 [US11] Add reaction badges to MessageBubble (display aggregated emoji badges with count, highlight user's own reactions, toggle on click via OnReactionToggle callback) in src/ToledoMessage.Client/Components/MessageBubble.razor
+- [X] T166 [US11] Add reply-quote block to MessageBubble (show ReplyToSenderName and ReplyToText, click to scroll to original message via OnReplyQuoteClick) in src/ToledoMessage.Client/Components/MessageBubble.razor
+- [X] T167 [US11] Add forwarded label to MessageBubble (show "Forwarded" indicator when IsForwarded=true) in src/ToledoMessage.Client/Components/MessageBubble.razor
+- [X] T168 [US11] Implement reply flow in Chat.razor (reply action on message → show reply preview in input area → send with ReplyToMessageId, include quoted sender name and text) in src/ToledoMessage.Client/Pages/Chat.razor
+- [X] T169 [US11] Implement forward flow in Chat.razor (forward action on message → show conversation picker → re-encrypt message payload with target conversation keys → send with IsForwarded=true) in src/ToledoMessage.Client/Pages/Chat.razor
+- [X] T170 [US11] Implement context menu on MessageBubble (right-click/long-press → show options: Reply, React, Forward, Delete) in src/ToledoMessage.Client/Components/MessageBubble.razor
+
+**Checkpoint**: Reactions toggle with badges. Replies show quote blocks. Forwarding re-encrypts and sends with label.
+
+---
+
+## Phase 15: FR-027 — Link Previews
+
+**Goal**: URLs in messages display a preview card with title/description/image, fetched client-side only (zero-trust).
+
+**Independent Test**: Send a message containing a URL → preview card appears below message text → previews that fail due to CORS are silently omitted.
+
+### Client Implementation
+
+- [X] T171 [US12] Implement LinkPreview component (extract first URL from message text via regex, fetch metadata client-side via JS interop fetch, display title/description/image card, silently omit on CORS/fetch failure) in src/ToledoMessage.Client/Components/LinkPreview.razor
+- [X] T172 [US12] Integrate LinkPreview into MessageBubble (render LinkPreview below message-text div when ExtractFirstUrl returns a URL) in src/ToledoMessage.Client/Components/MessageBubble.razor
+- [X] T173 [P] [US12] Add link-preview CSS styles (card layout, thumbnail, title, description, hover state) in src/ToledoMessage/wwwroot/app.css
+
+**Checkpoint**: Link previews render for accessible URLs. CORS failures silently omitted. No server-side URL fetching.
+
+---
+
+## Phase 16: Polish & Cross-Cutting Concerns
 
 **Purpose**: Improvements that affect multiple user stories
 
 - [X] T129 [P] Implement ThemeService (dark/light mode toggle, persist preference in IndexedDB) in src/ToledoMessage.Client/Services/ThemeService.cs
 - [X] T130 [P] Implement Blazor server-side shell: App.razor, MainLayout.razor, NavMenu.razor (navigation between pages, auth-aware menu items) in src/ToledoMessage/Components/
 - [X] T131 [P] Implement Error and NotFound pages in src/ToledoMessage/Components/Pages/Error.razor and src/ToledoMessage/Components/Pages/NotFound.razor
-- [ ] T132 Security hardening: validate all API inputs against ProtocolConstants (key sizes, display name format, password length, message size 64 KB), ensure no plaintext logging (Constitution security requirement), validate JWT claims on all authorized endpoints
+- [ ] T132 Security hardening: validate all API inputs against ProtocolConstants (key sizes, display name format, password length, message size 64 KB, media size 10 MB), ensure no plaintext logging (Constitution security requirement), validate JWT claims on all authorized endpoints
 - [ ] T133 Implement load testing with NBomber or k6: target 10K concurrent SignalR connections, validate NFR latency targets (<500ms key exchange, <50ms message encrypt) in tests/ToledoMessage.Benchmarks/LoadTests/
 - [ ] T134 Validate code coverage meets thresholds: >=80% overall, >=90% crypto library (ToledoMessage.Crypto). Run `dotnet test --collect:"XPlat Code Coverage"` and verify with ReportGenerator
 - [ ] T135 Run quickstart.md validation: follow all steps in specs/001-secure-messaging/quickstart.md from scratch and verify successful end-to-end flow
 - [ ] T136 Run full test suite and verify all tests pass: `dotnet test` across all test projects
+- [ ] T174 Implement client-side MIME validation for media attachments (check file header magic bytes before encryption) in src/ToledoMessage.Client/Components/MessageInput.razor
 
 ---
 
@@ -364,8 +476,13 @@
 - **Phase 1 (Setup)**: No dependencies — start immediately
 - **Phase 2 (Crypto Library)**: Depends on Phase 1 — BLOCKS all user stories
 - **Phase 3 (Server Infrastructure)**: Depends on Phase 1 — BLOCKS all user stories
-- **Phase 4-10 (User Stories)**: All depend on Phase 2 + Phase 3 completion
-- **Phase 11 (Polish)**: Depends on all desired user stories being complete
+- **Phase 4-10 (User Stories 1-7)**: All depend on Phase 2 + Phase 3 completion
+- **Phase 11 (Media)**: Depends on Phase 6 (US3 — needs message exchange)
+- **Phase 12 (Key Backup)**: Depends on Phase 4 (US1 — needs registration/login)
+- **Phase 13 (Search)**: Depends on Phase 6 (US3 — needs messages to search)
+- **Phase 14 (Reactions/Replies/Forward)**: Depends on Phase 6 (US3 — needs message exchange)
+- **Phase 15 (Link Previews)**: Depends on Phase 6 (US3 — needs message rendering)
+- **Phase 16 (Polish)**: Depends on all desired user stories being complete
 
 ### User Story Dependencies
 
@@ -376,6 +493,11 @@
 - **US5 (P2)**: Multi-device — depends on US1 (needs registered device)
 - **US6 (P3)**: Group messaging — depends on US2 + US3 (needs 1:1 sessions)
 - **US7 (P3)**: Disappearing messages — depends on US3 (needs message exchange)
+- **US8**: Media attachments — depends on US3 (needs message exchange pipeline)
+- **US9**: Encrypted key backup — depends on US1 (needs login flow + identity keys)
+- **US10**: Search — depends on US3 (needs conversations and messages)
+- **US11**: Reactions/replies/forwarding — depends on US3 (needs message rendering)
+- **US12**: Link previews — depends on US3 (needs message rendering)
 
 ### Within Each User Story
 
@@ -395,6 +517,11 @@ Within phases, all tasks marked [P] can run in parallel:
 - Phase 7: Both test tasks (T100-T101) in parallel
 - Phase 8: Both test tasks (T105-T106) in parallel
 - Phase 9: All 3 test tasks (T114-T116) in parallel
+- Phase 11: T137 (enum) in parallel with other story tasks
+- Phase 12: T145, T146, T152, T153 in parallel (model + DTOs)
+- Phase 14: T162 (model) in parallel with other setup
+- Phase 15: T173 (CSS) in parallel with component work
+- Phases 11-15 are independent of each other and can run in parallel
 
 ---
 
@@ -466,7 +593,12 @@ T054 (ChatHub ← T047), T055 (DI Registration ← T047-T054)
 6. US5 → Multi-device + account management → Deploy
 7. US6 → Group messaging → Deploy
 8. US7 → Disappearing messages → Deploy
-9. Polish → Final release
+9. US8 → Media attachments → Deploy
+10. US9 → Encrypted key backup → Deploy
+11. US10 → Search → Deploy
+12. US11 → Reactions/replies/forwarding → Deploy
+13. US12 → Link previews → Deploy
+14. Polish → Final release
 
 ---
 

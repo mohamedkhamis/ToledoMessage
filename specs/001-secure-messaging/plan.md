@@ -48,7 +48,7 @@ specs/001-secure-messaging/
 ├── contracts/
 │   ├── rest-api.md      # Phase 1: REST API contracts
 │   └── signalr-hub.md   # Phase 1: SignalR hub contracts
-└── tasks.md             # Phase 2: Implementation tasks (130 tasks)
+└── tasks.md             # Phase 2: Implementation tasks (174 tasks)
 ```
 
 ### Source Code (repository root)

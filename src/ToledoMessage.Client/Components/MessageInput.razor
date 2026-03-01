@@ -35,96 +35,97 @@
         </div>
     }
     <div class="chat-input-row">
-        <div class="attach-menu-wrapper">
-            @if (_showAttachMenu)
+        @if (!_isRecording)
+        {
+            <div class="attach-menu-wrapper">
+                @if (_showAttachMenu)
+                {
+                    <div class="attach-menu-backdrop" @onclick="CloseAttachMenu"></div>
+                    <div class="attach-menu-popup" role="menu">
+                        <label class="attach-menu-item" role="menuitem" tabindex="0">
+                            <span class="attach-menu-icon">&#128247;</span>
+                            <span>Photo or Video</span>
+                            <InputFile accept="image/*,video/*" OnChange="OnMediaSelected" style="display:none" />
+                        </label>
+                        <label class="attach-menu-item" role="menuitem" tabindex="0">
+                            <span class="attach-menu-icon">&#127908;</span>
+                            <span>Audio</span>
+                            <InputFile accept="audio/*" OnChange="OnAudioSelected" style="display:none" />
+                        </label>
+                        <label class="attach-menu-item" role="menuitem" tabindex="0">
+                            <span class="attach-menu-icon">&#128196;</span>
+                            <span>Document</span>
+                            <InputFile OnChange="OnDocumentSelected" style="display:none" />
+                        </label>
+                    </div>
+                }
+                <button class="attach-btn" @onclick="ToggleAttachMenu"
+                        aria-label="Attach file" title="Attach file"
+                        aria-expanded="@_showAttachMenu">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="attach-menu-wrapper">
+                @if (_showEmojiPicker)
+                {
+                    <div class="attach-menu-backdrop" @onclick="() => _showEmojiPicker = false"></div>
+                    <EmojiPicker OnEmojiSelected="InsertEmoji" />
+                }
+                <button class="emoji-btn" @onclick="() => _showEmojiPicker = !_showEmojiPicker"
+                        aria-label="Emoji" title="Emoji">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                        <line x1="9" y1="9" x2="9.01" y2="9"/>
+                        <line x1="15" y1="9" x2="15.01" y2="9"/>
+                    </svg>
+                </button>
+            </div>
+
+            <textarea @ref="_textareaRef"
+                      @bind="_messageText"
+                      @bind:event="oninput"
+                      @bind:after="OnTextInput"
+                      @onkeydown="HandleKeyDown"
+                      placeholder="Type a message..."
+                      rows="1"
+                      class="msg-textarea"
+                      aria-label="Message input"></textarea>
+
+            @if (CanSend)
             {
-                <div class="attach-menu-backdrop" @onclick="CloseAttachMenu"></div>
-                <div class="attach-menu-popup" role="menu">
-                    <label class="attach-menu-item" role="menuitem" tabindex="0">
-                        <span class="attach-menu-icon">&#128247;</span>
-                        <span>Photo or Video</span>
-                        <InputFile accept="image/*,video/*" OnChange="OnMediaSelected" style="display:none" />
-                    </label>
-                    <label class="attach-menu-item" role="menuitem" tabindex="0">
-                        <span class="attach-menu-icon">&#127908;</span>
-                        <span>Audio</span>
-                        <InputFile accept="audio/*" OnChange="OnAudioSelected" style="display:none" />
-                    </label>
-                    <label class="attach-menu-item" role="menuitem" tabindex="0">
-                        <span class="attach-menu-icon">&#128196;</span>
-                        <span>Document</span>
-                        <InputFile OnChange="OnDocumentSelected" style="display:none" />
-                    </label>
-                </div>
+                <button @onclick="SendMessage"
+                        class="send-btn send-btn-active"
+                        aria-label="Send message"
+                        title="Send">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                    </svg>
+                </button>
             }
-            <button class="attach-btn" @onclick="ToggleAttachMenu"
-                    aria-label="Attach file" title="Attach file"
-                    aria-expanded="@_showAttachMenu">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2"
-                     stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-                </svg>
-            </button>
-        </div>
-
-        <div class="attach-menu-wrapper">
-            @if (_showEmojiPicker)
+            else
             {
-                <div class="attach-menu-backdrop" @onclick="() => _showEmojiPicker = false"></div>
-                <EmojiPicker OnEmojiSelected="InsertEmoji" />
+                <button class="mic-btn" @onclick="StartRecording"
+                        aria-label="Record voice message" title="Record voice message">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+                        <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="23"/>
+                        <line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                </button>
             }
-            <button class="emoji-btn" @onclick="() => _showEmojiPicker = !_showEmojiPicker"
-                    aria-label="Emoji" title="Emoji">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-                    <line x1="9" y1="9" x2="9.01" y2="9"/>
-                    <line x1="15" y1="9" x2="15.01" y2="9"/>
-                </svg>
-            </button>
-        </div>
-
-        <textarea @ref="_textareaRef"
-                  @bind="_messageText"
-                  @bind:event="oninput"
-                  @bind:after="OnTextInput"
-                  @onkeydown="HandleKeyDown"
-                  placeholder="Type a message..."
-                  rows="1"
-                  class="msg-textarea"
-                  style="@(_isRecording ? "display:none" : "")"
-                  aria-label="Message input"></textarea>
-
-        @if (_isRecording)
+        }
+        else
         {
             <VoiceRecorder OnRecorded="HandleVoiceRecorded" OnCancelled="() => _isRecording = false" />
-        }
-
-        @if (CanSend)
-        {
-            <button @onclick="SendMessage"
-                    class="send-btn send-btn-active"
-                    aria-label="Send message"
-                    title="Send">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                </svg>
-            </button>
-        }
-        else if (!_isRecording)
-        {
-            <button class="mic-btn" @onclick="StartRecording"
-                    aria-label="Record voice message" title="Record voice message">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
-                    <path d="M19 10v2a7 7 0 01-14 0v-2"/>
-                    <line x1="12" y1="19" x2="12" y2="23"/>
-                    <line x1="8" y1="23" x2="16" y2="23"/>
-                </svg>
-            </button>
         }
     </div>
 </div>

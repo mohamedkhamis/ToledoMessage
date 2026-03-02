@@ -38,4 +38,11 @@ C# / .NET 10 (LTS): Follow standard conventions
 - Wait for user to explicitly type "commit" before running git add/commit/push
 - **Always check for BUG-REPORT-*.md files** in project root and fix all listed bugs before finishing
 - After fixing bugs, mark them as done in the bug report file
+
+## Deploy Workflow
+- After finishing tasks or a group of tasks, ask user: "Deploy to IIS?"
+- Run: `powershell -ExecutionPolicy Bypass -File ./deploy-iis.ps1 -Force`
+- Requires Administrator privileges
+- App deploys to http://localhost:8080
+- Check status anytime: `powershell -ExecutionPolicy Bypass -File ./deploy-iis.ps1 -Action Status`
 <!-- MANUAL ADDITIONS END -->

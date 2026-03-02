@@ -1,5 +1,5 @@
 @page "/"
-@inject IHttpContextAccessor HttpContextAccessor
+@using ToledoMessage.Shared.Constants
 
 <div class="landing-page">
     <header class="landing-header">
@@ -103,7 +103,7 @@
             </div>
             <div class="footer-version">
                 <span class="version-label">API Version</span>
-                <span class="version-value">v1.0.0</span>
+                <span class="version-value">v@(AppVersion.Current)</span>
             </div>
         </div>
     </footer>

@@ -512,6 +512,19 @@ label {
     word-wrap: break-word;
     white-space: pre-wrap;
 }
+/* Big emoji - WhatsApp-style */
+.message-text.emoji-only {
+    font-size: 2.5rem;
+    line-height: 1.1;
+    text-align: center;
+    padding: 8px 4px;
+}
+/* Transparent bubble for emoji-only messages */
+.message-bubble:has(.emoji-only) {
+    background: transparent !important;
+    box-shadow: none;
+    padding: 4px 8px;
+}
 .message-meta {
     font-size: 0.72em;
     margin-top: 4px;
@@ -1803,6 +1816,33 @@ h1:focus { outline: none; }
     .theme-grid {
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     }
+    .emoji-picker-popup {
+        width: calc(100vw - 24px);
+        max-width: 360px;
+        max-height: 300px;
+    }
+    .emoji-grid { grid-template-columns: repeat(7, 1fr); }
+    .forward-dialog {
+        max-width: calc(100vw - 32px);
+        max-height: 80vh;
+    }
+    .message-image {
+        max-width: 100%;
+        max-height: 280px;
+        height: auto;
+    }
+    .lightbox-image {
+        max-width: 95vw;
+        max-height: 85vh;
+    }
+    .lightbox-close {
+        top: 8px;
+        right: 8px;
+    }
+    .lightbox-nav {
+        width: 40px;
+        height: 60px;
+    }
 }
 
 /* Tablet (768px — 991px) */
@@ -1820,6 +1860,29 @@ h1:focus { outline: none; }
     .app-content {
         max-width: 800px;
     }
+}
+
+/* Small phone (320px-480px) */
+@media (max-width: 480px) {
+    .msg-textarea { max-height: 100px; }
+    .send-btn, .mic-btn { width: 38px; height: 38px; min-width: 38px; }
+    .chat-input-row { gap: 4px; }
+    .emoji-picker-popup { width: 100vw; left: 0; right: 0; border-radius: 12px 12px 0 0; }
+    .voice-recorder-bar { min-height: 40px; border-radius: 20px; padding: 6px 10px; }
+    .wave-bar { width: 1.5px; }
+    .voice-waveform { gap: 1px; }
+    .voice-waveform-static { gap: 1px; }
+    .wave-bar-static { width: 1.5px; }
+    .recording-timer { font-size: 0.8rem; }
+    .slide-hint { display: none; }
+    .message-text.emoji-only { font-size: 1.8rem; }
+}
+
+/* Landscape orientation */
+@media (max-height: 500px) and (orientation: landscape) {
+    .chat-header { padding: 4px 12px; }
+    .msg-textarea { max-height: 60px; }
+    .emoji-picker-popup { max-height: 200px; }
 }
 
 /* ─── Font Size Scaling ─── */

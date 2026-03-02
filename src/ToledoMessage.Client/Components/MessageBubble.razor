@@ -110,7 +110,7 @@
         }
         @if (!string.IsNullOrEmpty(Text))
         {
-            <div class="message-text">@Text</div>
+            <div class="message-text@(IsEmojiOnly(Text) ? " emoji-only" : "")">@Text</div>
             var firstUrl = ExtractFirstUrl(Text);
             if (firstUrl is not null)
             {
@@ -161,6 +161,23 @@
     public void Dispose()
     {
         Theme.OnThemeChanged -= OnThemeChanged;
+    }
+
+    // Check if text contains only 1-3 emoji (for big emoji rendering)
+    private static bool IsEmojiOnly(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+        var trimmed = text.Trim();
+        if (trimmed.Length > 14) // Safety cap for compound emoji
+            return false;
+
+        // Match 1-3 emoji characters (including compound emoji like flags, skin tones)
+        // Emoji patterns: single emoji, ZWJ sequences, variation selectors, keycap, etc.
+        return System.Text.RegularExpressions.Regex.IsMatch(
+            trimmed,
+            @"^(\p{So}|\p{Cs}{2}|\u200D|\uFE0F|\u20E3|[\u2600-\u27BF]|[\uD83C-\uD83F][\uD800-\uDFFF]){1,3}$");
     }
 
     // Audio playback state

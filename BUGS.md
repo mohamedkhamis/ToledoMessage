@@ -13,6 +13,18 @@
 
 ## Resolved Bugs
 
+### ~~BUG-IMP-001: Missing `.message-bubble:has(.emoji-only)` CSS~~ FIXED 2026-03-02
+Added transparent bubble styling for emoji-only messages.
+
+### ~~BUG-IMP-002: IsEmojiOnly doesn't limit to 1-3 emoji~~ FIXED 2026-03-02
+Updated regex to only match 1-3 emoji with 14 char safety cap.
+
+### ~~BUG-IMP-003: Missing mobile image preview sizing~~ FIXED 2026-03-02
+Added max-height, lightbox styles for mobile.
+
+### ~~BUG-IMP-004: Missing `.btn-nav-outline` class and header button styling~~ FIXED 2026-03-02
+Added btn-nav-outline class and updated header "Sign In" button.
+
 ### ~~BUG-001: app.css not using structural CSS variables from themes.css~~ FIXED 2026-03-02
 Applied CSS variables to:
 - `.message-bubble`: border-radius, font-size

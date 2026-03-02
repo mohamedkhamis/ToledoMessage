@@ -14,6 +14,7 @@ public sealed class MessageStoreService(IJSRuntime js)
         await js.InvokeVoidAsync("toledoMessageStore.storeMessage", msg);
     }
 
+    // ReSharper disable once UnusedMember.Global
     public async Task StoreMessagesAsync(List<StoredMessage> msgs)
     {
         await js.InvokeVoidAsync("toledoMessageStore.storeMessages", msgs);

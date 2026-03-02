@@ -77,6 +77,7 @@ else if (_phase == Phase.Preview)
     private double _previewCurrentTime;
     private double _previewDuration;
     private ElementReference _audioRef;
+    private bool _previewAudioInitialized;
 
     [Parameter]
     public EventCallback<byte[]> OnRecorded { get; set; }
@@ -119,15 +120,16 @@ else if (_phase == Phase.Preview)
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_phase == Phase.Preview)
+        if (_phase == Phase.Preview && !_previewAudioInitialized)
         {
+            _previewAudioInitialized = true;
             try
             {
                 await Js.InvokeVoidAsync("voiceRecorder.initPreviewAudio", _audioRef);
             }
             catch
             {
-                // ignored
+                _previewAudioInitialized = false;
             }
         }
     }
@@ -212,18 +214,12 @@ else if (_phase == Phase.Preview)
 
     private async Task Send()
     {
-        try
+        var bytes = await Js.InvokeAsync<byte[]>("voiceRecorder.getRecordedBytes");
+        if (bytes is { Length: > 0 })
         {
-            var bytes = await Js.InvokeAsync<byte[]>("voiceRecorder.getRecordedBytes");
-            if (bytes is { Length: > 0 })
-            {
-                await Js.InvokeVoidAsync("voiceRecorder.revokePreview");
-                await OnRecorded.InvokeAsync(bytes);
-            }
-        }
-        catch
-        {
-            // ignored
+            try { await Js.InvokeVoidAsync("voiceRecorder.revokePreview"); }
+            catch { /* cleanup best-effort */ }
+            await OnRecorded.InvokeAsync(bytes);
         }
     }
 

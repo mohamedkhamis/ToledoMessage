@@ -81,7 +81,7 @@ window.voiceRecorder = {
     getRecordedBytes: async function () {
         if (!this._blob) return null;
         const arrayBuffer = await this._blob.arrayBuffer();
-        return Array.from(new Uint8Array(arrayBuffer));
+        return new Uint8Array(arrayBuffer);
     },
 
     initPreviewAudio: function (audioElement) {

@@ -369,7 +369,7 @@
             }
             catch (Exception ex) when (ex.Message.Contains("Device not found"))
             {
-                // Stale device ID — clear local data and redirect to login to re-register
+                // Stale device ID — clear local data and redirect to log in to re-register
                 await Js.InvokeVoidAsync("toledoStorage.clearAuthData");
                 Navigation.NavigateTo("/login", forceLoad: true);
                 return;
@@ -538,7 +538,7 @@
                     chatMsg = new ChatMessage
                     {
                         MessageId = envelope.MessageId,
-                        Text = "[Unable to decrypt message]",
+                        Text = "\ud83d\udd12 Waiting for encryption keys...",
                         Timestamp = envelope.ServerTimestamp,
                         IsMine = false,
                         ContentType = ContentType.Text,
@@ -626,7 +626,7 @@
                     chatMsg = new ChatMessage
                     {
                         MessageId = envelope.MessageId,
-                        Text = "[Unable to decrypt message]",
+                        Text = "\ud83d\udd12 Waiting for encryption keys...",
                         Timestamp = envelope.ServerTimestamp,
                         IsMine = false,
                         ContentType = ContentType.Text,

@@ -9,7 +9,10 @@
 
 <div class="sidebar-header">
     <AvatarInitials DisplayName="@_userName" Size="40" />
-    <span class="sidebar-user-name">@(string.IsNullOrEmpty(_userName) ? "You" : _userName)</span>
+    <div class="sidebar-user-info">
+        <span class="sidebar-user-name">@(string.IsNullOrEmpty(_userName) ? "You" : _userName)</span>
+        <span class="sidebar-version">v@(AppVersion.Current)</span>
+    </div>
     <div class="sidebar-header-actions">
         <button class="sidebar-icon-btn" @onclick="NavigateToSettings" title="Settings">⚙</button>
         <button class="sidebar-icon-btn" @onclick="NavigateToNewConversation" title="New conversation">✏</button>

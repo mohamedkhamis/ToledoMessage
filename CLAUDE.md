@@ -5,6 +5,10 @@ Auto-generated from all feature plans. Last updated: 2026-02-25
 ## Active Technologies
 - SQL Server 2022 (server-side via EF Core Code First) + Browser IndexedDB (client-side) (001-secure-messaging)
 - C# / .NET 10 (LTS) + BouncyCastle.Cryptography 2.6.2, ASP.NET Core Identity, SignalR, EF Core 10, Serilog (001-secure-messaging)
+- C# / .NET 10 (LTS) + BouncyCastle.Cryptography 2.6.2, ASP.NET Core Identity (password hashing only), SignalR, EF Core 10, Serilog (001-secure-messaging)
+- SQL Server 2022 (server-side via EF Core Code First) + Browser IndexedDB (client-side via JS interop) (001-secure-messaging)
+- C# / .NET 10 (LTS) + Blazor WebAssembly, ASP.NET Core, SignalR, EF Core 10 (001-secure-messaging)
+- SQL Server 2022 (server) + Browser localStorage/IndexedDB (client) (001-secure-messaging)
 
 - C# / .NET 10 (LTS) + BouncyCastle.Cryptography 2.6.2, ASP.NET Core Identity, SignalR, EF Core 10 (001-secure-messaging)
 
@@ -25,8 +29,8 @@ tests/
 C# / .NET 10 (LTS): Follow standard conventions
 
 ## Recent Changes
-- 001-secure-messaging: Added C# / .NET 10 (LTS) + BouncyCastle.Cryptography 2.6.2, ASP.NET Core Identity, SignalR, EF Core 10, Serilog
-- 001-secure-messaging: Added C# / .NET 10 (LTS) + BouncyCastle.Cryptography 2.6.2, ASP.NET Core Identity, SignalR, EF Core 10, Serilog
+- 001-secure-messaging: Added C# / .NET 10 (LTS) + Blazor WebAssembly, ASP.NET Core, SignalR, EF Core 10
+- 001-secure-messaging: Added C# / .NET 10 (LTS) + BouncyCastle.Cryptography 2.6.2, ASP.NET Core Identity (password hashing only), SignalR, EF Core 10, Serilog
 - 001-secure-messaging: Added C# / .NET 10 (LTS) + BouncyCastle.Cryptography 2.6.2, ASP.NET Core Identity, SignalR, EF Core 10, Serilog
 
 

@@ -340,19 +340,6 @@ label {
     letter-spacing: 0.3px;
 }
 
-/* Floating version label on chat layout */
-.app-version-floating {
-    position: fixed;
-    bottom: 6px;
-    left: 8px;
-    font-size: 0.65em;
-    color: var(--text-secondary);
-    opacity: 0.35;
-    pointer-events: none;
-    z-index: 1;
-    letter-spacing: 0.3px;
-}
-
 /* ============ Conversations list ============ */
 .conversation-list {
     display: flex;

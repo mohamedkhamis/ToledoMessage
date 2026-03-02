@@ -31,4 +31,11 @@ C# / .NET 10 (LTS): Follow standard conventions
 
 
 <!-- MANUAL ADDITIONS START -->
+## Commit Workflow
+- **NEVER commit any changes without user approval**
+- Always ask the user to type "commit" before committing
+- After completing any work, summarize changes and ask: "Ready to commit?"
+- Wait for user to explicitly type "commit" before running git add/commit/push
+- **Always check for BUG-REPORT-*.md files** in project root and fix all listed bugs before finishing
+- After fixing bugs, mark them as done in the bug report file
 <!-- MANUAL ADDITIONS END -->

@@ -13,6 +13,12 @@
 
 ## Resolved Bugs
 
+### ~~BUG-003: Timestamp format mismatch in IndexedDB deleteConversationMessages~~ FIXED 2026-03-02
+Changed to pass ISO 8601 string instead of Unix milliseconds, and removed `.toString()` in JS comparison.
+
+### ~~BUG-004: Misleading parameter name `olderThanTimestamp`~~ FIXED 2026-03-02
+Renamed parameter to `fromTimestamp` in both MessageStoreService.cs and storage.js.
+
 ### ~~BUG-IMP-001: Missing `.message-bubble:has(.emoji-only)` CSS~~ FIXED 2026-03-02
 Added transparent bubble styling for emoji-only messages.
 

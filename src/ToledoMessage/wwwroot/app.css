@@ -2333,6 +2333,23 @@ html[data-font-size="large"] { font-size: 17px; }
     flex-direction: column;
     animation: fadeIn 0.15s ease-out;
 }
+.emoji-picker-close {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    z-index: 10;
+}
+.emoji-picker-close:hover {
+    background: var(--hover-bg);
+    color: var(--text-primary);
+}
 .emoji-picker-search {
     padding: 8px;
     border-bottom: 1px solid var(--border);

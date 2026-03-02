@@ -75,7 +75,7 @@
                 @if (_showEmojiPicker)
                 {
                     <div class="attach-menu-backdrop" @onclick="() => _showEmojiPicker = false"></div>
-                    <EmojiPicker OnEmojiSelected="InsertEmoji" />
+                    <EmojiPicker OnEmojiSelected="InsertEmoji" OnClose="() => _showEmojiPicker = false" />
                 }
                 <button class="emoji-btn" @onclick="() => _showEmojiPicker = !_showEmojiPicker"
                         aria-label="Emoji" title="Emoji">

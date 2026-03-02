@@ -1,6 +1,7 @@
 @inject IJSRuntime Js
 
 <div class="emoji-picker-popup">
+    <button class="emoji-picker-close" @onclick="ClosePicker" title="Close">&#10005;</button>
     <div class="emoji-picker-search">
         <input type="text" value="@_searchText" @oninput="OnSearchInput" placeholder="Search emoji..." />
     </div>
@@ -63,6 +64,9 @@
     [Parameter]
     public EventCallback<string> OnEmojiSelected { get; set; }
 
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
     private string _searchText = "";
     private string _activeCategory = "Smileys";
     private List<string> _recentEmojis = [];
@@ -118,6 +122,12 @@
         }
 
         await OnEmojiSelected.InvokeAsync(emoji);
+    }
+
+    private async Task ClosePicker()
+    {
+        if (OnClose.HasDelegate)
+            await OnClose.InvokeAsync();
     }
 
     private static readonly Dictionary<string, string[]> Categories = new()

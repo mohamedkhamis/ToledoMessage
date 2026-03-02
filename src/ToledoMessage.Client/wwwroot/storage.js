@@ -58,7 +58,9 @@ window.toledoStorage = {
         }
         localStorage.clear();
         for (var key in saved) {
-            localStorage.setItem(key, saved[key]);
+            if (Object.prototype.hasOwnProperty.call(saved, key)) {
+                localStorage.setItem(key, saved[key]);
+            }
         }
     }
 };
@@ -159,7 +161,7 @@ window.toledoMessageStore = {
         });
     },
 
-    deleteConversationMessages: async function (conversationId) {
+    deleteConversationMessages: async function (conversationId, fromTimestamp) {
         const db = await this.open();
         return new Promise((resolve, reject) => {
             const tx = db.transaction('messages', 'readwrite');
@@ -168,7 +170,14 @@ window.toledoMessageStore = {
             const request = index.openCursor(conversationId);
             request.onsuccess = function (e) {
                 const cursor = e.target.result;
-                if (cursor) { cursor.delete(); cursor.continue(); }
+                if (cursor) {
+                    // If fromTimestamp provided, only delete messages with timestamp >= fromTimestamp
+                    // If not provided, delete all
+                    if (!fromTimestamp || cursor.value.timestamp >= fromTimestamp) {
+                        cursor.delete();
+                    }
+                    cursor.continue();
+                }
             };
             tx.oncomplete = () => resolve();
             tx.onerror = (e) => reject(e.target.error);

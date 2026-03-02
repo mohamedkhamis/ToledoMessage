@@ -31,9 +31,12 @@ public sealed class MessageStoreService(IJSRuntime js)
     }
 
     // ReSharper disable  UnusedMember.Global
-    public async Task DeleteConversationMessagesAsync(string conversationId)
+    public async Task DeleteConversationMessagesAsync(string conversationId, DateTimeOffset? fromTimestamp = null)
     {
-        await js.InvokeVoidAsync("toledoMessageStore.deleteConversationMessages", conversationId);
+        if (fromTimestamp.HasValue)
+            await js.InvokeVoidAsync("toledoMessageStore.deleteConversationMessages", conversationId, fromTimestamp.Value.ToString("O"));
+        else
+            await js.InvokeVoidAsync("toledoMessageStore.deleteConversationMessages", conversationId);
     }
 
     public async Task SetMetaAsync(string key, string value)

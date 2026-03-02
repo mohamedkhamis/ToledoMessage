@@ -87,7 +87,7 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
             db.Devices.Add(device);
             await db.SaveChangesAsync();
 
-            if (request.OneTimePreKeys is { Count: > 0 })
+            if (request.OneTimePreKeys is { Count: > 0 and <= ProtocolConstants.OneTimePreKeyBatchSize })
             {
                 await preKeyService.StoreOneTimePreKeys(device.Id, request.OneTimePreKeys);
             }
@@ -172,6 +172,9 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
 
         if (!deviceOwned)
             return NotFound("Device not found or does not belong to the current user.");
+
+        if (preKeys.Count is 0 or > ProtocolConstants.OneTimePreKeyBatchSize)
+            return BadRequest($"Pre-key batch must be between 1 and {ProtocolConstants.OneTimePreKeyBatchSize}.");
 
         await preKeyService.StoreOneTimePreKeys(deviceId, preKeys);
         return NoContent();

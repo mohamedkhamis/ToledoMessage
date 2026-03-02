@@ -150,6 +150,9 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     // ReSharper disable once UnusedMember.Global
     public async Task AddReaction(decimal messageId, string emoji)
     {
+        if (string.IsNullOrWhiteSpace(emoji) || emoji.Length > 32)
+            throw new HubException("Invalid emoji.");
+
         var userId = GetUserId();
 
         // Validate the message exists and user is a participant in its conversation
@@ -200,6 +203,9 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     // ReSharper disable once UnusedMember.Global
     public async Task RemoveReaction(decimal messageId, string emoji)
     {
+        if (string.IsNullOrWhiteSpace(emoji) || emoji.Length > 32)
+            throw new HubException("Invalid emoji.");
+
         var userId = GetUserId();
 
         var reaction = await db.MessageReactions

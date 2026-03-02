@@ -297,6 +297,15 @@
         await using var stream = file.OpenReadStream(maxAllowedSize: maxSize);
         _selectedFileBytes = new byte[file.Size];
         await stream.ReadExactlyAsync(_selectedFileBytes);
+
+        // Validate MIME type by checking file header magic bytes
+        if (!ValidateMimeType(_selectedFileBytes, _selectedContentType))
+        {
+            _selectedFileBytes = null;
+            _errorMessage = "Unsupported or corrupted file. The file content does not match the expected format.";
+            return;
+        }
+
         _selectedFile = file;
 
         if (createPreview)
@@ -346,6 +355,37 @@
         };
 
         await OnSend.InvokeAsync(msg);
+    }
+
+    private static bool ValidateMimeType(byte[] data, ContentType contentType)
+    {
+        if (data.Length < 4) return false;
+
+        return contentType switch
+        {
+            ContentType.Image => IsJpeg(data) || IsPng(data) || IsGif(data) || IsWebp(data) || IsBmp(data),
+            ContentType.Video => IsMp4(data) || IsWebm(data) || IsAvi(data) || IsMkv(data),
+            ContentType.Audio => IsMp3(data) || IsOgg(data) || IsWav(data) || IsWebm(data) || IsFlac(data) || IsMp4(data),
+            ContentType.File => true, // Documents accept any file type
+            _ => false
+        };
+
+        static bool IsJpeg(byte[] d) => d[0] == 0xFF && d[1] == 0xD8;
+        static bool IsPng(byte[] d) => d is [0x89, 0x50, 0x4E, 0x47, ..];
+        static bool IsGif(byte[] d) => d is [0x47, 0x49, 0x46, ..];
+        static bool IsWebp(byte[] d) => d.Length >= 12 && d[0] == 0x52 && d[1] == 0x49 && d[2] == 0x46 && d[3] == 0x46
+                                        && d[8] == 0x57 && d[9] == 0x45 && d[10] == 0x42 && d[11] == 0x50;
+        static bool IsBmp(byte[] d) => d[0] == 0x42 && d[1] == 0x4D;
+        static bool IsMp4(byte[] d) => d.Length >= 8 && d[4] == 0x66 && d[5] == 0x74 && d[6] == 0x79 && d[7] == 0x70;
+        static bool IsWebm(byte[] d) => d is [0x1A, 0x45, 0xDF, 0xA3, ..];
+        static bool IsMkv(byte[] d) => IsWebm(d); // MKV shares EBML header with WebM
+        static bool IsAvi(byte[] d) => d.Length >= 12 && d[0] == 0x52 && d[1] == 0x49 && d[2] == 0x46 && d[3] == 0x46
+                                       && d[8] == 0x41 && d[9] == 0x56 && d[10] == 0x49 && d[11] == 0x20;
+        static bool IsMp3(byte[] d) => (d[0] == 0xFF && (d[1] & 0xE0) == 0xE0) || (d[0] == 0x49 && d[1] == 0x44 && d[2] == 0x33);
+        static bool IsOgg(byte[] d) => d is [0x4F, 0x67, 0x67, 0x53, ..];
+        static bool IsWav(byte[] d) => d.Length >= 12 && d[0] == 0x52 && d[1] == 0x49 && d[2] == 0x46 && d[3] == 0x46
+                                       && d[8] == 0x57 && d[9] == 0x41 && d[10] == 0x56 && d[11] == 0x45;
+        static bool IsFlac(byte[] d) => d is [0x66, 0x4C, 0x61, 0x43, ..];
     }
 
     private static string GetFileIcon(ContentType type)

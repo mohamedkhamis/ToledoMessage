@@ -360,7 +360,7 @@
 - [X] T141 [US8] Update Chat.razor HandleSend to encrypt media bytes inline within message payload, carry MediaBytes and MimeType through ChatMessage, persist base64-encoded media + MimeType to IndexedDB via MessageStoreService in src/ToledoMessage.Client/Pages/Chat.razor
 - [X] T142 [US8] Update MessageBubble to render media types: inline image with click-to-expand, video with native controls, audio with native controls, file download card with filename; show placeholder for unavailable media in src/ToledoMessage.Client/Components/MessageBubble.razor
 - [X] T143 [US8] Add MimeType field to StoredMessage in MessageStoreService and update CreateMediaBlobUrlFromBase64 to use stored MIME type in src/ToledoMessage.Client/Services/MessageStoreService.cs
-- [ ] T144 [US8] Implement client-side MIME validation by checking file header magic bytes (JPEG FFD8, PNG 89504E47, PDF 25504446, etc.) before encryption; reject with specific error ("Unsupported file type" or "File appears corrupted") in src/ToledoMessage.Client/Components/MessageInput.razor
+- [X] T144 [US8] Implement client-side MIME validation by checking file header magic bytes (JPEG FFD8, PNG 89504E47, PDF 25504446, etc.) before encryption; reject with specific error ("Unsupported file type" or "File appears corrupted") in src/ToledoMessage.Client/Components/MessageInput.razor
 
 **Checkpoint**: Media messages work end-to-end. Images display inline, videos/audio play, files download. 10 MB limit enforced. MIME validated.
 
@@ -460,12 +460,12 @@
 - [X] T129 [P] Implement ThemeService (dark/light mode toggle, persist preference in IndexedDB) in src/ToledoMessage.Client/Services/ThemeService.cs
 - [X] T130 [P] Implement Blazor server-side shell: App.razor, MainLayout.razor, NavMenu.razor (navigation between pages, auth-aware menu items) in src/ToledoMessage/Components/
 - [X] T131 [P] Implement Error and NotFound pages in src/ToledoMessage/Components/Pages/Error.razor and src/ToledoMessage/Components/Pages/NotFound.razor
-- [ ] T132 Security hardening: validate all API inputs against ProtocolConstants (key sizes, display name format, password length, message size 64 KB, media size 10 MB), ensure no plaintext logging (Constitution security requirement), validate JWT claims on all authorized endpoints
-- [ ] T133 Implement load testing with NBomber or k6: target 10K concurrent SignalR connections, validate NFR latency targets (<500ms key exchange, <50ms message encrypt) in tests/ToledoMessage.Benchmarks/LoadTests/
-- [ ] T134 Validate code coverage meets thresholds: >=80% overall, >=90% crypto library (ToledoMessage.Crypto). Run `dotnet test --collect:"XPlat Code Coverage"` and verify with ReportGenerator
-- [ ] T135 Run quickstart.md validation: follow all steps in specs/001-secure-messaging/quickstart.md from scratch and verify successful end-to-end flow
-- [ ] T136 Run full test suite and verify all tests pass: `dotnet test` across all test projects
-- [ ] T174 Implement client-side MIME validation for media attachments (check file header magic bytes before encryption) in src/ToledoMessage.Client/Components/MessageInput.razor
+- [X] T132 Security hardening: validate all API inputs against ProtocolConstants (key sizes, display name format, password length, message size 64 KB, media size 10 MB), ensure no plaintext logging (Constitution security requirement), validate JWT claims on all authorized endpoints
+- [X] T133 Implement load testing with NBomber or k6: target 10K concurrent SignalR connections, validate NFR latency targets (<500ms key exchange, <50ms message encrypt) in tests/ToledoMessage.Benchmarks/LoadTests/
+- [X] T134 Validate code coverage meets thresholds: >=80% overall, >=90% crypto library (ToledoMessage.Crypto). Run `dotnet test --collect:"XPlat Code Coverage"` and verify with ReportGenerator
+- [X] T135 Run quickstart.md validation: follow all steps in specs/001-secure-messaging/quickstart.md from scratch and verify successful end-to-end flow
+- [X] T136 Run full test suite and verify all tests pass: `dotnet test` across all test projects
+- [X] T174 Implement client-side MIME validation for media attachments (check file header magic bytes before encryption) in src/ToledoMessage.Client/Components/MessageInput.razor
 
 ---
 

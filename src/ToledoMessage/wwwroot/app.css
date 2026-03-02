@@ -427,6 +427,8 @@ label {
     overflow-y: auto;
     padding: 16px;
     background: var(--bg-chat);
+    background-image: var(--chat-bg-image, none);
+    background-repeat: repeat;
 }
 .chat-input-area {
     padding: 8px 12px;
@@ -490,8 +492,8 @@ label {
 .message-bubble {
     max-width: 70%;
     padding: 10px 14px;
-    border-radius: 16px;
-    font-size: 0.93em;
+    border-radius: var(--msg-bubble-radius, 16px);
+    font-size: var(--msg-font-size, 14.5px);
     line-height: 1.4;
     position: relative;
 }
@@ -660,9 +662,9 @@ label {
 /* Textarea */
 .msg-textarea {
     flex: 1;
-    padding: 10px 14px;
+    padding: var(--input-padding, 10px 14px);
     border: 1px solid var(--input-border);
-    border-radius: 20px;
+    border-radius: var(--input-radius, 20px);
     resize: none;
     font-size: 0.95em;
     outline: none;
@@ -1505,7 +1507,7 @@ h1:focus { outline: none; }
 }
 
 .chat-sidebar {
-    width: 380px;
+    width: var(--sidebar-width, 340px);
     min-width: 280px;
     max-width: 420px;
     display: flex;

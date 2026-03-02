@@ -13,6 +13,7 @@
 @inject PreKeyReplenishmentService PreKeyReplenishment
 @inject IJSRuntime Js
 @inject MessageStoreService MessageStore
+@inject ThemeService Theme
 @implements IAsyncDisposable
 
 <div class="chat-container">
@@ -28,15 +29,15 @@
             <h3 class="chat-header-title">@headerName</h3>
             @if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group)
             {
-                <span class="chat-header-subtitle">@_participants.Count members</span>
+                <span class="chat-header-subtitle">@string.Format(Theme.Labels.MembersFormat, _participants.Count)</span>
             }
             else if (_peerIsOnline)
             {
-                <span class="chat-header-subtitle presence-online">online</span>
+                <span class="chat-header-subtitle presence-online">@Theme.Labels.Online</span>
             }
             else if (_peerLastSeen.HasValue)
             {
-                <span class="chat-header-subtitle presence-text">last seen @_peerLastSeen.Value.ToLocalTime().ToString("MMM d, HH:mm")</span>
+                <span class="chat-header-subtitle presence-text">@string.Format(Theme.Labels.LastSeen, _peerLastSeen.Value.ToLocalTime().ToString("MMM d, HH:mm"))</span>
             }
         </div>
         @if (!string.IsNullOrEmpty(_typingIndicator))
@@ -44,14 +45,14 @@
             <span class="chat-typing-indicator">@_typingIndicator</span>
         }
         <div style="margin-left:auto; display:flex; align-items:center; gap:4px;">
-            <button class="msg-action-btn" @onclick="ToggleSearch" title="Search messages">&#128269;</button>
+            <button class="msg-action-btn" @onclick="ToggleSearch" title="@Theme.Labels.SearchMessages">&#128269;</button>
             <button class="msg-action-btn" @onclick="() => _showChatMenu = !_showChatMenu" title="More options">&#8942;</button>
             @if (_showChatMenu)
             {
                 <div class="context-menu-backdrop" @onclick="() => _showChatMenu = false"></div>
                 <div class="context-menu chat-header-menu">
                     <button class="context-menu-item danger" @onclick="OpenClearChatDialog">
-                        <span class="context-menu-icon">&#128465;</span> Clear chat
+                        <span class="context-menu-icon">&#128465;</span> @Theme.Labels.ClearChat
                     </button>
                 </div>
             }
@@ -61,7 +62,7 @@
     @if (_showSearch)
     {
         <div class="chat-search-bar">
-            <input type="text" class="chat-search-input" placeholder="Search messages..."
+            <input type="text" class="chat-search-input" placeholder="@Theme.Labels.SearchMessages"
                    @bind="_searchQuery" @bind:event="oninput" @bind:after="UpdateSearchResults"
                    @onkeydown="HandleSearchKeyDown" />
             @if (_searchResults.Count > 0)
@@ -122,8 +123,8 @@
                 <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
                 </svg>
-                <h3>No messages yet</h3>
-                <p>Send the first message to start the conversation.</p>
+                <h3>@Theme.Labels.NoMessages</h3>
+                <p>@Theme.Labels.SendFirstMessage</p>
             </div>
         }
         else
@@ -146,7 +147,7 @@
                 {
                     var unreadCount = _messages.Count - i;
                     <div class="unread-divider">
-                        <span>@unreadCount new message@(unreadCount == 1 ? "" : "s")</span>
+                        <span>@string.Format(Theme.Labels.NewMessagesFormat, unreadCount)</span>
                     </div>
                 }
 
@@ -195,21 +196,21 @@
     <div class="context-menu-backdrop" @onclick="CloseContextMenu"></div>
     <div class="context-menu" style="left: @(_contextMenuX)px; top: @(_contextMenuY)px;">
         <button class="context-menu-item" @onclick="CopyMessageText">
-            <span class="context-menu-icon">&#128203;</span> Copy
+            <span class="context-menu-icon">&#128203;</span> @Theme.Labels.Copy
         </button>
         <button class="context-menu-item" @onclick="ReplyFromContextMenu">
-            <span class="context-menu-icon">&#8617;</span> Reply
+            <span class="context-menu-icon">&#8617;</span> @Theme.Labels.Reply
         </button>
         <button class="context-menu-item" @onclick="ForwardFromContextMenu">
-            <span class="context-menu-icon">&#10150;</span> Forward
+            <span class="context-menu-icon">&#10150;</span> @Theme.Labels.Forward
         </button>
         <button class="context-menu-item danger" @onclick="DeleteForMe">
-            <span class="context-menu-icon">&#128465;</span> Delete for me
+            <span class="context-menu-icon">&#128465;</span> @Theme.Labels.DeleteForMe
         </button>
         @if (_contextMenuMessage.IsMine)
         {
             <button class="context-menu-item danger" @onclick="DeleteForEveryone">
-                <span class="context-menu-icon">&#128465;</span> Delete for everyone
+                <span class="context-menu-icon">&#128465;</span> @Theme.Labels.DeleteForEveryone
             </button>
         }
     </div>
@@ -219,16 +220,16 @@
 {
     <div class="context-menu-backdrop" @onclick="() => _showClearChatDialog = false"></div>
     <div class="clear-chat-dialog">
-        <h4>Clear chat messages</h4>
-        <p>Choose which messages to delete:</p>
+        <h4>@Theme.Labels.ClearChatHeader</h4>
+        <p>@Theme.Labels.ChooseMessages</p>
         <div class="clear-chat-options">
-            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromHours(1))">Last hour</button>
-            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromHours(24))">Last 24 hours</button>
-            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromDays(7))">Last 7 days</button>
-            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromDays(30))">Last 30 days</button>
-            <button class="clear-chat-option danger" @onclick="() => ClearChat(TimeSpan.Zero)">All messages</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromHours(1))">@Theme.Labels.LastHour</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromHours(24))">@Theme.Labels.Last24Hours</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromDays(7))">@Theme.Labels.Last7Days</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromDays(30))">@Theme.Labels.Last30Days</button>
+            <button class="clear-chat-option danger" @onclick="() => ClearChat(TimeSpan.Zero)">@Theme.Labels.AllMessages</button>
         </div>
-        <button class="clear-chat-cancel" @onclick="() => _showClearChatDialog = false">Cancel</button>
+        <button class="clear-chat-cancel" @onclick="() => _showClearChatDialog = false">@Theme.Labels.Cancel</button>
     </div>
 }
 
@@ -237,7 +238,7 @@
     <div class="forward-dialog-overlay" @onclick="CloseForwardDialog">
         <div class="forward-dialog" @onclick:stopPropagation="true">
             <div class="forward-dialog-header">
-                <h4>Forward message</h4>
+                <h4>@Theme.Labels.ForwardMessage</h4>
                 <button class="msg-action-btn" @onclick="CloseForwardDialog">&#10005;</button>
             </div>
             <input type="text" class="forward-search-input" placeholder="Search conversations..."
@@ -274,6 +275,18 @@
 @code {
     [Parameter]
     public decimal ConversationId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Theme.OnThemeChanged += OnThemeChanged;
+    }
+
+    private void OnThemeChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Theme.OnThemeChanged -= OnThemeChanged;
+    }
 
     private readonly List<ChatMessage> _messages = [];
     private ElementReference _messageContainer;
@@ -696,7 +709,7 @@
 
         await InvokeAsync(() =>
         {
-            _typingIndicator = $"{displayName} is typing...";
+            _typingIndicator = string.Format(Theme.Labels.TypingFormat, displayName);
             StateHasChanged();
         });
 

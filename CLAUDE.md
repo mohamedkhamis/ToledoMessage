@@ -36,8 +36,11 @@ C# / .NET 10 (LTS): Follow standard conventions
 - Always ask the user to type "commit" before committing
 - After completing any work, summarize changes and ask: "Ready to commit?"
 - Wait for user to explicitly type "commit" before running git add/commit/push
-- **Always check for BUG-REPORT-*.md files** in project root and fix all listed bugs before finishing
-- After fixing bugs, mark them as done in the bug report file
+- **Bug tracking:** All bugs go in `BUGS.md` (project root) — see its Bug Workflow section for format and rules
+- Before starting work, check `BUGS.md` for open bugs related to your feature
+- After code review, report any bugs found to `BUGS.md` under "Open Bugs" with full template (severity, file/line, fix steps)
+- After fixing a bug, move it from "Open Bugs" to "Resolved Bugs" with fix date
+- Do NOT create separate `BUG-REPORT-*.md` files — use `BUGS.md` only
 
 ## Deploy Workflow
 - After finishing tasks or a group of tasks, ask user: "Deploy to IIS?"

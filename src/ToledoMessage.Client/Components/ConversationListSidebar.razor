@@ -5,6 +5,7 @@
 @inject HttpClient Http
 @inject SignalRService SignalR
 @inject IJSRuntime Js
+@inject ThemeService Theme
 @implements IAsyncDisposable
 
 <div class="sidebar-header">
@@ -14,14 +15,14 @@
         <span class="sidebar-version">v@(AppVersion.Current)</span>
     </div>
     <div class="sidebar-header-actions">
-        <button class="sidebar-icon-btn" @onclick="NavigateToSettings" title="Settings">⚙</button>
-        <button class="sidebar-icon-btn" @onclick="NavigateToNewConversation" title="New conversation">✏</button>
-        <button class="sidebar-icon-btn" @onclick="HandleLogout" title="Logout">⏻</button>
+        <button class="sidebar-icon-btn" @onclick="NavigateToSettings" title="@Theme.Labels.SettingsLabel">⚙</button>
+        <button class="sidebar-icon-btn" @onclick="NavigateToNewConversation" title="@Theme.Labels.NewChat">✏</button>
+        <button class="sidebar-icon-btn" @onclick="HandleLogout" title="@Theme.Labels.LogoutLabel">⏻</button>
     </div>
 </div>
 
 <div class="sidebar-search">
-    <input placeholder="Search conversations..."
+    <input placeholder="@Theme.Labels.SearchPlaceholder"
            value="@_searchQuery"
            @oninput="OnSearchInput"
            aria-label="Search conversations" />
@@ -35,9 +36,9 @@
     else if (FilteredConversations.Count == 0 && string.IsNullOrEmpty(_searchQuery))
     {
         <div style="text-align:center;padding:32px 16px;">
-            <p class="centered-text" style="padding:0 0 16px;">No conversations yet</p>
+            <p class="centered-text" style="padding:0 0 16px;">@Theme.Labels.NoConversations</p>
             <button class="btn-outline btn-sm" @onclick="NavigateToNewConversation">
-                Start a conversation
+                @Theme.Labels.StartConversation
             </button>
         </div>
     }
@@ -69,7 +70,7 @@
                         {
                             <span class="conversation-item-badge" style="margin-right:4px;font-size:0.75em;">@conv.UnreadCount</span>
                         }
-                        @(conv.LastMessage ?? "No messages yet")
+                        @(conv.LastMessage ?? Theme.Labels.NoMessages)
                     </div>
                 </div>
             </div>
@@ -92,6 +93,21 @@
             : _conversations
                 .Where(c => c.DisplayName.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
                 .ToList();
+
+    protected override void OnInitialized()
+    {
+        Theme.OnThemeChanged += OnThemeChanged;
+    }
+
+    private void OnThemeChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Theme.OnThemeChanged -= OnThemeChanged;
+    }
 
     protected override async Task OnInitializedAsync()
     {

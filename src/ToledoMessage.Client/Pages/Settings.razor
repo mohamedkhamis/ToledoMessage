@@ -14,7 +14,7 @@
 <div class="panel-content-scroll">
 <div class="settings-page">
     <div class="settings-header">
-        <h2>Settings</h2>
+        <h2>@Theme.Labels.SettingsLabel</h2>
     </div>
 
     @if (!string.IsNullOrEmpty(_errorMessage))
@@ -27,7 +27,7 @@
         <div class="alert alert-success" role="status">@_successMessage</div>
     }
 
-    <h3 class="section-title">Appearance</h3>
+    <h3 class="section-title">@Theme.Labels.Appearance</h3>
 
     <div class="theme-grid">
         @foreach (var theme in ThemeService.GetAvailableThemes())
@@ -40,7 +40,7 @@
         }
     </div>
 
-    <h4 class="subsection-title mt-md">Font Size</h4>
+    <h4 class="subsection-title mt-md">@Theme.Labels.FontSize</h4>
     <div class="font-size-selector">
         @foreach (var size in FontSizes)
         {
@@ -52,12 +52,12 @@
         }
     </div>
 
-    <h3 class="section-title mt-lg">Privacy</h3>
+    <h3 class="section-title mt-lg">@Theme.Labels.Privacy</h3>
 
     <div class="settings-toggles">
         <div class="toggle-row">
             <div class="toggle-info">
-                <span class="toggle-label">Read Receipts</span>
+                <span class="toggle-label">@Theme.Labels.ReadReceipts</span>
                 <span class="toggle-desc">Let others know when you've read their messages</span>
             </div>
             <label class="toggle-switch">
@@ -69,7 +69,7 @@
 
         <div class="toggle-row">
             <div class="toggle-info">
-                <span class="toggle-label">Typing Indicators</span>
+                <span class="toggle-label">@Theme.Labels.TypingIndicators</span>
                 <span class="toggle-desc">Show when you're typing a message</span>
             </div>
             <label class="toggle-switch">
@@ -80,13 +80,13 @@
         </div>
     </div>
 
-    <h3 class="section-title mt-lg">Security</h3>
+    <h3 class="section-title mt-lg">@Theme.Labels.Security</h3>
 
     <div class="settings-toggles">
         <div class="toggle-row">
             <div class="toggle-info">
-                <span class="toggle-label">Share Keys Across Devices</span>
-                <span class="toggle-desc">Back up your identity keys (encrypted with your password) so new devices can decrypt previous conversations</span>
+                <span class="toggle-label">@Theme.Labels.ShareKeysAcrossDevices</span>
+                <span class="toggle-desc">@Theme.Labels.ShareKeysDescription</span>
             </div>
             <label class="toggle-switch">
                 <input type="checkbox" checked="@_sharedKeysEnabled"
@@ -96,13 +96,13 @@
         </div>
     </div>
 
-    <h3 class="section-title mt-lg">Notifications</h3>
+    <h3 class="section-title mt-lg">@Theme.Labels.Notifications</h3>
 
     <div class="settings-toggles">
         <div class="toggle-row">
             <div class="toggle-info">
-                <span class="toggle-label">Desktop Notifications</span>
-                <span class="toggle-desc">Receive notifications when a new message arrives</span>
+                <span class="toggle-label">@Theme.Labels.DesktopNotifications</span>
+                <span class="toggle-desc">@Theme.Labels.DesktopNotificationsDescription</span>
             </div>
             <label class="toggle-switch">
                 <input type="checkbox" checked="@_notificationsEnabled"
@@ -112,15 +112,15 @@
         </div>
     </div>
 
-    <h3 class="section-title mt-lg">Linked Devices</h3>
+    <h3 class="section-title mt-lg">@Theme.Labels.LinkedDevices</h3>
 
     @if (_isLoading)
     {
-        <p class="loading-text"><span class="spinner"></span> Loading devices...</p>
+        <p class="loading-text"><span class="spinner"></span> @Theme.Labels.LoadingDevices</p>
     }
     else if (_devices.Count == 0)
     {
-        <p class="loading-text">No active devices found.</p>
+        <p class="loading-text">@Theme.Labels.NoDevicesFound</p>
     }
     else
     {
@@ -171,7 +171,7 @@
         </p>
     </div>
 
-    <h3 class="section-title mt-lg danger-text">Account Deletion</h3>
+    <h3 class="section-title mt-lg danger-text">@Theme.Labels.AccountDeletion</h3>
 
     @if (_deletionPending)
     {
@@ -241,6 +241,18 @@
         new("medium", "Medium", "15px"),
         new("large", "Large", "18px"),
     ];
+
+    protected override void OnInitialized()
+    {
+        Theme.OnThemeChanged += OnThemeChanged;
+    }
+
+    private void OnThemeChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Theme.OnThemeChanged -= OnThemeChanged;
+    }
 
     protected override async Task OnInitializedAsync()
     {

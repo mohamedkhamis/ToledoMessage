@@ -4,7 +4,7 @@
     <div class="message-bubble @(IsMine ? "mine" : "theirs")">
         @if (IsForwarded)
         {
-            <div class="forwarded-label">Forwarded</div>
+            <div class="forwarded-label">@Theme.Labels.Forwarded</div>
         }
         @if (!string.IsNullOrEmpty(ReplyToSenderName))
         {
@@ -23,7 +23,7 @@
             }
             else
             {
-                <div class="message-media-placeholder">&#128247; @(FileName ?? "Image unavailable")</div>
+                <div class="message-media-placeholder">&#128247; @(FileName ?? Theme.Labels.ImageUnavailable)</div>
             }
         }
         else if (ContentType == ContentType.Video)
@@ -39,7 +39,7 @@
             }
             else
             {
-                <div class="message-media-placeholder">&#127909; @(FileName ?? "Video unavailable")</div>
+                <div class="message-media-placeholder">&#127909; @(FileName ?? Theme.Labels.VideoUnavailable)</div>
             }
         }
         else if (ContentType == ContentType.Audio)
@@ -85,7 +85,7 @@
             }
             else
             {
-                <div class="message-media-placeholder">&#127911; @(FileName ?? "Audio unavailable")</div>
+                <div class="message-media-placeholder">&#127911; @(FileName ?? Theme.Labels.AudioUnavailable)</div>
             }
         }
         else if (ContentType == ContentType.File)
@@ -98,14 +98,14 @@
                         <span class="message-file-name">@(FileName ?? "File")</span>
                         <a href="@MediaDataUrl" download="@(FileName ?? "file")"
                            class="message-file-download" aria-label="Download @(FileName ?? "file")">
-                            &#8595; Download
+                            &#8595; @Theme.Labels.Download
                         </a>
                     </div>
                 </div>
             }
             else
             {
-                <div class="message-media-placeholder">&#128196; @(FileName ?? "File unavailable")</div>
+                <div class="message-media-placeholder">&#128196; @(FileName ?? Theme.Labels.FileUnavailable)</div>
             }
         }
         @if (!string.IsNullOrEmpty(Text))
@@ -144,9 +144,25 @@
 </div>
 
 @inject IJSRuntime Js
+@inject ThemeService Theme
 
 @* ReSharper disable once NotAccessedField.Local *@
 @code {
+    protected override void OnInitialized()
+    {
+        Theme.OnThemeChanged += OnThemeChanged;
+    }
+
+    private void OnThemeChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Theme.OnThemeChanged -= OnThemeChanged;
+    }
+
     // Audio playback state
     private bool _isAudioPlaying;
     private double _audioCurrentTime;

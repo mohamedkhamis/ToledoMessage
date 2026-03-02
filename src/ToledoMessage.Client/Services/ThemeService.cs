@@ -4,16 +4,36 @@ namespace ToledoMessage.Client.Services;
 
 public sealed class ThemeService(IJSRuntime js)
 {
+    private string _cachedThemeId = "default";
+    private ThemeLabelSet _cachedLabels = ThemeLabelSet.Default;
+
+    // Event: fires when theme changes so components can re-render
+    public event Action? OnThemeChanged;
+
+    public ThemeLabelSet Labels => _cachedLabels;
+
     public async Task<string> GetThemeAsync()
     {
-        var theme = await js.InvokeAsync<string?>("toledoStorage.getTheme");
-        return theme ?? "default";
+        _cachedThemeId = await js.InvokeAsync<string?>("toledoStorage.getTheme") ?? "default";
+        _cachedLabels = ResolveLabels(_cachedThemeId);
+        return _cachedThemeId;
     }
 
     public async Task SetThemeAsync(string themeName)
     {
         await js.InvokeVoidAsync("toledoStorage.setTheme", themeName);
+        _cachedThemeId = themeName;
+        _cachedLabels = ResolveLabels(themeName);
+        OnThemeChanged?.Invoke();
     }
+
+    private static ThemeLabelSet ResolveLabels(string themeId) => themeId switch
+    {
+        "whatsapp" or "whatsapp-dark" => ThemeLabelSet.WhatsApp,
+        "telegram" or "telegram-dark" => ThemeLabelSet.Telegram,
+        "signal" or "signal-dark" => ThemeLabelSet.Signal,
+        _ => ThemeLabelSet.Default
+    };
 
     public async Task<string> GetFontSizeAsync()
     {
@@ -34,6 +54,7 @@ public sealed class ThemeService(IJSRuntime js)
             new ThemeInfo("whatsapp", "WhatsApp", "#25d366"),
             new ThemeInfo("whatsapp-dark", "WhatsApp Dark", "#005c4b"),
             new ThemeInfo("telegram", "Telegram", "#2aabee"),
+            new ThemeInfo("telegram-dark", "Telegram Dark", "#17212b"),
             new ThemeInfo("signal", "Signal", "#3a76f0"),
             new ThemeInfo("signal-dark", "Signal Dark", "#2c5fc7")
         ];

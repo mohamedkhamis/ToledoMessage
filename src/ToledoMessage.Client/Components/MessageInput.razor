@@ -137,7 +137,10 @@
         Theme.OnThemeChanged += OnThemeChanged;
     }
 
-    private void OnThemeChanged() => InvokeAsync(StateHasChanged);
+    private void OnThemeChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
 
     public void Dispose()
     {

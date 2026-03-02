@@ -48,6 +48,7 @@ builder.Services.AddHttpClient("LinkPreview", static client =>
     client.MaxResponseContentBufferSize = 1_048_576;
 });
 builder.Services.AddScoped<LinkPreviewService>();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();
 
 // Client services needed during SSR (static server-side rendering)

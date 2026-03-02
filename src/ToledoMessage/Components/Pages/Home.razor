@@ -1,26 +1,465 @@
 @page "/"
+@inject IHttpContextAccessor HttpContextAccessor
 
-<div class="hero">
-    <h1>ToledoMessage</h1>
-    <p>Hybrid post-quantum secure messaging. End-to-end encrypted with X25519 + ML-KEM-768 for quantum-resistant security.</p>
-    <div class="hero-actions">
-        @* ReSharper disable once Html.PathError *@
-        <a href="/register" class="cta-primary">Get Started</a>
-        <a href="/login" class="cta-secondary">Sign In</a>
-    </div>
+<div class="landing-page">
+    <header class="landing-header">
+        <div class="header-content">
+            <div class="brand">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    <path d="M8 10h8M8 14h4"/>
+                </svg>
+                <span>ToledoMessage</span>
+            </div>
+            <nav class="header-nav">
+                <a href="/login">Sign In</a>
+                <a href="/register" class="btn-nav">Get Started</a>
+            </nav>
+        </div>
+    </header>
 
-    <div class="features">
-        <div class="feature-item">
-            <h3>Post-Quantum Safe</h3>
-            <p>ML-KEM-768 + X25519 hybrid encryption protects against future quantum computers</p>
+    <main class="hero-section">
+        <div class="hero-badge">
+            <span class="badge-dot"></span>
+            <span>Quantum-Resistant Messaging</span>
         </div>
-        <div class="feature-item">
-            <h3>End-to-End Encrypted</h3>
-            <p>Signal Protocol with Double Ratchet ensures only you and your recipient can read messages</p>
+        <h1 class="hero-title">
+            Secure Messaging for<br/>
+            <span class="gradient-text">Tomorrow's Threat</span>
+        </h1>
+        <p class="hero-description">
+            End-to-end encrypted with hybrid post-quantum cryptography.
+            Your messages are protected against both today's attacks and tomorrow's quantum computers.
+        </p>
+        <div class="hero-actions">
+            <a href="/register" class="btn-primary-lg">
+                <span>Start Messaging</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </a>
+            <a href="/login" class="btn-secondary-lg">Sign In</a>
         </div>
-        <div class="feature-item">
-            <h3>Zero-Trust Server</h3>
-            <p>All cryptography runs in your browser. The server never sees your plaintext or private keys</p>
+
+        <div class="hero-stats">
+            <div class="stat-item">
+                <span class="stat-value">256-bit</span>
+                <span class="stat-label">AES Encryption</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span class="stat-value">Hybrid PQ</span>
+                <span class="stat-label">Key Exchange</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span class="stat-value">Zero-Knowledge</span>
+                <span class="stat-label">Server Architecture</span>
+            </div>
         </div>
-    </div>
+    </main>
+
+    <section class="features-section">
+        <h2 class="section-title">Why ToledoMessage?</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon pq">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5"/>
+                        <path d="M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <h3>Post-Quantum Safe</h3>
+                <p>ML-KEM-768 + X25519 hybrid encryption protects against future quantum computers</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon e2e">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                </div>
+                <h3>End-to-End Encrypted</h3>
+                <p>Signal Protocol with Double Ratchet ensures only you and your recipient can read messages</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon trust">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </div>
+                <h3>Zero-Trust Server</h3>
+                <p>All cryptography runs in your browser. The server never sees your plaintext or private keys</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="landing-footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <span>ToledoMessage</span>
+                <span class="footer-tagline">Quantum-resistant secure messaging</span>
+            </div>
+            <div class="footer-version">
+                <span class="version-label">API Version</span>
+                <span class="version-value">v1.0.0</span>
+            </div>
+        </div>
+    </footer>
 </div>
+
+<style>
+    .landing-page {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+        color: #f8fafc;
+    }
+
+    .landing-header {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: rgba(15, 23, 42, 0.8);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .header-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 16px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #f8fafc;
+    }
+
+    .brand svg {
+        color: #38bdf8;
+    }
+
+    .header-nav {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+    }
+
+    .header-nav a {
+        color: #94a3b8;
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+
+    .header-nav a:hover {
+        color: #f8fafc;
+        text-decoration: none;
+    }
+
+    .btn-nav {
+        background: #38bdf8;
+        color: #0f172a !important;
+        padding: 8px 20px;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+
+    .btn-nav:hover {
+        background: #7dd3fc !important;
+    }
+
+    .hero-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 80px 24px 60px;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(56, 189, 248, 0.1);
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        padding: 8px 16px;
+        border-radius: 100px;
+        font-size: 0.85rem;
+        color: #38bdf8;
+        margin-bottom: 24px;
+    }
+
+    .badge-dot {
+        width: 8px;
+        height: 8px;
+        background: #38bdf8;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    @@keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .hero-title {
+        font-size: 3.5rem;
+        font-weight: 800;
+        line-height: 1.1;
+        margin-bottom: 24px;
+        letter-spacing: -0.02em;
+    }
+
+    .gradient-text {
+        background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .hero-description {
+        font-size: 1.25rem;
+        color: #94a3b8;
+        max-width: 600px;
+        margin-bottom: 40px;
+        line-height: 1.6;
+    }
+
+    .hero-actions {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 60px;
+    }
+
+    .btn-primary-lg {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+        color: #0f172a;
+        padding: 14px 28px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-primary-lg:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(56, 189, 248, 0.3);
+        text-decoration: none;
+    }
+
+    .btn-secondary-lg {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.1);
+        color: #f8fafc;
+        padding: 14px 28px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: background 0.2s;
+    }
+
+    .btn-secondary-lg:hover {
+        background: rgba(255, 255, 255, 0.15);
+        text-decoration: none;
+    }
+
+    .hero-stats {
+        display: flex;
+        align-items: center;
+        gap: 32px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 24px 40px;
+        border-radius: 12px;
+    }
+
+    .stat-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .stat-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #38bdf8;
+    }
+
+    .stat-label {
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+
+    .stat-divider {
+        width: 1px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .features-section {
+        padding: 80px 24px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .section-title {
+        text-align: center;
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 48px;
+        color: #f8fafc;
+    }
+
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+    }
+
+    .feature-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 32px;
+        transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(56, 189, 248, 0.3);
+    }
+
+    .feature-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+
+    .feature-icon.pq {
+        background: rgba(56, 189, 248, 0.15);
+        color: #38bdf8;
+    }
+
+    .feature-icon.e2e {
+        background: rgba(129, 140, 248, 0.15);
+        color: #818cf8;
+    }
+
+    .feature-icon.trust {
+        background: rgba(192, 132, 252, 0.15);
+        color: #c084fc;
+    }
+
+    .feature-card h3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: #f8fafc;
+    }
+
+    .feature-card p {
+        color: #64748b;
+        line-height: 1.6;
+    }
+
+    .landing-footer {
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 24px;
+    }
+
+    .footer-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .footer-brand {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-weight: 600;
+        color: #f8fafc;
+    }
+
+    .footer-tagline {
+        font-size: 0.85rem;
+        color: #64748b;
+        font-weight: 400;
+    }
+
+    .footer-version {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+    }
+
+    .version-label {
+        font-size: 0.75rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .version-value {
+        font-size: 0.9rem;
+        color: #38bdf8;
+        font-weight: 600;
+        font-family: monospace;
+    }
+
+    @@media (max-width: 768px) {
+        .hero-title {
+            font-size: 2.25rem;
+        }
+
+        .hero-description {
+            font-size: 1rem;
+        }
+
+        .hero-stats {
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .stat-divider {
+            width: 60px;
+            height: 1px;
+        }
+
+        .footer-content {
+            flex-direction: column;
+            gap: 16px;
+            text-align: center;
+        }
+
+        .footer-version {
+            align-items: center;
+        }
+    }
+</style>

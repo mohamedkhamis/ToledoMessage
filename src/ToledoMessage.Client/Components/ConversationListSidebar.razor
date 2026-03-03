@@ -207,20 +207,31 @@
 
     private async Task UpdateMobileLayout()
     {
+        var inChat = IsInChatPage();
+        var jsCode = "(function(){" +
+            "var s=document.getElementById('chat-sidebar');" +
+            "var p=document.getElementById('chat-panel');" +
+            $"if(s)s.classList.{(inChat ? "add" : "remove")}('hide-mobile');" +
+            $"if(p)p.classList.{(inChat ? "add" : "remove")}('show-mobile');" +
+            "})()";
+
         try
         {
-            var inChat = IsInChatPage();
-            await Js.InvokeVoidAsync("eval",
-                "(function(){" +
-                "var s=document.getElementById('chat-sidebar');" +
-                "var p=document.getElementById('chat-panel');" +
-                $"if(s)s.classList.{(inChat ? "add" : "remove")}('hide-mobile');" +
-                $"if(p)p.classList.{(inChat ? "add" : "remove")}('show-mobile');" +
-                "})()");
+            await Js.InvokeVoidAsync("eval", jsCode);
         }
         catch
         {
-            // JS interop may fail during prerender or initial load
+            // Retry once after 100ms — iOS Safari + Blazor WASM interop has timing issues
+            try
+            {
+                await Task.Delay(100);
+                await Js.InvokeVoidAsync("eval", jsCode);
+            }
+            catch
+            {
+                // Still failed — log and continue. Panel switching may need manual refresh.
+                Console.WriteLine($"[ConversationListSidebar] UpdateMobileLayout failed. inChat={inChat}, path={_currentPath}");
+            }
         }
     }
 

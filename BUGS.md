@@ -7,11 +7,17 @@
 
 ## Open Bugs
 
-(None)
+*No open bugs.*
 
 ---
 
 ## Resolved Bugs
+
+### ~~BUG-FS-001: Reply text formatting inconsistent across code paths~~ FIXED 2026-03-03
+Extracted shared `FormatReplyText()` helper method and applied it to all 3 code paths in Chat.razor (SetReplyTo, optimistic send, SignalR incoming). All paths now consistently show "[Voice message]", "[File: name.pdf]", etc.
+
+### ~~BUG-FS-002: WASM loading spinner uses non-existent `blazor:initialized` event~~ FIXED 2026-03-03
+Replaced `document.addEventListener('blazor:initialized', ...)` with `Blazor.addEventListener('afterStarted', ...)` in App.razor. Spinner now hides when WASM finishes loading (~1-2s) instead of waiting for the 10s fallback timeout.
 
 ### ~~BUG-003: Timestamp format mismatch in IndexedDB deleteConversationMessages~~ FIXED 2026-03-02
 Changed to pass ISO 8601 string instead of Unix milliseconds, and removed `.toString()` in JS comparison.

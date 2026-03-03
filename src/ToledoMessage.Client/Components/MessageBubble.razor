@@ -10,7 +10,7 @@
         {
             <div class="reply-quote-block" @onclick="() => OnReplyQuoteClick.InvokeAsync(ReplyToMessageId ?? 0)">
                 <div class="reply-sender-name">@ReplyToSenderName</div>
-                <div class="reply-quote-text">@(ReplyToText ?? "")</div>
+                <div class="reply-quote-text">@(!string.IsNullOrEmpty(ReplyToText) ? ReplyToText : "Message")</div>
             </div>
         }
         @if (ContentType == ContentType.Image)

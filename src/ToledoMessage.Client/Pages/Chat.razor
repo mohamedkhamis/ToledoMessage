@@ -18,7 +18,7 @@
 
 <div class="chat-container">
     <div class="chat-header">
-        <a href="/chat" class="back-link back-link-desktop-hidden" aria-label="Back to conversations">&larr;</a>
+        <button class="back-link back-link-desktop-hidden" @onclick="NavigateBack" aria-label="Back to conversations">&larr;</button>
         @{
             var headerName = _conversationDetail?.Type == ConversationType.Group
                 ? (_conversationDetail.GroupName ?? "Group")
@@ -836,7 +836,7 @@
             Status = Shared.Enums.DeliveryStatus.Sending,
             ReplyToMessageId = _replyingTo?.MessageId,
             ReplyToSenderName = _replyingTo is not null ? (_replyingTo.IsMine ? "You" : GetSenderDisplayName(_replyingTo)) : null,
-            ReplyToText = _replyingTo is not null ? (_replyingTo.ContentType != ContentType.Text ? $"[{_replyingTo.ContentType}]" : (_replyingTo.Text.Length > 80 ? _replyingTo.Text[..80] + "..." : _replyingTo.Text)) : null
+            ReplyToText = _replyingTo is not null ? FormatReplyText(_replyingTo) : null
         };
         CancelReply();
         _messages.Add(tempMessage);
@@ -1008,7 +1008,7 @@
             if (replyMsg is not null)
             {
                 replyToSenderName = replyMsg.IsMine ? "You" : GetSenderDisplayName(replyMsg);
-                replyToText = replyMsg.ContentType != ContentType.Text ? $"[{replyMsg.ContentType}]" : (replyMsg.Text.Length > 80 ? replyMsg.Text[..80] + "..." : replyMsg.Text);
+                replyToText = FormatReplyText(replyMsg);
             }
             else
             {
@@ -1173,15 +1173,29 @@
         {
             MessageId = msg.MessageId,
             SenderName = msg.IsMine ? "You" : GetSenderDisplayName(msg),
-            Text = msg.ContentType != ContentType.Text ? $"[{msg.ContentType}]" : (msg.Text.Length > 80 ? msg.Text[..80] + "..." : msg.Text)
+            Text = FormatReplyText(msg)
         };
         _showContextMenu = false;
     }
+
+    private static string FormatReplyText(ChatMessage msg) => msg.ContentType switch
+    {
+        ContentType.Image => "[Image]",
+        ContentType.Audio => "[Voice message]",
+        ContentType.Video => "[Video]",
+        ContentType.File => $"[File: {msg.FileName ?? "file"}]",
+        _ => msg.Text.Length > 80 ? msg.Text[..80] + "..." : msg.Text
+    };
 
     private void CancelReply()
     {
         _replyingTo = null;
         _replyContext = null;
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/chat");
     }
 
     // ReSharper disable once UnusedParameter.Local

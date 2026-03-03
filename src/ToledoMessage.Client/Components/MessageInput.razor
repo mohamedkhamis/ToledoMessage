@@ -12,7 +12,7 @@
         <div class="reply-preview-bar">
             <div class="reply-preview-content">
                 <div class="reply-sender-name">@ReplyContext.SenderName</div>
-                <div class="reply-quote-text">@ReplyContext.Text</div>
+                <div class="reply-quote-text">@(!string.IsNullOrEmpty(ReplyContext.Text) ? ReplyContext.Text : "Message")</div>
             </div>
             <button class="reply-preview-close" @onclick="() => OnCancelReply.InvokeAsync()" aria-label="Cancel reply">&times;</button>
         </div>
@@ -379,7 +379,7 @@
 
         return contentType switch
         {
-            ContentType.Image => IsJpeg(data) || IsPng(data) || IsGif(data) || IsWebp(data) || IsBmp(data),
+            ContentType.Image => IsJpeg(data) || IsPng(data) || IsGif(data) || IsWebp(data) || IsBmp(data) || IsHeic(data),
             ContentType.Video => IsMp4(data) || IsWebm(data) || IsAvi(data) || IsMkv(data),
             ContentType.Audio => IsMp3(data) || IsOgg(data) || IsWav(data) || IsWebm(data) || IsFlac(data) || IsMp4(data),
             ContentType.File => true, // Documents accept any file type
@@ -392,6 +392,10 @@
         static bool IsWebp(byte[] d) => d.Length >= 12 && d[0] == 0x52 && d[1] == 0x49 && d[2] == 0x46 && d[3] == 0x46
                                         && d[8] == 0x57 && d[9] == 0x45 && d[10] == 0x42 && d[11] == 0x50;
         static bool IsBmp(byte[] d) => d[0] == 0x42 && d[1] == 0x4D;
+        // HEIC/HEIF (iPhone default): ftyp box with brand heic, heix, mif1, or msf1
+        static bool IsHeic(byte[] d) => d.Length >= 12 && d[4] == 0x66 && d[5] == 0x74 && d[6] == 0x79 && d[7] == 0x70
+                                        && (MatchBrand(d, "heic") || MatchBrand(d, "heix") || MatchBrand(d, "mif1") || MatchBrand(d, "msf1") || MatchBrand(d, "avif"));
+        static bool MatchBrand(byte[] d, string brand) => d.Length >= 12 && d[8] == brand[0] && d[9] == brand[1] && d[10] == brand[2] && d[11] == brand[3];
         static bool IsMp4(byte[] d) => d.Length >= 8 && d[4] == 0x66 && d[5] == 0x74 && d[6] == 0x79 && d[7] == 0x70;
         static bool IsWebm(byte[] d) => d is [0x1A, 0x45, 0xDF, 0xA3, ..];
         static bool IsMkv(byte[] d) => IsWebm(d); // MKV shares EBML header with WebM

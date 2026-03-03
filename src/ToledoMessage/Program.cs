@@ -9,12 +9,15 @@ using ToledoMessage.Data;
 using ToledoMessage.Models;
 using ToledoMessage.Hubs;
 using ToledoMessage.Middleware;
+using ToledoMessage.Client.Services;
 using ToledoMessage.Services;
+
+// ReSharper disable RemoveRedundantBraces
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Serilog structured logging (NFR-011)
-builder.Host.UseSerilog((context, loggerConfiguration) =>
+builder.Host.UseSerilog(static (context, loggerConfiguration) =>
 {
     loggerConfiguration
         .ReadFrom.Configuration(context.Configuration)
@@ -38,6 +41,18 @@ builder.Services.AddScoped<AccountDeletionService>();
 builder.Services.AddHostedService<MessageCleanupHostedService>();
 builder.Services.AddHostedService<AccountDeletionHostedService>();
 builder.Services.AddSingleton<RateLimitService>();
+builder.Services.AddSingleton<PresenceService>();
+builder.Services.AddHttpClient("LinkPreview", static client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(5);
+    client.MaxResponseContentBufferSize = 1_048_576;
+});
+builder.Services.AddScoped<LinkPreviewService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddMemoryCache();
+
+// Client services needed during SSR (static server-side rendering)
+builder.Services.AddScoped<ToastService>();
 
 // Health checks
 builder.Services.AddHealthChecks()
@@ -46,46 +61,47 @@ builder.Services.AddHealthChecks()
 // JWT Bearer Authentication
 var jwtSection = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSection["SecretKey"]
-    ?? throw new InvalidOperationException("Jwt:SecretKey is not configured.");
+                ?? throw new InvalidOperationException("Jwt:SecretKey is not configured.");
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
+builder.Services.AddAuthentication(static options =>
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ClockSkew = TimeSpan.FromSeconds(30),
-        ValidIssuer = jwtSection["Issuer"],
-        ValidAudience = jwtSection["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
-    };
-
-    // Allow SignalR to receive the token via query string
-    options.Events = new JwtBearerEvents
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
     {
-        OnMessageReceived = context =>
+        options.TokenValidationParameters = new TokenValidationParameters
         {
-            var accessToken = context.Request.Query["access_token"];
-            var path = context.HttpContext.Request.Path;
-            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ClockSkew = TimeSpan.FromSeconds(30),
+            ValidIssuer = jwtSection["Issuer"],
+            ValidAudience = jwtSection["Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+        };
+
+        // Allow SignalR to receive the token via query string
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = static context =>
             {
-                context.Token = accessToken;
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
             }
-            return Task.CompletedTask;
-        }
-    };
-});
+        };
+    });
 builder.Services.AddAuthorization();
 
 // SignalR — increase max message size to support encrypted media (up to 15 MB file + Base64 overhead = ~25 MB JSON)
-builder.Services.AddSignalR(options =>
+builder.Services.AddSignalR(static options =>
 {
     options.MaximumReceiveMessageSize = 25 * 1024 * 1024; // 25 MB (15 MB ciphertext as Base64 ≈ 20 MB + JSON overhead)
 });
@@ -99,12 +115,12 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
     {
         var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-            ?? [builder.Environment.IsDevelopment() ? "https://localhost:7159" : ""];
+                             ?? [builder.Environment.IsDevelopment() ? "https://localhost:7159" : ""];
 
         policy.WithOrigins(allowedOrigins)
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials();
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
     });
 });
 
@@ -121,7 +137,7 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseExceptionHandler("/Error", true);
     app.UseHsts();
 }
 
@@ -129,11 +145,11 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 // Serilog request logging must be early to capture all requests and errors
-app.UseSerilogRequestLogging(options =>
+app.UseSerilogRequestLogging(static options =>
 {
     // Explicit template — avoids accidentally including sensitive URL params, headers, or bodies
     options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
-    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    options.EnrichDiagnosticContext = static (diagnosticContext, httpContext) =>
     {
         diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value ?? "unknown");
         // Intentionally omit Authorization header and request body from diagnostic context

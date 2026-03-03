@@ -1,0 +1,80 @@
+@inject HttpClient Http
+
+@if (_preview is not null)
+{
+    <a href="@Url" target="_blank" rel="noopener noreferrer" class="link-preview-card">
+        @if (!string.IsNullOrEmpty(_preview.ImageUrl))
+        {
+            <img src="@_preview.ImageUrl" class="link-preview-image" alt="" loading="lazy" />
+        }
+        <div class="link-preview-info">
+            @if (!string.IsNullOrEmpty(_preview.Title))
+            {
+                <div class="link-preview-title">@_preview.Title</div>
+            }
+            @if (!string.IsNullOrEmpty(_preview.Description))
+            {
+                <div class="link-preview-desc">@_preview.Description</div>
+            }
+            @if (!string.IsNullOrEmpty(_preview.Domain))
+            {
+                <div class="link-preview-domain">@_preview.Domain</div>
+            }
+        </div>
+    </a>
+}
+else if (_isLoading)
+{
+    <div class="link-preview-loading">Loading preview...</div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string Url { get; set; } = "";
+
+    private LinkPreviewResponse? _preview;
+    private bool _isLoading;
+    private string? _loadedUrl;
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, LinkPreviewResponse?> Cache = new();
+    private const int MaxCacheSize = 200;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(Url) || Url == _loadedUrl) return;
+        _loadedUrl = Url;
+
+        if (Cache.TryGetValue(Url, out var cached))
+        {
+            _preview = cached;
+            return;
+        }
+
+        _isLoading = true;
+        try
+        {
+            var encoded = Uri.EscapeDataString(Url);
+            var response = await Http.GetAsync($"/api/link-preview?url={encoded}");
+            if (response.IsSuccessStatusCode)
+            {
+                _preview = await response.Content.ReadFromJsonAsync<LinkPreviewResponse>();
+            }
+
+            // Evict oldest entries if cache is too large
+            if (Cache.Count >= MaxCacheSize)
+                Cache.Clear();
+
+            Cache[Url] = _preview;
+        }
+        catch
+        {
+            Cache[Url] = null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private sealed record LinkPreviewResponse(string? Title, string? Description, string? ImageUrl, string? Domain);
+}

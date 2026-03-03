@@ -9,6 +9,7 @@ public class ConversationParticipant
     public DateTimeOffset JoinedAt { get; set; }
     public ParticipantRole Role { get; set; }
 
+    // ReSharper disable  NullableWarningSuppressionIsUsed
     public Conversation Conversation { get; set; } = null!;
     public User User { get; set; } = null!;
 }

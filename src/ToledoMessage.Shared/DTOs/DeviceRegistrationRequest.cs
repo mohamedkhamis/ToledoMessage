@@ -9,6 +9,6 @@ public sealed record DeviceRegistrationRequest(
     int SignedPreKeyId,
     string KyberPreKeyPublic,
     string KyberPreKeySignature,
-    List<OneTimePreKeyDto> OneTimePreKeys);
+    List<OneTimePreKeyDto>? OneTimePreKeys);
 
 public sealed record OneTimePreKeyDto(int KeyId, string PublicKey);

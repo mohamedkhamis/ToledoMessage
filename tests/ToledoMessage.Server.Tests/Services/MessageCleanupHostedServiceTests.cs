@@ -7,6 +7,7 @@ namespace ToledoMessage.Server.Tests.Services;
 [TestClass]
 public class MessageCleanupHostedServiceTests
 {
+    // ReSharper disable once UnusedTupleComponentInReturnValue
     private static (MessageCleanupHostedService service, IServiceScopeFactory scopeFactory) CreateService()
     {
         var db = TestDbContextFactory.Create();
@@ -32,11 +33,14 @@ public class MessageCleanupHostedServiceTests
 
         // StartAsync internally calls ExecuteAsync; it should exit gracefully when cancelled
         await service.StartAsync(cts.Token);
+        // ReSharper disable once MethodSupportsCancellation
         await Task.Delay(200); // Give it time to observe cancellation
         await service.StopAsync(CancellationToken.None);
 
         // If we reach here without hanging, the service correctly handled cancellation
+#pragma warning disable MSTEST0032
         Assert.IsTrue(true);
+#pragma warning restore MSTEST0032
     }
 
     [TestMethod]
@@ -46,10 +50,12 @@ public class MessageCleanupHostedServiceTests
         using var cts = new CancellationTokenSource();
 
         await service.StartAsync(cts.Token);
-        cts.Cancel();
+        await cts.CancelAsync();
         await service.StopAsync(CancellationToken.None);
 
         // Service should complete without throwing
+#pragma warning disable MSTEST0032
         Assert.IsTrue(true);
+#pragma warning restore MSTEST0032
     }
 }

@@ -1,5 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ToledoMessage.Shared.Constants;
 
+[SuppressMessage("ReSharper", "UnusedMember.Global")]
 public static class ProtocolConstants
 {
     // Key sizes (bytes)

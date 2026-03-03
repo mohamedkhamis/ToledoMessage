@@ -1,4 +1,4 @@
-using System.Text;
+using System.Diagnostics.CodeAnalysis;
 using ToledoMessage.Crypto.Classical;
 using ToledoMessage.Crypto.Hybrid;
 
@@ -23,11 +23,12 @@ public sealed class MessageHeader
 /// Implements the Double Ratchet algorithm providing per-message forward secrecy
 /// via symmetric ratchet (chain key stepping) combined with asymmetric ratchet (DH ratchet with X25519).
 /// </summary>
+[SuppressMessage("ReSharper", "RemoveRedundantBraces")]
 public class DoubleRatchet
 {
     private readonly RatchetState _state;
     private const int MaxSkippedKeys = 100;
-    private static readonly byte[] RatchetInfo = Encoding.UTF8.GetBytes("ToledoMessage-Ratchet-v1");
+    private static readonly byte[] RatchetInfo = "ToledoMessage-Ratchet-v1"u8.ToArray();
 
     private DoubleRatchet(RatchetState state)
     {
@@ -165,12 +166,18 @@ public class DoubleRatchet
     /// <summary>
     /// Restores a DoubleRatchet session from a previously serialized <see cref="RatchetState"/>.
     /// </summary>
-    public static DoubleRatchet FromState(RatchetState state) => new(state);
+    public static DoubleRatchet FromState(RatchetState state)
+    {
+        return new DoubleRatchet(state);
+    }
 
     /// <summary>
     /// Returns the current ratchet state for serialization.
     /// </summary>
-    public RatchetState GetState() => _state;
+    public RatchetState GetState()
+    {
+        return _state;
+    }
 
     private void PerformDhRatchetStep(byte[] newRemoteRatchetPublicKey)
     {
@@ -233,11 +240,14 @@ public class DoubleRatchet
     private byte[]? TryGetSkippedMessageKey(MessageHeader header)
     {
         var keyId = BuildSkippedKeyId(header.RatchetPublicKey, header.MessageIndex);
+        // ReSharper disable once InvertIf
+        // ReSharper disable once CanSimplifyDictionaryRemovingWithSingleCall
         if (_state.SkippedMessageKeys.TryGetValue(keyId, out var key))
         {
             _state.SkippedMessageKeys.Remove(keyId);
             return key;
         }
+
         return null;
     }
 
@@ -258,11 +268,14 @@ public class DoubleRatchet
     {
         if (a.Length != b.Length)
             return false;
-        for (int i = 0; i < a.Length; i++)
+
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var i = 0; i < a.Length; i++)
         {
             if (a[i] != b[i])
                 return false;
         }
+
         return true;
     }
 }

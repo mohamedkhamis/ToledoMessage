@@ -20,14 +20,45 @@ public class StubHubContext : IHubContext<ChatHub>
 public class StubHubClients : IHubClients
 {
     public IClientProxy All => new StubClientProxy();
-    public IClientProxy AllExcept(IReadOnlyList<string> excludedConnectionIds) => new StubClientProxy();
-    public IClientProxy Client(string connectionId) => new StubClientProxy();
-    public IClientProxy Clients(IReadOnlyList<string> connectionIds) => new StubClientProxy();
-    public IClientProxy Group(string groupName) => new StubClientProxy();
-    public IClientProxy GroupExcept(string groupName, IReadOnlyList<string> excludedConnectionIds) => new StubClientProxy();
-    public IClientProxy Groups(IReadOnlyList<string> groupNames) => new StubClientProxy();
-    public IClientProxy User(string userId) => new StubClientProxy();
-    public IClientProxy Users(IReadOnlyList<string> userIds) => new StubClientProxy();
+    public IClientProxy AllExcept(IReadOnlyList<string> excludedConnectionIds)
+    {
+        return new StubClientProxy();
+    }
+
+    public IClientProxy Client(string connectionId)
+    {
+        return new StubClientProxy();
+    }
+
+    public IClientProxy Clients(IReadOnlyList<string> connectionIds)
+    {
+        return new StubClientProxy();
+    }
+
+    public IClientProxy Group(string groupName)
+    {
+        return new StubClientProxy();
+    }
+
+    public IClientProxy GroupExcept(string groupName, IReadOnlyList<string> excludedConnectionIds)
+    {
+        return new StubClientProxy();
+    }
+
+    public IClientProxy Groups(IReadOnlyList<string> groupNames)
+    {
+        return new StubClientProxy();
+    }
+
+    public IClientProxy User(string userId)
+    {
+        return new StubClientProxy();
+    }
+
+    public IClientProxy Users(IReadOnlyList<string> userIds)
+    {
+        return new StubClientProxy();
+    }
 }
 
 public class StubClientProxy : IClientProxy

@@ -1,95 +1,164 @@
-@inject IJSRuntime JS
+@inject IJSRuntime Js
+@inject ThemeService Theme
+@implements IAsyncDisposable
 
 <div class="chat-input-area">
-    @if (!string.IsNullOrEmpty(errorMessage))
+    @if (!string.IsNullOrEmpty(_errorMessage))
     {
-        <div class="input-error">@errorMessage</div>
+        <div class="input-error">@_errorMessage</div>
     }
-    @if (selectedFile is not null)
+    @if (ReplyContext is not null)
+    {
+        <div class="reply-preview-bar">
+            <div class="reply-preview-content">
+                <div class="reply-sender-name">@ReplyContext.SenderName</div>
+                <div class="reply-quote-text">@ReplyContext.Text</div>
+            </div>
+            <button class="reply-preview-close" @onclick="() => OnCancelReply.InvokeAsync()" aria-label="Cancel reply">&times;</button>
+        </div>
+    }
+    @if (_selectedFile is not null)
     {
         <div class="file-preview-bar">
-            @if (previewDataUrl is not null)
+            @if (_previewDataUrl is not null)
             {
-                <img src="@previewDataUrl" class="file-preview-thumb" alt="Preview" />
+                <img src="@_previewDataUrl" class="file-preview-thumb" alt="Preview" />
             }
             else
             {
-                <div class="file-preview-icon">@GetFileIcon(selectedContentType)</div>
+                <div class="file-preview-icon">@GetFileIcon(_selectedContentType)</div>
             }
             <div class="file-preview-info">
-                <span class="file-preview-name">@selectedFile.Name</span>
-                <span class="file-preview-size">@FormatFileSize(selectedFile.Size)</span>
+                <span class="file-preview-name">@_selectedFile.Name</span>
+                <span class="file-preview-size">@FormatFileSize(_selectedFile.Size)</span>
             </div>
             <button class="file-preview-remove" @onclick="ClearSelectedFile" aria-label="Remove attachment">&times;</button>
         </div>
     }
     <div class="chat-input-row">
-        <div class="attach-menu-wrapper">
-            @if (showAttachMenu)
+        @if (!_isRecording)
+        {
+            <div class="attach-menu-wrapper">
+                @if (_showAttachMenu)
+                {
+                    <div class="attach-menu-backdrop" @onclick="CloseAttachMenu"></div>
+                    <div class="attach-menu-popup" role="menu">
+                        <label class="attach-menu-item" role="menuitem" tabindex="0">
+                            <span class="attach-menu-icon">&#128247;</span>
+                            <span>@Theme.Labels.PhotoOrVideo</span>
+                            <InputFile accept="image/*,video/*" OnChange="OnMediaSelected" style="display:none" />
+                        </label>
+                        <label class="attach-menu-item" role="menuitem" tabindex="0">
+                            <span class="attach-menu-icon">&#127908;</span>
+                            <span>@Theme.Labels.Audio</span>
+                            <InputFile accept="audio/*" OnChange="OnAudioSelected" style="display:none" />
+                        </label>
+                        <label class="attach-menu-item" role="menuitem" tabindex="0">
+                            <span class="attach-menu-icon">&#128196;</span>
+                            <span>@Theme.Labels.Document</span>
+                            <InputFile OnChange="OnDocumentSelected" style="display:none" />
+                        </label>
+                    </div>
+                }
+                <button class="attach-btn" @onclick="ToggleAttachMenu"
+                        aria-label="Attach file" title="Attach file"
+                        aria-expanded="@_showAttachMenu">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="attach-menu-wrapper">
+                @if (_showEmojiPicker)
+                {
+                    <div class="attach-menu-backdrop" @onclick="() => _showEmojiPicker = false"></div>
+                    <EmojiPicker OnEmojiSelected="InsertEmoji" OnClose="() => _showEmojiPicker = false" />
+                }
+                <button class="emoji-btn" @onclick="() => _showEmojiPicker = !_showEmojiPicker"
+                        aria-label="Emoji" title="Emoji">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                        <line x1="9" y1="9" x2="9.01" y2="9"/>
+                        <line x1="15" y1="9" x2="15.01" y2="9"/>
+                    </svg>
+                </button>
+            </div>
+
+            <textarea @ref="_textareaRef"
+                      @bind="_messageText"
+                      @bind:event="oninput"
+                      @bind:after="OnTextInput"
+                      @onkeydown="HandleKeyDown"
+                      placeholder="@Theme.Labels.TypeMessage"
+                      rows="1"
+                      class="msg-textarea"
+                      aria-label="Message input"></textarea>
+
+            @if (CanSend)
             {
-                <div class="attach-menu-backdrop" @onclick="CloseAttachMenu"></div>
-                <div class="attach-menu-popup" role="menu">
-                    <label class="attach-menu-item" role="menuitem" tabindex="0">
-                        <span class="attach-menu-icon">&#128247;</span>
-                        <span>Photo or Video</span>
-                        <InputFile accept="image/*,video/*" OnChange="OnMediaSelected" style="display:none" />
-                    </label>
-                    <label class="attach-menu-item" role="menuitem" tabindex="0">
-                        <span class="attach-menu-icon">&#127908;</span>
-                        <span>Audio</span>
-                        <InputFile accept="audio/*" OnChange="OnAudioSelected" style="display:none" />
-                    </label>
-                    <label class="attach-menu-item" role="menuitem" tabindex="0">
-                        <span class="attach-menu-icon">&#128196;</span>
-                        <span>Document</span>
-                        <InputFile OnChange="OnDocumentSelected" style="display:none" />
-                    </label>
-                </div>
+                <button @onclick="SendMessage"
+                        class="send-btn send-btn-active"
+                        aria-label="Send message"
+                        title="Send">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                    </svg>
+                </button>
             }
-            <button class="attach-btn" @onclick="ToggleAttachMenu"
-                    aria-label="Attach file" title="Attach file"
-                    aria-expanded="@showAttachMenu">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2"
-                     stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-                </svg>
-            </button>
-        </div>
-
-        <textarea @ref="textareaRef"
-                  @bind="messageText"
-                  @bind:event="oninput"
-                  @bind:after="OnTextInput"
-                  @onkeydown="HandleKeyDown"
-                  placeholder="Type a message..."
-                  rows="1"
-                  class="msg-textarea"
-                  aria-label="Message input" />
-
-        <button @onclick="SendMessage"
-                disabled="@(!CanSend)"
-                class="send-btn @(CanSend ? "send-btn-active" : "")"
-                aria-label="Send message"
-                title="Send">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-            </svg>
-        </button>
+            else
+            {
+                <button class="mic-btn" @onclick="StartRecording"
+                        aria-label="Record voice message" title="Record voice message">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+                        <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="23"/>
+                        <line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                </button>
+            }
+        }
+        else
+        {
+            <VoiceRecorder OnRecorded="HandleVoiceRecorded" OnCancelled="() => _isRecording = false" />
+        }
     </div>
 </div>
 
 @code {
-    private string messageText = "";
-    private IBrowserFile? selectedFile;
-    private byte[]? selectedFileBytes;
-    private ContentType selectedContentType = ContentType.Text;
-    private string? previewDataUrl;
-    private string? errorMessage;
-    private bool showAttachMenu;
-    private ElementReference textareaRef;
+    protected override void OnInitialized()
+    {
+        Theme.OnThemeChanged += OnThemeChanged;
+    }
 
-    private bool CanSend => !string.IsNullOrWhiteSpace(messageText) || selectedFile is not null;
+    private void OnThemeChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Theme.OnThemeChanged -= OnThemeChanged;
+    }
+
+    private string _messageText = "";
+    private IBrowserFile? _selectedFile;
+    private byte[]? _selectedFileBytes;
+    private ContentType _selectedContentType = ContentType.Text;
+    private string? _previewDataUrl;
+    private string? _errorMessage;
+    private bool _showAttachMenu;
+    private bool _showEmojiPicker;
+    private bool _isRecording;
+    private ElementReference _textareaRef;
+
+    private bool CanSend => !string.IsNullOrWhiteSpace(_messageText) || _selectedFile is not null;
 
     [Parameter]
     public EventCallback<ChatInputMessage> OnSend { get; set; }
@@ -97,13 +166,48 @@
     [Parameter]
     public EventCallback OnTyping { get; set; }
 
-    private void ToggleAttachMenu() => showAttachMenu = !showAttachMenu;
+    [Parameter]
+    public ReplyContextModel? ReplyContext { get; set; }
 
-    private void CloseAttachMenu() => showAttachMenu = false;
+    [Parameter]
+    public EventCallback OnCancelReply { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try { await Js.InvokeVoidAsync("mediaHelpers.preventEnterNewline", _textareaRef); }
+            catch { /* ignored */ }
+        }
+    }
+
+    private void ToggleAttachMenu()
+    {
+        _showAttachMenu = !_showAttachMenu;
+    }
+
+    private void CloseAttachMenu()
+    {
+        _showAttachMenu = false;
+    }
+
+    private async Task InsertEmoji(string emoji)
+    {
+        _showEmojiPicker = false;
+        try
+        {
+            await Js.InvokeVoidAsync("mediaHelpers.insertTextAtCursor", _textareaRef, emoji);
+            _messageText = await Js.InvokeAsync<string>("mediaHelpers.getTextareaValue", ".msg-textarea");
+        }
+        catch
+        {
+            // ignored
+        }
+    }
 
     private async Task HandleKeyDown(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter" && !e.ShiftKey)
+        if (e is { Key: "Enter", ShiftKey: false })
             await SendMessage();
     }
 
@@ -115,7 +219,11 @@
 
     private async Task ResizeTextarea()
     {
-        try { await JS.InvokeVoidAsync("mediaHelpers.autoResize", textareaRef); } catch { }
+        try { await Js.InvokeVoidAsync("mediaHelpers.autoResize", _textareaRef); }
+        catch
+        {
+            // ignored
+        }
     }
 
     private async Task SendMessage()
@@ -123,24 +231,24 @@
         if (!CanSend)
             return;
 
-        var text = messageText?.Trim() ?? "";
+        var text = _messageText.Trim();
         byte[]? mediaBytes = null;
         string? fileName = null;
         string? mimeType = null;
         var contentType = ContentType.Text;
 
-        if (selectedFile is not null)
+        if (_selectedFile is not null)
         {
-            if (selectedFileBytes is null)
+            if (_selectedFileBytes is null)
             {
-                errorMessage = "Could not read the selected file. Please try again.";
+                _errorMessage = "Could not read the selected file. Please try again.";
                 return;
             }
 
-            mediaBytes = selectedFileBytes;
-            fileName = selectedFile.Name;
-            mimeType = selectedFile.ContentType;
-            contentType = selectedContentType;
+            mediaBytes = _selectedFileBytes;
+            fileName = _selectedFile.Name;
+            mimeType = _selectedFile.ContentType;
+            contentType = _selectedContentType;
         }
 
         if (string.IsNullOrEmpty(text) && mediaBytes is null)
@@ -152,86 +260,160 @@
             MediaBytes = mediaBytes,
             FileName = fileName,
             MimeType = mimeType,
-            ContentType = contentType
+            ContentType = contentType,
+            ReplyToMessageId = ReplyContext?.MessageId
         };
 
-        messageText = "";
+        _messageText = "";
         ClearSelectedFile();
-        try { await JS.InvokeVoidAsync("mediaHelpers.resetHeight", textareaRef); } catch { }
+        try { await Js.InvokeVoidAsync("mediaHelpers.resetHeight", _textareaRef); }
+        catch
+        {
+            // ignored
+        }
+
         await OnSend.InvokeAsync(msg);
     }
 
     private async Task OnMediaSelected(InputFileChangeEventArgs e)
     {
-        showAttachMenu = false;
+        _showAttachMenu = false;
         var file = e.File;
-        selectedContentType = file.ContentType.StartsWith("video/") ? ContentType.Video : ContentType.Image;
-        await SetSelectedFile(file, createPreview: selectedContentType == ContentType.Image);
+        _selectedContentType = file.ContentType.StartsWith("video/") ? ContentType.Video : ContentType.Image;
+        await SetSelectedFile(file, createPreview: _selectedContentType == ContentType.Image);
     }
 
     private async Task OnAudioSelected(InputFileChangeEventArgs e)
     {
-        showAttachMenu = false;
-        selectedContentType = ContentType.Audio;
+        _showAttachMenu = false;
+        _selectedContentType = ContentType.Audio;
         await SetSelectedFile(e.File, createPreview: false);
     }
 
     private async Task OnDocumentSelected(InputFileChangeEventArgs e)
     {
-        showAttachMenu = false;
-        selectedContentType = ContentType.File;
+        _showAttachMenu = false;
+        _selectedContentType = ContentType.File;
         await SetSelectedFile(e.File, createPreview: false);
     }
 
     private async Task SetSelectedFile(IBrowserFile file, bool createPreview)
     {
         ClearSelectedFile();
-        errorMessage = null;
+        _errorMessage = null;
 
         var maxSize = ProtocolConstants.MaxMediaCiphertextSizeBytes;
         if (file.Size > maxSize)
         {
-            errorMessage = $"File too large. Maximum is {FormatFileSize(maxSize)}.";
+            _errorMessage = $"File too large. Maximum is {FormatFileSize(maxSize)}.";
             return;
         }
 
         // Read bytes eagerly — avoids double-read on send and enables preview
-        using var stream = file.OpenReadStream(maxAllowedSize: maxSize);
-        selectedFileBytes = new byte[file.Size];
-        await stream.ReadExactlyAsync(selectedFileBytes);
-        selectedFile = file;
+        await using var stream = file.OpenReadStream(maxAllowedSize: maxSize);
+        _selectedFileBytes = new byte[file.Size];
+        await stream.ReadExactlyAsync(_selectedFileBytes);
+
+        // Validate MIME type by checking file header magic bytes
+        if (!ValidateMimeType(_selectedFileBytes, _selectedContentType))
+        {
+            _selectedFileBytes = null;
+            _errorMessage = "Unsupported or corrupted file. The file content does not match the expected format.";
+            return;
+        }
+
+        _selectedFile = file;
 
         if (createPreview)
         {
             try
             {
-                previewDataUrl = await JS.InvokeAsync<string>(
-                    "mediaHelpers.createObjectUrl", selectedFileBytes, file.ContentType);
+                _previewDataUrl = await Js.InvokeAsync<string>(
+                    "mediaHelpers.createObjectUrl", _selectedFileBytes, file.ContentType);
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
         }
     }
 
     private void ClearSelectedFile()
     {
-        if (previewDataUrl is not null)
+        if (_previewDataUrl is not null)
         {
-            _ = JS.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", previewDataUrl);
-            previewDataUrl = null;
+            _ = Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _previewDataUrl);
+            _previewDataUrl = null;
         }
-        selectedFile = null;
-        selectedFileBytes = null;
-        selectedContentType = ContentType.Text;
-        errorMessage = null;
+        _selectedFile = null;
+        _selectedFileBytes = null;
+        _selectedContentType = ContentType.Text;
+        _errorMessage = null;
     }
 
-    private static string GetFileIcon(ContentType type) => type switch
+    private void StartRecording()
     {
-        ContentType.Audio => "🎵",
-        ContentType.Video => "🎬",
-        ContentType.Image => "🖼️",
-        _ => "📄"
-    };
+        _isRecording = true;
+    }
+
+    private async Task HandleVoiceRecorded(byte[] audioData)
+    {
+        _isRecording = false;
+
+        var msg = new ChatInputMessage
+        {
+            Text = "",
+            MediaBytes = audioData,
+            FileName = $"voice_{DateTimeOffset.UtcNow:yyyyMMdd_HHmmss}.webm",
+            MimeType = "audio/webm",
+            ContentType = ContentType.Audio,
+            ReplyToMessageId = ReplyContext?.MessageId
+        };
+
+        await OnSend.InvokeAsync(msg);
+    }
+
+    private static bool ValidateMimeType(byte[] data, ContentType contentType)
+    {
+        if (data.Length < 4) return false;
+
+        return contentType switch
+        {
+            ContentType.Image => IsJpeg(data) || IsPng(data) || IsGif(data) || IsWebp(data) || IsBmp(data),
+            ContentType.Video => IsMp4(data) || IsWebm(data) || IsAvi(data) || IsMkv(data),
+            ContentType.Audio => IsMp3(data) || IsOgg(data) || IsWav(data) || IsWebm(data) || IsFlac(data) || IsMp4(data),
+            ContentType.File => true, // Documents accept any file type
+            _ => false
+        };
+
+        static bool IsJpeg(byte[] d) => d[0] == 0xFF && d[1] == 0xD8;
+        static bool IsPng(byte[] d) => d is [0x89, 0x50, 0x4E, 0x47, ..];
+        static bool IsGif(byte[] d) => d is [0x47, 0x49, 0x46, ..];
+        static bool IsWebp(byte[] d) => d.Length >= 12 && d[0] == 0x52 && d[1] == 0x49 && d[2] == 0x46 && d[3] == 0x46
+                                        && d[8] == 0x57 && d[9] == 0x45 && d[10] == 0x42 && d[11] == 0x50;
+        static bool IsBmp(byte[] d) => d[0] == 0x42 && d[1] == 0x4D;
+        static bool IsMp4(byte[] d) => d.Length >= 8 && d[4] == 0x66 && d[5] == 0x74 && d[6] == 0x79 && d[7] == 0x70;
+        static bool IsWebm(byte[] d) => d is [0x1A, 0x45, 0xDF, 0xA3, ..];
+        static bool IsMkv(byte[] d) => IsWebm(d); // MKV shares EBML header with WebM
+        static bool IsAvi(byte[] d) => d.Length >= 12 && d[0] == 0x52 && d[1] == 0x49 && d[2] == 0x46 && d[3] == 0x46
+                                       && d[8] == 0x41 && d[9] == 0x56 && d[10] == 0x49 && d[11] == 0x20;
+        static bool IsMp3(byte[] d) => (d[0] == 0xFF && (d[1] & 0xE0) == 0xE0) || (d[0] == 0x49 && d[1] == 0x44 && d[2] == 0x33);
+        static bool IsOgg(byte[] d) => d is [0x4F, 0x67, 0x67, 0x53, ..];
+        static bool IsWav(byte[] d) => d.Length >= 12 && d[0] == 0x52 && d[1] == 0x49 && d[2] == 0x46 && d[3] == 0x46
+                                       && d[8] == 0x57 && d[9] == 0x41 && d[10] == 0x56 && d[11] == 0x45;
+        static bool IsFlac(byte[] d) => d is [0x66, 0x4C, 0x61, 0x43, ..];
+    }
+
+    private static string GetFileIcon(ContentType type)
+    {
+        return type switch
+        {
+            ContentType.Audio => "🎵",
+            ContentType.Video => "🎬",
+            ContentType.Image => "🖼️",
+            _ => "📄"
+        };
+    }
 
     private static string FormatFileSize(long bytes)
     {
@@ -248,5 +430,22 @@
         public string? MimeType { get; set; }
         public ContentType ContentType { get; set; } = ContentType.Text;
         public bool HasMedia => MediaBytes is not null;
+        public decimal? ReplyToMessageId { get; set; }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_previewDataUrl is not null)
+        {
+            try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _previewDataUrl); }
+            catch { /* ignored */ }
+        }
+    }
+
+    public sealed class ReplyContextModel
+    {
+        public decimal MessageId { get; set; }
+        public string SenderName { get; set; } = "";
+        public string Text { get; set; } = "";
     }
 }

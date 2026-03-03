@@ -1,46 +1,134 @@
-@using ToledoMessage.Shared.Enums
-
-<div class="message-row @(IsMine ? "mine" : "") @(IsMine ? "msg-slide-in-right" : "msg-slide-in-left")">
+<div class="message-row @(IsMine ? "mine" : "") @GroupingClass @(IsSearchHighlight ? "message-highlight" : "")"
+     data-msg-id="@MessageId"
+     @oncontextmenu="HandleContextMenu" @oncontextmenu:preventDefault="true">
     <div class="message-bubble @(IsMine ? "mine" : "theirs")">
-        @if (ContentType == ContentType.Image && !string.IsNullOrEmpty(MediaDataUrl))
+        @if (IsForwarded)
         {
-            <div class="message-media">
-                <img src="@MediaDataUrl" alt="@(FileName ?? "Image")" class="message-image" />
+            <div class="forwarded-label">@Theme.Labels.Forwarded</div>
+        }
+        @if (!string.IsNullOrEmpty(ReplyToSenderName))
+        {
+            <div class="reply-quote-block" @onclick="() => OnReplyQuoteClick.InvokeAsync(ReplyToMessageId ?? 0)">
+                <div class="reply-sender-name">@ReplyToSenderName</div>
+                <div class="reply-quote-text">@(ReplyToText ?? "")</div>
             </div>
         }
-        else if (ContentType == ContentType.Video && !string.IsNullOrEmpty(MediaDataUrl))
+        @if (ContentType == ContentType.Image)
         {
-            <div class="message-media">
-                <video controls src="@MediaDataUrl" class="message-video"
-                       preload="metadata" aria-label="@(FileName ?? "Video")">
-                    Your browser does not support video playback.
-                </video>
-            </div>
-        }
-        else if (ContentType == ContentType.Audio && !string.IsNullOrEmpty(MediaDataUrl))
-        {
-            <div class="message-media">
-                <audio controls src="@MediaDataUrl" class="message-audio" aria-label="@(FileName ?? "Audio")">
-                    Your browser does not support audio playback.
-                </audio>
-            </div>
-        }
-        else if (ContentType == ContentType.File && !string.IsNullOrEmpty(MediaDataUrl))
-        {
-            <div class="message-file-card">
-                <div class="message-file-icon">&#128196;</div>
-                <div class="message-file-info">
-                    <span class="message-file-name">@(FileName ?? "File")</span>
-                    <a href="@MediaDataUrl" download="@(FileName ?? "file")"
-                       class="message-file-download" aria-label="Download @(FileName ?? "file")">
-                        &#8595; Download
-                    </a>
+            if (!string.IsNullOrEmpty(MediaDataUrl))
+            {
+                <div class="message-media message-image-clickable" @onclick="() => OnImageClick.InvokeAsync(MediaDataUrl)">
+                    <img src="@MediaDataUrl" alt="@(FileName ?? "Image")" class="message-image" />
                 </div>
-            </div>
+            }
+            else
+            {
+                <div class="message-media-placeholder">&#128247; @(FileName ?? Theme.Labels.ImageUnavailable)</div>
+            }
+        }
+        else if (ContentType == ContentType.Video)
+        {
+            if (!string.IsNullOrEmpty(MediaDataUrl))
+            {
+                <div class="message-media">
+                    <video controls src="@MediaDataUrl" class="message-video"
+                           preload="metadata" aria-label="@(FileName ?? "Video")">
+                        Your browser does not support video playback.
+                    </video>
+                </div>
+            }
+            else
+            {
+                <div class="message-media-placeholder">&#127909; @(FileName ?? Theme.Labels.VideoUnavailable)</div>
+            }
+        }
+        else if (ContentType == ContentType.Audio)
+        {
+            if (!string.IsNullOrEmpty(MediaDataUrl))
+            {
+                <div class="audio-message" @onclick="ToggleAudioPlayback">
+                    <div class="audio-avatar @(IsMine ? "mine" : "")">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="audio-mic-icon">
+                            <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+                            <path d="M19 10v2a7 7 0 01-14 0v-2" fill="none" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <button class="audio-play-btn" @onclick="ToggleAudioPlayback" @onclick:stopPropagation="true">
+                        @if (_isAudioPlaying)
+                        {
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <rect x="6" y="4" width="4" height="16" rx="1"/>
+                                <rect x="14" y="4" width="4" height="16" rx="1"/>
+                            </svg>
+                        }
+                        else
+                        {
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        }
+                    </button>
+                    <div class="audio-wave-track">
+                        @for (var i = 0; i < 30; i++)
+                        {
+                            var h = AudioWaveHeights[i % AudioWaveHeights.Length];
+                            var pct = i / 30.0;
+                            var played = _audioDuration > 0 && pct <= (_audioCurrentTime / _audioDuration);
+                            <span class="aw-bar @(played ? "played" : "")" style="height:@(h)px"></span>
+                        }
+                    </div>
+                    <span class="audio-duration">@FormatAudioTime(_audioDuration > 0 ? _audioCurrentTime : 0)</span>
+                    <audio @ref="_audioElementRef" src="@MediaDataUrl" preload="metadata"
+                           @onended="OnAudioEnded" @ontimeupdate="OnAudioTimeUpdate"
+                           @onloadedmetadata="OnAudioMetadata" style="display:none"></audio>
+                </div>
+            }
+            else
+            {
+                <div class="message-media-placeholder">&#127911; @(FileName ?? Theme.Labels.AudioUnavailable)</div>
+            }
+        }
+        else if (ContentType == ContentType.File)
+        {
+            if (!string.IsNullOrEmpty(MediaDataUrl))
+            {
+                <div class="message-file-card">
+                    <div class="message-file-icon">&#128196;</div>
+                    <div class="message-file-info">
+                        <span class="message-file-name">@(FileName ?? "File")</span>
+                        <a href="@MediaDataUrl" download="@(FileName ?? "file")"
+                           class="message-file-download" aria-label="Download @(FileName ?? "file")">
+                            &#8595; @Theme.Labels.Download
+                        </a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="message-media-placeholder">&#128196; @(FileName ?? Theme.Labels.FileUnavailable)</div>
+            }
         }
         @if (!string.IsNullOrEmpty(Text))
         {
-            <div class="message-text">@Text</div>
+            <div class="message-text@(IsEmojiOnly(Text) ? " emoji-only" : "")">@Text</div>
+            var firstUrl = ExtractFirstUrl(Text);
+            if (firstUrl is not null)
+            {
+                <LinkPreview Url="@firstUrl" />
+            }
+        }
+        @if (ReactionBadges.Count > 0)
+        {
+            <div class="reaction-badges">
+                @foreach (var badge in ReactionBadges)
+                {
+                    <button class="reaction-badge @(badge.IncludesMine ? "mine" : "")"
+                            @onclick="() => OnReactionToggle.InvokeAsync(badge.Emoji)">
+                        <span class="reaction-badge-emoji">@badge.Emoji</span>
+                        <span class="reaction-badge-count">@badge.Count</span>
+                    </button>
+                }
+            </div>
         }
         <div class="message-meta">
             <span>@Timestamp.ToLocalTime().ToString("HH:mm")</span>
@@ -50,9 +138,116 @@
             }
         </div>
     </div>
+    <div class="message-actions">
+        <button class="msg-action-btn" @onclick="() => OnReply.InvokeAsync()" title="Reply">&#8617;</button>
+    </div>
 </div>
 
+@inject IJSRuntime Js
+@inject ThemeService Theme
+
+@* ReSharper disable once NotAccessedField.Local *@
 @code {
+    protected override void OnInitialized()
+    {
+        Theme.OnThemeChanged += OnThemeChanged;
+    }
+
+    private void OnThemeChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Theme.OnThemeChanged -= OnThemeChanged;
+    }
+
+    // Check if text contains only 1-3 emoji (for big emoji rendering)
+    private static bool IsEmojiOnly(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+        var trimmed = text.Trim();
+        if (trimmed.Length > 14) // Safety cap for compound emoji
+            return false;
+
+        // Match 1-3 emoji characters (including compound emoji like flags, skin tones)
+        // Emoji patterns: single emoji, ZWJ sequences, variation selectors, keycap, etc.
+        return System.Text.RegularExpressions.Regex.IsMatch(
+            trimmed,
+            @"^(\p{So}|\p{Cs}{2}|\u200D|\uFE0F|\u20E3|[\u2600-\u27BF]|[\uD83C-\uD83F][\uD800-\uDFFF]){1,3}$");
+    }
+
+    // Audio playback state
+    private bool _isAudioPlaying;
+    private double _audioCurrentTime;
+    private double _audioDuration;
+    private ElementReference _audioElementRef;
+    private static readonly int[] AudioWaveHeights = [4, 8, 14, 10, 18, 6, 12, 20, 8, 16, 10, 22, 6, 14, 18, 8, 12, 20, 10, 16, 6, 14, 22, 8, 18, 12];
+
+    private async Task ToggleAudioPlayback()
+    {
+        try
+        {
+            if (_isAudioPlaying)
+            {
+                await Js.InvokeVoidAsync("eval", $"document.querySelector('[data-msg-id=\"{MessageId}\"] audio').pause()");
+                _isAudioPlaying = false;
+            }
+            else
+            {
+                await Js.InvokeVoidAsync("eval", $"document.querySelector('[data-msg-id=\"{MessageId}\"] audio').play()");
+                _isAudioPlaying = true;
+            }
+        }
+        catch { /* ignored */ }
+    }
+
+    private void OnAudioEnded() { _isAudioPlaying = false; _audioCurrentTime = 0; }
+    private void OnAudioTimeUpdate()
+    {
+        _ = UpdateAudioTimeAsync();
+    }
+
+    private async Task UpdateAudioTimeAsync()
+    {
+        try
+        {
+            var time = await Js.InvokeAsync<double>("eval", $"document.querySelector('[data-msg-id=\"{MessageId}\"] audio')?.currentTime ?? 0");
+            _audioCurrentTime = time;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch { /* ignored */ }
+    }
+
+    private void OnAudioMetadata()
+    {
+        _ = LoadAudioDurationAsync();
+    }
+
+    private async Task LoadAudioDurationAsync()
+    {
+        try
+        {
+            var dur = await Js.InvokeAsync<double>("eval", $"(function(){{ var a=document.querySelector('[data-msg-id=\"{MessageId}\"] audio'); return a && isFinite(a.duration) ? a.duration : 0; }})()");
+            _audioDuration = dur;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch { /* ignored */ }
+    }
+
+    private static string FormatAudioTime(double seconds)
+    {
+        var m = (int)seconds / 60;
+        var s = (int)seconds % 60;
+        return $"{m}:{s:D2}";
+    }
+
+    [Parameter]
+    public decimal MessageId { get; set; }
+
     [Parameter, EditorRequired]
     public string Text { get; set; } = "";
 
@@ -73,4 +268,72 @@
 
     [Parameter]
     public string? FileName { get; set; }
+
+    [Parameter]
+    public bool IsFirstInGroup { get; set; } = true;
+
+    [Parameter]
+    public bool IsLastInGroup { get; set; } = true;
+
+    [Parameter]
+    public EventCallback<string> OnImageClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnReply { get; set; }
+
+    [Parameter]
+    public EventCallback<(double X, double Y)> OnContextMenu { get; set; }
+
+    [Parameter]
+    public decimal? ReplyToMessageId { get; set; }
+
+    [Parameter]
+    public string? ReplyToSenderName { get; set; }
+
+    [Parameter]
+    public string? ReplyToText { get; set; }
+
+    [Parameter]
+    public EventCallback<decimal> OnReplyQuoteClick { get; set; }
+
+    [Parameter]
+    public List<ReactionBadgeModel> ReactionBadges { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<string> OnReactionToggle { get; set; }
+
+    [Parameter]
+    public bool IsForwarded { get; set; }
+
+    [Parameter]
+    public bool IsSearchHighlight { get; set; }
+
+    private async Task HandleContextMenu(MouseEventArgs e)
+    {
+        await OnContextMenu.InvokeAsync((e.ClientX, e.ClientY));
+    }
+
+    private string GroupingClass
+    {
+        get
+        {
+            if (IsFirstInGroup && IsLastInGroup) return "";
+            if (IsFirstInGroup) return "group-first";
+            if (IsLastInGroup) return "group-last";
+            return "group-middle";
+        }
+    }
+
+    private static string? ExtractFirstUrl(string text)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(text, @"https?://[^\s<>""]+");
+        return match.Success ? match.Value : null;
+    }
+
+    public sealed class ReactionBadgeModel
+    {
+        public string Emoji { get; set; } = "";
+        public int Count { get; set; }
+        public bool IncludesMine { get; set; }
+    }
 }

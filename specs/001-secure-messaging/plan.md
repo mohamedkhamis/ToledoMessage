@@ -1,176 +1,337 @@
-# Implementation Plan: Hybrid Post-Quantum Secure Messaging
+# Implementation Plan: UX & Responsive Enhancements
 
-**Branch**: `001-secure-messaging` | **Date**: 2026-02-26 | **Spec**: `specs/001-secure-messaging/spec.md`
-**Input**: Feature specification from `/specs/001-secure-messaging/spec.md`
+**Branch**: `001-secure-messaging` | **Date**: 2026-03-02 | **Spec**: `specs/001-secure-messaging/spec.md`
+**Input**: 6 user-requested improvements (responsive CSS, CSS review, big emoji, home page simplify, auth button fix, device re-registration)
 
 ## Summary
 
-Build a secure messaging application using hybrid post-quantum cryptography (classical X25519/Ed25519 + post-quantum ML-KEM-768/ML-DSA-65) to protect conversations against current and future quantum computing threats. The system implements the Signal Protocol (X3DH + Double Ratchet) with hybrid extensions, Sender Keys for groups, and a zero-trust server model where all crypto executes client-side in Blazor WebAssembly via BouncyCastle.Cryptography.
+Six enhancements to improve the app's UX: (1) full responsive CSS for mobile/tablet/desktop, (2) CSS review with image preview and audio bar polish, (3) WhatsApp-style big emoji + cross-session recent emoji, (4) simplified non-technical home page, (5) consistent auth button styles, and (6) fix critical device re-registration bug on server redeployment.
 
 ## Technical Context
 
 **Language/Version**: C# / .NET 10 (LTS)
-**Primary Dependencies**: BouncyCastle.Cryptography 2.6.2, ASP.NET Core Identity, SignalR, EF Core 10, Serilog
-**Storage**: SQL Server 2022 (server-side via EF Core Code First) + Browser IndexedDB (client-side)
-**Testing**: xUnit + BenchmarkDotNet + NBomber/k6 (load testing)
-**Target Platform**: Web (Blazor WebAssembly), future: .NET MAUI mobile
-**Project Type**: Web application (ASP.NET Core API + Blazor WASM client)
-**Performance Goals**: Key exchange <500ms, message encrypt/decrypt <50ms, <1KB hybrid overhead, <2s message delivery, 10K concurrent users
-**Constraints**: All crypto client-side only (zero-trust), BouncyCastle only (WASM-compatible), 64 KB max message size, 99.5% uptime
-**Scale/Scope**: 10K concurrent users, up to 10 devices/user, up to 100 group participants, 90-day undelivered message retention
+**Primary Dependencies**: Blazor WebAssembly, ASP.NET Core, SignalR, EF Core 10
+**Storage**: SQL Server 2022 (server) + Browser localStorage/IndexedDB (client)
+**Testing**: xUnit, manual browser testing (mobile/tablet/desktop viewports)
+**Target Platform**: Web — all screen sizes (mobile 320px+, tablet 768px+, desktop 992px+, landscape)
+**Project Type**: Web application (real-time messaging)
+**Constraints**: All CSS changes must respect the existing theme system (CSS variables). No breaking changes to existing functionality.
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+*GATE: All changes are client-side CSS/Razor. No crypto or protocol changes.*
 
-| # | Principle | Status | Notes |
-|---|-----------|--------|-------|
-| I | Zero-Trust Server | ✅ PASS | All crypto client-side in Blazor WASM. Server stores only ciphertext, public keys, pre-key bundles. 90-day auto-purge. No plaintext logging (Serilog configured). |
-| II | Hybrid Cryptography | ✅ PASS | X25519 + ML-KEM-768 for KEM, Ed25519 + ML-DSA-65 for signatures, AES-256-GCM for AEAD, HKDF-SHA256 for KDF. Both layers must be broken for compromise. |
-| III | Established Libraries Only | ✅ PASS | BouncyCastle.Cryptography 2.6.2 for all crypto (classical + PQ). No custom primitives. Single library for WASM compatibility. |
-| IV | Signal Protocol Fidelity | ✅ PASS | X3DH + Double Ratchet with hybrid PQ extensions. Sender Keys for groups with membership-change rotation. |
-| V | .NET Ecosystem | ✅ PASS | .NET 10 LTS, ASP.NET Core, SignalR, Blazor WASM (InteractiveWebAssembly), EF Core 10, SQL Server 2022, xUnit. |
-| VI | Test-First Development | ✅ PASS | TDD (red-green-refactor). >=80% coverage, >=90% crypto. Dedicated crypto test suites. Integration tests for E2E flow. |
-| VII | Open-Source Transparency | ✅ PASS | All source code and protocol documentation public. Security from algorithm strength, not obscurity. |
-
-All gates PASS. No violations to justify.
+| Principle | Status | Notes |
+|-----------|--------|-------|
+| I. Zero-Trust Server | PASS | Device restore endpoint only accepts public keys (no private key exposure) |
+| II. Hybrid Cryptography | N/A | No crypto changes |
+| III. Established Libraries Only | N/A | No new libraries |
+| IV. Signal Protocol Fidelity | PASS | Device restore reuses existing keys, no protocol change |
+| V. .NET Ecosystem | PASS | Same stack |
+| VI. Test-First Development | PASS | Manual testing checklist included |
+| VII. Open-Source Transparency | PASS | No hidden changes |
 
 ## Project Structure
 
-### Documentation (this feature)
+### Files to Modify
 
 ```text
-specs/001-secure-messaging/
-├── plan.md              # This file
-├── research.md          # Phase 0: Technology decisions
-├── data-model.md        # Phase 1: Entity definitions
-├── quickstart.md        # Phase 1: Getting started guide
-├── contracts/
-│   ├── rest-api.md      # Phase 1: REST API contracts
-│   └── signalr-hub.md   # Phase 1: SignalR hub contracts
-└── tasks.md             # Phase 2: Implementation tasks (130 tasks)
+src/ToledoMessage/wwwroot/app.css                          # Responsive CSS, emoji, audio, image
+src/ToledoMessage/Components/Pages/Home.razor              # Simplify content, fix button styles
+src/ToledoMessage.Client/Components/MessageBubble.razor    # Big emoji detection + rendering
+src/ToledoMessage.Client/Components/VoiceRecorder.razor    # Mobile responsive adjustments
+src/ToledoMessage.Client/Components/EmojiPicker.razor      # Mobile responsive
+src/ToledoMessage.Client/Pages/Login.razor                 # Device restore logic
+src/ToledoMessage.Client/Pages/Chat.razor                  # Forward dialog responsive
+src/ToledoMessage.Client/Services/KeyGenerationService.cs  # RestoreDeviceRequest builder
+src/ToledoMessage/Controllers/DevicesController.cs         # Device restore endpoint
+src/ToledoMessage.Shared/DTOs/                             # RestoreDeviceRequest DTO (if needed)
 ```
 
-### Source Code (repository root)
+---
 
-```text
-src/
-├── ToledoMessage/                    # ASP.NET Core server (API + SignalR + Blazor host)
-│   ├── Controllers/
-│   │   ├── AuthController.cs         # POST /api/auth/register, /login, /refresh
-│   │   ├── DevicesController.cs      # POST/GET/DELETE /api/devices, pre-key endpoints
-│   │   ├── UsersController.cs        # GET /api/users/search, pre-key bundle, devices
-│   │   ├── ConversationsController.cs # GET/POST /api/conversations, group, participants, timer
-│   │   └── MessagesController.cs     # POST/GET /api/messages, pending, acknowledge
-│   ├── Hubs/
-│   │   └── ChatHub.cs                # SignalR: SendMessage, ReceiveMessage, delivery/read acks
-│   ├── Models/
-│   │   ├── User.cs                   # User entity (Active/PendingDeletion/Deactivated states)
-│   │   ├── Device.cs                 # Device entity with crypto key fields
-│   │   ├── OneTimePreKey.cs          # One-time pre-key entity
-│   │   ├── Conversation.cs           # Conversation entity
-│   │   ├── ConversationParticipant.cs # Join table with roles
-│   │   ├── EncryptedMessage.cs       # Encrypted message entity
-│   │   └── RefreshToken.cs           # Refresh token entity
-│   ├── Data/
-│   │   ├── ApplicationDbContext.cs   # EF Core DbContext
-│   │   └── Configurations/          # Fluent API entity configurations
-│   ├── Services/
-│   │   ├── PreKeyService.cs          # Pre-key store/consume/count
-│   │   ├── MessageRelayService.cs    # Message store/relay/acknowledge
-│   │   ├── RateLimitService.cs       # Per-IP and per-user rate tracking
-│   │   ├── AccountDeletionService.cs # 7-day grace period account deactivation
-│   │   └── MessageCleanupHostedService.cs # Background: purge expired/90-day messages
-│   ├── Middleware/
-│   │   └── RateLimitMiddleware.cs    # Rate limit enforcement
-│   ├── Components/                   # Blazor server-side shell
-│   │   ├── App.razor
-│   │   ├── MainLayout.razor
-│   │   └── Pages/
-│   └── Program.cs                    # DI, auth, CORS, SignalR, Serilog, health endpoint
-│
-├── ToledoMessage.Client/             # Blazor WebAssembly client (UI + crypto)
-│   ├── Services/
-│   │   ├── KeyGenerationService.cs   # Identity key + pre-key generation
-│   │   ├── LocalStorageService.cs    # IndexedDB wrapper for private keys/state
-│   │   ├── SessionService.cs         # X3DH session establishment
-│   │   ├── CryptoService.cs          # Orchestrate sessions + encrypt/decrypt + Sender Keys
-│   │   ├── MessageEncryptionService.cs # AES-256-GCM message encrypt/decrypt
-│   │   ├── SignalRService.cs         # Hub connection + event handling + reconnect
-│   │   ├── FingerprintService.cs     # Safety number derivation
-│   │   ├── PreKeyReplenishmentService.cs # Auto-replenish OTPs
-│   │   ├── MessageExpiryService.cs   # Client-side disappearing message timer
-│   │   ├── ThemeService.cs           # Dark/light mode
-│   │   ├── AuthTokenHandler.cs       # JWT refresh interceptor
-│   │   ├── TabLeaderService.cs       # BroadcastChannel leader election
-│   │   └── NotificationService.cs    # Browser Notification API
-│   ├── Pages/
-│   │   ├── Register.razor            # Account creation + key generation
-│   │   ├── Login.razor               # Authentication
-│   │   ├── ChatList.razor            # Conversation list
-│   │   ├── Chat.razor                # Active chat view
-│   │   ├── NewConversation.razor     # User search + conversation creation
-│   │   ├── SecurityInfo.razor        # Fingerprint verification
-│   │   └── Settings.razor            # Device management + account deletion + notification prefs
-│   ├── Components/
-│   │   ├── MessageBubble.razor
-│   │   ├── MessageInput.razor
-│   │   ├── DeliveryStatus.razor
-│   │   ├── ConversationListItem.razor
-│   │   ├── KeyChangeWarning.razor
-│   │   └── DisappearingTimerConfig.razor
-│   └── Program.cs                    # Client DI + HttpClient + auth
-│
-├── ToledoMessage.Crypto/             # Cryptographic library (BouncyCastle)
-│   ├── Classical/
-│   │   ├── AesGcmCipher.cs           # AES-256-GCM encrypt/decrypt
-│   │   ├── Ed25519Signer.cs          # Ed25519 sign/verify
-│   │   └── X25519KeyExchange.cs      # X25519 DH key exchange
-│   ├── PostQuantum/
-│   │   ├── MlKemKeyExchange.cs       # ML-KEM-768 encapsulate/decapsulate
-│   │   └── MlDsaSigner.cs           # ML-DSA-65 sign/verify
-│   ├── Hybrid/
-│   │   ├── HybridKeyExchange.cs      # X25519 + ML-KEM combined
-│   │   ├── HybridKeyDerivation.cs    # HKDF-SHA256 with domain separation
-│   │   └── HybridSigner.cs          # Ed25519 + ML-DSA combined
-│   ├── KeyManagement/
-│   │   ├── IdentityKeyGenerator.cs   # Classical + PQ identity key pairs
-│   │   ├── PreKeyGenerator.cs        # Signed pre-key + OTP batch
-│   │   └── FingerprintGenerator.cs   # Safety number derivation
-│   └── Protocol/
-│       ├── RatchetState.cs           # Double Ratchet state structure
-│       ├── PreKeyBundle.cs           # Pre-key bundle structure
-│       ├── X3dhInitiator.cs          # X3DH initiator (4 DH + PQ KEM)
-│       ├── X3dhResponder.cs          # X3DH responder
-│       ├── MessageKeys.cs            # Chain key → message key derivation
-│       └── DoubleRatchet.cs          # Double Ratchet algorithm
-│
-├── ToledoMessage.Shared/             # Shared DTOs, enums, constants
-│   ├── Constants/
-│   │   └── ProtocolConstants.cs      # Key sizes, limits, HKDF info strings
-│   ├── Enums/                        # MessageType, ContentType, etc.
-│   └── DTOs/                         # Request/response DTOs
-│
-└── Toledo.SharedKernel/              # Cross-cutting utilities
-    └── Helpers/
-        └── DecimalTools.cs           # Snowflake-style ID generation
+## Phase 1: Responsive CSS (Mobile, Tablet, Desktop)
 
-tests/
-├── ToledoMessage.Crypto.Tests/       # Crypto unit tests (classical, PQ, hybrid, protocol)
-├── ToledoMessage.Client.Tests/       # Client service unit tests
-├── ToledoMessage.Server.Tests/       # Server controller/service tests
-├── ToledoMessage.Integration.Tests/  # End-to-end integration tests
-└── ToledoMessage.Benchmarks/         # Performance benchmarks + load tests
+### 1.1 Add Missing Breakpoints to app.css
+
+Add a **small phone breakpoint** (`max-width: 480px`) and a **landscape breakpoint**:
+
+```css
+/* Small phones (iPhone SE, etc.) */
+@media (max-width: 480px) {
+    .msg-textarea { max-height: 100px; }
+    .send-btn, .mic-btn { width: 38px; height: 38px; min-width: 38px; }
+    .chat-input-row { gap: 4px; }
+    .emoji-picker-popup { width: 100vw; left: 0; right: 0; border-radius: 12px 12px 0 0; }
+    .voice-recorder-bar { border-radius: 20px; padding: 6px 10px; }
+    .slide-hint { display: none; }
+}
+
+/* Landscape on mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+    .chat-header { padding: 4px 12px; }
+    .msg-textarea { max-height: 60px; }
+    .emoji-picker-popup { max-height: 200px; }
+}
 ```
 
-**Structure Decision**: Multi-project solution with 5 source projects and 5 test projects. The Crypto library is isolated for independent testing and potential reuse. Shared DTOs/constants prevent duplication between server and client. The Blazor WASM client runs all crypto operations client-side per zero-trust model.
+### 1.2 Make Emoji Picker Responsive
 
-## Complexity Tracking
+In the existing `@media (max-width: 767px)` block, add:
+```css
+.emoji-picker-popup {
+    width: calc(100vw - 24px);
+    max-width: 360px;
+    max-height: 300px;
+}
+.emoji-grid { grid-template-columns: repeat(7, 1fr); }
+```
 
-No constitution violations to justify. All architectural decisions align with the 7 principles.
+### 1.3 Make Forward Dialog Responsive
 
-| Decision | Justification | Simpler Alternative Rejected |
-|----------|--------------|------------------------------|
-| 5 source projects | Crypto isolation for independent testing + reuse; Shared DTOs prevent duplication; Client/Server separation enforces zero-trust boundary | Single project would mix server and client crypto code, violating zero-trust boundary |
-| Leader election (BroadcastChannel) | Prevents ratchet state corruption from concurrent IndexedDB writes across tabs | No tab handling would cause duplicate SignalR connections and potential crypto state corruption |
-| Account deletion grace period | 7-day window prevents accidental permanent data loss while maintaining security (permanent deactivation after grace) | Immediate deletion is simpler but provides no recourse for accidental clicks |
+```css
+@media (max-width: 767px) {
+    .forward-dialog {
+        max-width: calc(100vw - 32px);
+        max-height: 80vh;
+    }
+}
+```
+
+### 1.4 Make Voice Recorder Responsive
+
+```css
+@media (max-width: 480px) {
+    .voice-recorder-bar { min-height: 40px; }
+    .wave-bar { width: 1.5px; }
+    .voice-waveform { gap: 1px; }
+    .voice-waveform-static { gap: 1px; }
+    .wave-bar-static { width: 1.5px; }
+    .recording-timer { font-size: 0.8rem; }
+}
+```
+
+### 1.5 Test Responsive on All Targets
+
+Manual testing at these viewports:
+- 320px (iPhone SE)
+- 375px (iPhone 12 mini)
+- 390px (iPhone 14)
+- 768px (iPad portrait)
+- 1024px (iPad landscape)
+- 1280px+ (desktop)
+- Landscape mode on each mobile size
+
+---
+
+## Phase 2: CSS Review & Polish
+
+### 2.1 Image Preview Mobile Fix
+
+```css
+@media (max-width: 767px) {
+    .message-image { max-height: 280px; }
+    .lightbox-image { max-width: 95vw; max-height: 85vh; }
+    .lightbox-close { top: 8px; right: 8px; }
+    .lightbox-nav { width: 40px; height: 60px; }
+}
+```
+
+### 2.2 Audio Recording Bar Polish
+
+- Ensure waveform bars don't overflow on narrow screens
+- Reduce bar count on small screens via CSS (hide every other bar below 480px)
+- Improve preview duration display alignment
+
+### 2.3 General CSS Audit
+
+- Check all `px` values that should be `rem` or `em` for scalability
+- Verify all theme CSS variables are used consistently
+- Check for any z-index conflicts on mobile overlays
+
+---
+
+## Phase 3: Big Emoji
+
+### 3.1 Add Emoji Detection in MessageBubble.razor
+
+Add helper method:
+```csharp
+private static bool IsEmojiOnly(string? text)
+{
+    if (string.IsNullOrWhiteSpace(text)) return false;
+    var trimmed = text.Trim();
+    // Match 1-3 emoji characters (including compound emoji like flags, skin tones)
+    return Regex.IsMatch(trimmed, @"^(\p{So}|\p{Cs}{2}|\u200d|\ufe0f|\u20e3|[\u2600-\u27bf]|[\ud83c-\ud83f][\ud800-\udfff]){1,3}$")
+           && trimmed.Length <= 14; // Safety cap
+}
+```
+
+### 3.2 Apply Big Emoji CSS Class
+
+In MessageBubble.razor, when rendering text content:
+```razor
+<div class="message-text @(IsEmojiOnly(Text) ? "emoji-only" : "")">@Text</div>
+```
+
+### 3.3 Add CSS
+
+```css
+.message-text.emoji-only {
+    font-size: 2.8em;
+    line-height: 1.2;
+    padding: 4px 0;
+}
+.message-bubble:has(.emoji-only) {
+    background: transparent;
+    box-shadow: none;
+    padding: 4px 8px;
+}
+```
+
+### 3.4 Recent Emoji (Already Implemented)
+
+Recent emoji already persists in `localStorage["emoji.recent"]` (CSV, max 30 items). Survives browser sessions. No change needed — already works per research.
+
+---
+
+## Phase 4: Simplify Home Page
+
+### 4.1 Replace Technical Content
+
+**File**: `src/ToledoMessage/Components/Pages/Home.razor`
+
+| Section | Current | New |
+|---------|---------|-----|
+| Hero badge | "Quantum-Resistant Messaging" | "Secure Messaging" |
+| Hero title | "Secure Messaging for Tomorrow's Threat" | "Private Messaging Made Simple" |
+| Hero description | Technical crypto description | "Send messages, photos, and voice notes — all protected with the strongest encryption. Only you and the people you talk to can read them." |
+| Stat 1 | "256-bit / AES Encryption" | "End-to-End / Encrypted" |
+| Stat 2 | "Hybrid PQ / Key Exchange" | "Future-Proof / Protection" |
+| Stat 3 | "Zero-Knowledge / Server Architecture" | "Private / By Design" |
+| Feature 1 title | "Post-Quantum Safe" | "Always Protected" |
+| Feature 1 desc | "ML-KEM-768 + X25519..." | "Your messages are secured with cutting-edge encryption that protects against both today's and tomorrow's threats" |
+| Feature 2 desc | "Signal Protocol with Double Ratchet..." | "Only you and the person you're talking to can read your messages. Not even we can." |
+| Feature 3 desc | "All cryptography runs in your browser..." | "Everything is encrypted on your device before it's sent. We never see your messages or personal data." |
+
+### 4.2 Fix Header Button Styles
+
+The "Sign In" link in the Home page header has no styling class while "Get Started" has `btn-nav`. Fix:
+
+```html
+<!-- Before -->
+<a href="/login">Sign In</a>
+<a href="/register" class="btn-nav">Get Started</a>
+
+<!-- After -->
+<a href="/login" class="btn-nav-outline">Sign In</a>
+<a href="/register" class="btn-nav">Get Started</a>
+```
+
+Add CSS:
+```css
+.btn-nav-outline {
+    color: #f8fafc !important;
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+.btn-nav-outline:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+```
+
+---
+
+## Phase 5: Fix Device Re-Registration (Critical)
+
+### 5.1 Root Cause
+
+When `Login.razor` (line 120-125) checks `GET /api/devices` and the stored `local.deviceId` is not in the server's device list (because the database was reset during redeployment), it forces a full re-registration with NEW keys — creating a new device identity.
+
+### 5.2 Solution: Device Restore
+
+When the server doesn't have the device record but the client has the original keys in localStorage:
+
+1. **Client side (Login.razor)**: Instead of generating new keys, check if identity keys exist in localStorage
+2. If keys exist → send a "restore device" request with the existing public keys
+3. Server creates a new device record with the same public keys (the device ID will be new, but the identity is preserved)
+4. Client generates fresh pre-keys/OTPKs (these are ephemeral anyway)
+
+### 5.3 Implementation
+
+**Login.razor** — modify the "device not found" branch (lines 133-145):
+
+```csharp
+// Current: always generates new keys
+// New: check for existing keys first
+var existingIdentity = await Storage.GetAsync("local.identityKeyPublicClassical");
+if (existingIdentity is not null)
+{
+    // Restore: reuse identity keys, generate fresh pre-keys
+    var request = await KeyGen.RestoreKeysAndBuildRequest(deviceName);
+    var restoreResponse = await Http.PostAsJsonAsync("/api/devices", request);
+    // ... store new deviceId
+}
+else
+{
+    // Truly new device: full key generation
+    var request = await KeyGen.GenerateAndStoreKeys(deviceName);
+    // ...
+}
+```
+
+This is actually already how the `SharedKeysEnabled` (key backup) flow works — `RestoreKeysAndBuildRequest` reuses identity keys and generates fresh pre-keys. The fix extends this to the "device not found on server" case too, without needing the key backup feature.
+
+**No new API endpoint needed** — the existing `POST /api/devices` already accepts any valid public keys. The only change is client-side: reuse stored keys instead of generating new ones.
+
+---
+
+## Task Summary
+
+| # | Task | Files | Priority |
+|---|------|-------|----------|
+| T1 | Add responsive breakpoints (480px, landscape) | `app.css` | High |
+| T2 | Make emoji picker responsive | `app.css` | Medium |
+| T3 | Make forward dialog responsive | `app.css` | Medium |
+| T4 | Make voice recorder responsive | `app.css` | Medium |
+| T5 | Image preview mobile sizing | `app.css` | Medium |
+| T6 | Audio bar CSS polish | `app.css` | Low |
+| T7 | CSS audit (theme vars, z-index) | `app.css` | Low |
+| T8 | Add big emoji detection + rendering | `MessageBubble.razor`, `app.css` | High |
+| T9 | Simplify home page content | `Home.razor` | High |
+| T10 | Fix home page button styles | `Home.razor`, `app.css` | Medium |
+| T11 | Fix device restore on redeployment | `Login.razor` | Critical |
+| T12 | Test all viewports | Manual | High |
+
+---
+
+## Testing Checklist
+
+### Responsive
+- [ ] 320px iPhone SE: chat, sidebar, input, emoji picker, voice recorder all fit
+- [ ] 375px iPhone 12: same checks
+- [ ] 768px iPad portrait: two-panel layout works
+- [ ] 1024px iPad landscape: same
+- [ ] 1280px+ desktop: same
+- [ ] Landscape mobile: input area usable, header not too tall
+
+### Big Emoji
+- [ ] Single emoji message (e.g., "😀") renders large (~2.8x)
+- [ ] Two emoji message (e.g., "😀😂") renders large
+- [ ] Three emoji message renders large
+- [ ] Four+ emoji renders normal size
+- [ ] Emoji + text renders normal size
+- [ ] Emoji reactions still work normally
+
+### Home Page
+- [ ] No technical jargon visible (no "ML-KEM", "X25519", "AES", "Double Ratchet")
+- [ ] Sign In button styled consistently with Get Started
+- [ ] All text is user-friendly and non-technical
+
+### Device Restore
+- [ ] Login on browser A → register device → redeploy server (without DB reset) → login again → SAME device
+- [ ] Login on browser A → register device → reset database → login again → device restored with same identity keys
+- [ ] Login on browser B (no previous keys) → normal new device registration
+- [ ] Login on browser A after clearing localStorage → normal new device registration

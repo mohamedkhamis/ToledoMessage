@@ -1,12 +1,22 @@
 /* ========================================
    ToledoMessage Theme System
-   7 themes using [data-theme] selectors
+   8 themes using [data-theme] selectors
    ======================================== */
 
 /* 1. Default (blue/white) — applied via :root in app.css */
+:root {
+    /* Default structural values */
+    --msg-bubble-radius: 8px;
+    --input-radius: 8px;
+    --input-padding: 10px 14px;
+    --sidebar-width: 340px;
+    --chat-bg-image: none;
+    --avatar-size: 40px;
+    --msg-font-size: 14.5px;
+}
 
 /* 2. Default Dark */
-[data-theme="default-dark"] {
+:root[data-theme="default-dark"] {
     --bg-primary: #1a1a2e;
     --bg-secondary: #16213e;
     --bg-chat: #0f3460;
@@ -28,11 +38,20 @@
     --shadow-md: 0 4px 6px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2);
     --card-bg: #16213e;
     --hover-bg: #1a1a3e;
+    --accent-light: #1a3a6b;
     color-scheme: dark;
+    /* Structural */
+    --msg-bubble-radius: 8px;
+    --input-radius: 8px;
+    --input-padding: 10px 14px;
+    --sidebar-width: 340px;
+    --chat-bg-image: none;
+    --avatar-size: 40px;
+    --msg-font-size: 14.5px;
 }
 
 /* 3. WhatsApp */
-[data-theme="whatsapp"] {
+:root[data-theme="whatsapp"] {
     --bg-primary: #f0f2f5;
     --bg-secondary: #ffffff;
     --bg-chat: #efeae2;
@@ -54,10 +73,19 @@
     --shadow-md: 0 2px 5px rgba(0,0,0,0.1);
     --card-bg: #ffffff;
     --hover-bg: #f5f6f6;
+    --accent-light: #dcf8c6;
+    /* Structural */
+    --msg-bubble-radius: 7.5px;
+    --input-radius: 24px;
+    --input-padding: 10px 16px;
+    --sidebar-width: 340px;
+    --chat-bg-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d1d7db' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    --avatar-size: 40px;
+    --msg-font-size: 14.2px;
 }
 
 /* 4. WhatsApp Dark */
-[data-theme="whatsapp-dark"] {
+:root[data-theme="whatsapp-dark"] {
     --bg-primary: #0b141a;
     --bg-secondary: #111b21;
     --bg-chat: #0b141a;
@@ -79,11 +107,20 @@
     --shadow-md: 0 2px 5px rgba(0,0,0,0.4);
     --card-bg: #111b21;
     --hover-bg: #202c33;
+    --accent-light: #0d3b2a;
     color-scheme: dark;
+    /* Structural - inherits WhatsApp */
+    --msg-bubble-radius: 7.5px;
+    --input-radius: 24px;
+    --input-padding: 10px 16px;
+    --sidebar-width: 340px;
+    --chat-bg-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%233f4a53' fill-opacity='0.3'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    --avatar-size: 40px;
+    --msg-font-size: 14.2px;
 }
 
 /* 5. Telegram */
-[data-theme="telegram"] {
+:root[data-theme="telegram"] {
     --bg-primary: #f4f4f5;
     --bg-secondary: #ffffff;
     --bg-chat: #c8d9e6;
@@ -105,10 +142,19 @@
     --shadow-md: 0 2px 4px rgba(0,0,0,0.1);
     --card-bg: #ffffff;
     --hover-bg: #f4f4f5;
+    --accent-light: #d6e8ff;
+    /* Structural */
+    --msg-bubble-radius: 12px;
+    --input-radius: 22px;
+    --input-padding: 10px 14px;
+    --sidebar-width: 380px;
+    --chat-bg-image: none;
+    --avatar-size: 42px;
+    --msg-font-size: 15px;
 }
 
 /* 6. Signal */
-[data-theme="signal"] {
+:root[data-theme="signal"] {
     --bg-primary: #f6f6f6;
     --bg-secondary: #ffffff;
     --bg-chat: #eeeee4;
@@ -130,10 +176,19 @@
     --shadow-md: 0 2px 4px rgba(0,0,0,0.08);
     --card-bg: #ffffff;
     --hover-bg: #f0f0f0;
+    --accent-light: #e8effc;
+    /* Structural */
+    --msg-bubble-radius: 18px;
+    --input-radius: 20px;
+    --input-padding: 10px 14px;
+    --sidebar-width: 320px;
+    --chat-bg-image: none;
+    --avatar-size: 36px;
+    --msg-font-size: 14px;
 }
 
 /* 7. Signal Dark */
-[data-theme="signal-dark"] {
+:root[data-theme="signal-dark"] {
     --bg-primary: #1b1c1f;
     --bg-secondary: #121214;
     --bg-chat: #1b1c1f;
@@ -155,5 +210,49 @@
     --shadow-md: 0 2px 5px rgba(0,0,0,0.4);
     --card-bg: #252528;
     --hover-bg: #303033;
+    --accent-light: #1e2d4f;
     color-scheme: dark;
+    /* Structural - inherits Signal */
+    --msg-bubble-radius: 18px;
+    --input-radius: 20px;
+    --input-padding: 10px 14px;
+    --sidebar-width: 320px;
+    --chat-bg-image: none;
+    --avatar-size: 36px;
+    --msg-font-size: 14px;
+}
+
+/* 8. Telegram Dark */
+:root[data-theme="telegram-dark"] {
+    --bg-primary: #17212b;
+    --bg-secondary: #0e1621;
+    --bg-chat: #0e1621;
+    --text-primary: #f5f5f5;
+    --text-secondary: #708499;
+    --accent: #2aabee;
+    --accent-hover: #229ed9;
+    --accent-text: #ffffff;
+    --border: #1f2936;
+    --msg-sent-bg: #2b5278;
+    --msg-sent-text: #f5f5f5;
+    --msg-received-bg: #182533;
+    --msg-received-text: #f5f5f5;
+    --nav-bg: #17212b;
+    --nav-text: #f5f5f5;
+    --input-bg: #242f3d;
+    --input-border: #1f2936;
+    --shadow: 0 1px 3px rgba(0,0,0,0.4);
+    --shadow-md: 0 2px 5px rgba(0,0,0,0.4);
+    --card-bg: #17212b;
+    --hover-bg: #202b36;
+    --accent-light: #1a3045;
+    color-scheme: dark;
+    /* Structural - inherits Telegram */
+    --msg-bubble-radius: 12px;
+    --input-radius: 22px;
+    --input-padding: 10px 14px;
+    --sidebar-width: 380px;
+    --chat-bg-image: none;
+    --avatar-size: 42px;
+    --msg-font-size: 15px;
 }

@@ -10,15 +10,9 @@ namespace ToledoMessage.Client.Services;
 /// HTTP delegating handler that attaches JWT Bearer tokens to outgoing requests
 /// and automatically refreshes expired tokens via the /api/auth/refresh endpoint.
 /// </summary>
-public class AuthTokenHandler : DelegatingHandler
+public class AuthTokenHandler(LocalStorageService storage) : DelegatingHandler
 {
-    private readonly LocalStorageService _storage;
     private static bool _isRefreshing;
-
-    public AuthTokenHandler(LocalStorageService storage)
-    {
-        _storage = storage;
-    }
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
@@ -27,10 +21,7 @@ public class AuthTokenHandler : DelegatingHandler
         var path = request.RequestUri?.PathAndQuery ?? "";
         var isAuthEndpoint = path.StartsWith("/api/auth/", StringComparison.OrdinalIgnoreCase);
 
-        if (!isAuthEndpoint)
-        {
-            await AttachTokenAsync(request);
-        }
+        if (!isAuthEndpoint) await AttachTokenAsync(request);
 
         var response = await base.SendAsync(request, cancellationToken);
 
@@ -53,7 +44,7 @@ public class AuthTokenHandler : DelegatingHandler
 
     private async Task AttachTokenAsync(HttpRequestMessage request)
     {
-        var tokenBytes = await _storage.GetAsync("auth.token");
+        var tokenBytes = await storage.GetAsync("auth.token");
         if (tokenBytes is not null)
         {
             var token = Encoding.UTF8.GetString(tokenBytes);
@@ -66,8 +57,8 @@ public class AuthTokenHandler : DelegatingHandler
         _isRefreshing = true;
         try
         {
-            var accessTokenBytes = await _storage.GetAsync("auth.token");
-            var refreshTokenBytes = await _storage.GetAsync("auth.refreshToken");
+            var accessTokenBytes = await storage.GetAsync("auth.token");
+            var refreshTokenBytes = await storage.GetAsync("auth.refreshToken");
 
             if (accessTokenBytes is null || refreshTokenBytes is null)
                 return false;
@@ -92,8 +83,8 @@ public class AuthTokenHandler : DelegatingHandler
                 return false;
 
             // Store the new tokens
-            await _storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(result.Token));
-            await _storage.StoreAsync("auth.refreshToken", Encoding.UTF8.GetBytes(result.RefreshToken));
+            await storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(result.Token));
+            await storage.StoreAsync("auth.refreshToken", Encoding.UTF8.GetBytes(result.RefreshToken));
 
             return true;
         }
@@ -116,16 +107,10 @@ public class AuthTokenHandler : DelegatingHandler
             var contentBytes = await original.Content.ReadAsByteArrayAsync();
             clone.Content = new ByteArrayContent(contentBytes);
 
-            foreach (var header in original.Content.Headers)
-            {
-                clone.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
-            }
+            foreach (var header in original.Content.Headers) clone.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
         }
 
-        foreach (var header in original.Headers)
-        {
-            clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
-        }
+        foreach (var header in original.Headers) clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
 
         return clone;
     }

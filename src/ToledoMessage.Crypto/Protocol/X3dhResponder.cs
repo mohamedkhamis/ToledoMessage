@@ -1,4 +1,4 @@
-using System.Text;
+using System.Diagnostics.CodeAnalysis;
 using ToledoMessage.Crypto.Classical;
 using ToledoMessage.Crypto.Hybrid;
 using ToledoMessage.Crypto.PostQuantum;
@@ -8,9 +8,10 @@ namespace ToledoMessage.Crypto.Protocol;
 /// <summary>
 /// Performs the responder (Bob) side of the X3DH key agreement with post-quantum extension.
 /// </summary>
+[SuppressMessage("ReSharper", "RemoveRedundantBraces")]
 public static class X3dhResponder
 {
-    private static readonly byte[] HkdfInfo = Encoding.UTF8.GetBytes("ToledoMessage-X3DH-v1");
+    private static readonly byte[] HkdfInfo = "ToledoMessage-X3DH-v1"u8.ToArray();
 
     /// <summary>
     /// Completes the X3DH handshake from Bob's side, deriving the same session keys as Alice.
@@ -29,7 +30,7 @@ public static class X3dhResponder
         byte[] kemCiphertext)
     {
         // 1. DH1 = X25519(signedPreKeyPrivate, aliceEphemeralPublicKey)
-        byte[] dh1 = X25519KeyExchange.ComputeSharedSecret(signedPreKeyPrivate, aliceEphemeralPublicKey);
+        var dh1 = X25519KeyExchange.ComputeSharedSecret(signedPreKeyPrivate, aliceEphemeralPublicKey);
 
         // 2. DH2 = X25519(oneTimePreKeyPrivate, aliceEphemeralPublicKey) if used
         byte[]? dh2 = null;
@@ -39,7 +40,7 @@ public static class X3dhResponder
         }
 
         // 3. KEM decapsulation
-        byte[] kemSharedSecret = MlKemKeyExchange.Decapsulate(kyberPreKeyPrivate, kemCiphertext);
+        var kemSharedSecret = MlKemKeyExchange.Decapsulate(kyberPreKeyPrivate, kemCiphertext);
 
         // 4. Combine: ikm = DH1 || [DH2] || kemSharedSecret
         byte[] ikm;
@@ -58,11 +59,11 @@ public static class X3dhResponder
         }
 
         // 5. SK = HKDF(ikm, info: "ToledoMessage-X3DH-v1", outputLength: 64)
-        byte[] sk = HybridKeyDerivation.DeriveKey(ikm, HkdfInfo, 64);
+        var sk = HybridKeyDerivation.DeriveKey(ikm, HkdfInfo, 64);
 
         // 6. rootKey = SK[0..32], chainKey = SK[32..64]
-        byte[] rootKey = new byte[32];
-        byte[] chainKey = new byte[32];
+        var rootKey = new byte[32];
+        var chainKey = new byte[32];
         Buffer.BlockCopy(sk, 0, rootKey, 0, 32);
         Buffer.BlockCopy(sk, 32, chainKey, 0, 32);
 

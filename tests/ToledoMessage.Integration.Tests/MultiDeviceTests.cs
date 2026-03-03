@@ -210,7 +210,7 @@ public class MultiDeviceTests
         var bobD2Ratchet = DoubleRatchet.InitializeAsResponder(rk2, bobD2Spk.PrivateKey, bobD2Spk.PublicKey);
 
         // Alice sends fan-out message
-        var msg = Encoding.UTF8.GetBytes("Fan-out hello");
+        var msg = "Fan-out hello"u8.ToArray();
         var (ct1, h1) = aliceToD1.Encrypt(msg);
         var (ct2, h2) = aliceToD2.Encrypt(msg);
 
@@ -218,13 +218,13 @@ public class MultiDeviceTests
         Assert.AreEqual("Fan-out hello", Encoding.UTF8.GetString(bobD2Ratchet.Decrypt(ct2, h2)));
 
         // Device1 replies to Alice
-        var d1Reply = Encoding.UTF8.GetBytes("Reply from Device 1");
+        var d1Reply = "Reply from Device 1"u8.ToArray();
         var (ctReply1, hReply1) = bobD1Ratchet.Encrypt(d1Reply);
         var decryptedReply1 = aliceToD1.Decrypt(ctReply1, hReply1);
         Assert.AreEqual("Reply from Device 1", Encoding.UTF8.GetString(decryptedReply1));
 
         // Device2 replies to Alice independently
-        var d2Reply = Encoding.UTF8.GetBytes("Reply from Device 2");
+        var d2Reply = "Reply from Device 2"u8.ToArray();
         var (ctReply2, hReply2) = bobD2Ratchet.Encrypt(d2Reply);
         var decryptedReply2 = aliceToD2.Decrypt(ctReply2, hReply2);
         Assert.AreEqual("Reply from Device 2", Encoding.UTF8.GetString(decryptedReply2));

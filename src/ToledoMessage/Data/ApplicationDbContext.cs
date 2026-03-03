@@ -3,12 +3,8 @@ using ToledoMessage.Models;
 
 namespace ToledoMessage.Data;
 
-public class ApplicationDbContext : DbContext
+public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
-    {
-    }
-
     public DbSet<User> Users => Set<User>();
     public DbSet<Device> Devices => Set<Device>();
     public DbSet<OneTimePreKey> OneTimePreKeys => Set<OneTimePreKey>();
@@ -16,6 +12,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<ConversationParticipant> ConversationParticipants => Set<ConversationParticipant>();
     public DbSet<EncryptedMessage> EncryptedMessages => Set<EncryptedMessage>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<UserPreferences> UserPreferences => Set<UserPreferences>();
+    public DbSet<MessageReaction> MessageReactions => Set<MessageReaction>();
+    public DbSet<EncryptedKeyBackup> EncryptedKeyBackups => Set<EncryptedKeyBackup>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -23,10 +23,7 @@ public class DecimalToolsTests
     public void GetNewId_ReturnsUniqueIds()
     {
         var ids = new HashSet<decimal>();
-        for (int i = 0; i < 1000; i++)
-        {
-            ids.Add(DecimalTools.GetNewId());
-        }
+        for (int i = 0; i < 1000; i++) ids.Add(DecimalTools.GetNewId());
         Assert.AreEqual(1000, ids.Count);
     }
 
@@ -36,10 +33,7 @@ public class DecimalToolsTests
         var ids = new System.Collections.Concurrent.ConcurrentBag<decimal>();
         var tasks = Enumerable.Range(0, 10).Select(_ => Task.Run(() =>
         {
-            for (int i = 0; i < 100; i++)
-            {
-                ids.Add(DecimalTools.GetNewId());
-            }
+            for (int i = 0; i < 100; i++) ids.Add(DecimalTools.GetNewId());
         }));
 
         Task.WaitAll(tasks.ToArray());

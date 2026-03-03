@@ -8,35 +8,35 @@ public class EncryptedMessageConfiguration : IEntityTypeConfiguration<EncryptedM
 {
     public void Configure(EntityTypeBuilder<EncryptedMessage> builder)
     {
-        builder.HasKey(m => m.Id);
-        builder.Property(m => m.Id).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
-        builder.Property(m => m.ConversationId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
-        builder.Property(m => m.SenderDeviceId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
-        builder.Property(m => m.RecipientDeviceId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
-        builder.HasIndex(m => new { m.RecipientDeviceId, m.IsDelivered });
-        builder.HasIndex(m => new { m.ConversationId, m.SequenceNumber }).IsUnique();
-        builder.Property(m => m.Ciphertext).IsRequired().HasColumnType("varbinary(max)");
-        builder.Property(m => m.MessageType).IsRequired();
-        builder.Property(m => m.ContentType).IsRequired();
-        builder.Property(m => m.FileName).HasMaxLength(256);
-        builder.Property(m => m.MimeType).HasMaxLength(128);
-        builder.Property(m => m.SequenceNumber).IsRequired();
-        builder.Property(m => m.ServerTimestamp).IsRequired();
-        builder.Property(m => m.IsDelivered).IsRequired().HasDefaultValue(false);
-
-        builder.HasOne(m => m.Conversation)
-            .WithMany(c => c.Messages)
-            .HasForeignKey(m => m.ConversationId)
+        builder.HasKey(static m => m.Id);
+        builder.Property(static m => m.Id).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
+        builder.Property(static m => m.ConversationId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
+        builder.Property(static m => m.SenderDeviceId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
+        builder.Property(static m => m.RecipientDeviceId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
+        builder.HasIndex(static m => new { m.RecipientDeviceId, m.IsDelivered });
+        builder.HasIndex(static m => new { m.ConversationId, m.SequenceNumber }).IsUnique();
+        builder.Property(static m => m.Ciphertext).IsRequired().HasColumnType("varbinary(max)");
+        builder.Property(static m => m.MessageType).IsRequired();
+        builder.Property(static m => m.ContentType).IsRequired();
+        builder.Property(static m => m.FileName).HasMaxLength(256);
+        builder.Property(static m => m.MimeType).HasMaxLength(128);
+        builder.Property(static m => m.SequenceNumber).IsRequired();
+        builder.Property(static m => m.ServerTimestamp).IsRequired();
+        builder.Property(static m => m.IsDelivered).IsRequired().HasDefaultValue(false);
+        builder.Property(static m => m.ReplyToMessageId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
+        builder.HasOne(static m => m.Conversation)
+            .WithMany(static c => c.Messages)
+            .HasForeignKey(static m => m.ConversationId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(m => m.SenderDevice)
+        builder.HasOne(static m => m.SenderDevice)
             .WithMany()
-            .HasForeignKey(m => m.SenderDeviceId)
+            .HasForeignKey(static m => m.SenderDeviceId)
             .OnDelete(DeleteBehavior.NoAction);
 
-        builder.HasOne(m => m.RecipientDevice)
+        builder.HasOne(static m => m.RecipientDevice)
             .WithMany()
-            .HasForeignKey(m => m.RecipientDeviceId)
+            .HasForeignKey(static m => m.RecipientDeviceId)
             .OnDelete(DeleteBehavior.NoAction);
     }
 }

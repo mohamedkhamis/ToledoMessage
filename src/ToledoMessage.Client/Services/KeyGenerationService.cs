@@ -7,13 +7,47 @@ namespace ToledoMessage.Client.Services;
 /// Generates all cryptographic key material for device registration
 /// and persists private keys to local storage.
 /// </summary>
-public class KeyGenerationService
+public class KeyGenerationService(LocalStorageService storage)
 {
-    private readonly LocalStorageService _storage;
-
-    public KeyGenerationService(LocalStorageService storage)
+    /// <summary>
+    /// Restores identity keys from a backup payload, generates fresh pre-keys,
+    /// and returns a <see cref="DeviceRegistrationRequest"/> ready to send to the server.
+    /// </summary>
+    public async Task<DeviceRegistrationRequest> RestoreKeysAndBuildRequest(KeyBackupPayload payload, string deviceName)
     {
-        _storage = storage;
+        // Identity keys are already stored in localStorage by KeyBackupService.TryRestoreBackupAsync
+        // Generate fresh signed pre-key (X25519, keyId = 1)
+        var signedPreKey = PreKeyGenerator.GenerateSignedPreKey(
+            1, payload.ClassicalPrivateKey, payload.PostQuantumPrivateKey);
+
+        // Generate fresh Kyber pre-key (ML-KEM-768)
+        var kyberPreKey = PreKeyGenerator.GenerateKyberPreKey(
+            payload.ClassicalPrivateKey, payload.PostQuantumPrivateKey);
+
+        // Generate fresh batch of one-time pre-keys
+        var oneTimePreKeys = PreKeyGenerator.GenerateOneTimePreKeys(0, 100);
+
+        // Store pre-key private keys in local storage
+        await storage.StoreAsync("signedPreKey.private", signedPreKey.PrivateKey);
+        await storage.StoreAsync("signedPreKey.public", signedPreKey.PublicKey);
+        await storage.StoreAsync("kyberPreKey.private", kyberPreKey.PrivateKey);
+
+        foreach (var otpk in oneTimePreKeys) await storage.StoreAsync($"otpk.{otpk.KeyId}", otpk.PrivateKey);
+        // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
+
+        // Build registration request with restored identity public keys
+        return new DeviceRegistrationRequest(
+            deviceName,
+            Convert.ToBase64String(payload.ClassicalPublicKey),
+            Convert.ToBase64String(payload.PostQuantumPublicKey),
+            Convert.ToBase64String(signedPreKey.PublicKey),
+            Convert.ToBase64String(signedPreKey.Signature),
+            signedPreKey.KeyId,
+            Convert.ToBase64String(kyberPreKey.PublicKey),
+            Convert.ToBase64String(kyberPreKey.Signature),
+            oneTimePreKeys
+                .Select(static k => new OneTimePreKeyDto(k.KeyId, Convert.ToBase64String(k.PublicKey)))
+                ?.ToList());
     }
 
     /// <summary>
@@ -37,31 +71,26 @@ public class KeyGenerationService
         var oneTimePreKeys = PreKeyGenerator.GenerateOneTimePreKeys(0, 100);
 
         // 5. Store all private keys in local storage
-        await _storage.StoreAsync("identity.classical.private", identity.ClassicalPrivateKey);
-        await _storage.StoreAsync("identity.classical.public", identity.ClassicalPublicKey);
-        await _storage.StoreAsync("identity.pq.private", identity.PostQuantumPrivateKey);
-        await _storage.StoreAsync("identity.pq.public", identity.PostQuantumPublicKey);
-        await _storage.StoreAsync("signedPreKey.private", signedPreKey.PrivateKey);
-        await _storage.StoreAsync("signedPreKey.public", signedPreKey.PublicKey);
-        await _storage.StoreAsync("kyberPreKey.private", kyberPreKey.PrivateKey);
+        await storage.StoreAsync("identity.classical.private", identity.ClassicalPrivateKey);
+        await storage.StoreAsync("identity.classical.public", identity.ClassicalPublicKey);
+        await storage.StoreAsync("identity.pq.private", identity.PostQuantumPrivateKey);
+        await storage.StoreAsync("identity.pq.public", identity.PostQuantumPublicKey);
+        await storage.StoreAsync("signedPreKey.private", signedPreKey.PrivateKey);
+        await storage.StoreAsync("signedPreKey.public", signedPreKey.PublicKey);
+        await storage.StoreAsync("kyberPreKey.private", kyberPreKey.PrivateKey);
 
-        foreach (var otpk in oneTimePreKeys)
-        {
-            await _storage.StoreAsync($"otpk.{otpk.KeyId}", otpk.PrivateKey);
-        }
+        foreach (var otpk in oneTimePreKeys) await storage.StoreAsync($"otpk.{otpk.KeyId}", otpk.PrivateKey);
 
         // 6. Build DeviceRegistrationRequest with base64-encoded public keys
         return new DeviceRegistrationRequest(
-            DeviceName: deviceName,
-            IdentityPublicKeyClassical: Convert.ToBase64String(identity.ClassicalPublicKey),
-            IdentityPublicKeyPostQuantum: Convert.ToBase64String(identity.PostQuantumPublicKey),
-            SignedPreKeyPublic: Convert.ToBase64String(signedPreKey.PublicKey),
-            SignedPreKeySignature: Convert.ToBase64String(signedPreKey.Signature),
-            SignedPreKeyId: signedPreKey.KeyId,
-            KyberPreKeyPublic: Convert.ToBase64String(kyberPreKey.PublicKey),
-            KyberPreKeySignature: Convert.ToBase64String(kyberPreKey.Signature),
-            OneTimePreKeys: oneTimePreKeys
-                .Select(k => new OneTimePreKeyDto(k.KeyId, Convert.ToBase64String(k.PublicKey)))
-                .ToList());
+            deviceName,
+            Convert.ToBase64String(identity.ClassicalPublicKey),
+            Convert.ToBase64String(identity.PostQuantumPublicKey),
+            Convert.ToBase64String(signedPreKey.PublicKey),
+            Convert.ToBase64String(signedPreKey.Signature),
+            signedPreKey.KeyId,
+            Convert.ToBase64String(kyberPreKey.PublicKey),
+            Convert.ToBase64String(kyberPreKey.Signature),
+            [.. oneTimePreKeys.Select(static k => new OneTimePreKeyDto(k.KeyId, Convert.ToBase64String(k.PublicKey)))]);
     }
 }

@@ -21,10 +21,7 @@ if (args.Length == 0)
 
 if (args[0] == "load")
 {
-    if (args.Contains("--nfr"))
-    {
-        return NfrLatencyValidator.Run();
-    }
+    if (args.Contains("--nfr")) return NfrLatencyValidator.Run();
 
     if (args.Contains("--signalr"))
     {

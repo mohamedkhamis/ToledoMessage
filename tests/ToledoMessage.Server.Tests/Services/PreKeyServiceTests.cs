@@ -58,7 +58,7 @@ public class PreKeyServiceTests
         await TestDbContextFactory.SeedDevice(db, 10m, 1m);
         var service = new PreKeyService(db);
 
-        await service.StoreOneTimePreKeys(10m, [new(1, Convert.ToBase64String(new byte[32]))]);
+        await service.StoreOneTimePreKeys(10m, [new OneTimePreKeyDto(1, Convert.ToBase64String(new byte[32]))]);
 
         await service.ConsumeOneTimePreKey(10m);
         var remaining = await service.CountRemainingPreKeys(10m);
@@ -98,8 +98,8 @@ public class PreKeyServiceTests
 
         await service.StoreOneTimePreKeys(10m,
         [
-            new(1, Convert.ToBase64String(new byte[32])),
-            new(2, Convert.ToBase64String(new byte[32]))
+            new OneTimePreKeyDto(1, Convert.ToBase64String(new byte[32])),
+            new OneTimePreKeyDto(2, Convert.ToBase64String(new byte[32]))
         ]);
 
         var first = await service.ConsumeOneTimePreKey(10m);

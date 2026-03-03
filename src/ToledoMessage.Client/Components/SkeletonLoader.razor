@@ -1,0 +1,34 @@
+@if (Variant == SkeletonVariant.ConversationList)
+{
+    @for (int i = 0; i < 6; i++)
+    {
+        <div class="skeleton-conversation-item">
+            <div class="skeleton-avatar skeleton-shimmer"></div>
+            <div class="skeleton-lines">
+                <div class="skeleton-line skeleton-line-short skeleton-shimmer"></div>
+                <div class="skeleton-line skeleton-line-long skeleton-shimmer"></div>
+            </div>
+        </div>
+    }
+}
+else if (Variant == SkeletonVariant.ChatMessages)
+{
+    <div class="skeleton-messages">
+        <div class="skeleton-msg skeleton-msg-left skeleton-shimmer"></div>
+        <div class="skeleton-msg skeleton-msg-right skeleton-shimmer"></div>
+        <div class="skeleton-msg skeleton-msg-left skeleton-msg-wide skeleton-shimmer"></div>
+        <div class="skeleton-msg skeleton-msg-right skeleton-shimmer"></div>
+        <div class="skeleton-msg skeleton-msg-left skeleton-shimmer"></div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public SkeletonVariant Variant { get; set; } = SkeletonVariant.ChatMessages;
+
+    public enum SkeletonVariant
+    {
+        ConversationList,
+        ChatMessages
+    }
+}

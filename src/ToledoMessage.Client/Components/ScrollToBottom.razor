@@ -1,0 +1,13 @@
+<button class="scroll-to-bottom @(Visible ? "visible" : "")"
+        @onclick="OnClick"
+        aria-label="Scroll to latest messages">
+    <span class="scroll-arrow">&#8595;</span>
+</button>
+
+@code {
+    [Parameter]
+    public bool Visible { get; set; }
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+}

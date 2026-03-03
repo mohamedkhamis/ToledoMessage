@@ -124,7 +124,7 @@ public static class NfrLatencyValidator
         var aliceRatchet = DoubleRatchet.InitializeAsInitiator(
             initResult.RootKey, signedPreKey.PublicKey);
 
-        var plaintext = Encoding.UTF8.GetBytes("Hello, this is a benchmark message for the Double Ratchet encrypt path.");
+        var plaintext = "Hello, this is a benchmark message for the Double Ratchet encrypt path."u8.ToArray();
 
         // Warm-up
         for (int i = 0; i < 10; i++)

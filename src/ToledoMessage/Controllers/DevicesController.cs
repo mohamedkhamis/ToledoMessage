@@ -8,22 +8,15 @@ using ToledoMessage.Services;
 using ToledoMessage.Shared.Constants;
 using ToledoMessage.Shared.DTOs;
 
+// ReSharper disable All
+
 namespace ToledoMessage.Controllers;
 
 [ApiController]
 [Route("api/devices")]
 [Authorize]
-public class DevicesController : BaseApiController
+public class DevicesController(ApplicationDbContext db, PreKeyService preKeyService) : BaseApiController
 {
-    private readonly ApplicationDbContext _db;
-    private readonly PreKeyService _preKeyService;
-
-    public DevicesController(ApplicationDbContext db, PreKeyService preKeyService)
-    {
-        _db = db;
-        _preKeyService = preKeyService;
-    }
-
     /// <summary>
     /// Register a new device for the current user.
     /// </summary>
@@ -32,7 +25,7 @@ public class DevicesController : BaseApiController
     {
         var userId = GetUserId();
 
-        var activeDeviceCount = await _db.Devices.CountAsync(d => d.UserId == userId && d.IsActive);
+        var activeDeviceCount = await db.Devices.CountAsync(d => d.UserId == userId && d.IsActive);
         if (activeDeviceCount >= ProtocolConstants.MaxDevicesPerUser)
             return StatusCode(403, $"Maximum number of devices ({ProtocolConstants.MaxDevicesPerUser}) reached.");
 
@@ -71,7 +64,7 @@ public class DevicesController : BaseApiController
             return BadRequest("Invalid Kyber pre-key signature size.");
 
         // Wrap device creation and pre-key storage in a transaction for atomicity
-        await using var transaction = await _db.Database.BeginTransactionAsync();
+        await using var transaction = await db.Database.BeginTransactionAsync();
         try
         {
             var device = new Device
@@ -91,12 +84,12 @@ public class DevicesController : BaseApiController
                 IsActive = true
             };
 
-            _db.Devices.Add(device);
-            await _db.SaveChangesAsync();
+            db.Devices.Add(device);
+            await db.SaveChangesAsync();
 
-            if (request.OneTimePreKeys is { Count: > 0 })
+            if (request.OneTimePreKeys is { Count: > 0 and <= ProtocolConstants.OneTimePreKeyBatchSize })
             {
-                await _preKeyService.StoreOneTimePreKeys(device.Id, request.OneTimePreKeys);
+                await preKeyService.StoreOneTimePreKeys(device.Id, request.OneTimePreKeys);
             }
 
             await transaction.CommitAsync();
@@ -118,7 +111,7 @@ public class DevicesController : BaseApiController
     {
         var userId = GetUserId();
 
-        var devices = await _db.Devices
+        var devices = await db.Devices
             .Where(d => d.UserId == userId && d.IsActive)
             .Select(d => new DeviceInfoResponse(d.Id, d.DeviceName, d.CreatedAt, d.LastSeenAt))
             .ToListAsync();
@@ -134,14 +127,14 @@ public class DevicesController : BaseApiController
     {
         var userId = GetUserId();
 
-        var device = await _db.Devices
+        var device = await db.Devices
             .FirstOrDefaultAsync(d => d.Id == deviceId && d.UserId == userId && d.IsActive);
 
         if (device is null)
             return NotFound("Device not found or does not belong to the current user.");
 
         device.IsActive = false;
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync();
 
         return NoContent();
     }
@@ -154,13 +147,13 @@ public class DevicesController : BaseApiController
     {
         var userId = GetUserId();
 
-        var deviceOwned = await _db.Devices
+        var deviceOwned = await db.Devices
             .AnyAsync(d => d.Id == deviceId && d.UserId == userId && d.IsActive);
 
         if (!deviceOwned)
             return NotFound("Device not found or does not belong to the current user.");
 
-        var count = await _preKeyService.CountRemainingPreKeys(deviceId);
+        var count = await preKeyService.CountRemainingPreKeys(deviceId);
         return Ok(new { count });
     }
 
@@ -174,13 +167,16 @@ public class DevicesController : BaseApiController
     {
         var userId = GetUserId();
 
-        var deviceOwned = await _db.Devices
+        var deviceOwned = await db.Devices
             .AnyAsync(d => d.Id == deviceId && d.UserId == userId && d.IsActive);
 
         if (!deviceOwned)
             return NotFound("Device not found or does not belong to the current user.");
 
-        await _preKeyService.StoreOneTimePreKeys(deviceId, preKeys);
+        if (preKeys.Count is 0 or > ProtocolConstants.OneTimePreKeyBatchSize)
+            return BadRequest($"Pre-key batch must be between 1 and {ProtocolConstants.OneTimePreKeyBatchSize}.");
+
+        await preKeyService.StoreOneTimePreKeys(deviceId, preKeys);
         return NoContent();
     }
 

@@ -50,12 +50,8 @@ public class MessageExpiryService : IDisposable
         var expiredIds = new List<decimal>();
 
         foreach (var (messageId, expiresAt) in _trackedMessages)
-        {
             if (now >= expiresAt)
-            {
                 expiredIds.Add(messageId);
-            }
-        }
 
         foreach (var messageId in expiredIds)
         {

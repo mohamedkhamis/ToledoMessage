@@ -10,17 +10,8 @@ namespace ToledoMessage.Controllers;
 [ApiController]
 [Route("api/users")]
 [Authorize]
-public class UsersController : BaseApiController
+public class UsersController(ApplicationDbContext db, PreKeyService preKeyService) : BaseApiController
 {
-    private readonly ApplicationDbContext _db;
-    private readonly PreKeyService _preKeyService;
-
-    public UsersController(ApplicationDbContext db, PreKeyService preKeyService)
-    {
-        _db = db;
-        _preKeyService = preKeyService;
-    }
-
     /// <summary>
     /// Search users by display name (case-insensitive contains).
     /// Excludes the requesting user from results. Results bounded to 50.
@@ -40,15 +31,15 @@ public class UsersController : BaseApiController
 
         var userId = GetUserId();
 
-        var users = await _db.Users
+        var users = await db.Users
             .Where(u => u.IsActive && u.Id != userId && u.DisplayName.Contains(q))
-            .OrderBy(u => u.DisplayName)
+            .OrderBy(static u => u.DisplayName)
             .Skip(skip)
             .Take(take)
-            .Select(u => new UserSearchResult(
+            .Select(static u => new UserSearchResult(
                 u.Id,
                 u.DisplayName,
-                u.Devices.Count(d => d.IsActive)))
+                u.Devices.Count(static d => d.IsActive)))
             .ToListAsync();
 
         return Ok(new UserSearchResponse(users));
@@ -60,28 +51,28 @@ public class UsersController : BaseApiController
     [HttpGet("{userId}/prekey-bundle")]
     public async Task<IActionResult> GetPreKeyBundle(decimal userId, [FromQuery] decimal deviceId)
     {
-        var device = await _db.Devices
+        var device = await db.Devices
             .FirstOrDefaultAsync(d => d.Id == deviceId && d.UserId == userId && d.IsActive);
 
         if (device == null)
             return NotFound("Device not found.");
 
-        var consumedKey = await _preKeyService.ConsumeOneTimePreKey(deviceId);
+        var consumedKey = await preKeyService.ConsumeOneTimePreKey(deviceId);
 
-        OneTimePreKeyDto? oneTimePreKey = consumedKey != null
+        var oneTimePreKey = consumedKey != null
             ? new OneTimePreKeyDto(consumedKey.KeyId, Convert.ToBase64String(consumedKey.PublicKey))
             : null;
 
         var bundle = new PreKeyBundleResponse(
-            DeviceId: device.Id,
-            IdentityPublicKeyClassical: Convert.ToBase64String(device.IdentityPublicKeyClassical),
-            IdentityPublicKeyPostQuantum: Convert.ToBase64String(device.IdentityPublicKeyPostQuantum),
-            SignedPreKeyPublic: Convert.ToBase64String(device.SignedPreKeyPublic),
-            SignedPreKeySignature: Convert.ToBase64String(device.SignedPreKeySignature),
-            SignedPreKeyId: device.SignedPreKeyId,
-            KyberPreKeyPublic: Convert.ToBase64String(device.KyberPreKeyPublic),
-            KyberPreKeySignature: Convert.ToBase64String(device.KyberPreKeySignature),
-            OneTimePreKey: oneTimePreKey);
+            device.Id,
+            Convert.ToBase64String(device.IdentityPublicKeyClassical),
+            Convert.ToBase64String(device.IdentityPublicKeyPostQuantum),
+            Convert.ToBase64String(device.SignedPreKeyPublic),
+            Convert.ToBase64String(device.SignedPreKeySignature),
+            device.SignedPreKeyId,
+            Convert.ToBase64String(device.KyberPreKeyPublic),
+            Convert.ToBase64String(device.KyberPreKeySignature),
+            oneTimePreKey);
 
         return Ok(bundle);
     }
@@ -92,9 +83,9 @@ public class UsersController : BaseApiController
     [HttpGet("{userId}/devices")]
     public async Task<IActionResult> GetUserDevices(decimal userId)
     {
-        var devices = await _db.Devices
+        var devices = await db.Devices
             .Where(d => d.UserId == userId && d.IsActive)
-            .Select(d => new DeviceInfoResponse(d.Id, d.DeviceName, d.CreatedAt, d.LastSeenAt))
+            .Select(static d => new DeviceInfoResponse(d.Id, d.DeviceName, d.CreatedAt, d.LastSeenAt))
             .ToListAsync();
 
         return Ok(devices);

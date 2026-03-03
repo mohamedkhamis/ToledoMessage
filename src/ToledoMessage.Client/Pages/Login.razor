@@ -1,41 +1,44 @@
 @page "/login"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using System.Globalization
 @using System.Text
-@using ToledoMessage.Shared.DTOs
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject LocalStorageService Storage
 @inject KeyGenerationService KeyGenService
-@inject Microsoft.JSInterop.IJSRuntime JS
+@inject IJSRuntime Js
+@inject ThemeService Theme
+@inject PreferencesService Preferences
+@inject KeyBackupService KeyBackup
 
 <div class="auth-page fade-in">
     <h2>Sign In</h2>
 
     <div class="card">
-        @if (!string.IsNullOrEmpty(errorMessage))
+        @if (!string.IsNullOrEmpty(_errorMessage))
         {
-            <div class="alert alert-error" role="alert">@errorMessage</div>
+            <div class="alert alert-error" role="alert">@_errorMessage</div>
         }
 
-        @if (!string.IsNullOrEmpty(statusMessage))
+        @if (!string.IsNullOrEmpty(_statusMessage))
         {
-            <div class="alert alert-info" role="status">@statusMessage</div>
+            <div class="alert alert-info" role="status">@_statusMessage</div>
         }
 
         <form @onsubmit="HandleLogin">
             <div class="form-group">
                 <label for="displayName">Display Name</label>
-                <input id="displayName" @bind="displayName" placeholder="Enter your display name"
+                <input id="displayName" @bind="_displayName" placeholder="Enter your display name"
                        autocomplete="username" required aria-required="true" />
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
-                <input id="password" type="password" @bind="password" placeholder="Enter your password"
+                <input id="password" type="password" @bind="_password" placeholder="Enter your password"
                        autocomplete="current-password" required aria-required="true" />
             </div>
-            <button type="submit" class="btn-primary btn-full" disabled="@isLoading"
-                    aria-busy="@isLoading">
-                @if (isLoading)
+            <button type="submit" class="btn-primary btn-full" disabled="@_isLoading"
+                    aria-busy="@_isLoading">
+                @if (_isLoading)
                 {
                     <span class="spinner spinner-sm"></span>
                     <text> Signing in...</text>
@@ -49,41 +52,43 @@
     </div>
 
     <p class="auth-footer">Don't have an account? <a href="/register">Create one</a></p>
+
+    <div class="app-version-footer">Toledo Message v@(AppVersion.Current)</div>
 </div>
 
 @code {
-    private string displayName = "";
-    private string password = "";
-    private string? errorMessage;
-    private string? statusMessage;
-    private bool isLoading;
+    private string _displayName = "";
+    private string _password = "";
+    private string? _errorMessage;
+    private string? _statusMessage;
+    private bool _isLoading;
 
     protected override async Task OnInitializedAsync()
     {
         var uri = new Uri(Navigation.Uri);
         if (uri.Query.Contains("logout", StringComparison.OrdinalIgnoreCase))
         {
-            // Clear all stored auth and crypto data
-            await JS.InvokeVoidAsync("localStorage.clear");
+            // Clear auth and crypto data but preserve UI preferences (theme, fontSize)
+            await Js.InvokeVoidAsync("toledoStorage.clearAuthData");
             Http.DefaultRequestHeaders.Authorization = null;
         }
     }
 
     private async Task HandleLogin()
     {
-        isLoading = true;
-        errorMessage = null;
-        statusMessage = null;
+        _isLoading = true;
+        _errorMessage = null;
+        _statusMessage = null;
 
         try
         {
             // 1. Authenticate
-            var request = new LoginRequest(displayName, password);
+            var request = new LoginRequest(_displayName, _password);
             var response = await Http.PostAsJsonAsync("/api/auth/login", request);
 
             if (!response.IsSuccessStatusCode)
             {
-                errorMessage = "Invalid credentials.";
+                _errorMessage = "Invalid credentials.";
                 return;
             }
 
@@ -94,44 +99,132 @@
             // 2. Store auth token
             await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse.Token));
 
-            // 3. Check if we already have a deviceId stored (returning to same browser)
+            // 3. Sync user preferences from server
+            try
+            {
+                var prefs = await Preferences.GetPreferencesAsync();
+                await Theme.SetThemeAsync(prefs.Theme);
+                await Theme.SetFontSizeAsync(prefs.FontSize);
+            }
+            catch
+            {
+                // Non-critical: preferences will use local defaults
+            }
+
+            // 4. Check if we already have a deviceId stored (returning to same browser)
             var existingDeviceId = await Storage.GetAsync("local.deviceId");
             if (existingDeviceId is not null)
             {
-                // Already have a device registered on this browser
-                Navigation.NavigateTo("/chat");
-                return;
+                // Validate the stored device still exists on the server
+                var storedId = Encoding.UTF8.GetString(existingDeviceId);
+                var devicesResponse = await Http.GetAsync("/api/devices");
+                if (devicesResponse.IsSuccessStatusCode)
+                {
+                    var devices = await devicesResponse.Content.ReadFromJsonAsync<List<DeviceInfoResponse>>();
+                    var stillValid = devices?.Any(d =>
+                        d.DeviceId.ToString(CultureInfo.InvariantCulture) == storedId) == true;
+
+                    if (stillValid)
+                    {
+                        Navigation.NavigateTo("/chat");
+                        return;
+                    }
+                }
+                else
+                {
+                    // Can't verify — assume valid to avoid blocking login
+                    Navigation.NavigateTo("/chat");
+                    return;
+                }
+
+                // Device no longer exists on server — clear stale data and re-register below
+                await Js.InvokeVoidAsync("toledoStorage.clearAuthData");
+                await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse.Token));
+                Http.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authResponse.Token);
             }
 
-            // 4. New device: generate crypto keys and register
-            statusMessage = "Generating encryption keys...";
+            // 5. New device: check shared keys preference and try restore
+            _statusMessage = "Setting up encryption keys...";
             StateHasChanged();
 
-            var deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+            DeviceRegistrationRequest deviceRequest;
+            var prefs2 = await Preferences.GetPreferencesAsync();
+
+            if (prefs2.SharedKeysEnabled)
+            {
+                // Try to restore keys from server backup
+                try
+                {
+                    var restored = await KeyBackup.TryRestoreBackupAsync(_password);
+                    if (restored is not null)
+                    {
+                        // Keys restored from backup — generate fresh pre-keys with shared identity
+                        _statusMessage = "Restoring encryption keys...";
+                        StateHasChanged();
+                        deviceRequest = await KeyGenService.RestoreKeysAndBuildRequest(restored, "Web Browser");
+                    }
+                    else
+                    {
+                        // No backup exists (first device) — generate new keys and upload backup
+                        _statusMessage = "Generating encryption keys...";
+                        StateHasChanged();
+                        deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+                    }
+                }
+                catch
+                {
+                    // Backup restore failed — fall back to fresh keys
+                    _statusMessage = "Generating encryption keys...";
+                    StateHasChanged();
+                    deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+                }
+            }
+            else
+            {
+                // Shared keys disabled — generate fresh keys (original behavior)
+                _statusMessage = "Generating encryption keys...";
+                StateHasChanged();
+                deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+            }
+
             var deviceResponse = await Http.PostAsJsonAsync("/api/devices", deviceRequest);
 
             if (!deviceResponse.IsSuccessStatusCode)
             {
-                errorMessage = "Device registration failed.";
+                _errorMessage = "Device registration failed.";
                 return;
             }
 
             var deviceResult = await deviceResponse.Content.ReadFromJsonAsync<DeviceRegistrationResult>();
             if (deviceResult is not null)
             {
-                await Storage.StoreAsync("local.deviceId", Encoding.UTF8.GetBytes(deviceResult.DeviceId.ToString()));
+                await Storage.StoreAsync("local.deviceId", Encoding.UTF8.GetBytes(deviceResult.DeviceId.ToString(CultureInfo.InvariantCulture)));
             }
 
-            // 5. Navigate to chat
+            // 6. Upload backup if shared keys enabled and this is the first device (no backup existed)
+            if (prefs2.SharedKeysEnabled)
+            {
+                try
+                {
+                    await KeyBackup.UploadBackupAsync(_password);
+                }
+                catch
+                {
+                    // Non-critical: backup upload failure doesn't block login
+                }
+            }
+
+            // 7. Navigate to chat
             Navigation.NavigateTo("/chat");
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error: {ex.Message}";
+            _errorMessage = $"Error: {ex.Message}";
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
         }
     }
 

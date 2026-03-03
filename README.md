@@ -17,16 +17,25 @@ ToledoMessage uses a **hybrid "belt-and-suspenders" approach**: every key exchan
 - **Signal Protocol** — X3DH key agreement + Double Ratchet for forward secrecy and post-compromise security
 - **AES-256-GCM** authenticated encryption for every message
 - **Zero-trust server** — all crypto operations execute client-side in WebAssembly; the server never sees plaintext
+- **Key backup** — encrypted export of identity keys for account recovery
 
 ### Messaging
 
 - Real-time delivery via SignalR with delivery and read receipts
 - Typing indicators
-- Offline message queue (90-day retention)
+- Offline message queue (90-day retention, server-side cleanup)
 - Group messaging with Sender Keys protocol (O(1) encryption per send)
 - Disappearing messages with configurable timers
 - Security fingerprints for out-of-band identity verification
 - Key change warnings when a contact's identity changes
+- Message reactions (emoji)
+- Reply/forward messages
+
+### Media
+
+- Image attachments with lightbox viewer
+- Voice messages with in-browser recording
+- Link previews with metadata fetching
 
 ### Multi-Device
 
@@ -41,6 +50,8 @@ ToledoMessage uses a **hybrid "belt-and-suspenders" approach**: every key exchan
 - User search by display name
 - Account deactivation with 7-day grace period
 - Mobile-responsive design
+- Theme support (light/dark mode)
+- Toast notifications
 
 ## Tech Stack
 
@@ -64,11 +75,11 @@ src/
   ToledoMessage.Shared/       # Shared DTOs, enums, constants
   Toledo.SharedKernel/        # Cross-cutting utilities
 tests/
-  ToledoMessage.Server.Tests/       # Server unit tests
-  ToledoMessage.Crypto.Tests/       # Cryptography unit tests
+  ToledoMessage.Server.Tests/       # Server unit tests (142 tests)
+  ToledoMessage.Crypto.Tests/       # Cryptography unit tests (65 tests)
   ToledoMessage.Client.Tests/       # Client service tests
-  ToledoMessage.Integration.Tests/  # End-to-end tests
-  ToledoMessage.Benchmarks/         # Performance & load tests
+  ToledoMessage.Integration.Tests/  # End-to-end tests (8 tests)
+  ToledoMessage.Benchmarks/         # Performance benchmarks
 ```
 
 ## Getting Started
@@ -169,7 +180,7 @@ The server is a **zero-knowledge relay** — it stores only encrypted ciphertext
 
 ## Roadmap
 
-### In Progress
+### Completed
 
 - [x] Hybrid post-quantum key exchange (X25519 + ML-KEM-768)
 - [x] Hybrid signatures (Ed25519 + ML-DSA-65)
@@ -179,17 +190,26 @@ The server is a **zero-knowledge relay** — it stores only encrypted ciphertext
 - [x] Multi-device support
 - [x] Disappearing messages
 - [x] WhatsApp-style UI layout
+- [x] Image attachments with lightbox
+- [x] Voice messages
+- [x] Link previews
+- [x] Key backup/export
+- [x] Message reactions
+- [x] Message replies and forwarding
+- [x] Theme support (light/dark)
+- [x] User preferences
+
+### In Progress
+
+- [ ] Contact blocking and reporting
+- [ ] Profile pictures and status messages
 
 ### Planned
 
-- [ ] Media attachments (images, audio, files) — encrypted as blobs with per-message keys
+- [ ] File attachments (documents, videos) — encrypted as blobs with per-message keys
 - [ ] Voice and video calls with end-to-end encryption
 - [ ] Push notifications via service workers (offline browser support)
 - [ ] Message search across conversations (client-side decrypted index)
-- [ ] Message reactions and replies
-- [ ] Contact blocking and reporting
-- [ ] Profile pictures and status messages
-- [ ] Message forwarding
 - [ ] Desktop application (Electron / MAUI)
 - [ ] Mobile application (MAUI / React Native)
 - [ ] Federation support for cross-server messaging

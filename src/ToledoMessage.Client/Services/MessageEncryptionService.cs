@@ -6,12 +6,15 @@ namespace ToledoMessage.Client.Services;
 
 /// <summary>
 /// Lower-level service handling Double Ratchet encrypt/decrypt operations.
-/// Supports two wire formats:
-/// - NormalMessage: [4-byte ratchetHeaderLen][RatchetHeader JSON][ciphertext]
-/// - PreKeyMessage: [4-byte preKeyHeaderLen][PreKeyHeader JSON][4-byte ratchetHeaderLen][RatchetHeader JSON][ciphertext]
+/// Supports two wire formats (v0 legacy and v1 versioned):
+/// - v0 NormalMessage: [4-byte ratchetHeaderLen][RatchetHeader JSON][ciphertext]
+/// - v0 PreKeyMessage: [4-byte preKeyHeaderLen][PreKeyHeader JSON][4-byte ratchetHeaderLen][RatchetHeader JSON][ciphertext]
+/// - v1 NormalMessage: [0x01][4-byte ratchetHeaderLen][RatchetHeader JSON][ciphertext]
+/// - v1 PreKeyMessage: [0x01][4-byte preKeyHeaderLen][PreKeyHeader JSON][4-byte ratchetHeaderLen][RatchetHeader JSON][ciphertext]
 /// </summary>
 public class MessageEncryptionService
 {
+    private const byte ProtocolVersion = 0x01;
     /// <summary>
     /// Encrypts a plaintext message as a NormalMessage (subsequent messages in an established session).
     /// </summary>
@@ -100,11 +103,14 @@ public class MessageEncryptionService
         if (ciphertextWithHeader.Length < 4)
             throw new InvalidOperationException("Invalid PreKeyMessage blob: too short.");
 
-        var preKeyHeaderLength = BitConverter.ToInt32(ciphertextWithHeader, 0);
-        if (ciphertextWithHeader.Length < 4 + preKeyHeaderLength)
+        var (_, dataOffset) = DetectVersion(ciphertextWithHeader);
+
+        var preKeyHeaderLength = BitConverter.ToInt32(ciphertextWithHeader, dataOffset);
+        var headerStart = dataOffset + 4;
+        if (ciphertextWithHeader.Length < headerStart + preKeyHeaderLength)
             throw new InvalidOperationException("Invalid PreKeyMessage blob: too short for PreKeyHeader.");
 
-        var preKeyHeaderJson = new ReadOnlySpan<byte>(ciphertextWithHeader, 4, preKeyHeaderLength);
+        var preKeyHeaderJson = new ReadOnlySpan<byte>(ciphertextWithHeader, headerStart, preKeyHeaderLength);
         var preKeyHeaderDto = JsonSerializer.Deserialize<PreKeyHeaderDto>(preKeyHeaderJson)
             ?? throw new InvalidOperationException("Failed to deserialize PreKeyHeader.");
 
@@ -125,8 +131,10 @@ public class MessageEncryptionService
         if (ciphertextWithHeader.Length < 4)
             throw new InvalidOperationException("Invalid PreKeyMessage blob: too short.");
 
-        var preKeyHeaderLength = BitConverter.ToInt32(ciphertextWithHeader, 0);
-        var remainingStart = 4 + preKeyHeaderLength;
+        var (_, dataOffset) = DetectVersion(ciphertextWithHeader);
+
+        var preKeyHeaderLength = BitConverter.ToInt32(ciphertextWithHeader, dataOffset);
+        var remainingStart = dataOffset + 4 + preKeyHeaderLength;
 
         if (ciphertextWithHeader.Length < remainingStart)
             throw new InvalidOperationException("Invalid PreKeyMessage blob: too short for PreKeyHeader.");
@@ -137,7 +145,7 @@ public class MessageEncryptionService
     }
 
     /// <summary>
-    /// Packs NormalMessage format: [4-byte headerLen][headerJson][ciphertext].
+    /// Packs NormalMessage v1 format: [version][4-byte headerLen][headerJson][ciphertext].
     /// </summary>
     private static byte[] PackNormalMessage(MessageHeader header, byte[] ciphertext)
     {
@@ -151,16 +159,17 @@ public class MessageEncryptionService
         var headerJson = JsonSerializer.SerializeToUtf8Bytes(headerDto);
         var headerLength = BitConverter.GetBytes(headerJson.Length);
 
-        var result = new byte[4 + headerJson.Length + ciphertext.Length];
-        Buffer.BlockCopy(headerLength, 0, result, 0, 4);
-        Buffer.BlockCopy(headerJson, 0, result, 4, headerJson.Length);
-        Buffer.BlockCopy(ciphertext, 0, result, 4 + headerJson.Length, ciphertext.Length);
+        var result = new byte[1 + 4 + headerJson.Length + ciphertext.Length];
+        result[0] = ProtocolVersion;
+        Buffer.BlockCopy(headerLength, 0, result, 1, 4);
+        Buffer.BlockCopy(headerJson, 0, result, 5, headerJson.Length);
+        Buffer.BlockCopy(ciphertext, 0, result, 5 + headerJson.Length, ciphertext.Length);
 
         return result;
     }
 
     /// <summary>
-    /// Packs PreKeyMessage format: [4-byte preKeyHeaderLen][PreKeyHeader JSON][4-byte ratchetHeaderLen][RatchetHeader JSON][ciphertext].
+    /// Packs PreKeyMessage v1 format: [version][4-byte preKeyHeaderLen][PreKeyHeader JSON][4-byte ratchetHeaderLen][RatchetHeader JSON][ciphertext].
     /// </summary>
     private static byte[] PackPreKeyMessage(PreKeyHeaderInfo preKeyHeader, MessageHeader ratchetHeader, byte[] ciphertext)
     {
@@ -184,10 +193,11 @@ public class MessageEncryptionService
         var ratchetHeaderJson = JsonSerializer.SerializeToUtf8Bytes(ratchetHeaderDto);
         var ratchetHeaderLength = BitConverter.GetBytes(ratchetHeaderJson.Length);
 
-        var totalLength = 4 + preKeyHeaderJson.Length + 4 + ratchetHeaderJson.Length + ciphertext.Length;
+        var totalLength = 1 + 4 + preKeyHeaderJson.Length + 4 + ratchetHeaderJson.Length + ciphertext.Length;
         var result = new byte[totalLength];
         var offset = 0;
 
+        result[offset] = ProtocolVersion; offset += 1;
         Buffer.BlockCopy(preKeyHeaderLength, 0, result, offset, 4); offset += 4;
         Buffer.BlockCopy(preKeyHeaderJson, 0, result, offset, preKeyHeaderJson.Length); offset += preKeyHeaderJson.Length;
         Buffer.BlockCopy(ratchetHeaderLength, 0, result, offset, 4); offset += 4;
@@ -198,25 +208,48 @@ public class MessageEncryptionService
     }
 
     /// <summary>
+    /// Detects if blob starts with a version byte (v1+) or is legacy v0.
+    /// Legacy v0 blobs start with a 4-byte int32 header length (JSON headers are typically 50+ bytes,
+    /// so the first byte will be >= 0x10). Version bytes are small (0x01-0x0F).
+    /// </summary>
+    private static (byte version, int dataOffset) DetectVersion(byte[] blob)
+    {
+        if (blob.Length < 5) return (0, 0); // Too short for v1, try as v0
+        if (blob[0] >= 0x01 && blob[0] <= 0x0F)
+        {
+            // Validate: the next 4 bytes should be a reasonable header length
+            var headerLen = BitConverter.ToInt32(blob, 1);
+            if (headerLen > 0 && headerLen < blob.Length)
+                return (blob[0], 1); // v1: skip version byte
+        }
+        return (0, 0); // Legacy v0: no version prefix
+    }
+
+    /// <summary>
     /// Unpacks NormalMessage format back into MessageHeader and ciphertext.
+    /// Supports both v0 (legacy) and v1 (versioned) wire formats.
     /// </summary>
     private static (MessageHeader header, byte[] ciphertext) UnpackNormalMessage(byte[] blob)
     {
         if (blob.Length < 4)
             throw new InvalidOperationException("Invalid ciphertext blob: too short to contain header length.");
 
-        var headerLength = BitConverter.ToInt32(blob, 0);
+        var (_, dataOffset) = DetectVersion(blob);
 
-        if (blob.Length < 4 + headerLength)
+        var headerLength = BitConverter.ToInt32(blob, dataOffset);
+        var headerStart = dataOffset + 4;
+
+        if (blob.Length < headerStart + headerLength)
             throw new InvalidOperationException("Invalid ciphertext blob: too short to contain header.");
 
-        var headerJson = new ReadOnlySpan<byte>(blob, 4, headerLength);
+        var headerJson = new ReadOnlySpan<byte>(blob, headerStart, headerLength);
         var headerDto = JsonSerializer.Deserialize<MessageHeaderDto>(headerJson)
             ?? throw new InvalidOperationException("Failed to deserialize message header.");
 
-        var ciphertextLength = blob.Length - 4 - headerLength;
+        var ciphertextStart = headerStart + headerLength;
+        var ciphertextLength = blob.Length - ciphertextStart;
         var ciphertext = new byte[ciphertextLength];
-        Buffer.BlockCopy(blob, 4 + headerLength, ciphertext, 0, ciphertextLength);
+        Buffer.BlockCopy(blob, ciphertextStart, ciphertext, 0, ciphertextLength);
 
         var header = new MessageHeader
         {
@@ -230,13 +263,15 @@ public class MessageEncryptionService
 
     /// <summary>
     /// Unpacks PreKeyMessage format into PreKeyHeader, RatchetHeader, and ciphertext.
+    /// Supports both v0 (legacy) and v1 (versioned) wire formats.
     /// </summary>
     private static (PreKeyHeaderInfo preKeyHeader, MessageHeader ratchetHeader, byte[] ciphertext) UnpackPreKeyMessage(byte[] blob)
     {
         if (blob.Length < 4)
             throw new InvalidOperationException("Invalid PreKeyMessage blob: too short.");
 
-        var offset = 0;
+        var (_, dataOffset) = DetectVersion(blob);
+        var offset = dataOffset;
 
         // Read PreKeyHeader
         var preKeyHeaderLength = BitConverter.ToInt32(blob, offset); offset += 4;

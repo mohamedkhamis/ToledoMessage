@@ -93,7 +93,7 @@ public class TwoUserMessagingTests
         // ================================================================
         // 7. Alice encrypts "Hello Bob" -> Bob decrypts -> assert
         // ================================================================
-        var aliceMessage1 = Encoding.UTF8.GetBytes("Hello Bob");
+        var aliceMessage1 = "Hello Bob"u8.ToArray();
         var (ciphertext1, header1) = aliceRatchet.Encrypt(aliceMessage1);
 
         Assert.IsNotNull(ciphertext1);
@@ -105,7 +105,7 @@ public class TwoUserMessagingTests
         // ================================================================
         // 8. Bob encrypts "Hello Alice" -> Alice decrypts -> assert
         // ================================================================
-        var bobMessage1 = Encoding.UTF8.GetBytes("Hello Alice");
+        var bobMessage1 = "Hello Alice"u8.ToArray();
         var (ciphertext2, header2) = bobRatchet.Encrypt(bobMessage1);
 
         Assert.IsNotNull(ciphertext2);
@@ -207,11 +207,11 @@ public class TwoUserMessagingTests
             initResult.RootKey, bobSignedPreKey.PublicKey);
 
         // 7. Exchange messages
-        var (ct, hdr) = aliceRatchet.Encrypt(Encoding.UTF8.GetBytes("Without OPK"));
+        var (ct, hdr) = aliceRatchet.Encrypt("Without OPK"u8.ToArray());
         var decrypted = bobRatchet.Decrypt(ct, hdr);
         Assert.AreEqual("Without OPK", Encoding.UTF8.GetString(decrypted));
 
-        var (ct2, hdr2) = bobRatchet.Encrypt(Encoding.UTF8.GetBytes("Reply without OPK"));
+        var (ct2, hdr2) = bobRatchet.Encrypt("Reply without OPK"u8.ToArray());
         var decrypted2 = aliceRatchet.Decrypt(ct2, hdr2);
         Assert.AreEqual("Reply without OPK", Encoding.UTF8.GetString(decrypted2));
     }

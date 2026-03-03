@@ -24,7 +24,7 @@ public static class MlDsaSigner
     {
         var privateKeyParams = MLDsaPrivateKeyParameters.FromEncoding(MLDsaParameters.ml_dsa_65, privateKey);
 
-        var signer = new MLDsaSigner(MLDsaParameters.ml_dsa_65, deterministic: true);
+        var signer = new MLDsaSigner(MLDsaParameters.ml_dsa_65, true);
         signer.Init(true, privateKeyParams);
         signer.BlockUpdate(message, 0, message.Length);
 
@@ -35,7 +35,7 @@ public static class MlDsaSigner
     {
         var publicKeyParams = MLDsaPublicKeyParameters.FromEncoding(MLDsaParameters.ml_dsa_65, publicKey);
 
-        var signer = new MLDsaSigner(MLDsaParameters.ml_dsa_65, deterministic: true);
+        var signer = new MLDsaSigner(MLDsaParameters.ml_dsa_65, true);
         signer.Init(false, publicKeyParams);
         signer.BlockUpdate(message, 0, message.Length);
 

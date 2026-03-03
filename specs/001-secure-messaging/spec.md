@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-secure-messaging`
 **Created**: 2026-02-25
-**Status**: Draft
+**Status**: Active
 **Input**: User description: "Secure messaging chat application with hybrid post-quantum cryptography protecting conversations against current and future quantum computing threats"
 
 ## Clarifications
@@ -154,6 +154,9 @@ A user sets a disappearing message timer on a conversation (e.g., 24 hours, 7 da
 - What happens when a user loses all their devices? The user must create a new account and new identity. There is no server-side account recovery. Contacts are notified via a key change warning when the user re-registers, and previous message history is permanently lost.
 - What happens when a user sends messages too rapidly or a bot spams registrations? The server enforces rate limits per IP (registration) and per user (message sending, search). Requests exceeding the limit receive an error response and are temporarily throttled.
 - What happens when the same user opens multiple browser tabs? Leader election via BroadcastChannel API ensures only one tab owns the SignalR connection and crypto state. Other tabs act as followers receiving updates. If the leader tab closes, a follower promotes itself to leader automatically.
+- What happens when a user sends an unsupported or corrupted media file? The client validates file headers (magic bytes) against allowed MIME types before encryption. Unsupported or corrupted files are rejected with a specific user-facing error ("Unsupported file type" or "File appears corrupted") — no encryption or upload occurs.
+- What happens when a user sends a media attachment exceeding 10 MB? The client rejects the file before encryption with an error ("File too large — maximum 10 MB"). The server also enforces the 10 MB limit as a secondary gate.
+- What happens when a forwarded media message exceeds the target conversation's available bandwidth? The media is fully re-encrypted with the target conversation's keys. If the re-encryption or send fails (e.g., connection loss), the forward is retried on reconnect like any other queued message.
 
 ## Requirements *(mandatory)*
 
@@ -164,7 +167,7 @@ A user sets a disappearing message timer on a conversation (e.g., 24 hours, 7 da
 - **FR-003**: System MUST publish pre-key bundles (identity key, signed pre-key, and a set of one-time pre-keys) to the server for each registered user.
 - **FR-004**: System MUST perform a hybrid key exchange combining classical Diffie-Hellman operations with a post-quantum key encapsulation mechanism when establishing a new session between two users.
 - **FR-005**: System MUST encrypt every message individually using authenticated encryption with a unique per-message key derived from a forward-secret ratcheting mechanism.
-- **FR-018**: System MUST support text messages for MVP. The message format MUST be extensible to accommodate future content types (images, audio, files) without requiring protocol changes.
+- **FR-018**: System MUST support text messages as the primary content type. The message format MUST be extensible to accommodate additional content types without requiring protocol changes. Media content types (Image, Video, Audio, File) are supported per FR-023.
 - **FR-019**: System MUST enforce a maximum plaintext message size of 64 KB. Both client and server MUST validate and reject messages exceeding this limit before encryption or storage.
 - **FR-020**: System MUST allow users to self-deactivate their account via Settings. Upon initiating deletion, the account enters a pending-deletion state with a 7-day grace period. Logging in during the grace period re-activates the account. After 7 days, the account is permanently deactivated: all device keys are revoked, the user cannot log in, and contacts see a key change warning.
 - **FR-021**: System MUST use the Browser Notification API to show desktop notifications for incoming messages when the application tab is unfocused or minimized. Notification display MUST require explicit user permission. Notification content MUST show sender name and a generic alert (not decrypted message preview) to protect privacy.
@@ -181,6 +184,11 @@ A user sets a disappearing message timer on a conversation (e.g., 24 hours, 7 da
 - **FR-015**: System MUST automatically replenish one-time pre-keys when the supply on the server runs low.
 - **FR-016**: System MUST provide forward secrecy — compromise of long-term keys MUST NOT allow decryption of past messages.
 - **FR-017**: System MUST provide post-compromise security — after a key compromise is detected and new keys are established, future messages MUST be protected.
+- **FR-023**: System MUST support media message types: Image, Video, Audio, and File. Maximum single attachment size is 10 MB; client and server MUST reject attachments exceeding this limit. The client MUST validate file headers (magic bytes) against allowed MIME types before encryption and show a specific error for unsupported or corrupted files. Media content is encrypted as part of the message payload using the same per-message keys. Images are displayed inline with click-to-expand. Videos and audio use native browser playback controls. Files display a download card. Media data MUST be persisted to IndexedDB (base64-encoded) for offline access.
+- **FR-024**: System MUST provide an opt-in (default ON) encrypted key backup feature. Identity keys (classical + post-quantum) are encrypted client-side using AES-256-GCM with a key derived from the user's password via PBKDF2 (100,000 iterations, SHA-256). The encrypted blob, salt, and nonce are uploaded to the server. On new device login, the system attempts to restore identity keys from the backup, generating fresh pre-keys and one-time pre-keys per device. Users can disable this feature in Settings, which deletes the server-side backup. See Constitution Exception CE-001.
+- **FR-025**: System MUST support conversation search (sidebar search filtering by display name) and in-conversation message search (highlight matching messages, navigate between results).
+- **FR-026**: System MUST support message reactions (emoji reactions with per-user toggle, aggregated badge display), message replies (quote the original message with sender name and preview text, click-to-scroll to original), and message forwarding (forward a message to another conversation with "Forwarded" label). Forwarded media messages MUST be fully re-encrypted with the target conversation's keys — no cross-conversation references.
+- **FR-027**: System MUST support link previews for URLs detected in message text. When a message contains a URL, the system displays a preview card below the message text. URL metadata (title, description, image) MUST be fetched client-side only; the server MUST NOT proxy or see shared URLs (zero-trust). Previews that fail due to CORS restrictions are silently omitted.
 
 ### Non-Functional Requirements
 
@@ -222,16 +230,27 @@ A user sets a disappearing message timer on a conversation (e.g., 24 hours, 7 da
 - **SC-009**: The system supports simultaneous use from at least 2 devices per user without message loss or decryption failures.
 - **SC-010**: Group conversations support at least 100 participants with all members able to decrypt messages correctly.
 
-## Out of Scope (MVP)
+## Out of Scope
 
-- Image, audio, video, and file attachments (architecture must be extensible to add these later)
 - Voice and video calling
-- Account recovery or key backup/export
 - Contact list management or phone number-based discovery
-- Message search across conversations
 - User profile pictures or status updates
 - Push notifications via service worker (when browser is fully closed)
 - Read-only message archival or export
+
+### Session 2026-03-01
+
+- Q: What is the maximum single media attachment size? → A: 10 MB per attachment. This keeps IndexedDB base64 storage and blob URLs manageable, avoids long upload times, and aligns with WhatsApp's image size limit. FR-019's 64 KB limit applies to text payloads only; media uses a separate size gate.
+- Q: Where should link preview metadata (title, description, thumbnail) be fetched? → A: Client-side only. The server MUST NOT see which URLs users share (zero-trust). CORS restrictions mean some previews won't render — this is an acceptable privacy trade-off. No server-side proxy.
+- Q: When forwarding a media message, should the media be re-encrypted for the target conversation? → A: Yes, full re-encryption. Media bytes are re-encrypted with the target conversation's ratchet keys, producing a self-contained message. No cross-conversation key dependencies or reference links.
+- Q: Should the spec status be updated given that features beyond the original MVP scope are now implemented? → A: Yes, change to "Active". The spec is a living document tracking the current implemented system, not just an initial draft.
+- Q: What should happen when a user attempts to send an unsupported or corrupted media file? → A: Client-side MIME validation before encryption. Validate the file header (magic bytes) against allowed types, show a specific error ("Unsupported file type" or "File appears corrupted") and reject before encrypting or uploading.
+
+### Previously Out of Scope — Now Implemented
+
+- ~~Image, audio, video, and file attachments~~ → Implemented (see FR-023)
+- ~~Account recovery or key backup/export~~ → Implemented as opt-in encrypted key backup (see FR-024)
+- ~~Message search across conversations~~ → Implemented as conversation-level search and sidebar filtering (see FR-025)
 
 ## Assumptions
 

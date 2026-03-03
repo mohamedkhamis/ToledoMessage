@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -18,26 +19,15 @@ namespace ToledoMessage.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController : BaseApiController
+public class AuthController(
+    ApplicationDbContext db,
+    IPasswordHasher<User> passwordHasher,
+    IConfiguration configuration,
+    AccountDeletionService accountDeletionService)
+    : BaseApiController
 {
     private static readonly Regex DisplayNameRegex = new("^[a-zA-Z0-9_-]+$", RegexOptions.Compiled);
-
-    private readonly ApplicationDbContext _db;
-    private readonly IPasswordHasher<User> _passwordHasher;
-    private readonly IConfiguration _configuration;
-    private readonly AccountDeletionService _accountDeletionService;
-
-    public AuthController(
-        ApplicationDbContext db,
-        IPasswordHasher<User> passwordHasher,
-        IConfiguration configuration,
-        AccountDeletionService accountDeletionService)
-    {
-        _db = db;
-        _passwordHasher = passwordHasher;
-        _configuration = configuration;
-        _accountDeletionService = accountDeletionService;
-    }
+    // ReSharper disable  RemoveRedundantBraces
 
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
@@ -45,7 +35,7 @@ public class AuthController : BaseApiController
         if (string.IsNullOrWhiteSpace(request.DisplayName))
             return BadRequest("DisplayName is required.");
 
-        if (request.DisplayName.Length < 3 || request.DisplayName.Length > 32)
+        if (request.DisplayName.Length is < 3 or > 32)
             return BadRequest("DisplayName must be between 3 and 32 characters.");
 
         if (!DisplayNameRegex.IsMatch(request.DisplayName))
@@ -57,7 +47,7 @@ public class AuthController : BaseApiController
         if (request.Password.Length > Shared.Constants.ProtocolConstants.MaxPasswordLength)
             return BadRequest($"Password must not exceed {Shared.Constants.ProtocolConstants.MaxPasswordLength} characters.");
 
-        var exists = await _db.Users.AnyAsync(u => u.DisplayName == request.DisplayName);
+        var exists = await db.Users.AnyAsync(u => u.DisplayName == request.DisplayName);
         if (exists)
             return Conflict("A user with this display name already exists.");
 
@@ -69,10 +59,10 @@ public class AuthController : BaseApiController
             IsActive = true
         };
 
-        user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);
+        user.PasswordHash = passwordHasher.HashPassword(user, request.Password);
 
-        _db.Users.Add(user);
-        await _db.SaveChangesAsync();
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
 
         var accessToken = GenerateJwtToken(user);
         var refreshToken = await CreateRefreshTokenAsync(user.Id);
@@ -85,22 +75,21 @@ public class AuthController : BaseApiController
     {
         const string genericError = "Invalid display name or password.";
 
-        var user = await _db.Users.FirstOrDefaultAsync(
-            u => u.DisplayName == request.DisplayName);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.DisplayName == request.DisplayName);
         if (user == null)
             return Unauthorized(genericError);
 
         if (!user.IsActive)
             return Unauthorized(genericError);
 
-        var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
+        var result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
         if (result == PasswordVerificationResult.Failed)
             return Unauthorized(genericError);
 
         // Cancel pending deletion on successful login (FR-020 grace period)
         if (user.DeletionRequestedAt is not null)
         {
-            await _accountDeletionService.CancelDeletionAsync(user.Id);
+            await accountDeletionService.CancelDeletionAsync(user.Id);
         }
 
         var accessToken = GenerateJwtToken(user);
@@ -122,7 +111,7 @@ public class AuthController : BaseApiController
         if (userIdClaim == null || !decimal.TryParse(userIdClaim.Value, out var userId))
             return Unauthorized("Invalid access token claims.");
 
-        var storedToken = await _db.RefreshTokens
+        var storedToken = await db.RefreshTokens
             .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken && rt.UserId == userId);
 
         if (storedToken == null || storedToken.IsRevoked || storedToken.ExpiresAt <= DateTimeOffset.UtcNow)
@@ -132,14 +121,16 @@ public class AuthController : BaseApiController
         storedToken.IsRevoked = true;
 
         // Clean up expired tokens for this user to prevent accumulation
-        var expiredTokens = await _db.RefreshTokens
+        var expiredTokens = await db.RefreshTokens
             .Where(rt => rt.UserId == userId && rt.ExpiresAt <= DateTimeOffset.UtcNow && !rt.IsRevoked)
             .ToListAsync();
         foreach (var expired in expiredTokens)
+        {
             expired.IsRevoked = true;
+        }
 
-        var user = await _db.Users.FindAsync(userId);
-        if (user == null || !user.IsActive)
+        var user = await db.Users.FindAsync(userId);
+        if (user is not { IsActive: true })
             return Unauthorized("User account not found or deactivated.");
 
         var newAccessToken = GenerateJwtToken(user);
@@ -157,13 +148,14 @@ public class AuthController : BaseApiController
     {
         var userId = GetUserId();
 
-        var token = await _db.RefreshTokens
+        var token = await db.RefreshTokens
             .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken && rt.UserId == userId && !rt.IsRevoked);
 
-        if (token != null)
+        // ReSharper disable  InvertIf
+        if (token is not null)
         {
             token.IsRevoked = true;
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
         }
 
         return NoContent();
@@ -178,14 +170,16 @@ public class AuthController : BaseApiController
     {
         var userId = GetUserId();
 
-        var tokens = await _db.RefreshTokens
+        var tokens = await db.RefreshTokens
             .Where(rt => rt.UserId == userId && !rt.IsRevoked)
             .ToListAsync();
 
         foreach (var token in tokens)
+        {
             token.IsRevoked = true;
+        }
 
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync();
 
         return NoContent();
     }
@@ -197,7 +191,7 @@ public class AuthController : BaseApiController
         if (!TryGetUserId(out var userId))
             return Unauthorized();
 
-        var deletionRequestedAt = await _accountDeletionService.InitiateDeletionAsync(userId);
+        var deletionRequestedAt = await accountDeletionService.InitiateDeletionAsync(userId);
 
         return Ok(new AccountDeletionResponse(
             deletionRequestedAt,
@@ -206,26 +200,26 @@ public class AuthController : BaseApiController
 
     private string GenerateJwtToken(User user)
     {
-        var secretKey = _configuration["Jwt:SecretKey"]
-            ?? throw new InvalidOperationException("Jwt:SecretKey is not configured.");
-        var issuer = _configuration["Jwt:Issuer"];
-        var audience = _configuration["Jwt:Audience"];
-        var expiryMinutes = int.Parse(_configuration["Jwt:ExpiryMinutes"] ?? "15");
+        var secretKey = configuration["Jwt:SecretKey"]
+                        ?? throw new InvalidOperationException("Jwt:SecretKey is not configured.");
+        var issuer = configuration["Jwt:Issuer"];
+        var audience = configuration["Jwt:Audience"];
+        var expiryMinutes = int.Parse(configuration["Jwt:ExpiryMinutes"] ?? "15");
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString(CultureInfo.InvariantCulture)),
             new Claim(JwtRegisteredClaimNames.Name, user.DisplayName),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
         var token = new JwtSecurityToken(
-            issuer: issuer,
-            audience: audience,
-            claims: claims,
+            issuer,
+            audience,
+            claims,
             expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
             signingCredentials: credentials);
 
@@ -245,16 +239,16 @@ public class AuthController : BaseApiController
             CreatedAt = DateTimeOffset.UtcNow
         };
 
-        _db.RefreshTokens.Add(refreshToken);
-        await _db.SaveChangesAsync();
+        db.RefreshTokens.Add(refreshToken);
+        await db.SaveChangesAsync();
 
         return tokenValue;
     }
 
     private ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
     {
-        var secretKey = _configuration["Jwt:SecretKey"]
-            ?? throw new InvalidOperationException("Jwt:SecretKey is not configured.");
+        var secretKey = configuration["Jwt:SecretKey"]
+                        ?? throw new InvalidOperationException("Jwt:SecretKey is not configured.");
 
         var tokenValidationParameters = new TokenValidationParameters
         {
@@ -262,8 +256,8 @@ public class AuthController : BaseApiController
             ValidateAudience = true,
             ValidateLifetime = false, // Allow expired tokens
             ValidateIssuerSigningKey = true,
-            ValidIssuer = _configuration["Jwt:Issuer"],
-            ValidAudience = _configuration["Jwt:Audience"],
+            ValidIssuer = configuration["Jwt:Issuer"],
+            ValidAudience = configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
         };
 
@@ -274,9 +268,7 @@ public class AuthController : BaseApiController
 
             if (securityToken is not JwtSecurityToken jwtToken ||
                 !jwtToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
-            {
                 return null;
-            }
 
             return principal;
         }

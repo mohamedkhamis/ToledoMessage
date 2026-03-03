@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using ToledoMessage.Services;
+using static Microsoft.VisualStudio.TestTools.UnitTesting.Assert;
 
 namespace ToledoMessage.Server.Tests.Services;
 
@@ -29,10 +30,13 @@ public class AccountDeletionHostedServiceTests
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
 
         await service.StartAsync(cts.Token);
+        // ReSharper disable once MethodSupportsCancellation
         await Task.Delay(200);
         await service.StopAsync(CancellationToken.None);
 
-        Assert.IsTrue(true);
+#pragma warning disable MSTEST0032
+        IsTrue(true);
+#pragma warning restore MSTEST0032
     }
 
     [TestMethod]
@@ -42,9 +46,11 @@ public class AccountDeletionHostedServiceTests
         using var cts = new CancellationTokenSource();
 
         await service.StartAsync(cts.Token);
-        cts.Cancel();
+        await cts.CancelAsync();
         await service.StopAsync(CancellationToken.None);
 
-        Assert.IsTrue(true);
+#pragma warning disable MSTEST0032
+        IsTrue(true);
+#pragma warning restore MSTEST0032
     }
 }

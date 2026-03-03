@@ -4,17 +4,48 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <base href="/" />
     <script>
         (function () {
-            function applyTheme() {
+            function getDesiredTheme() {
                 var t = localStorage.getItem('app.theme');
-                if (t) document.documentElement.setAttribute('data-theme', t);
-                else document.documentElement.removeAttribute('data-theme');
+                if (!t) {
+                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        return 'default-dark';
+                    }
+                    return null;
+                }
+                return t === 'default' ? null : t;
+            }
+            function applyTheme() {
+                var theme = getDesiredTheme();
+                if (theme) {
+                    document.documentElement.setAttribute('data-theme', theme);
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
             }
             applyTheme();
-            // Re-apply after Blazor enhanced navigation (server re-renders <html> without data-theme)
-            document.addEventListener('blazor:enhancedload', applyTheme);
+            // Re-apply after Blazor enhanced navigation
+// ReSharper disable  Html.EventNotResolved
+            document.addEventListener('blazor:enhancedload', function () {
+                applyTheme();
+                // Also re-apply after a frame in case Blazor patches DOM after the event
+                requestAnimationFrame(applyTheme);
+            });
+            // MutationObserver: catch Blazor stripping data-theme during DOM patching
+            var applying = false;
+            new MutationObserver(function () {
+                if (applying) return;
+                var theme = getDesiredTheme();
+                var current = document.documentElement.getAttribute('data-theme');
+                if (theme && current !== theme) {
+                    applying = true;
+                    document.documentElement.setAttribute('data-theme', theme);
+                    applying = false;
+                }
+            }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'lang'] });
         })();
     </script>
     <ResourcePreloader />
@@ -27,10 +58,12 @@
 
 <body>
     <Routes />
+    @* ReSharper disable  Html.PathError *@
     <script src="storage.js"></script>
     <script src="tab-leader.js"></script>
     <script src="notifications.js"></script>
     <script src="media-helpers.js"></script>
+    <script src="voice-recorder.js"></script>
     <script src="@Assets["_framework/blazor.web.js"]"></script>
 </body>
 

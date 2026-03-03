@@ -11,17 +11,8 @@ namespace ToledoMessage.Client.Services;
 /// Fetches the remote device's pre-key bundle, runs the X3DH initiator protocol,
 /// initializes a Double Ratchet session, and persists the ratchet state.
 /// </summary>
-public class SessionService
+public class SessionService(HttpClient http, LocalStorageService storage)
 {
-    private readonly HttpClient _http;
-    private readonly LocalStorageService _storage;
-
-    public SessionService(HttpClient http, LocalStorageService storage)
-    {
-        _http = http;
-        _storage = storage;
-    }
-
     /// <summary>
     /// Establishes a new encrypted session with the specified remote device (initiator side).
     /// Fetches the pre-key bundle from the server, performs X3DH, and initializes
@@ -34,7 +25,7 @@ public class SessionService
     public async Task<(DoubleRatchet session, X3dhInitiator.InitiationResult initiationResult)> EstablishSessionAsync(decimal userId, decimal deviceId)
     {
         // 1. Fetch pre-key bundle from server
-        var bundleResponse = await _http.GetFromJsonAsync<PreKeyBundleResponse>(
+        var bundleResponse = await http.GetFromJsonAsync<PreKeyBundleResponse>(
             $"/api/users/{userId}/prekey-bundle?deviceId={deviceId}")
             ?? throw new InvalidOperationException("Failed to fetch pre-key bundle from server.");
 
@@ -54,7 +45,7 @@ public class SessionService
 
         // 6. Store the remote device's identity public key for safety number verification
         var remoteIdentityKey = Convert.FromBase64String(bundleResponse.IdentityPublicKeyClassical);
-        await _storage.StoreAsync($"remote.identity.{deviceId}", remoteIdentityKey);
+        await storage.StoreAsync($"remote.identity.{deviceId}", remoteIdentityKey);
 
         return (session, result);
     }
@@ -76,18 +67,15 @@ public class SessionService
         decimal senderDeviceId)
     {
         // 1. Load private keys from local storage
-        var signedPreKeyPrivate = await _storage.GetAsync("signedPreKey.private")
+        var signedPreKeyPrivate = await storage.GetAsync("signedPreKey.private")
             ?? throw new InvalidOperationException("Signed pre-key private key not found in local storage.");
-        var signedPreKeyPublic = await _storage.GetAsync("signedPreKey.public")
+        var signedPreKeyPublic = await storage.GetAsync("signedPreKey.public")
             ?? throw new InvalidOperationException("Signed pre-key public key not found in local storage.");
-        var kyberPreKeyPrivate = await _storage.GetAsync("kyberPreKey.private")
+        var kyberPreKeyPrivate = await storage.GetAsync("kyberPreKey.private")
             ?? throw new InvalidOperationException("Kyber pre-key private key not found in local storage.");
 
         byte[]? oneTimePreKeyPrivate = null;
-        if (usedOneTimePreKeyId.HasValue)
-        {
-            oneTimePreKeyPrivate = await _storage.GetAsync($"otpk.{usedOneTimePreKeyId.Value}");
-        }
+        if (usedOneTimePreKeyId.HasValue) oneTimePreKeyPrivate = await storage.GetAsync($"otpk.{usedOneTimePreKeyId.Value}");
 
         // 2. Run X3DH responder protocol
         var (rootKey, chainKey) = X3dhResponder.Respond(
@@ -106,10 +94,7 @@ public class SessionService
         await SaveSessionAsync(senderDeviceId, session.GetState());
 
         // 5. Delete consumed one-time pre-key
-        if (usedOneTimePreKeyId.HasValue)
-        {
-            await _storage.DeleteAsync($"otpk.{usedOneTimePreKeyId.Value}");
-        }
+        if (usedOneTimePreKeyId.HasValue) await storage.DeleteAsync($"otpk.{usedOneTimePreKeyId.Value}");
 
         return session;
     }
@@ -120,7 +105,7 @@ public class SessionService
     /// <returns>The restored <see cref="DoubleRatchet"/> session, or null if no session exists.</returns>
     public async Task<DoubleRatchet?> LoadSessionAsync(decimal deviceId)
     {
-        var stateBytes = await _storage.GetAsync(SessionKey(deviceId));
+        var stateBytes = await storage.GetAsync(SessionKey(deviceId));
         if (stateBytes is null)
             return null;
 
@@ -139,7 +124,7 @@ public class SessionService
     {
         var stateJson = JsonSerializer.Serialize(state);
         var stateBytes = Encoding.UTF8.GetBytes(stateJson);
-        await _storage.StoreAsync(SessionKey(deviceId), stateBytes);
+        await storage.StoreAsync(SessionKey(deviceId), stateBytes);
     }
 
     /// <summary>
@@ -147,7 +132,7 @@ public class SessionService
     /// </summary>
     public Task<bool> HasSessionAsync(decimal deviceId)
     {
-        return _storage.ContainsKeyAsync(SessionKey(deviceId));
+        return storage.ContainsKeyAsync(SessionKey(deviceId));
     }
 
     /// <summary>
@@ -171,5 +156,8 @@ public class SessionService
         };
     }
 
-    private static string SessionKey(decimal deviceId) => $"session.{deviceId}";
+    private static string SessionKey(decimal deviceId)
+    {
+        return $"session.{deviceId}";
+    }
 }

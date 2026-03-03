@@ -896,12 +896,9 @@ label {
 
 /* ============ Enhanced Component Styles (WhatsApp/Telegram/Signal style) ============ */
 
-/* Enhanced message bubbles with subtle polish */
+/* Enhanced message bubbles */
 .message-bubble {
-    transition: transform 0.1s ease-out;
-}
-.message-bubble:hover {
-    transform: scale(1.01);
+    transition: background 0.15s;
 }
 
 /* Refined input area */
@@ -1229,36 +1226,76 @@ label {
     transform: scale(0.9);
 }
 
-/* Message actions button */
-.message-actions {
+/* Quick reply button (inside bubble, WhatsApp-style) */
+.msg-quick-reply {
     position: absolute;
-    right: -40px;
-    top: 50%;
-    transform: translateY(-50%);
-    display: none;
+    top: 4px;
+    opacity: 0;
+    pointer-events: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
     background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-    padding: 2px;
-    z-index: 50;
-}
-.message-row:hover .message-actions {
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    cursor: pointer;
     display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    padding: 0;
+    transition: opacity 0.15s, background 0.12s, transform 0.12s;
+    z-index: 10;
+    touch-action: manipulation;
 }
+/* Position: outside bubble edge */
+.message-bubble.mine .msg-quick-reply { left: -14px; }
+.message-bubble.theirs .msg-quick-reply { right: -14px; }
+/* Desktop hover */
+.message-row:hover .msg-quick-reply {
+    opacity: 1;
+    pointer-events: auto;
+}
+/* Mobile: show on tap (bubble touch) */
+@media (hover: none) {
+    .message-bubble:active .msg-quick-reply,
+    .message-bubble:focus-within .msg-quick-reply {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+.msg-quick-reply:hover {
+    background: var(--hover-bg);
+    color: var(--accent);
+    transform: scale(1.1);
+}
+.msg-quick-reply:active {
+    transform: scale(0.95);
+}
+
+/* Header / toolbar action buttons (search, menu, close) */
 .msg-action-btn {
     background: none;
     border: none;
     color: var(--text-secondary);
-    padding: 6px 8px;
+    padding: 6px;
     cursor: pointer;
     font-size: 1.1em;
-    border-radius: 4px;
-    transition: all 0.15s;
+    border-radius: 50%;
+    transition: background 0.12s, color 0.12s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+    touch-action: manipulation;
 }
 .msg-action-btn:hover {
     background: var(--hover-bg);
     color: var(--accent);
+}
+.msg-action-btn:active {
+    transform: scale(0.93);
 }
 
 /* Enhanced message meta */
@@ -2315,13 +2352,7 @@ h1:focus { outline: none; }
     .send-btn, .mic-btn { width: 38px; height: 38px; min-width: 38px; }
     .chat-input-row { gap: 4px; }
     .emoji-picker-popup { width: 100vw; left: 0; right: 0; border-radius: 12px 12px 0 0; }
-    .voice-recorder-bar { min-height: 40px; border-radius: 20px; padding: 6px 10px; }
-    .wave-bar { width: 1.5px; }
-    .voice-waveform { gap: 1px; }
-    .voice-waveform-static { gap: 1px; }
-    .wave-bar-static { width: 1.5px; }
-    .recording-timer { font-size: 0.8rem; }
-    .slide-hint { display: none; }
+    /* Voice recorder: handled by vr-* responsive rules */
     .message-text.emoji-only { font-size: 1.8rem; }
 }
 
@@ -3045,45 +3076,7 @@ html[data-font-size="large"] { font-size: 17px; }
     flex-shrink: 0;
 }
 
-/* ============ Message action buttons ============ */
-.message-actions {
-    position: absolute;
-    top: 4px;
-    opacity: 0;
-    display: flex;
-    gap: 2px;
-    transition: opacity 0.15s;
-}
-.message-row:hover .message-actions,
-.message-actions.visible {
-    opacity: 1;
-}
-.message-row.mine .message-actions {
-    left: -28px;
-}
-.message-row:not(.mine) .message-actions {
-    right: -28px;
-}
-.msg-action-btn {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    border: none;
-    background: var(--card-bg);
-    box-shadow: var(--shadow);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8em;
-    color: var(--text-secondary);
-    padding: 0;
-    transition: background 0.12s;
-}
-.msg-action-btn:hover {
-    background: var(--hover-bg);
-    color: var(--text-primary);
-}
+/* message-actions: replaced by .msg-quick-reply inside bubble */
 
 /* ============ Presence / Online Status ============ */
 .presence-dot {
@@ -3108,88 +3101,14 @@ html[data-font-size="large"] { font-size: 17px; }
     color: var(--success);
 }
 
-/* ============ Voice Recorder ============ */
-
-/* Shared action button */
-.voice-action-btn {
-    border: none;
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background 0.15s, transform 0.1s, opacity 0.15s;
-    flex-shrink: 0;
-}
-.voice-action-btn:active {
-    transform: scale(0.9);
-}
-
-/* Delete / cancel button */
-.voice-delete-btn {
-    background: transparent;
-    color: var(--text-secondary);
-}
-.voice-delete-btn:hover {
-    color: var(--danger);
-    background: rgba(255, 59, 48, 0.08);
-}
-
-/* Send button — prominent green like WhatsApp */
-.voice-send-btn {
-    background: #00a884;
-    color: #fff;
-    width: 42px;
-    height: 42px;
-    min-width: 42px;
-    box-shadow: 0 2px 8px rgba(0, 168, 132, 0.35);
-}
-.voice-send-btn:hover {
-    background: #008f72;
-}
-
-/* Stop recording button */
-.voice-stop-btn {
-    background: var(--danger);
-    color: #fff;
-    width: 42px;
-    height: 42px;
-    min-width: 42px;
-    box-shadow: 0 2px 8px rgba(255, 59, 48, 0.3);
-}
-.voice-stop-btn:hover {
-    opacity: 0.85;
-}
-
-/* Play/pause toggle */
-.voice-play-btn {
-    background: var(--accent);
-    color: #fff;
-}
-.voice-play-btn:hover {
-    opacity: 0.85;
-}
-
-/* Timer label */
-.voice-timer {
-    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
-    font-size: 0.8em;
-    color: var(--text-secondary);
-    min-width: 40px;
-    text-align: center;
-    flex-shrink: 0;
-    letter-spacing: 0.02em;
-}
+/* ============ Voice Recorder (WhatsApp-style) ============ */
 
 /* Mic button (in message input) */
 .mic-btn {
     border-radius: 50%;
-    width: 42px;
-    height: 42px;
-    min-width: 42px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
     padding: 0;
     display: flex;
     align-items: center;
@@ -3200,168 +3119,218 @@ html[data-font-size="large"] { font-size: 17px; }
     cursor: pointer;
     transition: background 0.15s, color 0.15s;
     flex-shrink: 0;
+    touch-action: manipulation;
 }
 .mic-btn:hover {
     color: var(--accent);
     background: var(--hover-bg);
 }
 
-/* --- Voice Recorder Bar (shared base) --- */
-.voice-recorder-bar {
+/* --- Bar (shared base for recording & preview) --- */
+.vr-bar {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 4px 6px;
-    background: var(--card-bg);
-    border-radius: 28px;
+    gap: 10px;
+    padding: 6px 8px;
+    background: var(--input-bg, var(--bg-secondary));
+    border: 1px solid var(--border);
+    border-radius: 24px;
     flex: 1;
-    min-height: 48px;
-}
-.voice-recorder-bar.recording-phase {
-    background: var(--hover-bg);
-    border: 1px solid var(--border);
-}
-.voice-recorder-bar.preview-phase {
-    background: var(--hover-bg);
-    border: 1px solid var(--border);
+    min-height: 46px;
+    max-height: 52px;
 }
 
-/* --- Recording Phase --- */
-.recording-indicator-pulse {
-    position: relative;
-    width: 12px;
-    height: 12px;
+/* --- Shared button base --- */
+.vr-btn {
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
     flex-shrink: 0;
+    transition: background 0.15s, transform 0.1s;
+    touch-action: manipulation;
+    padding: 0;
 }
-.recording-dot {
-    position: absolute;
-    top: 1px;
-    left: 1px;
-    width: 10px;
-    height: 10px;
+.vr-btn:active { transform: scale(0.9); }
+
+/* Trash/cancel */
+.vr-btn-trash {
+    width: 34px; height: 34px; min-width: 34px;
+    background: transparent;
+    color: var(--text-secondary);
+}
+.vr-btn-trash:hover {
+    color: var(--danger);
+    background: rgba(239, 68, 68, 0.08);
+}
+
+/* Stop recording */
+.vr-btn-stop {
+    width: 38px; height: 38px; min-width: 38px;
+    background: #ef4444;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+}
+.vr-btn-stop:hover { background: #dc2626; }
+
+/* Play/pause */
+.vr-btn-play {
+    width: 34px; height: 34px; min-width: 34px;
+    background: var(--accent);
+    color: #fff;
+}
+.vr-btn-play:hover { opacity: 0.85; }
+
+/* Send — WhatsApp green */
+.vr-btn-send {
+    width: 40px; height: 40px; min-width: 40px;
+    background: #00a884;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(0, 168, 132, 0.3);
+}
+.vr-btn-send:hover { background: #008f72; }
+
+/* Timer */
+.vr-time {
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.78em;
+    color: var(--text-secondary);
+    min-width: 32px;
+    text-align: center;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* --- Recording phase --- */
+.vr-rec-indicator {
+    width: 10px; height: 10px;
+    flex-shrink: 0;
+    position: relative;
+}
+.vr-rec-dot {
+    width: 10px; height: 10px;
     border-radius: 50%;
     background: #ef4444;
-    animation: rec-dot-pulse 1.5s ease-in-out infinite;
+    display: block;
+    animation: vr-pulse 1.4s ease-in-out infinite;
 }
-@keyframes rec-dot-pulse {
-    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
-    50% { opacity: 0.6; box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+@keyframes vr-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
 }
 
-/* Live waveform bars */
-.voice-waveform {
+/* Live waveform */
+.vr-wave-live {
     display: flex;
     align-items: center;
     gap: 2px;
-    height: 32px;
+    height: 28px;
     flex: 1;
     overflow: hidden;
 }
-.voice-waveform .wave-bar {
+.vr-bar-live {
     width: 2.5px;
     background: var(--accent);
     border-radius: 2px;
     min-height: 3px;
-    opacity: 0.7;
-    animation: wave-live 0.6s ease-in-out infinite alternate;
+    opacity: 0.65;
+    animation: vr-wave 0.5s ease-in-out infinite alternate;
 }
-@keyframes wave-live {
+@keyframes vr-wave {
     from { height: 3px; }
-    to { height: 24px; }
+    to { height: 22px; }
 }
 
-/* "Slide to cancel" hint */
-.slide-hint {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.75em;
-    color: var(--text-secondary);
-    opacity: 0.6;
-    flex-shrink: 0;
-    animation: slide-hint-pulse 2s ease-in-out infinite;
-    white-space: nowrap;
-}
-@keyframes slide-hint-pulse {
-    0%, 100% { opacity: 0.6; }
-    50% { opacity: 0.3; }
-}
-
-/* --- Preview Phase --- */
-.voice-preview-track {
+/* --- Preview phase --- */
+.vr-track {
     flex: 1;
     position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
     min-width: 0;
+    height: 28px;
+    display: flex;
+    align-items: center;
 }
-.voice-preview-track .voice-progress {
+.vr-seek {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
     opacity: 0;
     cursor: pointer;
     z-index: 2;
     margin: 0;
+    -webkit-appearance: none;
+    appearance: none;
+    touch-action: manipulation;
+}
+.vr-seek::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 28px;
+    background: transparent;
+    cursor: pointer;
+}
+.vr-seek::-moz-range-thumb {
+    width: 14px; height: 28px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
 }
 
-/* Static waveform visualization */
-.voice-waveform-static {
+/* Static waveform */
+.vr-wave-static {
     display: flex;
     align-items: center;
     gap: 1.5px;
-    height: 32px;
+    height: 28px;
+    width: 100%;
     overflow: hidden;
 }
-.wave-bar-static {
+.vr-bar-static {
     width: 2.5px;
     min-height: 3px;
     background: var(--border);
     border-radius: 2px;
-    transition: background 0.15s;
+    transition: background 0.12s;
     flex-shrink: 0;
 }
-.wave-bar-static.played {
+.vr-bar-static.played {
     background: var(--accent);
 }
 
-/* Progress slider (hidden, overlays waveform) */
-.voice-progress {
-    -webkit-appearance: none;
-    appearance: none;
-    flex: 1;
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    outline: none;
-    cursor: pointer;
-}
-.voice-progress::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 0;
-    height: 0;
-    border: none;
-    cursor: pointer;
-}
-.voice-progress::-moz-range-thumb {
-    width: 0;
-    height: 0;
-    border: none;
-    cursor: pointer;
-}
-.voice-progress::-webkit-slider-runnable-track {
-    height: 4px;
-    border-radius: 2px;
-}
-    .voice-progress::-webkit-slider-runnable-track {
-        height: 4px;
-        border-radius: 2px;
-        background: var(--border);
+/* --- Mobile (<=480px) --- */
+@media (max-width: 480px) {
+    .vr-bar {
+        gap: 6px;
+        padding: 4px 6px;
+        min-height: 42px;
+        border-radius: 21px;
     }
+    .vr-btn-trash { width: 30px; height: 30px; min-width: 30px; }
+    .vr-btn-stop { width: 34px; height: 34px; min-width: 34px; }
+    .vr-btn-play { width: 30px; height: 30px; min-width: 30px; }
+    .vr-btn-send { width: 36px; height: 36px; min-width: 36px; }
+    .vr-time { font-size: 0.72em; min-width: 28px; }
+    .vr-wave-live { gap: 1.5px; height: 24px; }
+    .vr-bar-live { width: 2px; }
+    .vr-wave-static { gap: 1px; height: 24px; }
+    .vr-bar-static { width: 2px; }
+}
+
+/* --- Tablet (481-768px) --- */
+@media (min-width: 481px) and (max-width: 768px) {
+    .vr-bar { gap: 8px; }
+}
+
+/* --- Landscape phones --- */
+@media (max-height: 500px) and (orientation: landscape) {
+    .vr-bar {
+        min-height: 38px;
+        max-height: 42px;
+        padding: 3px 6px;
+    }
+    .vr-wave-live, .vr-wave-static { height: 20px; }
+}
 
 /* ============ Link Preview ============ */
 .link-preview-card {

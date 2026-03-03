@@ -1178,14 +1178,17 @@
         _showContextMenu = false;
     }
 
-    private static string FormatReplyText(ChatMessage msg) => msg.ContentType switch
+    private static string FormatReplyText(ChatMessage msg)
     {
-        ContentType.Image => "[Image]",
-        ContentType.Audio => "[Voice message]",
-        ContentType.Video => "[Video]",
-        ContentType.File => $"[File: {msg.FileName ?? "file"}]",
-        _ => msg.Text.Length > 80 ? msg.Text[..80] + "..." : msg.Text
-    };
+        return msg.ContentType switch
+        {
+            ContentType.Image => "[Image]",
+            ContentType.Audio => "[Voice message]",
+            ContentType.Video => "[Video]",
+            ContentType.File => $"[File: {msg.FileName ?? "file"}]",
+            _ => msg.Text.Length > 80 ? msg.Text[..80] + "..." : msg.Text
+        };
+    }
 
     private void CancelReply()
     {

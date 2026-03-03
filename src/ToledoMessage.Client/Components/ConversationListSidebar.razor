@@ -163,7 +163,6 @@
             _isLoading = false;
         }
 
-        await UpdateMobileLayout();
     }
 
     private async Task LoadConversations()
@@ -188,51 +187,11 @@
         return _currentPath.Equals($"/chat/{conversationId}", StringComparison.OrdinalIgnoreCase);
     }
 
-    private bool IsInChatPage()
-    {
-        var path = _currentPath.TrimEnd('/');
-        if (!path.StartsWith("/chat/", StringComparison.OrdinalIgnoreCase))
-            return false;
-        var segment = path["/chat/".Length..];
-        return decimal.TryParse(segment, out _);
-    }
-
     // ReSharper disable  AsyncVoidEventHandlerMethod
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         _currentPath = new Uri(e.Location).AbsolutePath;
         await InvokeAsync(StateHasChanged);
-        await UpdateMobileLayout();
-    }
-
-    private async Task UpdateMobileLayout()
-    {
-        var inChat = IsInChatPage();
-        var jsCode = "(function(){" +
-            "var s=document.getElementById('chat-sidebar');" +
-            "var p=document.getElementById('chat-panel');" +
-            $"if(s)s.classList.{(inChat ? "add" : "remove")}('hide-mobile');" +
-            $"if(p)p.classList.{(inChat ? "add" : "remove")}('show-mobile');" +
-            "})()";
-
-        try
-        {
-            await Js.InvokeVoidAsync("eval", jsCode);
-        }
-        catch
-        {
-            // Retry once after 100ms — iOS Safari + Blazor WASM interop has timing issues
-            try
-            {
-                await Task.Delay(100);
-                await Js.InvokeVoidAsync("eval", jsCode);
-            }
-            catch
-            {
-                // Still failed — log and continue. Panel switching may need manual refresh.
-                Console.WriteLine($"[ConversationListSidebar] UpdateMobileLayout failed. inChat={inChat}, path={_currentPath}");
-            }
-        }
     }
 
     private void OnSearchInput(ChangeEventArgs e)

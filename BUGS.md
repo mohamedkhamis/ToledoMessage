@@ -13,6 +13,9 @@
 
 ## Resolved Bugs
 
+### ~~BUG-DEV-001: Stale devices accumulate on every login cycle~~ FIXED 2026-03-03
+Server now deactivates existing device with the same name before creating a new one in DevicesController.cs. Prevents device accumulation across logout/login cycles. Login.razor also shows real server error body instead of generic "Device registration failed".
+
 ### ~~BUG-FS-001: Reply text formatting inconsistent across code paths~~ FIXED 2026-03-03
 Extracted shared `FormatReplyText()` helper method and applied it to all 3 code paths in Chat.razor (SetReplyTo, optimistic send, SignalR incoming). All paths now consistently show "[Voice message]", "[File: name.pdf]", etc.
 

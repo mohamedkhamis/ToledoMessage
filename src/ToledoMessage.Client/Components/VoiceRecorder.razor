@@ -3,76 +3,70 @@
 
 @if (_phase == Phase.Recording)
 {
-    <div class="voice-recorder-bar recording-phase">
-        <button class="voice-action-btn voice-delete-btn" @onclick="Cancel" title="Cancel recording">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <div class="vr-bar vr-recording">
+        <button class="vr-btn vr-btn-trash" @onclick="Cancel" title="Cancel recording" aria-label="Cancel recording">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="3 6 5 6 21 6"/>
                 <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
             </svg>
         </button>
-        <div class="recording-indicator-pulse">
-            <div class="recording-dot"></div>
+        <div class="vr-rec-indicator">
+            <span class="vr-rec-dot"></span>
         </div>
-        <span class="voice-timer">@FormatDuration(_elapsedSeconds)</span>
-        <div class="voice-waveform">
-            @for (var i = 0; i < 20; i++)
+        <span class="vr-time">@FormatDuration(_elapsedSeconds)</span>
+        <div class="vr-wave-live">
+            @for (var i = 0; i < 24; i++)
             {
-                <span class="wave-bar" style="animation-delay: @(i * 0.06)s"></span>
+                <span class="vr-bar-live" style="animation-delay: @(i * 0.05)s"></span>
             }
         </div>
-        <span class="slide-hint">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="15 18 9 12 15 6"/>
-            </svg>
-            Slide to cancel
-        </span>
-        <button class="voice-action-btn voice-stop-btn" @onclick="StopRecording" title="Stop recording">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="4" y="4" width="16" height="16" rx="3"/>
+        <button class="vr-btn vr-btn-stop" @onclick="StopRecording" title="Stop recording" aria-label="Stop recording">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="5" y="5" width="14" height="14" rx="2"/>
             </svg>
         </button>
     </div>
 }
 else if (_phase == Phase.Preview)
 {
-    <div class="voice-recorder-bar preview-phase">
-        <button class="voice-action-btn voice-delete-btn" @onclick="Delete" title="Delete recording">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <div class="vr-bar vr-preview">
+        <button class="vr-btn vr-btn-trash" @onclick="Delete" title="Delete recording" aria-label="Delete recording">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="3 6 5 6 21 6"/>
                 <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
             </svg>
         </button>
-        <button class="voice-action-btn voice-play-btn" @onclick="TogglePlayback" title="@(_isPlaying ? "Pause" : "Play")">
+        <button class="vr-btn vr-btn-play" @onclick="TogglePlayback" title="@(_isPlaying ? "Pause" : "Play")" aria-label="@(_isPlaying ? "Pause" : "Play")">
             @if (_isPlaying)
             {
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                     <rect x="6" y="4" width="4" height="16" rx="1"/>
                     <rect x="14" y="4" width="4" height="16" rx="1"/>
                 </svg>
             }
             else
             {
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M8 5v14l11-7z"/>
                 </svg>
             }
         </button>
-        <div class="voice-preview-track">
-            <input type="range" class="voice-progress" min="0" max="@_previewDuration.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
+        <div class="vr-track">
+            <input type="range" class="vr-seek" min="0" max="@_previewDuration.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
                    step="0.1" value="@_previewCurrentTime.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
-                   @oninput="OnSeek" />
-            <div class="voice-waveform-static">
+                   @oninput="OnSeek" aria-label="Seek" />
+            <div class="vr-wave-static">
                 @for (var i = 0; i < 40; i++)
                 {
                     var height = GetWaveBarHeight(i);
                     var played = _previewDuration > 0 && (i / 40.0) <= (_previewCurrentTime / _previewDuration);
-                    <span class="wave-bar-static @(played ? "played" : "")" style="height: @(height)px"></span>
+                    <span class="vr-bar-static @(played ? "played" : "")" style="height: @(height)px"></span>
                 }
             </div>
         </div>
-        <span class="voice-timer">@FormatDuration(_previewDuration > 0 ? (int)Math.Ceiling(_previewCurrentTime) : 0) / @FormatDuration((int)Math.Ceiling(_previewDuration))</span>
-        <button class="voice-action-btn voice-send-btn" @onclick="Send" title="Send voice message">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <span class="vr-time">@FormatDuration(_previewDuration > 0 ? (int)Math.Ceiling(_previewCurrentTime) : 0) / @FormatDuration((int)Math.Ceiling(_previewDuration))</span>
+        <button class="vr-btn vr-btn-send" @onclick="Send" title="Send voice message" aria-label="Send voice message">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
             </svg>
         </button>

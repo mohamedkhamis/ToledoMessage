@@ -14,6 +14,7 @@
 <div class="panel-content-scroll">
 <div class="settings-page">
     <div class="settings-header">
+        <button class="back-link back-link-desktop-hidden" @onclick="GoBackToChat" aria-label="Back to conversations">&larr;</button>
         <h2>@Theme.Labels.SettingsLabel</h2>
     </div>
 
@@ -222,6 +223,12 @@
     private decimal _currentDeviceId;
     private bool _isLoading = true;
     private string? _errorMessage;
+
+    private void GoBackToChat()
+    {
+        Navigation.NavigateTo("/chat");
+    }
+
     private string? _successMessage;
     private decimal? _unlinkingDeviceId;
     private string _currentTheme = "default";
@@ -247,7 +254,10 @@
         Theme.OnThemeChanged += OnThemeChanged;
     }
 
-    private void OnThemeChanged() => InvokeAsync(StateHasChanged);
+    private void OnThemeChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
 
     public void Dispose()
     {

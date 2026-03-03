@@ -1,11 +1,50 @@
 @inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@implements IDisposable
 
 <div class="chat-app-shell">
-    <div class="chat-sidebar" id="chat-sidebar">
+    <div class="chat-sidebar @(IsInPanel() ? "hide-mobile" : "")" id="chat-sidebar">
         <ConversationListSidebar @rendermode="@(new InteractiveWebAssemblyRenderMode(prerender: false))" />
     </div>
-    <div class="chat-panel" id="chat-panel">
+    <div class="chat-panel @(IsInPanel() ? "show-mobile" : "")" id="chat-panel">
         @Body
     </div>
 </div>
 <ToastContainer />
+
+@code {
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private bool IsInPanel()
+    {
+        var path = new Uri(Navigation.Uri).AbsolutePath.TrimEnd('/');
+
+        // These pages render in the right panel — hide sidebar on mobile
+        if (path.Equals("/settings", StringComparison.OrdinalIgnoreCase) ||
+            path.Equals("/new-conversation", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/security/", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        // /chat/{id} — individual chat
+        if (path.StartsWith("/chat/", StringComparison.OrdinalIgnoreCase))
+        {
+            var segment = path["/chat/".Length..];
+            return decimal.TryParse(segment, out _);
+        }
+
+        return false;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

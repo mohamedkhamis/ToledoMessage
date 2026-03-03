@@ -191,7 +191,8 @@
 
             if (!deviceResponse.IsSuccessStatusCode)
             {
-                _errorMessage = "Device registration failed.";
+                var errorBody = await deviceResponse.Content.ReadAsStringAsync();
+                _errorMessage = $"Device registration failed: {errorBody}";
                 return;
             }
 

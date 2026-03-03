@@ -27,6 +27,17 @@
 .PARAMETER JwtSecretKey
     JWT signing key (min 32 chars). Required for Deploy.
 
+.PARAMETER Domain
+    Custom domain for HTTPS binding (e.g., "chat.khamis.work").
+    When set, adds an HTTPS binding alongside the HTTP one.
+
+.PARAMETER CertThumbprint
+    SSL certificate thumbprint for HTTPS binding. Required when Domain is set.
+    Must exist in Cert:\LocalMachine\My.
+
+.PARAMETER HttpsPort
+    HTTPS port. Default: 443
+
 .PARAMETER Force
     Skip confirmation prompts.
 
@@ -35,6 +46,9 @@
 
 .EXAMPLE
     .\deploy-iis.ps1 -Port 8085 -JwtSecretKey "my-key-32-chars-long!!"
+
+.EXAMPLE
+    .\deploy-iis.ps1 -Domain "chat.khamis.work" -CertThumbprint "AB12CD..." -JwtSecretKey "my-key!!"
 
 .EXAMPLE
     .\deploy-iis.ps1 -Action Status
@@ -59,6 +73,12 @@ param(
     [string]$ConnectionString = "",
 
     [string]$JwtSecretKey = "TjstMZVqlbv1ibCozYAKKSVa_HfyMtH7Nh7Ohh9XtnSgZtdzvWfsmAPsvGcvQj58",
+
+    [string]$Domain = "",
+
+    [string]$CertThumbprint = "",
+
+    [int]$HttpsPort = 443,
 
     [switch]$Force
 )
@@ -236,10 +256,19 @@ function Write-AppSettingsProduction {
         [string]$OutputPath,
         [string]$ConnStr,
         [string]$JwtKey,
-        [int]$PortNum = 8080
+        [int]$PortNum = 8080,
+        [string]$DomainName = ""
     )
 
     $settingsPath = Join-Path $OutputPath "appsettings.Production.json"
+
+    # CORS origin: use domain if configured, otherwise localhost
+    if ($DomainName) {
+        $corsOrigin = "https://$DomainName"
+    } else {
+        $corsOrigin = "http://localhost:$PortNum"
+    }
+
     $settings = @{
         ConnectionStrings = @{
             DefaultConnection = $ConnStr
@@ -250,7 +279,7 @@ function Write-AppSettingsProduction {
             Audience = "ToledoMessage"
         }
         Cors = @{
-            AllowedOrigins = @("http://localhost:$PortNum")
+            AllowedOrigins = @($corsOrigin)
         }
         Logging = @{
             LogLevel = @{
@@ -260,7 +289,7 @@ function Write-AppSettingsProduction {
         }
     }
     $settings | ConvertTo-Json -Depth 4 | Set-Content -Path $settingsPath -Encoding UTF8
-    Write-Ok "appsettings.Production.json written (in publish dir, not source)"
+    Write-Ok "appsettings.Production.json written (CORS origin: $corsOrigin)"
 }
 
 function Setup-AppPool {
@@ -290,7 +319,10 @@ function Setup-Site {
         [string]$Name,
         [string]$PoolName,
         [int]$PortNum,
-        [string]$PhysicalPath
+        [string]$PhysicalPath,
+        [string]$DomainName = "",
+        [string]$SslThumbprint = "",
+        [int]$SslPort = 443
     )
 
     $mgr = Get-IISServerManager
@@ -307,6 +339,18 @@ function Setup-Site {
     $site = $mgr.Sites.Add($Name, "http", "*:${PortNum}:", $PhysicalPath)
     $site.ApplicationDefaults.ApplicationPoolName = $PoolName
     $site.Applications["/"].ApplicationPoolName = $PoolName
+
+    # Add HTTPS binding if domain and certificate are provided
+    if ($DomainName -and $SslThumbprint) {
+        Write-Step "Adding HTTPS binding for $DomainName on port $SslPort..."
+        $certBytes = [byte[]]@(
+            for ($i = 0; $i -lt $SslThumbprint.Length; $i += 2) {
+                [Convert]::ToByte($SslThumbprint.Substring($i, 2), 16)
+            }
+        )
+        $site.Bindings.Add("*:${SslPort}:${DomainName}", $certBytes, "My", 1)  # 1 = SslFlags.Sni
+        Write-Ok "HTTPS binding added: https://${DomainName}:${SslPort}"
+    }
 
     $mgr.CommitChanges()
     Write-Ok "Site '$Name' bound to http://localhost:$PortNum"
@@ -372,6 +416,26 @@ function Invoke-Deploy {
         exit 1
     }
 
+    # Validate domain + certificate
+    if ($Domain -and -not $CertThumbprint) {
+        Write-Warn "-Domain is set but -CertThumbprint is missing. HTTPS binding will be skipped."
+        Write-Info "To add HTTPS, provide -CertThumbprint with a certificate from Cert:\LocalMachine\My"
+    }
+    if ($CertThumbprint) {
+        $cleanThumb = $CertThumbprint.Replace(" ", "").ToUpper()
+        $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.Thumbprint -eq $cleanThumb }
+        if (-not $cert) {
+            Write-Err "Certificate with thumbprint '$cleanThumb' not found in Cert:\LocalMachine\My."
+            Write-Info "Available certificates:"
+            Get-ChildItem Cert:\LocalMachine\My | ForEach-Object {
+                Write-Info "  $($_.Thumbprint)  $($_.Subject)  Expires: $($_.NotAfter)"
+            }
+            exit 1
+        }
+        $CertThumbprint = $cleanThumb
+        Write-Ok "SSL certificate found: $($cert.Subject) (expires $($cert.NotAfter))"
+    }
+
     # Resolve connection string
     $connStr = $ConnectionString
     if ([string]::IsNullOrWhiteSpace($connStr)) {
@@ -403,7 +467,16 @@ function Invoke-Deploy {
         Write-Host "  Deployment Summary" -ForegroundColor White
         Write-Host "  --------------------------------------"
         Write-Info "  Site Name:    $SiteName"
-        Write-Info "  Port:         $selectedPort"
+        Write-Info "  HTTP Port:    $selectedPort"
+        if ($Domain) {
+            Write-Info "  Domain:       $Domain"
+            Write-Info "  HTTPS Port:   $HttpsPort"
+            if ($CertThumbprint) {
+                Write-Info "  SSL Cert:     $CertThumbprint"
+            } else {
+                Write-Host "  SSL Cert:     (none - HTTPS binding skipped)" -ForegroundColor Yellow
+            }
+        }
         Write-Info "  Publish Path: $PublishPath"
         Write-Info "  Environment:  $Environment"
         Write-Info "  Conn String:  $connStr"
@@ -429,13 +502,14 @@ function Invoke-Deploy {
     Write-WebConfig -OutputPath $PublishPath -Env $Environment
 
     # appsettings.Production.json
-    Write-AppSettingsProduction -OutputPath $PublishPath -ConnStr $connStr -JwtKey $JwtSecretKey -PortNum $selectedPort
+    Write-AppSettingsProduction -OutputPath $PublishPath -ConnStr $connStr -JwtKey $JwtSecretKey -PortNum $selectedPort -DomainName $Domain
 
     # App Pool
     Setup-AppPool -Name $SiteName
 
     # Site
-    Setup-Site -Name $SiteName -PoolName $SiteName -PortNum $selectedPort -PhysicalPath $PublishPath
+    Setup-Site -Name $SiteName -PoolName $SiteName -PortNum $selectedPort -PhysicalPath $PublishPath `
+        -DomainName $Domain -SslThumbprint $CertThumbprint -SslPort $HttpsPort
 
     # Folder permissions
     Set-FolderPermissions -Path $PublishPath -PoolName $SiteName
@@ -449,10 +523,13 @@ function Invoke-Deploy {
     Write-Host "  Deployment complete!" -ForegroundColor Green
     Write-Host "  =============================================" -ForegroundColor Green
     Write-Host ""
-    Write-Info "  App:     http://localhost:$selectedPort"
-    Write-Info "  API:     http://localhost:$selectedPort/api/auth/login"
-    Write-Info "  SignalR:  http://localhost:$selectedPort/hubs/chat"
-    Write-Info "  Logs:    $PublishPath\logs\stdout*.log"
+    if ($Domain -and $CertThumbprint) {
+        Write-Host "  App:      https://$Domain" -ForegroundColor Cyan
+        Write-Host "  API:      https://$Domain/api/auth/login" -ForegroundColor Cyan
+        Write-Host "  SignalR:  https://$Domain/hubs/chat" -ForegroundColor Cyan
+    }
+    Write-Info "  HTTP:     http://localhost:$selectedPort"
+    Write-Info "  Logs:     $PublishPath\logs\stdout*.log"
     Write-Host ""
 
     # SQL Server instructions
@@ -558,9 +635,31 @@ function Invoke-Status {
         Write-Host "  Site:      $SiteName - $($site.State)" -ForegroundColor $siteColor
 
         foreach ($binding in $site.Bindings) {
-            $info = $binding.BindingInformation   # e.g. "*:8080:"
-            $bPort = ($info -split ":")[1]
-            Write-Host "  URL:       http://localhost:$bPort" -ForegroundColor Cyan
+            $info = $binding.BindingInformation   # e.g. "*:8080:" or "*:443:chat.khamis.work"
+            $parts = $info -split ":"
+            $bPort = $parts[1]
+            $bHost = if ($parts.Length -ge 3) { $parts[2] } else { "" }
+
+            if ($binding.Protocol -eq "https") {
+                $url = "https://$bHost"
+                if ($bPort -ne "443") { $url += ":$bPort" }
+                Write-Host "  HTTPS:     $url" -ForegroundColor Cyan
+
+                # Show certificate info
+                $certHash = $binding.CertificateHash
+                if ($certHash) {
+                    $thumbprint = ($certHash | ForEach-Object { "{0:X2}" -f $_ }) -join ""
+                    $cert = Get-ChildItem Cert:\LocalMachine\My -ErrorAction SilentlyContinue |
+                        Where-Object { $_.Thumbprint -eq $thumbprint }
+                    if ($cert) {
+                        Write-Host "  SSL Cert:  $($cert.Subject) (expires $($cert.NotAfter.ToString('yyyy-MM-dd')))" -ForegroundColor Gray
+                    } else {
+                        Write-Host "  SSL Cert:  $thumbprint - NOT FOUND IN STORE!" -ForegroundColor Red
+                    }
+                }
+            } else {
+                Write-Host "  HTTP:      http://localhost:$bPort" -ForegroundColor Cyan
+            }
         }
     } else {
         Write-Host "  Site:      $SiteName - NOT FOUND" -ForegroundColor Red

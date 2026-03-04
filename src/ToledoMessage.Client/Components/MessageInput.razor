@@ -12,7 +12,7 @@
         <div class="reply-preview-bar">
             <div class="reply-preview-content">
                 <div class="reply-sender-name">@ReplyContext.SenderName</div>
-                <div class="reply-quote-text">@ReplyContext.Text</div>
+                <div class="reply-quote-text">@(!string.IsNullOrEmpty(ReplyContext.Text) ? ReplyContext.Text : "Message")</div>
             </div>
             <button class="reply-preview-close" @onclick="() => OnCancelReply.InvokeAsync()" aria-label="Cancel reply">&times;</button>
         </div>
@@ -31,6 +31,13 @@
             <div class="file-preview-info">
                 <span class="file-preview-name">@_selectedFile.Name</span>
                 <span class="file-preview-size">@FormatFileSize(_selectedFile.Size)</span>
+                @if (_selectedContentType == ContentType.Image)
+                {
+                    <label class="send-as-doc-toggle">
+                        <input type="checkbox" checked="@_sendAsDocument" @onchange="OnSendAsDocumentChanged" />
+                        <span>Send as document</span>
+                    </label>
+                }
             </div>
             <button class="file-preview-remove" @onclick="ClearSelectedFile" aria-label="Remove attachment">&times;</button>
         </div>
@@ -156,6 +163,7 @@
     private bool _showAttachMenu;
     private bool _showEmojiPicker;
     private bool _isRecording;
+    private bool _sendAsDocument;
     private ElementReference _textareaRef;
 
     private bool CanSend => !string.IsNullOrWhiteSpace(_messageText) || _selectedFile is not null;
@@ -247,8 +255,10 @@
 
             mediaBytes = _selectedFileBytes;
             fileName = _selectedFile.Name;
-            mimeType = _selectedFile.ContentType;
+            // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
+            mimeType = _selectedFile.ContentType ?? "image/jpeg";
             contentType = _selectedContentType;
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] SendMessage: fileName={fileName}, mimeType={mimeType}, contentType={contentType}");
         }
 
         if (string.IsNullOrEmpty(text) && mediaBytes is null)
@@ -261,6 +271,7 @@
             FileName = fileName,
             MimeType = mimeType,
             ContentType = contentType,
+            SendAsDocument = _sendAsDocument,
             ReplyToMessageId = ReplyContext?.MessageId
         };
 
@@ -279,8 +290,41 @@
     {
         _showAttachMenu = false;
         var file = e.File;
-        _selectedContentType = file.ContentType.StartsWith("video/") ? ContentType.Video : ContentType.Image;
-        await SetSelectedFile(file, createPreview: _selectedContentType == ContentType.Image);
+        // Debug: Log the content type
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] OnMediaSelected: {file.Name}, ContentType: '{file.ContentType}', Size: {file.Size}");
+        // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
+        var contentType = file.ContentType ?? "image/jpeg"; // Fallback to JPEG if browser doesn't provide
+        _selectedContentType = contentType.StartsWith("video/") ? ContentType.Video : ContentType.Image;
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] _selectedContentType set to: {_selectedContentType}");
+
+        // For videos, we need to generate a preview thumbnail
+        if (_selectedContentType == ContentType.Video)
+        {
+            await SetSelectedFile(file, createPreview: false);
+            // Generate video thumbnail after file is loaded
+            if (_selectedFileBytes is not null)
+            {
+                try
+                {
+                    var thumbnailBase64 = await Js.InvokeAsync<string>("mediaHelpers.captureVideoFrame",
+                        _selectedFileBytes, file.ContentType ?? "video/mp4");
+                    if (!string.IsNullOrEmpty(thumbnailBase64))
+                    {
+                        var thumbnailBytes = Convert.FromBase64String(thumbnailBase64);
+                        _previewDataUrl = await Js.InvokeAsync<string>(
+                            "mediaHelpers.createObjectUrl", thumbnailBytes, "image/jpeg");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] Video thumbnail failed: {ex.Message}");
+                }
+            }
+        }
+        else
+        {
+            await SetSelectedFile(file, createPreview: _selectedContentType == ContentType.Image);
+        }
     }
 
     private async Task OnAudioSelected(InputFileChangeEventArgs e)
@@ -301,6 +345,7 @@
     {
         ClearSelectedFile();
         _errorMessage = null;
+        _sendAsDocument = false;
 
         var maxSize = ProtocolConstants.MaxMediaCiphertextSizeBytes;
         if (file.Size > maxSize)
@@ -314,26 +359,125 @@
         _selectedFileBytes = new byte[file.Size];
         await stream.ReadExactlyAsync(_selectedFileBytes);
 
-        // Validate MIME type by checking file header magic bytes
-        if (!ValidateMimeType(_selectedFileBytes, _selectedContentType))
-        {
-            _selectedFileBytes = null;
-            _errorMessage = "Unsupported or corrupted file. The file content does not match the expected format.";
-            return;
-        }
+        // Trust browser's content type - no validation needed
+        // The browser already validated the file when the user selected it
 
         _selectedFile = file;
 
-        if (createPreview)
+        // Compress images if not sending as document
+        if (createPreview && _selectedContentType == ContentType.Image && !_sendAsDocument)
         {
             try
             {
-                _previewDataUrl = await Js.InvokeAsync<string>(
-                    "mediaHelpers.createObjectUrl", _selectedFileBytes, file.ContentType);
+                // ReSharper disable NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
+                var mimeType = file.ContentType ?? "image/jpeg";
+                var compressed = await Js.InvokeAsync<CompressedImageResult>(
+                    "mediaHelpers.compressImage", _selectedFileBytes, mimeType, 1600, 0.8);
+
+                if (compressed.Bytes is not null && compressed.Bytes.Length > 0)
+                {
+                    _selectedFileBytes = compressed.Bytes;
+
+                    // Update preview with compressed image
+                    if (_previewDataUrl is not null)
+                    {
+                        await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _previewDataUrl);
+                    }
+                    _previewDataUrl = await Js.InvokeAsync<string>(
+                        "mediaHelpers.createObjectUrl", _selectedFileBytes, "image/jpeg");
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                // ignored
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] Image compression failed: {ex.Message}");
+                // Continue without compression - original bytes will be used
+            }
+        }
+
+        if (createPreview && _selectedFileBytes is not null)
+        {
+            try
+            {
+                // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
+                var mimeType = file.ContentType ?? "image/jpeg";
+                _previewDataUrl ??= await Js.InvokeAsync<string>(
+                    "mediaHelpers.createObjectUrl", _selectedFileBytes, mimeType);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] Preview failed: {ex.Message}");
+                // ignored - preview is optional
+            }
+        }
+    }
+
+    private sealed class CompressedImageResult
+    {
+        // ReSharper disable  PropertyCanBeMadeInitOnly.Local
+        public byte[]? Bytes { get; set; }
+        public int Width { get; set; }
+        public int Height { get; set; }
+    }
+
+    private async Task OnSendAsDocumentChanged(ChangeEventArgs e)
+    {
+        if (_selectedFile is null || _selectedContentType != ContentType.Image) return;
+
+        _sendAsDocument = e.Value is true;
+
+        if (_sendAsDocument)
+        {
+            // Re-read original file bytes (skip compression)
+            if (_selectedFileBytes is not null && _previewDataUrl is not null)
+            {
+                await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _previewDataUrl);
+                _previewDataUrl = null;
+            }
+
+            await using var stream = _selectedFile.OpenReadStream(maxAllowedSize: ProtocolConstants.MaxMediaCiphertextSizeBytes);
+            _selectedFileBytes = new byte[_selectedFile.Size];
+            await stream.ReadExactlyAsync(_selectedFileBytes);
+
+            // Show original preview (not compressed)
+            try
+            {
+                var mimeType = _selectedFile.ContentType ?? "image/jpeg";
+                _previewDataUrl = await Js.InvokeAsync<string>(
+                    "mediaHelpers.createObjectUrl", _selectedFileBytes, mimeType);
+            }
+            catch { /* ignore preview errors */ }
+        }
+        else
+        {
+            // Re-compress the image
+            if (_selectedFileBytes is not null && _previewDataUrl is not null)
+            {
+                await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _previewDataUrl);
+                _previewDataUrl = null;
+            }
+
+            try
+            {
+                var mimeType = _selectedFile.ContentType ?? "image/jpeg";
+                var compressed = await Js.InvokeAsync<CompressedImageResult>(
+                    "mediaHelpers.compressImage", _selectedFileBytes, mimeType, 1600, 0.8);
+
+                if (compressed.Bytes is not null && compressed.Bytes.Length > 0)
+                {
+                    _selectedFileBytes = compressed.Bytes;
+                }
+            }
+            catch { /* ignore compression errors - use original */ }
+
+            // Show compressed preview
+            if (_selectedFileBytes is not null)
+            {
+                try
+                {
+                    _previewDataUrl = await Js.InvokeAsync<string>(
+                        "mediaHelpers.createObjectUrl", _selectedFileBytes, "image/jpeg");
+                }
+                catch { /* ignore preview errors */ }
             }
         }
     }
@@ -348,6 +492,7 @@
         _selectedFile = null;
         _selectedFileBytes = null;
         _selectedContentType = ContentType.Text;
+        _sendAsDocument = false;
         _errorMessage = null;
     }
 
@@ -371,37 +516,6 @@
         };
 
         await OnSend.InvokeAsync(msg);
-    }
-
-    private static bool ValidateMimeType(byte[] data, ContentType contentType)
-    {
-        if (data.Length < 4) return false;
-
-        return contentType switch
-        {
-            ContentType.Image => IsJpeg(data) || IsPng(data) || IsGif(data) || IsWebp(data) || IsBmp(data),
-            ContentType.Video => IsMp4(data) || IsWebm(data) || IsAvi(data) || IsMkv(data),
-            ContentType.Audio => IsMp3(data) || IsOgg(data) || IsWav(data) || IsWebm(data) || IsFlac(data) || IsMp4(data),
-            ContentType.File => true, // Documents accept any file type
-            _ => false
-        };
-
-        static bool IsJpeg(byte[] d) => d[0] == 0xFF && d[1] == 0xD8;
-        static bool IsPng(byte[] d) => d is [0x89, 0x50, 0x4E, 0x47, ..];
-        static bool IsGif(byte[] d) => d is [0x47, 0x49, 0x46, ..];
-        static bool IsWebp(byte[] d) => d.Length >= 12 && d[0] == 0x52 && d[1] == 0x49 && d[2] == 0x46 && d[3] == 0x46
-                                        && d[8] == 0x57 && d[9] == 0x45 && d[10] == 0x42 && d[11] == 0x50;
-        static bool IsBmp(byte[] d) => d[0] == 0x42 && d[1] == 0x4D;
-        static bool IsMp4(byte[] d) => d.Length >= 8 && d[4] == 0x66 && d[5] == 0x74 && d[6] == 0x79 && d[7] == 0x70;
-        static bool IsWebm(byte[] d) => d is [0x1A, 0x45, 0xDF, 0xA3, ..];
-        static bool IsMkv(byte[] d) => IsWebm(d); // MKV shares EBML header with WebM
-        static bool IsAvi(byte[] d) => d.Length >= 12 && d[0] == 0x52 && d[1] == 0x49 && d[2] == 0x46 && d[3] == 0x46
-                                       && d[8] == 0x41 && d[9] == 0x56 && d[10] == 0x49 && d[11] == 0x20;
-        static bool IsMp3(byte[] d) => (d[0] == 0xFF && (d[1] & 0xE0) == 0xE0) || (d[0] == 0x49 && d[1] == 0x44 && d[2] == 0x33);
-        static bool IsOgg(byte[] d) => d is [0x4F, 0x67, 0x67, 0x53, ..];
-        static bool IsWav(byte[] d) => d.Length >= 12 && d[0] == 0x52 && d[1] == 0x49 && d[2] == 0x46 && d[3] == 0x46
-                                       && d[8] == 0x57 && d[9] == 0x41 && d[10] == 0x56 && d[11] == 0x45;
-        static bool IsFlac(byte[] d) => d is [0x66, 0x4C, 0x61, 0x43, ..];
     }
 
     private static string GetFileIcon(ContentType type)
@@ -429,6 +543,7 @@
         public string? FileName { get; set; }
         public string? MimeType { get; set; }
         public ContentType ContentType { get; set; } = ContentType.Text;
+        public bool SendAsDocument { get; set; }
         public bool HasMedia => MediaBytes is not null;
         public decimal? ReplyToMessageId { get; set; }
     }

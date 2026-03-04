@@ -163,7 +163,6 @@
             _isLoading = false;
         }
 
-        await UpdateMobileLayout();
     }
 
     private async Task LoadConversations()
@@ -188,40 +187,11 @@
         return _currentPath.Equals($"/chat/{conversationId}", StringComparison.OrdinalIgnoreCase);
     }
 
-    private bool IsInChatPage()
-    {
-        var path = _currentPath.TrimEnd('/');
-        if (!path.StartsWith("/chat/", StringComparison.OrdinalIgnoreCase))
-            return false;
-        var segment = path["/chat/".Length..];
-        return decimal.TryParse(segment, out _);
-    }
-
     // ReSharper disable  AsyncVoidEventHandlerMethod
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         _currentPath = new Uri(e.Location).AbsolutePath;
         await InvokeAsync(StateHasChanged);
-        await UpdateMobileLayout();
-    }
-
-    private async Task UpdateMobileLayout()
-    {
-        try
-        {
-            var inChat = IsInChatPage();
-            await Js.InvokeVoidAsync("eval",
-                "(function(){" +
-                "var s=document.getElementById('chat-sidebar');" +
-                "var p=document.getElementById('chat-panel');" +
-                $"if(s)s.classList.{(inChat ? "add" : "remove")}('hide-mobile');" +
-                $"if(p)p.classList.{(inChat ? "add" : "remove")}('show-mobile');" +
-                "})()");
-        }
-        catch
-        {
-            // JS interop may fail during prerender or initial load
-        }
     }
 
     private void OnSearchInput(ChangeEventArgs e)

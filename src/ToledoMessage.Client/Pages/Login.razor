@@ -15,15 +15,14 @@
     <h2>Sign In</h2>
 
     <div class="card">
-        @if (!string.IsNullOrEmpty(_errorMessage))
-        {
-            <div class="alert alert-error" role="alert">@_errorMessage</div>
-        }
-
-        @if (!string.IsNullOrEmpty(_statusMessage))
-        {
-            <div class="alert alert-info" role="status">@_statusMessage</div>
-        }
+        <div class="auth-status-area" style="min-height:48px;">
+            <div class="alert alert-error @(string.IsNullOrEmpty(_errorMessage) ? "alert-hidden" : "")" role="alert">
+                @(_errorMessage ?? "\u00A0")
+            </div>
+            <div class="alert alert-info @(string.IsNullOrEmpty(_statusMessage) ? "alert-hidden" : "")" role="status">
+                @(_statusMessage ?? "\u00A0")
+            </div>
+        </div>
 
         <form @onsubmit="HandleLogin">
             <div class="form-group">
@@ -192,7 +191,8 @@
 
             if (!deviceResponse.IsSuccessStatusCode)
             {
-                _errorMessage = "Device registration failed.";
+                var errorBody = await deviceResponse.Content.ReadAsStringAsync();
+                _errorMessage = $"Device registration failed: {errorBody}";
                 return;
             }
 

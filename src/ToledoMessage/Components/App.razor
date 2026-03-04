@@ -7,6 +7,29 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <base href="/" />
     <script>
+        // Cache busting: check version and force refresh if changed
+        (async function() {
+            try {
+                var resp = await fetch('/version.json?_=' + Date.now(), { cache: 'no-store' });
+                if (resp.ok) {
+                    var data = await resp.json();
+                    var stored = localStorage.getItem('app.version');
+                    if (stored && stored !== data.version) {
+                        // Version changed - clear caches and reload
+                        if ('caches' in window) {
+                            var keys = await caches.keys();
+                            await Promise.all(keys.map(function(k) { return caches.delete(k); }));
+                        }
+                        localStorage.setItem('app.version', data.version);
+                        window.location.reload(true);
+                        return;
+                    }
+                    localStorage.setItem('app.version', data.version);
+                }
+            } catch (e) { /* ignore */ }
+        })();
+    </script>
+    <script>
         (function () {
             function getDesiredTheme() {
                 var t = localStorage.getItem('app.theme');
@@ -46,6 +69,9 @@
                     applying = false;
                 }
             }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'lang'] });
+
+            // Loading spinner: handled by inline script right after the spinner div.
+            // See comment there for the full strategy.
         })();
     </script>
     <ResourcePreloader />
@@ -57,6 +83,25 @@
 </head>
 
 <body>
+    <div id="app-loading" style="position:fixed;top:0;left:0;right:0;bottom:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:var(--bg-primary, #0f172a);color:var(--text-primary, #e2e8f0);font-family:system-ui,-apple-system,sans-serif;z-index:9999;">
+        <div style="width:40px;height:40px;border:3px solid rgba(255,255,255,0.1);border-top-color:var(--accent, #3b82f6);border-radius:50%;animation:app-spin 0.8s linear infinite;"></div>
+        <div style="margin-top:16px;font-size:1.1em;font-weight:500;letter-spacing:0.5px;">ToledoMessage</div>
+    </div>
+    <script>
+        // Show spinner ONLY on first page load. window.__blazorLoaded is set
+        // after blazor.web.js loads and persists across enhanced navigations
+        // (JS state survives DOM patching). On enhanced nav, Blazor restores
+        // display:none from server HTML and this script runs again — but
+        // __blazorLoaded is already true so the spinner stays hidden.
+        if (!window.__blazorLoaded) {
+            document.getElementById('app-loading').style.display = 'flex';
+        }
+    </script>
+    <style>
+        @@keyframes app-spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
     <Routes />
     @* ReSharper disable  Html.PathError *@
     <script src="storage.js"></script>
@@ -65,6 +110,15 @@
     <script src="media-helpers.js"></script>
     <script src="voice-recorder.js"></script>
     <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script>
+        // Hide spinner after blazor.web.js loads and set flag.
+        // On enhanced navigation, Blazor patches DOM from server HTML
+        // (display:none) and re-runs inline scripts — but __blazorLoaded
+        // is already true so the spinner script above won't show it.
+        window.__blazorLoaded = true;
+        var el = document.getElementById('app-loading');
+        if (el) el.style.display = 'none';
+    </script>
 </body>
 
 </html>

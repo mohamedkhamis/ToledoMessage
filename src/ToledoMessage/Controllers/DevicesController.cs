@@ -25,6 +25,15 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
     {
         var userId = GetUserId();
 
+        // Deactivate any existing device with the same name (same browser re-registering)
+        var existingDevice = await db.Devices
+            .FirstOrDefaultAsync(d => d.UserId == userId && d.DeviceName == request.DeviceName && d.IsActive);
+        if (existingDevice is not null)
+        {
+            existingDevice.IsActive = false;
+            await db.SaveChangesAsync();
+        }
+
         var activeDeviceCount = await db.Devices.CountAsync(d => d.UserId == userId && d.IsActive);
         if (activeDeviceCount >= ProtocolConstants.MaxDevicesPerUser)
             return StatusCode(403, $"Maximum number of devices ({ProtocolConstants.MaxDevicesPerUser}) reached.");

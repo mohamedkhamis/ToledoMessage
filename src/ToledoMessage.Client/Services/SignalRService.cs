@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.DependencyInjection;
 using ToledoMessage.Shared.DTOs;
 
 namespace ToledoMessage.Client.Services;
@@ -71,6 +72,12 @@ public class SignalRService : IAsyncDisposable
             .WithUrl(hubUrl, options =>
             {
                 options.AccessTokenProvider = () => Task.FromResult<string?>(accessToken);
+            })
+            .AddJsonProtocol(options =>
+            {
+                // Match server: ensure enum values in positional records (ContentType, MessageType)
+                // deserialize correctly regardless of JSON property name casing.
+                options.PayloadSerializerOptions.PropertyNameCaseInsensitive = true;
             })
             .WithAutomaticReconnect()
             .Build();

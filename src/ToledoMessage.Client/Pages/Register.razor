@@ -1,8 +1,7 @@
 @page "/register"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using System.Globalization
 @using System.Text
-@using ToledoMessage.Shared.DTOs
-@using ToledoMessage.Client.Services
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject KeyGenerationService KeyGenService
@@ -12,10 +11,11 @@
     <h2>Create Account</h2>
 
     <div class="card">
-        @if (!string.IsNullOrEmpty(_errorMessage))
-        {
-            <div class="alert alert-error" role="alert">@_errorMessage</div>
-        }
+        <div class="auth-status-area" style="min-height:48px;">
+            <div class="alert alert-error @(string.IsNullOrEmpty(_errorMessage) ? "alert-hidden" : "")" role="alert">
+                @(_errorMessage ?? "\u00A0")
+            </div>
+        </div>
 
         <form @onsubmit="HandleRegister">
             <div class="form-group">
@@ -56,7 +56,7 @@
 
     <p class="auth-footer">Already have an account? <a href="/login">Sign in</a></p>
 
-    <div class="app-version-footer">Toledo Message v@(ToledoMessage.Shared.Constants.AppVersion.Current)</div>
+    <div class="app-version-footer">Toledo Message v@(AppVersion.Current)</div>
 </div>
 
 @code {
@@ -145,10 +145,10 @@
             var deviceResult = await deviceResponse.Content.ReadFromJsonAsync<DeviceRegistrationResult>();
 
             // 5. Store auth token and deviceId for later use
-            await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse!.Token));
+            await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse.Token));
             if (deviceResult is not null)
             {
-                await Storage.StoreAsync("local.deviceId", Encoding.UTF8.GetBytes(deviceResult.DeviceId.ToString()));
+                await Storage.StoreAsync("local.deviceId", Encoding.UTF8.GetBytes(deviceResult.DeviceId.ToString(CultureInfo.InvariantCulture)));
             }
 
             // 6. Navigate to chat

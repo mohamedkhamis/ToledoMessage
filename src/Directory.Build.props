@@ -1,10 +1,4 @@
 <Project>
-  <PropertyGroup>
-    <!-- Auto-version: 1.0.{git commit count} — increments with every commit -->
-    <VersionMajor>1</VersionMajor>
-    <VersionMinor>0</VersionMinor>
-  </PropertyGroup>
-
   <Target Name="SetGitVersion" BeforeTargets="GetAssemblyVersion;GenerateNuspec;Build" Condition="'$(GitVersionComputed)' != 'true'">
     <Exec Command="git rev-list --count HEAD" ConsoleToMSBuild="true" StandardOutputImportance="low" IgnoreExitCode="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="GitCommitCount" />
@@ -12,9 +6,11 @@
     </Exec>
     <PropertyGroup>
       <GitCommitCount Condition="'$(GitExitCode)' != '0'">0</GitCommitCount>
-      <Version>$(VersionMajor).$(VersionMinor).$(GitCommitCount)</Version>
-      <AssemblyVersion>$(VersionMajor).$(VersionMinor).$(GitCommitCount).0</AssemblyVersion>
-      <FileVersion>$(VersionMajor).$(VersionMinor).$(GitCommitCount).0</FileVersion>
+      <!-- InformationalVersion: 1.{commits}.{MMDDhh} — changes every build, human-readable -->
+      <_BuildStamp>$([System.DateTime]::UtcNow.ToString("MMddHH"))</_BuildStamp>
+      <Version>1.$(GitCommitCount).$(_BuildStamp)</Version>
+      <AssemblyVersion>1.0.$(GitCommitCount).0</AssemblyVersion>
+      <FileVersion>1.0.$(GitCommitCount).0</FileVersion>
       <InformationalVersion>$(Version)</InformationalVersion>
       <GitVersionComputed>true</GitVersionComputed>
     </PropertyGroup>

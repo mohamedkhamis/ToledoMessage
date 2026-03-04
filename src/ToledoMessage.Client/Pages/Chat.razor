@@ -4,6 +4,7 @@
 @using System.Globalization
 @using System.Text
 @using System.Text.Json
+@using ToledoMessage.Shared.Models
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject CryptoService Crypto
@@ -162,6 +163,8 @@
                                Status="msg.Status"
                                ContentType="msg.ContentType"
                                MediaDataUrl="@msg.MediaDataUrl"
+                               ThumbnailDataUrl="@msg.ThumbnailDataUrl"
+                               MimeType="@msg.MimeType"
                                FileName="@msg.FileName"
                                IsFirstInGroup="isFirstInGroup"
                                IsLastInGroup="isLastInGroup"
@@ -173,6 +176,9 @@
                                ReplyToMessageId="msg.ReplyToMessageId"
                                ReplyToSenderName="@msg.ReplyToSenderName"
                                ReplyToText="@msg.ReplyToText"
+                               ReplyToMediaDataUrl="@msg.ReplyToMediaDataUrl"
+                               ReplyToThumbnailDataUrl="@msg.ReplyToThumbnailDataUrl"
+                               ReplyToContentType="msg.ReplyToContentType"
                                OnReplyQuoteClick="ScrollToMessage"
                                ReactionBadges="GetReactionBadges(msg.MessageId)"
                                OnReactionToggle="(emoji) => ToggleReaction(msg.MessageId, emoji)" />
@@ -337,10 +343,14 @@
     private List<ConversationListItemResponse>? _forwardConversations;
 
     // Static pending forward — survives navigation between chat pages
-    internal static (string Text, ContentType ContentType, string? FileName, string? MediaDataUrl, bool IsForwarded)? PendingForward;
+    internal static (string Text, ContentType ContentType, string? FileName, string? MimeType, string? MediaDataUrl, bool IsForwarded)? PendingForward;
 
     protected override async Task OnInitializedAsync()
     {
+        // Capture and clear any pending forward immediately to prevent stale forwards
+        var pendingFwd = PendingForward;
+        PendingForward = null;
+
         try
         {
             // Retrieve local deviceId and token from storage
@@ -413,12 +423,11 @@
             _isLoading = false;
         }
 
-        // Check for pending forwarded message
-        if (PendingForward is not null)
+        // Check for pending forwarded message (use captured value from start of method)
+        if (pendingFwd is not null)
         {
-            var fwd = PendingForward.Value;
-            PendingForward = null;
-            await SendForwardedMessage(fwd.Text, fwd.ContentType, fwd.FileName, fwd.MediaDataUrl);
+            var fwd = pendingFwd.Value;
+            await SendForwardedMessage(fwd.Text, fwd.ContentType, fwd.FileName, fwd.MimeType, fwd.MediaDataUrl);
         }
     }
 
@@ -469,6 +478,7 @@
                     IsMine = stored.IsMine,
                     ContentType = (ContentType)stored.ContentType,
                     FileName = stored.FileName,
+                    MimeType = stored.MimeType,
                     MediaDataUrl = stored.MediaDataBase64 is not null
                         ? await CreateMediaBlobUrlFromBase64(stored.MediaDataBase64, stored.MimeType, stored.FileName)
                         : null,
@@ -573,6 +583,12 @@
                 // Persist to IndexedDB
                 await PersistMessageAsync(chatMsg);
 
+                // Release media bytes after persistence to free memory
+                if (chatMsg.MediaBytes is not null)
+                {
+                    chatMsg.MediaBytes = null;
+                }
+
                 // Always acknowledge
                 try
                 {
@@ -652,6 +668,13 @@
 
                 _messages.Add(chatMsg);
                 await PersistMessageAsync(chatMsg);
+
+                // Release media bytes after persistence to free memory
+                if (chatMsg.MediaBytes is not null)
+                {
+                    chatMsg.MediaBytes = null;
+                }
+
                 StateHasChanged();
             });
 
@@ -822,21 +845,47 @@
     private async Task HandleSend(MessageInput.ChatInputMessage input)
     {
         var hasMedia = input.HasMedia;
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] HandleSend: hasMedia={hasMedia}, ContentType={input.ContentType}, MimeType='{input.MimeType}', FileName='{input.FileName}', MediaBytes.Length={input.MediaBytes?.Length}");
+
+        // Handle "Send as document" - change ContentType to File
+        var contentType = input.ContentType;
+        if (input.SendAsDocument && contentType == ContentType.Image)
+        {
+            contentType = ContentType.File;
+        }
+
+        string? mediaDataUrl = null;
+        if (hasMedia)
+        {
+            try
+            {
+                mediaDataUrl = await CreateMediaBlobUrl(input.MimeType ?? "image/jpeg", input.MediaBytes!);
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] Blob URL created: {mediaDataUrl.Substring(0, Math.Min(50, mediaDataUrl.Length))}...");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] Blob URL creation failed: {ex.Message}");
+            }
+        }
+
         var tempMessage = new ChatMessage
         {
             MessageId = 0,
             Text = input.Text,
             Timestamp = DateTimeOffset.UtcNow,
             IsMine = true,
-            ContentType = input.ContentType,
+            ContentType = contentType,
             FileName = input.FileName,
-            MediaDataUrl = hasMedia ? await CreateMediaBlobUrl(input.MimeType!, input.MediaBytes!) : null,
+            MediaDataUrl = mediaDataUrl,
             MediaBytes = hasMedia ? input.MediaBytes : null,
             MimeType = hasMedia ? input.MimeType : null,
             Status = Shared.Enums.DeliveryStatus.Sending,
             ReplyToMessageId = _replyingTo?.MessageId,
             ReplyToSenderName = _replyingTo is not null ? (_replyingTo.IsMine ? "You" : GetSenderDisplayName(_replyingTo)) : null,
-            ReplyToText = _replyingTo is not null ? FormatReplyText(_replyingTo) : null
+            ReplyToText = _replyingTo is not null ? FormatReplyText(_replyingTo) : null,
+            ReplyToMediaDataUrl = _replyingTo?.MediaDataUrl,
+            ReplyToThumbnailDataUrl = _replyingTo?.ThumbnailDataUrl,
+            ReplyToContentType = _replyingTo?.ContentType ?? ContentType.Text
         };
         CancelReply();
         _messages.Add(tempMessage);
@@ -849,6 +898,8 @@
             // When there's text only, we send a normal text message.
             if (hasMedia)
             {
+                // Update input content type for SendMediaToRecipients
+                input.ContentType = contentType;
                 await SendMediaToRecipients(input, tempMessage);
             }
             else
@@ -858,9 +909,16 @@
 
             // Persist sent message to IndexedDB
             await PersistMessageAsync(tempMessage);
+
+            // Release media bytes to free memory after persistence
+            if (hasMedia)
+            {
+                tempMessage.MediaBytes = null;
+            }
         }
         catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] Send failed: {ex.Message}");
             _errorMessage = $"Failed to send message: {ex.Message}";
         }
 
@@ -923,11 +981,74 @@
 
     private async Task SendMediaToRecipients(MessageInput.ChatInputMessage input, ChatMessage tempMessage)
     {
+        // Generate thumbnail for images and videos
+        string? thumbnailBase64 = null;
+        if (input.ContentType == ContentType.Image)
+        {
+            try
+            {
+                // generateThumbnail returns a base64 string (not byte[])
+                var thumbnailBase64Result = await Js.InvokeAsync<string>("mediaHelpers.generateThumbnail",
+                    input.MediaBytes, input.MimeType, 200, 0.6);
+                if (!string.IsNullOrEmpty(thumbnailBase64Result))
+                {
+                    thumbnailBase64 = thumbnailBase64Result;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to generate thumbnail: {ex.Message}");
+            }
+        }
+        else if (input.ContentType == ContentType.Video)
+        {
+            try
+            {
+                var thumbnailBase64Result = await Js.InvokeAsync<string>("mediaHelpers.captureVideoFrame",
+                    input.MediaBytes, input.MimeType);
+                if (!string.IsNullOrEmpty(thumbnailBase64Result))
+                {
+                    thumbnailBase64 = thumbnailBase64Result;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to capture video frame: {ex.Message}");
+            }
+        }
+
+        // Set thumbnail blob URL on the sender's temp message for immediate display
+        if (!string.IsNullOrEmpty(thumbnailBase64))
+        {
+            try
+            {
+                var thumbBytes = Convert.FromBase64String(thumbnailBase64);
+                tempMessage.ThumbnailDataUrl = await CreateMediaBlobUrl("image/jpeg", thumbBytes);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to create sender thumbnail URL: {ex.Message}");
+            }
+        }
+
+        // Create MediaPayload with all metadata bundled inside
+        var mediaPayload = new MediaPayload
+        {
+            FileName = input.FileName,
+            MimeType = input.MimeType ?? "application/octet-stream",
+            Caption = input.Text,
+            Thumbnail = thumbnailBase64,
+            Data = Convert.ToBase64String(input.MediaBytes!)
+        };
+
+        // Serialize payload to bytes
+        var payloadBytes = MediaPayload.Serialize(mediaPayload);
+
         if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group)
         {
             var requests = await Crypto.EncryptGroupBytesAsync(
                 ConversationId, _localUserId, _localDeviceId,
-                input.MediaBytes!, input.ContentType, input.FileName, input.MimeType);
+                payloadBytes, input.ContentType, null, null);
 
             SendMessageResult? lastResult = null;
             foreach (var request in requests)
@@ -951,7 +1072,7 @@
                 return;
             }
 
-            var deviceCiphertexts = await Crypto.EncryptBytesForAllDevicesAsync(recipient.UserId, input.MediaBytes!);
+            var deviceCiphertexts = await Crypto.EncryptBytesForAllDevicesAsync(recipient.UserId, payloadBytes);
 
             SendMessageResult? lastResult = null;
             foreach (var (deviceId, ciphertextBase64, messageType) in deviceCiphertexts)
@@ -963,8 +1084,8 @@
                     ciphertextBase64,
                     messageType,
                     input.ContentType,
-                    input.FileName,
-                    input.MimeType,
+                    null, // FileName now inside encrypted payload
+                    null, // MimeType now inside encrypted payload
                     input.ReplyToMessageId);
 
                 lastResult = await SignalR.SendMessageAsync(request);
@@ -977,24 +1098,6 @@
                 tempMessage.Status = Shared.Enums.DeliveryStatus.Sent;
             }
         }
-
-        // If there's also a text caption, send it as a separate text message right after
-        if (!string.IsNullOrEmpty(input.Text))
-        {
-            var captionMessage = new ChatMessage
-            {
-                MessageId = 0,
-                Text = input.Text,
-                Timestamp = DateTimeOffset.UtcNow,
-                IsMine = true,
-                ContentType = ContentType.Text,
-                Status = Shared.Enums.DeliveryStatus.Sending
-            };
-            _messages.Add(captionMessage);
-            StateHasChanged();
-
-            await SendTextToRecipients(input.Text, captionMessage);
-        }
     }
 
     private async Task<ChatMessage> DecryptEnvelopeToChatMessage(MessageEnvelope envelope, bool isMine)
@@ -1002,6 +1105,9 @@
         // Resolve reply info from local messages
         string? replyToText = null;
         string? replyToSenderName = null;
+        string? replyToMediaDataUrl = null;
+        string? replyToThumbnailDataUrl = null;
+        ContentType replyToContentType = ContentType.Text;
         if (envelope.ReplyToMessageId.HasValue)
         {
             var replyMsg = _messages.FirstOrDefault(m => m.MessageId == envelope.ReplyToMessageId.Value);
@@ -1009,6 +1115,9 @@
             {
                 replyToSenderName = replyMsg.IsMine ? "You" : GetSenderDisplayName(replyMsg);
                 replyToText = FormatReplyText(replyMsg);
+                replyToMediaDataUrl = replyMsg.MediaDataUrl;
+                replyToThumbnailDataUrl = replyMsg.ThumbnailDataUrl;
+                replyToContentType = replyMsg.ContentType;
             }
             else
             {
@@ -1019,31 +1128,127 @@
 
         if (envelope.ContentType is ContentType.Image or ContentType.Audio or ContentType.Video or ContentType.File)
         {
-            var bytes = await Crypto.DecryptToBytesAsync(
+            // Decrypt to bytes and deserialize as MediaPayload
+            var payloadBytes = await Crypto.DecryptToBytesAsync(
                 envelope.SenderDeviceId, envelope.Ciphertext, envelope.MessageType);
-            var mimeType = envelope.MimeType ?? GetDefaultMimeType(envelope.ContentType);
-            var blobUrl = await CreateMediaBlobUrl(mimeType, bytes);
+            var mediaPayload = MediaPayload.Deserialize(payloadBytes);
+
+            // Decode media data from base64
+            var mediaData = Convert.FromBase64String(mediaPayload.Data);
+
+            // Get MIME type from payload or fall back to envelope/default
+            var mimeType = !string.IsNullOrEmpty(mediaPayload.MimeType)
+                ? mediaPayload.MimeType
+                : (envelope.MimeType ?? GetDefaultMimeType(envelope.ContentType));
+
+            // Create blob URL for full media
+            var blobUrl = await CreateMediaBlobUrl(mimeType, mediaData);
+
+            // Create thumbnail blob URL if available
+            string? thumbnailBlobUrl = null;
+            if (!string.IsNullOrEmpty(mediaPayload.Thumbnail))
+            {
+                try
+                {
+                    var thumbnailData = Convert.FromBase64String(mediaPayload.Thumbnail);
+                    thumbnailBlobUrl = await CreateMediaBlobUrl("image/jpeg", thumbnailData);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to create thumbnail URL: {ex.Message}");
+                }
+            }
+
             return new ChatMessage
             {
                 MessageId = envelope.MessageId,
-                Text = "",
+                Text = mediaPayload.Caption ?? "",
                 Timestamp = envelope.ServerTimestamp,
                 IsMine = isMine,
                 ContentType = envelope.ContentType,
-                FileName = envelope.FileName,
+                FileName = mediaPayload.FileName,
                 MediaDataUrl = blobUrl,
-                MediaBytes = bytes,
+                ThumbnailDataUrl = thumbnailBlobUrl,
+                MediaBytes = mediaData, // Keep for IndexedDB persistence - will be nulled after persist
                 MimeType = mimeType,
                 Status = Shared.Enums.DeliveryStatus.Delivered,
                 ReplyToMessageId = envelope.ReplyToMessageId,
                 ReplyToText = replyToText,
-                ReplyToSenderName = replyToSenderName
+                ReplyToSenderName = replyToSenderName,
+                ReplyToMediaDataUrl = replyToMediaDataUrl,
+                ReplyToThumbnailDataUrl = replyToThumbnailDataUrl,
+                ReplyToContentType = replyToContentType
             };
         }
         else
         {
-            var plaintext = await Crypto.DecryptMessageAsync(
+            // Decrypt as bytes first so we can detect misrouted media payloads
+            var decryptedBytes = await Crypto.DecryptToBytesAsync(
                 envelope.SenderDeviceId, envelope.Ciphertext, envelope.MessageType);
+
+            // Defensive check: if ContentType came through as Text but the decrypted content
+            // is actually a MediaPayload JSON (e.g., due to enum serialization issues over SignalR),
+            // detect and handle it as media instead of displaying raw JSON to the user.
+            if (decryptedBytes.Length > 5 && decryptedBytes[0] == (byte)'{')
+            {
+                try
+                {
+                    var possiblePayload = MediaPayload.Deserialize(decryptedBytes);
+                    if (!string.IsNullOrEmpty(possiblePayload.Data) && !string.IsNullOrEmpty(possiblePayload.MimeType))
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[DEBUG] Detected MediaPayload in text path (envelope.ContentType={envelope.ContentType}). Handling as media.");
+
+                        var mediaData = Convert.FromBase64String(possiblePayload.Data);
+                        var mimeType = possiblePayload.MimeType;
+                        var blobUrl = await CreateMediaBlobUrl(mimeType, mediaData);
+
+                        string? thumbnailBlobUrl = null;
+                        if (!string.IsNullOrEmpty(possiblePayload.Thumbnail))
+                        {
+                            try
+                            {
+                                var thumbnailData = Convert.FromBase64String(possiblePayload.Thumbnail);
+                                thumbnailBlobUrl = await CreateMediaBlobUrl("image/jpeg", thumbnailData);
+                            }
+                            catch { /* ignored */ }
+                        }
+
+                        // Infer content type from MIME type
+                        var inferredContentType = mimeType.ToLowerInvariant() switch
+                        {
+                            var m when m.StartsWith("image/") => ContentType.Image,
+                            var m when m.StartsWith("video/") => ContentType.Video,
+                            var m when m.StartsWith("audio/") => ContentType.Audio,
+                            _ => ContentType.File
+                        };
+
+                        return new ChatMessage
+                        {
+                            MessageId = envelope.MessageId,
+                            Text = possiblePayload.Caption ?? "",
+                            Timestamp = envelope.ServerTimestamp,
+                            IsMine = isMine,
+                            ContentType = inferredContentType,
+                            FileName = possiblePayload.FileName,
+                            MediaDataUrl = blobUrl,
+                            ThumbnailDataUrl = thumbnailBlobUrl,
+                            MediaBytes = mediaData,
+                            MimeType = mimeType,
+                            Status = Shared.Enums.DeliveryStatus.Delivered,
+                            ReplyToMessageId = envelope.ReplyToMessageId,
+                            ReplyToText = replyToText,
+                            ReplyToSenderName = replyToSenderName
+                        };
+                    }
+                }
+                catch
+                {
+                    // Not a MediaPayload — fall through to normal text handling
+                }
+            }
+
+            var plaintext = System.Text.Encoding.UTF8.GetString(decryptedBytes);
             return new ChatMessage
             {
                 MessageId = envelope.MessageId,
@@ -1064,7 +1269,7 @@
         return contentType switch
         {
             ContentType.Image => "image/png",
-            ContentType.Audio => "audio/mpeg",
+            ContentType.Audio => "audio/webm",
             ContentType.Video => "video/mp4",
             _ => "application/octet-stream"
         };
@@ -1072,7 +1277,7 @@
 
     private readonly List<string> _blobUrls = [];
 
-    private async Task<string> CreateMediaBlobUrl(string mimeType, byte[] data)
+    private async Task<string> CreateMediaBlobUrl(string? mimeType, byte[] data)
     {
         var url = await Js.InvokeAsync<string>("mediaHelpers.createObjectUrl", data, mimeType);
         _blobUrls.Add(url);
@@ -1246,16 +1451,27 @@
     {
         if (_contextMenuMessage is not null)
         {
-            // Revoke blob URL to prevent memory leak
+            // Revoke blob URLs to prevent memory leak
             if (_contextMenuMessage.MediaDataUrl is not null && _contextMenuMessage.MediaDataUrl.StartsWith("blob:"))
             {
-                try { await Js.InvokeVoidAsync("URL.revokeObjectURL", _contextMenuMessage.MediaDataUrl); }
+                try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _contextMenuMessage.MediaDataUrl); }
                 catch { /* ignored */ }
                 _blobUrls.Remove(_contextMenuMessage.MediaDataUrl);
+            }
+            if (_contextMenuMessage.ThumbnailDataUrl is not null && _contextMenuMessage.ThumbnailDataUrl.StartsWith("blob:"))
+            {
+                try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _contextMenuMessage.ThumbnailDataUrl); }
+                catch { /* ignored */ }
+                _blobUrls.Remove(_contextMenuMessage.ThumbnailDataUrl);
             }
 
             _messages.Remove(_contextMenuMessage);
             _messageReactions.Remove(_contextMenuMessage.MessageId);
+
+            // Clear reply context if replying to the deleted message
+            if (_replyingTo?.MessageId == _contextMenuMessage.MessageId)
+                CancelReply();
+
             try { await MessageStore.UpdateMessageStatusAsync(_contextMenuMessage.MessageId.ToString(CultureInfo.InvariantCulture), -1); }
             catch
             {
@@ -1292,15 +1508,25 @@
             var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
             if (msg is not null)
             {
-                // Revoke blob URL to prevent memory leak
+                // Revoke blob URLs to prevent memory leak
                 if (msg.MediaDataUrl is not null && msg.MediaDataUrl.StartsWith("blob:"))
                 {
-                    try { await Js.InvokeVoidAsync("URL.revokeObjectURL", msg.MediaDataUrl); }
+                    try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", msg.MediaDataUrl); }
                     catch { /* ignored */ }
                     _blobUrls.Remove(msg.MediaDataUrl);
                 }
+                if (msg.ThumbnailDataUrl is not null && msg.ThumbnailDataUrl.StartsWith("blob:"))
+                {
+                    try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", msg.ThumbnailDataUrl); }
+                    catch { /* ignored */ }
+                    _blobUrls.Remove(msg.ThumbnailDataUrl);
+                }
 
                 _messages.Remove(msg);
+
+                // Clear reply context if the deleted message was being replied to
+                if (_replyingTo?.MessageId == messageId)
+                    CancelReply();
             }
             _messageReactions.Remove(messageId);
             try { await MessageStore.UpdateMessageStatusAsync(messageId.ToString(CultureInfo.InvariantCulture), -1); }
@@ -1342,22 +1568,31 @@
             }
         }
 
+        // Collect IDs of messages being removed
+        var deletedIds = _messages
+            .Where(m => m.Timestamp >= threshold)
+            .Select(m => m.MessageId)
+            .ToHashSet();
+
         // Remove from local UI
         _messages.RemoveAll(m => m.Timestamp >= threshold);
-        _messageReactions.Clear();
+
+        // Remove only reactions for deleted messages (not all reactions)
+        foreach (var id in deletedIds)
+            _messageReactions.Remove(id);
 
         // Clear from IndexedDB (delete messages within the time range)
         try { await MessageStore.DeleteConversationMessagesAsync(ConversationId.ToString(CultureInfo.InvariantCulture), threshold); }
-        catch
+        catch (Exception ex)
         {
-            // ignored
+            _errorMessage = $"Failed to clear local messages: {ex.Message}";
         }
 
         // Clear from server
         try { await SignalR.ClearMessagesAsync(ConversationId, threshold, cutoff); }
-        catch
+        catch (Exception ex)
         {
-            // ignored
+            _errorMessage = $"Failed to clear messages from server: {ex.Message}";
         }
 
         StateHasChanged();
@@ -1555,6 +1790,7 @@
             _forwardingMessage.Text,
             _forwardingMessage.ContentType,
             _forwardingMessage.FileName,
+            _forwardingMessage.MimeType,
             _forwardingMessage.MediaDataUrl,
             true
         );
@@ -1563,55 +1799,60 @@
         Navigation.NavigateTo($"/chat/{targetConversationId}", forceLoad: false);
     }
 
-    private async Task SendForwardedMessage(string text, ContentType contentType, string? fileName, string? mediaDataUrl)
+    private async Task SendForwardedMessage(string text, ContentType contentType, string? fileName, string? mimeType, string? mediaDataUrl)
     {
         try
         {
             if (contentType != ContentType.Text && !string.IsNullOrEmpty(mediaDataUrl))
             {
                 // For media: read bytes from blob URL via JS, then re-encrypt and send
-                byte[]? mediaBytes = null;
+                byte[]? mediaBytes;
                 try
                 {
                     mediaBytes = await Js.InvokeAsync<byte[]>("mediaHelpers.fetchBlobAsBytes", mediaDataUrl);
                 }
                 catch
                 {
-                    // If blob URL is no longer valid, fall back to text-only forward
-                }
-
-                if (mediaBytes is not null)
-                {
-                    var mimeType = fileName is not null ? GetMimeTypeFromFileName(fileName) : GetDefaultMimeType(contentType);
-                    var input = new MessageInput.ChatInputMessage
-                    {
-                        Text = text,
-                        ContentType = contentType,
-                        FileName = fileName,
-                        MimeType = mimeType,
-                        MediaBytes = mediaBytes
-                    };
-                    var tempMessage = new ChatMessage
-                    {
-                        MessageId = 0,
-                        Text = text,
-                        Timestamp = DateTimeOffset.UtcNow,
-                        IsMine = true,
-                        ContentType = contentType,
-                        FileName = fileName,
-                        MediaDataUrl = await CreateMediaBlobUrl(mimeType, mediaBytes),
-                        MediaBytes = mediaBytes,
-                        MimeType = mimeType,
-                        Status = Shared.Enums.DeliveryStatus.Sending,
-                        IsForwarded = true
-                    };
-                    _messages.Add(tempMessage);
-                    StateHasChanged();
-                    await SendMediaToRecipients(input, tempMessage);
-                    await PersistMessageAsync(tempMessage);
-                    StateHasChanged();
+                    _errorMessage = "Could not forward media — the file is no longer available. Try re-sending.";
                     return;
                 }
+
+                if (mediaBytes.Length == 0)
+                {
+                    _errorMessage = "Could not forward media — the file is no longer available. Try re-sending.";
+                    return;
+                }
+
+                // Use forwarded MimeType if available, otherwise fall back to filename guess
+                var resolvedMimeType = mimeType ?? (fileName is not null ? GetMimeTypeFromFileName(fileName) : GetDefaultMimeType(contentType));
+                var input = new MessageInput.ChatInputMessage
+                {
+                    Text = text,
+                    ContentType = contentType,
+                    FileName = fileName,
+                    MimeType = resolvedMimeType,
+                    MediaBytes = mediaBytes
+                };
+                var tempMessage = new ChatMessage
+                {
+                    MessageId = 0,
+                    Text = text,
+                    Timestamp = DateTimeOffset.UtcNow,
+                    IsMine = true,
+                    ContentType = contentType,
+                    FileName = fileName,
+                    MediaDataUrl = await CreateMediaBlobUrl(mimeType, mediaBytes),
+                    MediaBytes = null, // Release bytes after blob URL created
+                    MimeType = mimeType,
+                    Status = Shared.Enums.DeliveryStatus.Sending,
+                    IsForwarded = true
+                };
+                _messages.Add(tempMessage);
+                StateHasChanged();
+                await SendMediaToRecipients(input, tempMessage);
+                await PersistMessageAsync(tempMessage);
+                StateHasChanged();
+                return;
             }
 
             // Text-only forward
@@ -1670,18 +1911,23 @@
     private sealed class ChatMessage
     {
         public decimal MessageId { get; set; }
-        public string Text { get; init; } = "";
+        // ReSharper disable once PropertyCanBeMadeInitOnly.Local
+        public string Text { get; set; } = "";
         public DateTimeOffset Timestamp { get; set; }
         public bool IsMine { get; init; }
         public Shared.Enums.DeliveryStatus Status { get; set; }
         public ContentType ContentType { get; init; } = ContentType.Text;
         public string? MediaDataUrl { get; init; }
-        public byte[]? MediaBytes { get; init; }
+        public string? ThumbnailDataUrl { get; set; }
+        public byte[]? MediaBytes { get; set; }
         public string? MimeType { get; init; }
         public string? FileName { get; init; }
         public decimal? ReplyToMessageId { get; init; }
         public string? ReplyToText { get; init; }
         public string? ReplyToSenderName { get; init; }
+        public string? ReplyToMediaDataUrl { get; init; }
+        public string? ReplyToThumbnailDataUrl { get; init; }
+        public ContentType ReplyToContentType { get; init; } = ContentType.Text;
         public bool IsForwarded { get; init; }
     }
 }

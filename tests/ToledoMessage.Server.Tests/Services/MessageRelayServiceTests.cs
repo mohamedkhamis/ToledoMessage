@@ -3,11 +3,13 @@ using ToledoMessage.Data;
 using ToledoMessage.Hubs;
 using ToledoMessage.Models;
 using ToledoMessage.Services;
+using ToledoMessage.Shared.Constants;
 using ToledoMessage.Shared.DTOs;
 using ToledoMessage.Shared.Enums;
 
 namespace ToledoMessage.Server.Tests.Services;
 
+/// <inheritdoc />
 /// <summary>
 /// Stub IHubContext that does nothing (messages sent to clients are ignored).
 /// </summary>
@@ -20,6 +22,7 @@ public class StubHubContext : IHubContext<ChatHub>
 public class StubHubClients : IHubClients
 {
     public IClientProxy All => new StubClientProxy();
+
     public IClientProxy AllExcept(IReadOnlyList<string> excludedConnectionIds)
     {
         return new StubClientProxy();
@@ -173,6 +176,7 @@ public class MessageRelayServiceTests
     [TestMethod]
     public async Task AcknowledgeDelivery_MessageNotFound_ReturnsNull()
     {
+        // ReSharper disable once UnusedVariable
         var (db, service) = CreateService();
         var result = await service.AcknowledgeDelivery(999m);
         Assert.IsNull(result);
@@ -184,7 +188,7 @@ public class MessageRelayServiceTests
         var (db, service) = CreateService();
 
         var conversation = await TestDbContextFactory.SeedConversation(db, 100m);
-        conversation.DisappearingTimerSeconds = 1; // 1 second timer
+        conversation.DisappearingTimerSeconds = 1; // 1-second timer
         await db.SaveChangesAsync();
 
         db.EncryptedMessages.Add(new EncryptedMessage
@@ -256,6 +260,7 @@ public class MessageRelayServiceTests
     [TestMethod]
     public async Task StoreMessage_InvalidBase64_ThrowsArgumentException()
     {
+        // ReSharper disable once UnusedVariable
         var (db, service) = CreateService();
 
         var request = new SendMessageRequest(100m, 10m, 20m,
@@ -285,5 +290,27 @@ public class MessageRelayServiceTests
         var deleted = await service.CleanupExpiredMessages();
 
         Assert.AreEqual(0, deleted);
+    }
+
+    [TestMethod]
+    public void GetMaxCiphertextSize_Media_ReturnsMediaLimit()
+    {
+        // Test media content types return the larger media limit
+        Assert.AreEqual(ProtocolConstants.MaxMediaCiphertextSizeBytes,
+            MessageRelayService.GetMaxCiphertextSize(ContentType.Image));
+        Assert.AreEqual(ProtocolConstants.MaxMediaCiphertextSizeBytes,
+            MessageRelayService.GetMaxCiphertextSize(ContentType.Video));
+        Assert.AreEqual(ProtocolConstants.MaxMediaCiphertextSizeBytes,
+            MessageRelayService.GetMaxCiphertextSize(ContentType.Audio));
+        Assert.AreEqual(ProtocolConstants.MaxMediaCiphertextSizeBytes,
+            MessageRelayService.GetMaxCiphertextSize(ContentType.File));
+    }
+
+    [TestMethod]
+    public void GetMaxCiphertextSize_Text_ReturnsTextLimit()
+    {
+        // Text content type returns the smaller text limit
+        Assert.AreEqual(ProtocolConstants.MaxCiphertextSizeBytes,
+            MessageRelayService.GetMaxCiphertextSize(ContentType.Text));
     }
 }

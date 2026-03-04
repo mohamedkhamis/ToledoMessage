@@ -7,6 +7,29 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <base href="/" />
     <script>
+        // Cache busting: check version and force refresh if changed
+        (async function() {
+            try {
+                var resp = await fetch('/version.json?_=' + Date.now(), { cache: 'no-store' });
+                if (resp.ok) {
+                    var data = await resp.json();
+                    var stored = localStorage.getItem('app.version');
+                    if (stored && stored !== data.version) {
+                        // Version changed - clear caches and reload
+                        if ('caches' in window) {
+                            var keys = await caches.keys();
+                            await Promise.all(keys.map(function(k) { return caches.delete(k); }));
+                        }
+                        localStorage.setItem('app.version', data.version);
+                        window.location.reload(true);
+                        return;
+                    }
+                    localStorage.setItem('app.version', data.version);
+                }
+            } catch (e) { /* ignore */ }
+        })();
+    </script>
+    <script>
         (function () {
             function getDesiredTheme() {
                 var t = localStorage.getItem('app.theme');

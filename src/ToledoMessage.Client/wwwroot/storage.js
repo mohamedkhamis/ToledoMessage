@@ -100,17 +100,9 @@ window.toledoMessageStore = {
             tx.onerror = (e) => reject(e.target.error);
         });
     },
-    // ReSharper disable  VariableUsedInInnerScopeBeforeDeclared
     storeMessages: async function (msgs) {
-        if (!msgs || msgs.length === 0) return new Promise((resolve, reject) => {
-            const tx = db.transaction('messages', 'readwrite');
-            const store = tx.objectStore('messages');
-            for (const msg of msgs) {
-                store.put(msg);
-            }
-            tx.oncomplete = () => resolve();
-            tx.onerror = (e) => reject(e.target.error);
-        });
+// ReSharper disable once InconsistentFunctionReturns
+        if (!msgs || msgs.length === 0) return;
         const db = await this.open();
         return new Promise((resolve, reject) => {
             const tx = db.transaction('messages', 'readwrite');

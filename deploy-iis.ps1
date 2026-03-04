@@ -214,6 +214,12 @@ function Publish-App {
         exit 1
     }
     Write-Ok "Publish succeeded"
+
+    # Generate version file for cache busting (timestamp-based)
+    $version = (Get-Date).ToString("yyyyMMddHHmmss")
+    $versionFilePath = Join-Path $OutputPath "version.json"
+    @{ version = $version; timestamp = (Get-Date).ToString("o") } | ConvertTo-Json | Set-Content -Path $versionFilePath -Encoding UTF8
+    Write-Info "Version file written: $version"
 }
 
 function Write-WebConfig {

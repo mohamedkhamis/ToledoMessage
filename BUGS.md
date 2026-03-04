@@ -7,11 +7,38 @@
 
 ## Open Bugs
 
-*No open bugs.*
+### BUG-MS-007: Missing integration tests for media encryption round-trips (Medium)
+
+**Date:** 2026-03-04
+**Feature:** 006-fix-media-sharing / Tests
+**Severity:** Medium
+**Category:** Logic
+
+**Description:**
+The tasks.md specifies integration tests for media encryption round-trips (T016, T026, T032, T045, T046) in `tests/ToledoMessage.Integration.Tests/MediaEncryptionTests.cs`. These tests do not exist yet. The spec requires >90% code coverage on media send/receive/encrypt/decrypt paths (SC-005). Currently, only client-side `MediaPayloadTests` exist — no tests verify that `MediaPayload` survives the full `DoubleRatchet` encrypt/decrypt cycle.
+
+**Affected Files & Lines:**
+
+| File | Line | Current | Expected |
+|------|------|---------|----------|
+| `tests/ToledoMessage.Integration.Tests/MediaEncryptionTests.cs` | N/A | File does not exist | Should contain media encryption round-trip tests |
+
+**Impact:** No automated verification that encrypted media payloads can be successfully decrypted. A regression in the encryption pipeline or payload serialization would go undetected.
+
+**Fix Steps:**
+1. Create `tests/ToledoMessage.Integration.Tests/MediaEncryptionTests.cs`
+2. Implement tests T016, T026, T032, T045, T046 as specified in tasks.md
+3. Use the existing `DoubleRatchet` session pair pattern from `DoubleRatchetTests.cs`
 
 ---
 
 ## Resolved Bugs
+
+### ~~BUG-MS-008: Sender does not display thumbnail for sent images/videos~~ FIXED 2026-03-04
+Changed `ThumbnailDataUrl` from `init` to `set` in `ChatMessage`. In `SendMediaToRecipients`, after generating thumbnail, create blob URL and set on `tempMessage.ThumbnailDataUrl`.
+
+### ~~BUG-MS-009: Receiver sees raw MediaPayload JSON instead of rendered media~~ FIXED 2026-03-04
+Added defensive MediaPayload detection in the text decryption path of `DecryptEnvelopeToChatMessage`. Now uses `DecryptToBytesAsync` and checks if decrypted bytes are a MediaPayload JSON before treating as text. If detected, handles as media with proper blob URLs and inferred ContentType.
 
 ### ~~BUG-DEV-001: Stale devices accumulate on every login cycle~~ FIXED 2026-03-03
 Server now deactivates existing device with the same name before creating a new one in DevicesController.cs. Prevents device accumulation across logout/login cycles. Login.razor also shows real server error body instead of generic "Device registration failed".
@@ -67,6 +94,24 @@ Removed orphaned CSS from app.css.
 
 ### ~~BUG-HP-006: "API Version" label incorrect~~ FIXED 2026-03-02
 Changed to "App Version".
+
+### ~~BUG-MS-001: HandleMessageDeleted uses direct URL.revokeObjectURL~~ FIXED 2026-03-04
+Changed to use `mediaHelpers.revokeObjectUrl` for consistency with other code paths.
+
+### ~~BUG-MS-002: HandleMessageDeleted does not revoke ThumbnailDataUrl blob~~ FIXED 2026-03-04
+Added ThumbnailDataUrl revocation in HandleMessageDeleted to prevent memory leaks.
+
+### ~~BUG-MS-003: LoadCachedMessages does not set MimeType on ChatMessage~~ FIXED 2026-03-04
+Added `MimeType = stored.MimeType` mapping in LoadCachedMessages.
+
+### ~~BUG-MS-004: ForwardToConversation loses MimeType metadata~~ FIXED 2026-03-04
+Added MimeType to PendingForward tuple and all related code paths.
+
+### ~~BUG-MS-005: generateThumbnail returns base64 string but C# expects byte[]~~ FIXED 2026-03-04
+Changed to use `InvokeAsync<string>` instead of `InvokeAsync<byte[]>` to match JS return type.
+
+### ~~BUG-MS-006: PendingForward not cleared in finally block~~ FIXED 2026-03-04
+Captured and cleared PendingForward at the start of OnInitializedAsync before any throwing code.
 
 ---
 

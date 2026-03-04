@@ -189,6 +189,25 @@ window.mediaHelpers = {
         return new Uint8Array(buffer);
     },
 
+    // Audio playback helpers (replaces eval() calls)
+
+    playAudio: function (messageId) {
+        var audio = document.querySelector('[data-msg-id="' + messageId + '"] audio');
+        if (audio) return audio.play();
+    },
+    pauseAudio: function (messageId) {
+        var audio = document.querySelector('[data-msg-id="' + messageId + '"] audio');
+        if (audio) audio.pause();
+    },
+    getAudioCurrentTime: function (messageId) {
+        var audio = document.querySelector('[data-msg-id="' + messageId + '"] audio');
+        return audio ? audio.currentTime : 0;
+    },
+    getAudioDuration: function (messageId) {
+        var audio = document.querySelector('[data-msg-id="' + messageId + '"] audio');
+        return (audio && isFinite(audio.duration)) ? audio.duration : 0;
+    },
+
     // Long press registration
     registerLongPress: function (element, dotNetRef, methodName, delay) {
         if (!element) return;
@@ -209,5 +228,179 @@ window.mediaHelpers = {
         element.addEventListener('contextmenu', function (e) {
             if (triggered) e.preventDefault();
         });
+    },
+
+    // Compress an image using canvas API
+    compressImage: async function (byteArray, mimeType, maxDimension, quality) {
+        return new Promise(function (resolve, reject) {
+            try {
+                var blob = new Blob([new Uint8Array(byteArray)], { type: mimeType });
+                var img = new Image();
+                img.onload = function () {
+                    var width = img.width;
+                    var height = img.height;
+
+                    // Calculate new dimensions while maintaining aspect ratio
+                    if (width > height) {
+                        if (width > maxDimension) {
+                            height = Math.round((height * maxDimension) / width);
+                            width = maxDimension;
+                        }
+                    } else {
+                        if (height > maxDimension) {
+                            width = Math.round((width * maxDimension) / height);
+                            height = maxDimension;
+                        }
+                    }
+
+                    var canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    var ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Determine output MIME type (default to JPEG for compression)
+                    var outputMime = mimeType === 'image/png' ? 'image/png' : 'image/jpeg';
+                    canvas.toBlob(function (resultBlob) {
+                        if (!resultBlob) {
+                            reject(new Error('Failed to create compressed image'));
+                            return;
+                        }
+                        resultBlob.arrayBuffer().then(function (buffer) {
+                            resolve({
+                                bytes: new Uint8Array(buffer),
+                                width: width,
+                                height: height
+                            });
+                        });
+                    }, outputMime, quality || 0.8);
+                };
+                img.onerror = function () { reject(new Error('Failed to load image for compression')); };
+                img.src = URL.createObjectURL(blob);
+            } catch (e) { reject(e); }
+        });
+    },
+
+    // Generate a small thumbnail from an image
+    generateThumbnail: async function (byteArray, mimeType, maxDimension, quality) {
+        return new Promise(function (resolve, reject) {
+            try {
+                var blob = new Blob([new Uint8Array(byteArray)], { type: mimeType });
+                var img = new Image();
+                img.onload = function () {
+                    var width = img.width;
+                    var height = img.height;
+
+                    // Calculate thumbnail dimensions (maintain aspect ratio, max maxDimension)
+                    if (width > height) {
+                        if (width > maxDimension) {
+                            height = Math.round((height * maxDimension) / width);
+                            width = maxDimension;
+                        }
+                    } else {
+                        if (height > maxDimension) {
+                            width = Math.round((width * maxDimension) / height);
+                            height = maxDimension;
+                        }
+                    }
+
+                    var canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    var ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Always output as JPEG for thumbnails
+                    canvas.toBlob(function (resultBlob) {
+                        if (!resultBlob) {
+                            reject(new Error('Failed to create thumbnail'));
+                            return;
+                        }
+                        var reader = new FileReader();
+                        reader.onloadend = function () {
+                            // Remove "data:image/jpeg;base64," prefix
+                            var base64 = reader.result;
+                            var commaIndex = base64.indexOf(',');
+                            if (commaIndex > -1) {
+                                base64 = base64.substring(commaIndex + 1);
+                            }
+                            resolve(base64);
+                        };
+                        reader.onerror = function () { reject(new Error('Failed to read thumbnail')); };
+                        reader.readAsDataURL(resultBlob);
+                    }, 'image/jpeg', quality || 0.6);
+                };
+                img.onerror = function () { reject(new Error('Failed to load image for thumbnail')); };
+                img.src = URL.createObjectURL(blob);
+            } catch (e) { reject(e); }
+        });
+    },
+
+    // Generate thumbnail from video (capture frame at 1 second)
+    captureVideoFrame: async function (byteArray, mimeType) {
+        return new Promise(function (resolve, reject) {
+            try {
+                var blob = new Blob([new Uint8Array(byteArray)], { type: mimeType });
+                var video = document.createElement('video');
+                video.preload = 'metadata';
+                video.muted = true;
+                video.playsInline = true;
+
+                video.onloadedmetadata = function () {
+                    // Seek to 1 second or middle of video
+                    var seekTime = Math.min(1, video.duration / 2);
+                    if (isNaN(seekTime)) seekTime = 0;
+                    video.currentTime = seekTime;
+                };
+
+                video.onseeked = function () {
+                    var canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    var ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    canvas.toBlob(function (resultBlob) {
+                        if (!resultBlob) {
+                            reject(new Error('Failed to capture video frame'));
+                            return;
+                        }
+                        var reader = new FileReader();
+                        reader.onloadend = function () {
+                            // Remove "data:image/jpeg;base64," prefix
+                            var base64 = reader.result;
+                            var commaIndex = base64.indexOf(',');
+                            if (commaIndex > -1) {
+                                base64 = base64.substring(commaIndex + 1);
+                            }
+                            resolve(base64);
+                        };
+                        reader.onerror = function () { reject(new Error('Failed to read video frame')); };
+                        reader.readAsDataURL(resultBlob);
+                    }, 'image/jpeg', 0.6);
+                };
+
+                video.onerror = function () { reject(new Error('Failed to load video for frame capture')); };
+                video.src = URL.createObjectURL(blob);
+                video.load();
+            } catch (e) { reject(e); }
+        });
+    },
+
+    // Download a file from byte array
+    downloadFile: function (byteArray, fileName, mimeType) {
+        try {
+            var blob = new Blob([new Uint8Array(byteArray)], { type: mimeType });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = fileName || 'download';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error('Download failed:', e);
+        }
     }
 };

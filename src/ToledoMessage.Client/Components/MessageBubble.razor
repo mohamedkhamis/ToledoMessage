@@ -10,7 +10,30 @@
         {
             <div class="reply-quote-block" @onclick="() => OnReplyQuoteClick.InvokeAsync(ReplyToMessageId ?? 0)">
                 <div class="reply-sender-name">@ReplyToSenderName</div>
-                <div class="reply-quote-text">@(!string.IsNullOrEmpty(ReplyToText) ? ReplyToText : "Message")</div>
+                @if (ReplyToContentType == ContentType.Image || ReplyToContentType == ContentType.Video)
+                {
+                    @if (!string.IsNullOrEmpty(ReplyToThumbnailDataUrl))
+                    {
+                        <img src="@ReplyToThumbnailDataUrl" class="reply-media-thumb" alt="Reply preview" />
+                    }
+                    else if (!string.IsNullOrEmpty(ReplyToMediaDataUrl))
+                    {
+                        <img src="@ReplyToMediaDataUrl" class="reply-media-thumb" alt="Reply preview" />
+                    }
+                    <div class="reply-quote-text">@(ReplyToContentType == ContentType.Image ? "📷 Photo" : "🎬 Video")</div>
+                }
+                else if (ReplyToContentType == ContentType.Audio)
+                {
+                    <div class="reply-quote-text">🎤 Voice message</div>
+                }
+                else if (ReplyToContentType == ContentType.File)
+                {
+                    <div class="reply-quote-text">@ReplyToText</div>
+                }
+                else
+                {
+                    <div class="reply-quote-text">@(!string.IsNullOrEmpty(ReplyToText) ? ReplyToText : "Message")</div>
+                }
             </div>
         }
         @if (ContentType == ContentType.Image)
@@ -18,7 +41,17 @@
             if (!string.IsNullOrEmpty(MediaDataUrl))
             {
                 <div class="message-media message-image-clickable" @onclick="() => OnImageClick.InvokeAsync(MediaDataUrl)">
+                    @if (!string.IsNullOrEmpty(ThumbnailDataUrl))
+                    {
+                        <img src="@ThumbnailDataUrl" alt="Loading..." class="message-image message-image-blur" />
+                    }
                     <img src="@MediaDataUrl" alt="@(FileName ?? "Image")" class="message-image" />
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(ThumbnailDataUrl))
+            {
+                <div class="message-media message-image-clickable" @onclick="() => OnImageClick.InvokeAsync(ThumbnailDataUrl)">
+                    <img src="@ThumbnailDataUrl" alt="@(FileName ?? "Image")" class="message-image" />
                 </div>
             }
             else
@@ -30,11 +63,28 @@
         {
             if (!string.IsNullOrEmpty(MediaDataUrl))
             {
-                <div class="message-media">
+                <div class="message-media message-video-container">
+                    @if (!_isVideoPlaying && !string.IsNullOrEmpty(ThumbnailDataUrl))
+                    {
+                        <div class="message-video-thumbnail" @onclick="PlayVideo">
+                            <img src="@ThumbnailDataUrl" alt="Video thumbnail" class="message-video-thumb-img" />
+                            <div class="message-video-play-btn">&#9658;</div>
+                        </div>
+                    }
                     <video controls src="@MediaDataUrl" class="message-video"
-                           preload="metadata" aria-label="@(FileName ?? "Video")">
+                           preload="metadata" aria-label="@(FileName ?? "Video")"
+                           @onplay="() => _isVideoPlaying = true"
+                           @onpause="() => _isVideoPlaying = false">
                         Your browser does not support video playback.
                     </video>
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(ThumbnailDataUrl))
+            {
+                <div class="message-media message-video-container">
+                    <div class="message-video-thumbnail">
+                        <img src="@ThumbnailDataUrl" alt="@(FileName ?? "Video")" class="message-video-thumb-img" />
+                    </div>
                 </div>
             }
             else
@@ -93,7 +143,7 @@
             if (!string.IsNullOrEmpty(MediaDataUrl))
             {
                 <div class="message-file-card">
-                    <div class="message-file-icon">&#128196;</div>
+                    <div class="message-file-icon">@GetFileIconForMimeType(MimeType)</div>
                     <div class="message-file-info">
                         <span class="message-file-name">@(FileName ?? "File")</span>
                         <a href="@MediaDataUrl" download="@(FileName ?? "file")"
@@ -105,7 +155,7 @@
             }
             else
             {
-                <div class="message-media-placeholder">&#128196; @(FileName ?? Theme.Labels.FileUnavailable)</div>
+                <div class="message-media-placeholder">@GetFileIconForMimeType(MimeType) @(FileName ?? Theme.Labels.FileUnavailable)</div>
             }
         }
         @if (!string.IsNullOrEmpty(Text))
@@ -190,18 +240,26 @@
     private ElementReference _audioElementRef;
     private static readonly int[] AudioWaveHeights = [4, 8, 14, 10, 18, 6, 12, 20, 8, 16, 10, 22, 6, 14, 18, 8, 12, 20, 10, 16, 6, 14, 22, 8, 18, 12];
 
+    // Video playback state
+    private bool _isVideoPlaying;
+
+    private void PlayVideo()
+    {
+        _isVideoPlaying = true;
+    }
+
     private async Task ToggleAudioPlayback()
     {
         try
         {
             if (_isAudioPlaying)
             {
-                await Js.InvokeVoidAsync("eval", $"document.querySelector('[data-msg-id=\"{MessageId}\"] audio').pause()");
+                await Js.InvokeVoidAsync("mediaHelpers.pauseAudio", MessageId);
                 _isAudioPlaying = false;
             }
             else
             {
-                await Js.InvokeVoidAsync("eval", $"document.querySelector('[data-msg-id=\"{MessageId}\"] audio').play()");
+                await Js.InvokeVoidAsync("mediaHelpers.playAudio", MessageId);
                 _isAudioPlaying = true;
             }
         }
@@ -218,7 +276,7 @@
     {
         try
         {
-            var time = await Js.InvokeAsync<double>("eval", $"document.querySelector('[data-msg-id=\"{MessageId}\"] audio')?.currentTime ?? 0");
+            var time = await Js.InvokeAsync<double>("mediaHelpers.getAudioCurrentTime", MessageId);
             _audioCurrentTime = time;
             await InvokeAsync(StateHasChanged);
         }
@@ -234,7 +292,7 @@
     {
         try
         {
-            var dur = await Js.InvokeAsync<double>("eval", $"(function(){{ var a=document.querySelector('[data-msg-id=\"{MessageId}\"] audio'); return a && isFinite(a.duration) ? a.duration : 0; }})()");
+            var dur = await Js.InvokeAsync<double>("mediaHelpers.getAudioDuration", MessageId);
             _audioDuration = dur;
             await InvokeAsync(StateHasChanged);
         }
@@ -246,6 +304,30 @@
         var m = (int)seconds / 60;
         var s = (int)seconds % 60;
         return $"{m}:{s:D2}";
+    }
+
+    private static string GetFileIconForMimeType(string? mimeType)
+    {
+        if (string.IsNullOrEmpty(mimeType))
+            return "📎";
+
+        return mimeType.ToLowerInvariant() switch
+        {
+            var m when m.StartsWith("application/pdf") => "📄",
+            var m when m.StartsWith("application/msword") ||
+                        m.StartsWith("application/vnd.openxmlformats-officedocument.wordprocessingml") => "📝",
+            var m when m.StartsWith("application/vnd.ms-excel") ||
+                        m.StartsWith("application/vnd.openxmlformats-officedocument.spreadsheetml") => "📊",
+            var m when m.StartsWith("application/vnd.ms-powerpoint") ||
+                        m.StartsWith("application/vnd.openxmlformats-officedocument.presentationml") => "📑",
+            var m when m.StartsWith("application/zip") ||
+                        m.StartsWith("application/x-rar") ||
+                        m.StartsWith("application/x-7z-compressed") ||
+                        m.StartsWith("application/x-tar") ||
+                        m.StartsWith("application/gzip") => "📦",
+            var m when m.StartsWith("text/") => "📃",
+            _ => "📎"
+        };
     }
 
     [Parameter]
@@ -268,6 +350,12 @@
 
     [Parameter]
     public string? MediaDataUrl { get; set; }
+
+    [Parameter]
+    public string? ThumbnailDataUrl { get; set; }
+
+    [Parameter]
+    public string? MimeType { get; set; }
 
     [Parameter]
     public string? FileName { get; set; }
@@ -295,6 +383,15 @@
 
     [Parameter]
     public string? ReplyToText { get; set; }
+
+    [Parameter]
+    public string? ReplyToMediaDataUrl { get; set; }
+
+    [Parameter]
+    public string? ReplyToThumbnailDataUrl { get; set; }
+
+    [Parameter]
+    public ContentType ReplyToContentType { get; set; } = ContentType.Text;
 
     [Parameter]
     public EventCallback<decimal> OnReplyQuoteClick { get; set; }

@@ -100,10 +100,15 @@ builder.Services.AddAuthentication(static options =>
     });
 builder.Services.AddAuthorization();
 
-// SignalR — increase max message size to support encrypted media (up to 15 MB file + Base64 overhead = ~25 MB JSON)
+// SignalR — increase max message size to support encrypted media (up to 16 MB file + Base64 overhead ≈ 30 MB)
 builder.Services.AddSignalR(static options =>
 {
-    options.MaximumReceiveMessageSize = 25 * 1024 * 1024; // 25 MB (15 MB ciphertext as Base64 ≈ 20 MB + JSON overhead)
+    options.MaximumReceiveMessageSize = 35 * 1024 * 1024; // 35 MB (16 MB file → ~22 MB ciphertext as Base64 + JSON overhead)
+}).AddJsonProtocol(static options =>
+{
+    // Ensure enum values (ContentType, MessageType) survive positional record deserialization.
+    // Without this, enum parameters in records may default to 0 (Text) on some .NET versions.
+    options.PayloadSerializerOptions.PropertyNameCaseInsensitive = true;
 });
 
 // Controllers (for REST API endpoints)

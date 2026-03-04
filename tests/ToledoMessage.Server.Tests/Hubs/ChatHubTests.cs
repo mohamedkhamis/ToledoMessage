@@ -445,5 +445,28 @@ public class ChatHubTests
         await hub.OnDisconnectedAsync(null);
     }
 
+    // --- Media Message Tests ---
+
+    [TestMethod]
+    public async Task SendMessage_Media_FileName_MimeType_Null_On_Request()
+    {
+        var (hub, db, _, _) = CreateHub();
+        await TestDbContextFactory.SeedUser(db, 1m, "sender");
+        await TestDbContextFactory.SeedDevice(db, 10m, 1m, "SenderDevice");
+        await TestDbContextFactory.SeedUser(db, 2m, "recipient");
+        await TestDbContextFactory.SeedDevice(db, 20m, 2m, "RecipientDevice");
+        await TestDbContextFactory.SeedConversation(db, 100m);
+        await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
+        await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
+
+        // Send media message with null FileName and MimeType (metadata inside ciphertext)
+        var request = new SendMessageRequest(100m, 10m, 20m,
+            Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType.NormalMessage, ContentType.Image);
+
+        var result = await hub.SendMessage(request);
+
+        Assert.AreNotEqual(0m, result.MessageId);
+    }
+
     public TestContext TestContext { get; set; }
 }

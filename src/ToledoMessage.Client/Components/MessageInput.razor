@@ -19,28 +19,79 @@
     }
     @if (_selectedFile is not null)
     {
-        <div class="file-preview-bar">
-            @if (_previewDataUrl is not null)
-            {
-                <img src="@_previewDataUrl" class="file-preview-thumb" alt="Preview" />
-            }
-            else
-            {
-                <div class="file-preview-icon">@GetFileIcon(_selectedContentType)</div>
-            }
-            <div class="file-preview-info">
-                <span class="file-preview-name">@_selectedFile.Name</span>
-                <span class="file-preview-size">@FormatFileSize(_selectedFile.Size)</span>
-                @if (_selectedContentType == ContentType.Image)
-                {
-                    <label class="send-as-doc-toggle">
-                        <input type="checkbox" checked="@_sendAsDocument" @onchange="OnSendAsDocumentChanged" />
-                        <span>Send as document</span>
-                    </label>
-                }
+        @if (_selectedContentType == ContentType.Image)
+        {
+            @* WhatsApp-style large image preview *@
+            <div class="media-preview-panel">
+                <div class="media-preview-header">
+                    <button class="media-preview-close" @onclick="ClearSelectedFile" aria-label="Remove attachment">&times;</button>
+                    <span class="media-preview-filename">@_selectedFile.Name</span>
+                    <div class="media-preview-actions">
+                        <button class="hd-toggle-btn @(_sendAsHD ? "hd-active" : "")"
+                                @onclick="ToggleHDQuality"
+                                title="@(_sendAsHD ? "HD quality enabled" : "Standard quality")"
+                                aria-label="Toggle HD quality">
+                            <span class="hd-label">HD</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="media-preview-image-wrap">
+                    @if (_previewDataUrl is not null)
+                    {
+                        <img src="@_previewDataUrl" alt="Preview" class="media-preview-image" />
+                    }
+                    else
+                    {
+                        <div class="media-preview-placeholder">&#128247; Loading preview...</div>
+                    }
+                </div>
+                <div class="media-preview-footer">
+                    <span class="media-preview-size">
+                        @if (_sendAsHD)
+                        {
+                            <span>@FormatFileSize(_originalFileSize) (Original)</span>
+                        }
+                        else
+                        {
+                            <span>@FormatFileSize(_selectedFileBytes?.Length ?? 0)</span>
+                            @if (_originalFileSize > 0 && _selectedFileBytes is not null && _selectedFileBytes.Length < _originalFileSize)
+                            {
+                                <span class="media-preview-savings"> (saved @(Math.Round((1 - (double)_selectedFileBytes.Length / _originalFileSize) * 100))%)</span>
+                            }
+                        }
+                    </span>
+                </div>
             </div>
-            <button class="file-preview-remove" @onclick="ClearSelectedFile" aria-label="Remove attachment">&times;</button>
-        </div>
+        }
+        else if (_selectedContentType == ContentType.Video && _previewDataUrl is not null)
+        {
+            @* Video preview — similar large panel *@
+            <div class="media-preview-panel">
+                <div class="media-preview-header">
+                    <button class="media-preview-close" @onclick="ClearSelectedFile" aria-label="Remove attachment">&times;</button>
+                    <span class="media-preview-filename">@_selectedFile.Name</span>
+                </div>
+                <div class="media-preview-image-wrap">
+                    <img src="@_previewDataUrl" alt="Video preview" class="media-preview-image" />
+                    <div class="media-preview-video-badge">&#9658; Video</div>
+                </div>
+                <div class="media-preview-footer">
+                    <span class="media-preview-size">@FormatFileSize(_selectedFile.Size)</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            @* File/audio — compact bar *@
+            <div class="file-preview-bar">
+                <div class="file-preview-icon">@GetFileIcon(_selectedContentType)</div>
+                <div class="file-preview-info">
+                    <span class="file-preview-name">@_selectedFile.Name</span>
+                    <span class="file-preview-size">@FormatFileSize(_selectedFile.Size)</span>
+                </div>
+                <button class="file-preview-remove" @onclick="ClearSelectedFile" aria-label="Remove attachment">&times;</button>
+            </div>
+        }
     }
     <div class="chat-input-row">
         @if (!_isRecording)
@@ -157,13 +208,15 @@
     private string _messageText = "";
     private IBrowserFile? _selectedFile;
     private byte[]? _selectedFileBytes;
+    private byte[]? _originalFileBytes; // Keeps original bytes for HD toggle
+    private long _originalFileSize;
     private ContentType _selectedContentType = ContentType.Text;
     private string? _previewDataUrl;
     private string? _errorMessage;
     private bool _showAttachMenu;
     private bool _showEmojiPicker;
     private bool _isRecording;
-    private bool _sendAsDocument;
+    private bool _sendAsHD;
     private ElementReference _textareaRef;
 
     private bool CanSend => !string.IsNullOrWhiteSpace(_messageText) || _selectedFile is not null;
@@ -253,12 +306,12 @@
                 return;
             }
 
-            mediaBytes = _selectedFileBytes;
+            // If HD is on, send original bytes; otherwise send compressed
+            mediaBytes = _sendAsHD && _originalFileBytes is not null ? _originalFileBytes : _selectedFileBytes;
             fileName = _selectedFile.Name;
             // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
             mimeType = _selectedFile.ContentType ?? "image/jpeg";
             contentType = _selectedContentType;
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] SendMessage: fileName={fileName}, mimeType={mimeType}, contentType={contentType}");
         }
 
         if (string.IsNullOrEmpty(text) && mediaBytes is null)
@@ -271,7 +324,7 @@
             FileName = fileName,
             MimeType = mimeType,
             ContentType = contentType,
-            SendAsDocument = _sendAsDocument,
+            SendAsHD = _sendAsHD,
             ReplyToMessageId = ReplyContext?.MessageId
         };
 
@@ -290,18 +343,14 @@
     {
         _showAttachMenu = false;
         var file = e.File;
-        // Debug: Log the content type
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] OnMediaSelected: {file.Name}, ContentType: '{file.ContentType}', Size: {file.Size}");
         // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
-        var contentType = file.ContentType ?? "image/jpeg"; // Fallback to JPEG if browser doesn't provide
+        var contentType = file.ContentType ?? "image/jpeg";
         _selectedContentType = contentType.StartsWith("video/") ? ContentType.Video : ContentType.Image;
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] _selectedContentType set to: {_selectedContentType}");
 
-        // For videos, we need to generate a preview thumbnail
+        // For videos, generate a preview thumbnail
         if (_selectedContentType == ContentType.Video)
         {
             await SetSelectedFile(file, createPreview: false);
-            // Generate video thumbnail after file is loaded
             if (_selectedFileBytes is not null)
             {
                 try
@@ -315,9 +364,9 @@
                             "mediaHelpers.createObjectUrl", thumbnailBytes, "image/jpeg");
                     }
                 }
-                catch (Exception ex)
+                catch
                 {
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] Video thumbnail failed: {ex.Message}");
+                    // Video thumbnail generation failed — show without preview
                 }
             }
         }
@@ -343,30 +392,34 @@
 
     private async Task SetSelectedFile(IBrowserFile file, bool createPreview)
     {
+        // Save content type — ClearSelectedFile resets it
+        var savedContentType = _selectedContentType;
         ClearSelectedFile();
+        _selectedContentType = savedContentType;
         _errorMessage = null;
-        _sendAsDocument = false;
+        _sendAsHD = false;
 
-        var maxSize = ProtocolConstants.MaxMediaCiphertextSizeBytes;
-        if (file.Size > maxSize)
+        var maxFileSize = ProtocolConstants.MaxMediaFileSizeBytes;
+        if (file.Size > maxFileSize)
         {
-            _errorMessage = $"File too large. Maximum is {FormatFileSize(maxSize)}.";
+            _errorMessage = $"File too large. Maximum is {FormatFileSize(maxFileSize)}.";
             return;
         }
 
-        // Read bytes eagerly — avoids double-read on send and enables preview
-        await using var stream = file.OpenReadStream(maxAllowedSize: maxSize);
+        // Read bytes eagerly
+        await using var stream = file.OpenReadStream(maxAllowedSize: maxFileSize);
         _selectedFileBytes = new byte[file.Size];
         await stream.ReadExactlyAsync(_selectedFileBytes);
 
-        // Trust browser's content type - no validation needed
-        // The browser already validated the file when the user selected it
-
         _selectedFile = file;
+        _originalFileSize = file.Size;
 
-        // Compress images if not sending as document
-        if (createPreview && _selectedContentType == ContentType.Image && !_sendAsDocument)
+        // Compress images by default (standard quality mode)
+        if (createPreview && _selectedContentType == ContentType.Image)
         {
+            // Keep original bytes for HD toggle
+            _originalFileBytes = _selectedFileBytes;
+
             try
             {
                 // ReSharper disable NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
@@ -377,36 +430,44 @@
                 if (compressed.Bytes is not null && compressed.Bytes.Length > 0)
                 {
                     _selectedFileBytes = compressed.Bytes;
-
-                    // Update preview with compressed image
-                    if (_previewDataUrl is not null)
-                    {
-                        await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _previewDataUrl);
-                    }
-                    _previewDataUrl = await Js.InvokeAsync<string>(
-                        "mediaHelpers.createObjectUrl", _selectedFileBytes, "image/jpeg");
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] Image compression failed: {ex.Message}");
-                // Continue without compression - original bytes will be used
+                Console.WriteLine($"Image compression failed: {ex.Message}");
+                // Continue without compression — original bytes will be used
+            }
+
+            // Create preview from the active bytes (compressed or original)
+            try
+            {
+                _previewDataUrl = await Js.InvokeAsync<string>(
+                    "mediaHelpers.createObjectUrl", _selectedFileBytes, "image/jpeg");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Preview blob URL failed, using data URL: {ex.Message}");
+            }
+
+            // Fallback to data URL if blob creation failed
+            if (_previewDataUrl is null && _selectedFileBytes is not null)
+            {
+                var base64 = Convert.ToBase64String(_selectedFileBytes);
+                _previewDataUrl = $"data:image/jpeg;base64,{base64}";
             }
         }
-
-        if (createPreview && _selectedFileBytes is not null)
+        else if (createPreview && _selectedFileBytes is not null)
         {
             try
             {
                 // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
                 var mimeType = file.ContentType ?? "image/jpeg";
-                _previewDataUrl ??= await Js.InvokeAsync<string>(
+                _previewDataUrl = await Js.InvokeAsync<string>(
                     "mediaHelpers.createObjectUrl", _selectedFileBytes, mimeType);
             }
-            catch (Exception ex)
+            catch
             {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] Preview failed: {ex.Message}");
-                // ignored - preview is optional
+                // Preview is optional
             }
         }
     }
@@ -419,55 +480,52 @@
         public int Height { get; set; }
     }
 
-    private async Task OnSendAsDocumentChanged(ChangeEventArgs e)
+    private async Task ToggleHDQuality()
     {
         if (_selectedFile is null || _selectedContentType != ContentType.Image) return;
 
-        _sendAsDocument = e.Value is true;
+        _sendAsHD = !_sendAsHD;
 
-        if (_sendAsDocument)
+        // Revoke old preview
+        if (_previewDataUrl is not null)
         {
-            // Re-read original file bytes (skip compression)
-            if (_selectedFileBytes is not null && _previewDataUrl is not null)
-            {
-                await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _previewDataUrl);
-                _previewDataUrl = null;
-            }
+            await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _previewDataUrl);
+            _previewDataUrl = null;
+        }
 
-            await using var stream = _selectedFile.OpenReadStream(maxAllowedSize: ProtocolConstants.MaxMediaCiphertextSizeBytes);
-            _selectedFileBytes = new byte[_selectedFile.Size];
-            await stream.ReadExactlyAsync(_selectedFileBytes);
-
-            // Show original preview (not compressed)
-            try
+        if (_sendAsHD)
+        {
+            // Switch to original (HD) bytes for preview
+            if (_originalFileBytes is not null)
             {
-                var mimeType = _selectedFile.ContentType ?? "image/jpeg";
-                _previewDataUrl = await Js.InvokeAsync<string>(
-                    "mediaHelpers.createObjectUrl", _selectedFileBytes, mimeType);
+                _selectedFileBytes = _originalFileBytes;
+                try
+                {
+                    var mimeType = _selectedFile.ContentType ?? "image/jpeg";
+                    _previewDataUrl = await Js.InvokeAsync<string>(
+                        "mediaHelpers.createObjectUrl", _originalFileBytes, mimeType);
+                }
+                catch { /* ignore preview errors */ }
             }
-            catch { /* ignore preview errors */ }
         }
         else
         {
             // Re-compress the image
-            if (_selectedFileBytes is not null && _previewDataUrl is not null)
+            if (_originalFileBytes is not null)
             {
-                await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _previewDataUrl);
-                _previewDataUrl = null;
-            }
-
-            try
-            {
-                var mimeType = _selectedFile.ContentType ?? "image/jpeg";
-                var compressed = await Js.InvokeAsync<CompressedImageResult>(
-                    "mediaHelpers.compressImage", _selectedFileBytes, mimeType, 1600, 0.8);
-
-                if (compressed.Bytes is not null && compressed.Bytes.Length > 0)
+                try
                 {
-                    _selectedFileBytes = compressed.Bytes;
+                    var mimeType = _selectedFile.ContentType ?? "image/jpeg";
+                    var compressed = await Js.InvokeAsync<CompressedImageResult>(
+                        "mediaHelpers.compressImage", _originalFileBytes, mimeType, 1600, 0.8);
+
+                    if (compressed.Bytes is not null && compressed.Bytes.Length > 0)
+                    {
+                        _selectedFileBytes = compressed.Bytes;
+                    }
                 }
+                catch { /* ignore compression errors — use original */ }
             }
-            catch { /* ignore compression errors - use original */ }
 
             // Show compressed preview
             if (_selectedFileBytes is not null)
@@ -491,8 +549,10 @@
         }
         _selectedFile = null;
         _selectedFileBytes = null;
+        _originalFileBytes = null;
+        _originalFileSize = 0;
         _selectedContentType = ContentType.Text;
-        _sendAsDocument = false;
+        _sendAsHD = false;
         _errorMessage = null;
     }
 
@@ -522,10 +582,10 @@
     {
         return type switch
         {
-            ContentType.Audio => "🎵",
-            ContentType.Video => "🎬",
-            ContentType.Image => "🖼️",
-            _ => "📄"
+            ContentType.Audio => "\ud83c\udfb5",
+            ContentType.Video => "\ud83c\udfac",
+            ContentType.Image => "\ud83d\uddbc\ufe0f",
+            _ => "\ud83d\udcc4"
         };
     }
 
@@ -543,7 +603,7 @@
         public string? FileName { get; set; }
         public string? MimeType { get; set; }
         public ContentType ContentType { get; set; } = ContentType.Text;
-        public bool SendAsDocument { get; set; }
+        public bool SendAsHD { get; set; }
         public bool HasMedia => MediaBytes is not null;
         public decimal? ReplyToMessageId { get; set; }
     }

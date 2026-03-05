@@ -63,28 +63,23 @@
         {
             if (!string.IsNullOrEmpty(MediaDataUrl))
             {
-                <div class="message-media message-video-container">
-                    @if (!_isVideoPlaying && !string.IsNullOrEmpty(ThumbnailDataUrl))
+                <div class="message-media message-video-container" @onclick="() => OnVideoClick.InvokeAsync(MediaDataUrl)">
+                    @if (!string.IsNullOrEmpty(ThumbnailDataUrl))
                     {
-                        <div class="message-video-thumbnail" @onclick="PlayVideo">
-                            <img src="@ThumbnailDataUrl" alt="Video thumbnail" class="message-video-thumb-img" />
-                            <div class="message-video-play-btn">&#9658;</div>
-                        </div>
+                        <img src="@ThumbnailDataUrl" alt="Video thumbnail" class="message-video-thumb-img" />
                     }
-                    <video controls src="@MediaDataUrl" class="message-video"
-                           preload="metadata" aria-label="@(FileName ?? "Video")"
-                           @onplay="() => _isVideoPlaying = true"
-                           @onpause="() => _isVideoPlaying = false">
-                        Your browser does not support video playback.
-                    </video>
+                    else
+                    {
+                        <video src="@MediaDataUrl" class="message-video-thumb-img"
+                               preload="metadata" muted aria-hidden="true"></video>
+                    }
+                    <div class="message-video-play-btn">&#9658;</div>
                 </div>
             }
             else if (!string.IsNullOrEmpty(ThumbnailDataUrl))
             {
                 <div class="message-media message-video-container">
-                    <div class="message-video-thumbnail">
-                        <img src="@ThumbnailDataUrl" alt="@(FileName ?? "Video")" class="message-video-thumb-img" />
-                    </div>
+                    <img src="@ThumbnailDataUrl" alt="@(FileName ?? "Video")" class="message-video-thumb-img" />
                 </div>
             }
             else
@@ -240,14 +235,6 @@
     private ElementReference _audioElementRef;
     private static readonly int[] AudioWaveHeights = [4, 8, 14, 10, 18, 6, 12, 20, 8, 16, 10, 22, 6, 14, 18, 8, 12, 20, 10, 16, 6, 14, 22, 8, 18, 12];
 
-    // Video playback state
-    private bool _isVideoPlaying;
-
-    private void PlayVideo()
-    {
-        _isVideoPlaying = true;
-    }
-
     private async Task ToggleAudioPlayback()
     {
         try
@@ -368,6 +355,9 @@
 
     [Parameter]
     public EventCallback<string> OnImageClick { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnVideoClick { get; set; }
 
     [Parameter]
     public EventCallback OnReply { get; set; }

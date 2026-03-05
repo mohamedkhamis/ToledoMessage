@@ -156,7 +156,7 @@
                 bool isLastInGroup = nextMsg is null || nextMsg.IsMine != msg.IsMine ||
                     nextMsg.Timestamp.LocalDateTime.Date != msg.Timestamp.LocalDateTime.Date;
 
-                <MessageBubble MessageId="msg.MessageId"
+                <MessageBubble @key="msg" MessageId="msg.MessageId"
                                Text="@msg.Text"
                                Timestamp="msg.Timestamp"
                                IsMine="msg.IsMine"
@@ -171,6 +171,7 @@
                                IsForwarded="msg.IsForwarded"
                                IsSearchHighlight="IsSearchHighlighted(msg.MessageId)"
                                OnImageClick="HandleImageClick"
+                               OnVideoClick="HandleVideoClick"
                                OnReply="() => SetReplyTo(msg)"
                                OnContextMenu="(pos) => ShowContextMenu(pos.X, pos.Y, msg)"
                                ReplyToMessageId="msg.ReplyToMessageId"
@@ -196,6 +197,19 @@
                CurrentIndex="_lightboxIndex"
                OnClose="CloseLightbox"
                OnIndexChanged="SetLightboxIndex" />
+
+@if (_videoLightboxVisible && _videoLightboxUrl is not null)
+{
+    <div class="video-lightbox-overlay" @onclick="CloseVideoLightbox">
+        <button class="lightbox-close" @onclick="CloseVideoLightbox" aria-label="Close">&times;</button>
+        <div class="video-lightbox-content" @onclick:stopPropagation="true">
+            <video controls autoplay src="@_videoLightboxUrl" class="video-lightbox-player"
+                   aria-label="Video player">
+                Your browser does not support video playback.
+            </video>
+        </div>
+    </div>
+}
 
 @if (_showContextMenu && _contextMenuMessage is not null)
 {
@@ -314,6 +328,8 @@
     private bool _lightboxVisible;
     private List<string> _lightboxImageUrls = [];
     private int _lightboxIndex;
+    private bool _videoLightboxVisible;
+    private string? _videoLightboxUrl;
     private ChatMessage? _replyingTo;
 
     // Context menu state
@@ -845,26 +861,26 @@
     private async Task HandleSend(MessageInput.ChatInputMessage input)
     {
         var hasMedia = input.HasMedia;
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] HandleSend: hasMedia={hasMedia}, ContentType={input.ContentType}, MimeType='{input.MimeType}', FileName='{input.FileName}', MediaBytes.Length={input.MediaBytes?.Length}");
 
-        // Handle "Send as document" - change ContentType to File
         var contentType = input.ContentType;
-        if (input.SendAsDocument && contentType == ContentType.Image)
-        {
-            contentType = ContentType.File;
-        }
 
         string? mediaDataUrl = null;
-        if (hasMedia)
+        if (hasMedia && input.MediaBytes is not null)
         {
             try
             {
-                mediaDataUrl = await CreateMediaBlobUrl(input.MimeType ?? "image/jpeg", input.MediaBytes!);
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] Blob URL created: {mediaDataUrl.Substring(0, Math.Min(50, mediaDataUrl.Length))}...");
+                mediaDataUrl = await CreateMediaBlobUrl(input.MimeType ?? "image/jpeg", input.MediaBytes);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] Blob URL creation failed: {ex.Message}");
+                Console.WriteLine($"Blob URL creation failed, using data URL fallback: {ex.Message}");
+            }
+
+            // Fallback to data URL if blob URL creation failed
+            if (mediaDataUrl is null)
+            {
+                var base64 = Convert.ToBase64String(input.MediaBytes);
+                mediaDataUrl = $"data:{input.MimeType ?? "image/jpeg"};base64,{base64}";
             }
         }
 
@@ -918,7 +934,6 @@
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] Send failed: {ex.Message}");
             _errorMessage = $"Failed to send message: {ex.Message}";
         }
 
@@ -958,14 +973,16 @@
             SendMessageResult? lastResult = null;
             foreach (var (deviceId, ciphertextBase64, messageType) in deviceCiphertexts)
             {
-                var request = new SendMessageRequest(
-                    ConversationId,
-                    _localDeviceId,
-                    deviceId,
-                    ciphertextBase64,
-                    messageType,
-                    ContentType.Text,
-                    ReplyToMessageId: replyToMessageId);
+                var request = new SendMessageRequest
+                {
+                    ConversationId = ConversationId,
+                    SenderDeviceId = _localDeviceId,
+                    RecipientDeviceId = deviceId,
+                    Ciphertext = ciphertextBase64,
+                    MessageType = messageType,
+                    ContentType = ContentType.Text,
+                    ReplyToMessageId = replyToMessageId
+                };
 
                 lastResult = await SignalR.SendMessageAsync(request);
             }
@@ -1077,16 +1094,18 @@
             SendMessageResult? lastResult = null;
             foreach (var (deviceId, ciphertextBase64, messageType) in deviceCiphertexts)
             {
-                var request = new SendMessageRequest(
-                    ConversationId,
-                    _localDeviceId,
-                    deviceId,
-                    ciphertextBase64,
-                    messageType,
-                    input.ContentType,
-                    null, // FileName now inside encrypted payload
-                    null, // MimeType now inside encrypted payload
-                    input.ReplyToMessageId);
+                var request = new SendMessageRequest
+                {
+                    ConversationId = ConversationId,
+                    SenderDeviceId = _localDeviceId,
+                    RecipientDeviceId = deviceId,
+                    Ciphertext = ciphertextBase64,
+                    MessageType = messageType,
+                    ContentType = input.ContentType,
+                    FileName = null, // FileName now inside encrypted payload
+                    MimeType = null, // MimeType now inside encrypted payload
+                    ReplyToMessageId = input.ReplyToMessageId
+                };
 
                 lastResult = await SignalR.SendMessageAsync(request);
             }
@@ -1196,9 +1215,6 @@
                     var possiblePayload = MediaPayload.Deserialize(decryptedBytes);
                     if (!string.IsNullOrEmpty(possiblePayload.Data) && !string.IsNullOrEmpty(possiblePayload.MimeType))
                     {
-                        System.Diagnostics.Debug.WriteLine(
-                            $"[DEBUG] Detected MediaPayload in text path (envelope.ContentType={envelope.ContentType}). Handling as media.");
-
                         var mediaData = Convert.FromBase64String(possiblePayload.Data);
                         var mimeType = possiblePayload.MimeType;
                         var blobUrl = await CreateMediaBlobUrl(mimeType, mediaData);
@@ -1248,7 +1264,7 @@
                 }
             }
 
-            var plaintext = System.Text.Encoding.UTF8.GetString(decryptedBytes);
+            var plaintext = Encoding.UTF8.GetString(decryptedBytes);
             return new ChatMessage
             {
                 MessageId = envelope.MessageId,
@@ -1669,6 +1685,18 @@
     private void SetLightboxIndex(int index)
     {
         _lightboxIndex = index;
+    }
+
+    private void HandleVideoClick(string videoUrl)
+    {
+        _videoLightboxUrl = videoUrl;
+        _videoLightboxVisible = true;
+    }
+
+    private void CloseVideoLightbox()
+    {
+        _videoLightboxVisible = false;
+        _videoLightboxUrl = null;
     }
 
     // ─── Search methods ───

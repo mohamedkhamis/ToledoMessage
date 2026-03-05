@@ -177,7 +177,7 @@ public static class SignalRLoadTest
             try
             {
                 var reg = await http.PostAsJsonAsync("/api/auth/register",
-                    new { DisplayName = name, Password = password });
+                    new { Username = name, DisplayName = name, Password = password });
 
                 if (reg.IsSuccessStatusCode)
                 {

@@ -5,6 +5,8 @@ using ToledoMessage.Data;
 using ToledoMessage.Services;
 using ToledoMessage.Shared.DTOs;
 
+// ReSharper disable RemoveRedundantBraces
+
 namespace ToledoMessage.Controllers;
 
 [ApiController]
@@ -24,10 +26,18 @@ public class MessagesController(ApplicationDbContext db, MessageRelayService rel
         if (!MessageRelayService.IsValidBase64(request.Ciphertext, out var ciphertextBytes))
             return BadRequest("Invalid Base64 ciphertext.");
 
-        // Enforce maximum ciphertext size (content-type-aware)
-        var maxSize = MessageRelayService.GetMaxCiphertextSize(request.ContentType);
+        // Defensive fallback: if ContentType deserialized as Text but ciphertext exceeds text limit,
+        // treat as media (enum serialization can fail across JSON boundaries)
+        var effectiveContentType = request.ContentType;
+        if (effectiveContentType == Shared.Enums.ContentType.Text
+            && ciphertextBytes.Length > Shared.Constants.ProtocolConstants.MaxCiphertextSizeBytes)
+        {
+            effectiveContentType = Shared.Enums.ContentType.File;
+        }
+
+        var maxSize = MessageRelayService.GetMaxCiphertextSize(effectiveContentType);
         if (ciphertextBytes.Length > maxSize)
-            return BadRequest($"Message ciphertext exceeds the maximum allowed size of {maxSize} bytes.");
+            return BadRequest($"Message exceeds the maximum allowed size ({maxSize / 1_048_576} MB).");
 
         // Validate sender is a participant in the conversation
         var isParticipant = await db.ConversationParticipants

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -5,11 +6,14 @@ using Microsoft.EntityFrameworkCore;
 using ToledoMessage.Data;
 using ToledoMessage.Models;
 using ToledoMessage.Services;
+using ToledoMessage.Shared.Constants;
 using ToledoMessage.Shared.DTOs;
+using ToledoMessage.Shared.Enums;
 
 namespace ToledoMessage.Hubs;
 
 [Authorize]
+[SuppressMessage("ReSharper", "RemoveRedundantBraces")]
 public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, PresenceService presence) : Hub
 {
     /// <summary>
@@ -47,9 +51,18 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
         if (!MessageRelayService.IsValidBase64(request.Ciphertext, out var ciphertextBytes))
             throw new HubException("Invalid Base64 ciphertext.");
 
-        var maxSize = MessageRelayService.GetMaxCiphertextSize(request.ContentType);
+        // Defensive fallback: if ContentType deserialized as Text but ciphertext exceeds text limit,
+        // treat as media (enum serialization can fail across SignalR JSON protocol boundaries)
+        var effectiveContentType = request.ContentType;
+        if (effectiveContentType == ContentType.Text
+            && ciphertextBytes.Length > ProtocolConstants.MaxCiphertextSizeBytes)
+        {
+            effectiveContentType = ContentType.File;
+        }
+
+        var maxSize = MessageRelayService.GetMaxCiphertextSize(effectiveContentType);
         if (ciphertextBytes.Length > maxSize)
-            throw new HubException("Message exceeds the maximum allowed size.");
+            throw new HubException($"Message exceeds the maximum allowed size ({maxSize / 1_048_576} MB).");
 
         // Validate sender is a participant in the conversation
         var isParticipant = await db.ConversationParticipants

@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using ToledoMessage.Controllers;
-using ToledoMessage.Hubs;
 using ToledoMessage.Models;
 using ToledoMessage.Services;
 using ToledoMessage.Shared.DTOs;
@@ -40,15 +38,14 @@ public class MessagesControllerTests
         var (controller, db) = CreateController();
         await SeedMessagingContext(db);
 
-        var request = new SendMessageRequest(100m, 10m, 20m,
-            Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m, Ciphertext = Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var result = await controller.SendMessage(request);
 
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<SendMessageResult>(ok.Value);
-        var response = (SendMessageResult)ok.Value!;
+        var response = (SendMessageResult)ok.Value;
         Assert.AreNotEqual(0m, response.MessageId);
         Assert.AreEqual(1, response.SequenceNumber);
     }
@@ -61,8 +58,7 @@ public class MessagesControllerTests
         await TestDbContextFactory.SeedUser(db, 3m, "outsider");
         await TestDbContextFactory.SeedDevice(db, 30m, 3m);
 
-        var request = new SendMessageRequest(100m, 30m, 20m,
-            Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 30m, RecipientDeviceId = 20m, Ciphertext = Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var result = await controller.SendMessage(request);
         Assert.IsInstanceOfType<ForbidResult>(result);
@@ -76,8 +72,7 @@ public class MessagesControllerTests
         await TestDbContextFactory.SeedConversation(db, 100m);
         await TestDbContextFactory.SeedParticipant(db, 100m, 3m);
 
-        var request = new SendMessageRequest(100m, 0m, 20m,
-            Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 0m, RecipientDeviceId = 20m, Ciphertext = Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var result = await controller.SendMessage(request);
         Assert.IsInstanceOfType<BadRequestObjectResult>(result);
@@ -103,7 +98,7 @@ public class MessagesControllerTests
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<List<MessageEnvelope>>(ok.Value);
-        var envelopes = (List<MessageEnvelope>)ok.Value!;
+        var envelopes = (List<MessageEnvelope>)ok.Value;
         Assert.AreEqual(1, envelopes.Count);
     }
 
@@ -135,7 +130,7 @@ public class MessagesControllerTests
 
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var msg = await db.EncryptedMessages.FindAsync(500m);
-        Assert.IsTrue(msg!.IsDelivered);
+        Assert.IsTrue(msg?.IsDelivered);
     }
 
     [TestMethod]
@@ -173,8 +168,7 @@ public class MessagesControllerTests
         var (controller, db) = CreateController();
         await SeedMessagingContext(db);
 
-        var request = new SendMessageRequest(100m, 10m, 20m,
-            "not-valid-base64!!!", MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m, Ciphertext = "not-valid-base64!!!", MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var result = await controller.SendMessage(request);
         Assert.IsInstanceOfType<BadRequestObjectResult>(result);
@@ -186,8 +180,7 @@ public class MessagesControllerTests
         var (controller, db) = CreateController();
         await SeedMessagingContext(db);
 
-        var request = new SendMessageRequest(100m, 10m, 20m,
-            "", MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m, Ciphertext = "", MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var result = await controller.SendMessage(request);
         Assert.IsInstanceOfType<BadRequestObjectResult>(result);

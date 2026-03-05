@@ -26,20 +26,26 @@ public class AuthController(
     AccountDeletionService accountDeletionService)
     : BaseApiController
 {
-    private static readonly Regex DisplayNameRegex = new("^[a-zA-Z0-9_-]+$", RegexOptions.Compiled);
+    private static readonly Regex UsernameRegex = new("^[a-zA-Z0-9_-]+$", RegexOptions.Compiled);
     // ReSharper disable  RemoveRedundantBraces
 
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.Username))
+            return BadRequest("Username is required.");
+
+        if (request.Username.Length is < 3 or > 32)
+            return BadRequest("Username must be between 3 and 32 characters.");
+
+        if (!UsernameRegex.IsMatch(request.Username))
+            return BadRequest("Username may only contain letters, digits, hyphens, and underscores.");
+
         if (string.IsNullOrWhiteSpace(request.DisplayName))
-            return BadRequest("DisplayName is required.");
+            return BadRequest("Display name is required.");
 
-        if (request.DisplayName.Length is < 3 or > 32)
-            return BadRequest("DisplayName must be between 3 and 32 characters.");
-
-        if (!DisplayNameRegex.IsMatch(request.DisplayName))
-            return BadRequest("DisplayName may only contain letters, digits, hyphens, and underscores.");
+        if (request.DisplayName.Length is < 1 or > 50)
+            return BadRequest("Display name must be between 1 and 50 characters.");
 
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 12)
             return BadRequest("Password must be at least 12 characters.");
@@ -47,13 +53,14 @@ public class AuthController(
         if (request.Password.Length > Shared.Constants.ProtocolConstants.MaxPasswordLength)
             return BadRequest($"Password must not exceed {Shared.Constants.ProtocolConstants.MaxPasswordLength} characters.");
 
-        var exists = await db.Users.AnyAsync(u => u.DisplayName == request.DisplayName);
+        var exists = await db.Users.AnyAsync(u => u.Username == request.Username);
         if (exists)
-            return Conflict("A user with this display name already exists.");
+            return Conflict("A user with this username already exists.");
 
         var user = new User
         {
             Id = DecimalTools.GetNewId(),
+            Username = request.Username,
             DisplayName = request.DisplayName,
             CreatedAt = DateTimeOffset.UtcNow,
             IsActive = true
@@ -67,15 +74,15 @@ public class AuthController(
         var accessToken = GenerateJwtToken(user);
         var refreshToken = await CreateRefreshTokenAsync(user.Id);
 
-        return Created(string.Empty, new AuthResponse(user.Id, user.DisplayName, accessToken, refreshToken));
+        return Created(string.Empty, new AuthResponse(user.Id, user.Username, user.DisplayName, accessToken, refreshToken));
     }
 
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        const string genericError = "Invalid display name or password.";
+        const string genericError = "Invalid username or password.";
 
-        var user = await db.Users.FirstOrDefaultAsync(u => u.DisplayName == request.DisplayName);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
         if (user == null)
             return Unauthorized(genericError);
 
@@ -95,7 +102,7 @@ public class AuthController(
         var accessToken = GenerateJwtToken(user);
         var refreshToken = await CreateRefreshTokenAsync(user.Id);
 
-        return Ok(new AuthResponse(user.Id, user.DisplayName, accessToken, refreshToken));
+        return Ok(new AuthResponse(user.Id, user.Username, user.DisplayName, accessToken, refreshToken));
     }
 
     [HttpPost("refresh")]
@@ -212,6 +219,7 @@ public class AuthController(
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString(CultureInfo.InvariantCulture)),
+            new Claim(JwtRegisteredClaimNames.UniqueName, user.Username),
             new Claim(JwtRegisteredClaimNames.Name, user.DisplayName),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };

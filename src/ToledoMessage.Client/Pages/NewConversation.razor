@@ -45,7 +45,7 @@ else if (_searchResults is not null && _searchResults.Count > 0)
             <div class="search-result-item">
                 <div>
                     <span class="search-result-name">@user.DisplayName</span>
-                    <span class="search-result-meta">@user.DeviceCount device(s)</span>
+                    <span class="search-result-meta">@@@user.Username · @user.DeviceCount device(s)</span>
                 </div>
                 <button class="btn-primary btn-sm"
                         @onclick="() => StartConversation(user)"

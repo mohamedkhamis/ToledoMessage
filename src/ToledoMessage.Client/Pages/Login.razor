@@ -26,8 +26,8 @@
 
         <form @onsubmit="HandleLogin">
             <div class="form-group">
-                <label for="displayName">Display Name</label>
-                <input id="displayName" @bind="_displayName" placeholder="Enter your display name"
+                <label for="username">Username</label>
+                <input id="username" @bind="_username" placeholder="Enter your username"
                        autocomplete="username" required aria-required="true" />
             </div>
             <div class="form-group">
@@ -56,7 +56,7 @@
 </div>
 
 @code {
-    private string _displayName = "";
+    private string _username = "";
     private string _password = "";
     private string? _errorMessage;
     private string? _statusMessage;
@@ -82,7 +82,7 @@
         try
         {
             // 1. Authenticate
-            var request = new LoginRequest(_displayName, _password);
+            var request = new LoginRequest(_username, _password);
             var response = await Http.PostAsJsonAsync("/api/auth/login", request);
 
             if (!response.IsSuccessStatusCode)

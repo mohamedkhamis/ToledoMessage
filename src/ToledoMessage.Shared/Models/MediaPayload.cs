@@ -97,7 +97,7 @@ public sealed record MediaPayload
     /// <summary>
     /// Validates that the data size is within the allowed limit (16 MB, matching WhatsApp).
     /// </summary>
-    public static bool IsValidSize(string? base64Data, int maxSizeBytes = 16_777_216)
+    public static bool IsValidSize(string? base64Data, int maxSizeBytes = Constants.ProtocolConstants.MaxMediaFileSizeBytes)
     {
         if (string.IsNullOrEmpty(base64Data))
             return false;

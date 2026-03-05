@@ -92,8 +92,7 @@ public class MessageRelayServiceTests
         await TestDbContextFactory.SeedDevice(db, 20m, 2m);
         await TestDbContextFactory.SeedConversation(db, 100m);
 
-        var request = new SendMessageRequest(100m, 10m, 20m,
-            Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m, Ciphertext = Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var message = await service.StoreMessage(10m, request);
 
@@ -111,8 +110,7 @@ public class MessageRelayServiceTests
         await TestDbContextFactory.SeedDevice(db, 10m, 1m);
         await TestDbContextFactory.SeedConversation(db, 100m);
 
-        var request = new SendMessageRequest(100m, 10m, 20m,
-            Convert.ToBase64String(new byte[] { 1 }), MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m, Ciphertext = Convert.ToBase64String(new byte[] { 1 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var msg1 = await service.StoreMessage(10m, request);
         var msg2 = await service.StoreMessage(10m, request);
@@ -239,10 +237,8 @@ public class MessageRelayServiceTests
         await TestDbContextFactory.SeedConversation(db, 100m);
         await TestDbContextFactory.SeedConversation(db, 200m);
 
-        var request100 = new SendMessageRequest(100m, 10m, 20m,
-            Convert.ToBase64String(new byte[] { 1 }), MessageType.NormalMessage, ContentType.Text);
-        var request200 = new SendMessageRequest(200m, 10m, 20m,
-            Convert.ToBase64String(new byte[] { 1 }), MessageType.NormalMessage, ContentType.Text);
+        var request100 = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m, Ciphertext = Convert.ToBase64String(new byte[] { 1 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
+        var request200 = new SendMessageRequest { ConversationId = 200m, SenderDeviceId = 10m, RecipientDeviceId = 20m, Ciphertext = Convert.ToBase64String(new byte[] { 1 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         // Messages in conversation 100
         var msg1 = await service.StoreMessage(10m, request100);
@@ -263,8 +259,7 @@ public class MessageRelayServiceTests
         // ReSharper disable once UnusedVariable
         var (db, service) = CreateService();
 
-        var request = new SendMessageRequest(100m, 10m, 20m,
-            "not-valid-base64!!!", MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m, Ciphertext = "not-valid-base64!!!", MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         await Assert.ThrowsAsync<ArgumentException>(() => service.StoreMessage(10m, request));
     }

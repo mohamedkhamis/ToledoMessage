@@ -135,6 +135,13 @@ builder.Services.AddRazorComponents()
 
 var app = builder.Build();
 
+// Apply pending EF Core migrations on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -145,7 +152,19 @@ else
     app.UseExceptionHandler("/Error", true);
 }
 
-app.UseStaticFiles();
+// Fallback for deploy-time files (version.json) not in the static asset manifest.
+// MapStaticAssets() only serves build-time fingerprinted assets.
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = static ctx =>
+    {
+        var path = ctx.Context.Request.Path.Value ?? "";
+        if (!path.Contains("version.json", StringComparison.OrdinalIgnoreCase)) return;
+        // version.json must never be cached — it's the single trigger for cache busting.
+        ctx.Context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+        ctx.Context.Response.Headers.Pragma = "no-cache";
+    }
+});
 
 // Serilog request logging must be early to capture all requests and errors
 app.UseSerilogRequestLogging(static options =>

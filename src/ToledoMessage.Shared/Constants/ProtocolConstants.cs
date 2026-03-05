@@ -36,7 +36,8 @@ public static class ProtocolConstants
     // Message limits
     public const int MaxMessageSizeBytes = 65_536; // 64 KB plaintext limit
     public const int MaxCiphertextSizeBytes = 67_584; // ~66 KB (64 KB plaintext + encryption overhead)
-    public const int MaxMediaCiphertextSizeBytes = 52_428_800; // ~50 MB ciphertext (supports up to ~35 MB files after base64 + JSON + encryption overhead)
+    public const int MaxMediaFileSizeBytes = 16_777_216; // 16 MB raw file limit (matches WhatsApp)
+    public const int MaxMediaCiphertextSizeBytes = 25_165_824; // ~24 MB ciphertext (16 MB file → ~22 MB base64 + encryption overhead)
 
     // Input length limits
     public const int MaxDeviceNameLength = 64;

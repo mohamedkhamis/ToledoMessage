@@ -1,5 +1,8 @@
+using System.Text.Json.Serialization;
+
 namespace ToledoMessage.Shared.Enums;
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ContentType
 {
     Text = 0,

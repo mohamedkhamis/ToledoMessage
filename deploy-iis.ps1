@@ -201,6 +201,14 @@ function Publish-App {
         exit 1
     }
 
+    # Clean old WASM framework files to prevent stale cache
+    $frameworkDir = Join-Path $OutputPath "wwwroot\_framework"
+    if (Test-Path $frameworkDir) {
+        Write-Step "Cleaning old WASM framework files..."
+        Remove-Item "$frameworkDir\*" -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Ok "Old framework files cleaned"
+    }
+
     Write-Step "Publishing app to $OutputPath ..."
     & dotnet publish $projectPath `
         --configuration Release `
@@ -215,9 +223,9 @@ function Publish-App {
     }
     Write-Ok "Publish succeeded"
 
-    # Generate version file for cache busting (timestamp-based)
+    # Generate version file for cache busting (timestamp-based) - put in wwwroot
     $version = (Get-Date).ToString("yyyyMMddHHmmss")
-    $versionFilePath = Join-Path $OutputPath "version.json"
+    $versionFilePath = Join-Path (Join-Path $OutputPath "wwwroot") "version.json"
     @{ version = $version; timestamp = (Get-Date).ToString("o") } | ConvertTo-Json | Set-Content -Path $versionFilePath -Encoding UTF8
     Write-Info "Version file written: $version"
 }
@@ -243,6 +251,15 @@ function Write-WebConfig {
           <environmentVariable name="ASPNETCORE_ENVIRONMENT" value="$Env" />
         </environmentVariables>
       </aspNetCore>
+      <httpProtocol>
+        <customHeaders>
+          <remove name="X-Powered-By" />
+        </customHeaders>
+      </httpProtocol>
+      <staticContent>
+        <remove fileExtension=".wasm" />
+        <mimeMap fileExtension=".wasm" mimeType="application/wasm" />
+      </staticContent>
     </system.webServer>
   </location>
 </configuration>

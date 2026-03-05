@@ -235,8 +235,7 @@ public class ChatHubTests
         await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
         await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
 
-        var request = new SendMessageRequest(100m, 10m, 20m,
-            Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m, Ciphertext = Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var result = await hub.SendMessage(request);
 
@@ -253,8 +252,7 @@ public class ChatHubTests
         await TestDbContextFactory.SeedConversation(db, 100m);
         // User 1 is NOT a participant
 
-        var request = new SendMessageRequest(100m, 10m, 20m,
-            Convert.ToBase64String(new byte[] { 1 }), MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m, Ciphertext = Convert.ToBase64String(new byte[] { 1 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.SendMessage(request));
         StringAssert.Contains(ex.Message, "not a participant");
@@ -270,8 +268,7 @@ public class ChatHubTests
         await TestDbContextFactory.SeedConversation(db, 100m);
         await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
 
-        var request = new SendMessageRequest(100m, 20m, 30m,
-            Convert.ToBase64String(new byte[] { 1 }), MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 20m, RecipientDeviceId = 30m, Ciphertext = Convert.ToBase64String(new byte[] { 1 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.SendMessage(request));
         StringAssert.Contains(ex.Message, "Sender device not found");
@@ -383,8 +380,7 @@ public class ChatHubTests
         await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
 
         // Try to send from user 2's device as user 1
-        var request = new SendMessageRequest(100m, 20m, 10m,
-            Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 20m, RecipientDeviceId = 10m, Ciphertext = Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.SendMessage(request));
         StringAssert.Contains(ex.Message, "Sender device not found");
@@ -460,8 +456,7 @@ public class ChatHubTests
         await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
 
         // Send media message with null FileName and MimeType (metadata inside ciphertext)
-        var request = new SendMessageRequest(100m, 10m, 20m,
-            Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType.NormalMessage, ContentType.Image);
+        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m, Ciphertext = Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Image };
 
         var result = await hub.SendMessage(request);
 

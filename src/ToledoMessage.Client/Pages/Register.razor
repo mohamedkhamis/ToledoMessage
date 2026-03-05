@@ -19,9 +19,15 @@
 
         <form @onsubmit="HandleRegister">
             <div class="form-group">
-                <label for="displayName">Display Name</label>
-                <input id="displayName" @bind="_displayName" placeholder="Choose a display name"
+                <label for="username">Username</label>
+                <input id="username" @bind="_username" placeholder="Choose a unique username"
                        autocomplete="username" required aria-required="true" />
+                <span class="form-hint">Letters, digits, hyphens, underscores only</span>
+            </div>
+            <div class="form-group">
+                <label for="displayName">Display Name</label>
+                <input id="displayName" @bind="_displayName" placeholder="Your name shown to others"
+                       required aria-required="true" />
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
@@ -60,6 +66,7 @@
 </div>
 
 @code {
+    private string _username = "";
     private string _displayName = "";
     private string _password = "";
     private string? _errorMessage;
@@ -113,14 +120,14 @@
         try
         {
             // 1. Register account
-            var registerRequest = new RegisterRequest(_displayName, _password);
+            var registerRequest = new RegisterRequest(_username, _displayName, _password);
             var response = await Http.PostAsJsonAsync("/api/auth/register", registerRequest);
 
             if (!response.IsSuccessStatusCode)
             {
                 var body = await response.Content.ReadAsStringAsync();
                 _errorMessage = response.StatusCode == System.Net.HttpStatusCode.Conflict
-                    ? "Display name already taken."
+                    ? "Username already taken."
                     : $"Registration failed: {body}";
                 return;
             }

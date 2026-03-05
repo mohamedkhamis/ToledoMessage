@@ -1,3 +1,3 @@
 namespace ToledoMessage.Shared.DTOs;
 
-public sealed record RegisterRequest(string DisplayName, string Password);
+public sealed record RegisterRequest(string Username, string DisplayName, string Password);

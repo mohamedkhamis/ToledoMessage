@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -14,7 +15,7 @@ public static class TestDbContextFactory
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
+            .ConfigureWarnings(static w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
             .Options;
 
         var context = new ApplicationDbContext(options);
@@ -26,7 +27,7 @@ public static class TestDbContextFactory
     {
         return new ClaimsPrincipal(new ClaimsIdentity(
         [
-            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString(CultureInfo.InvariantCulture)),
             new Claim(ClaimTypes.Name, displayName)
         ], "TestScheme"));
     }
@@ -47,6 +48,7 @@ public static class TestDbContextFactory
         var user = new User
         {
             Id = id,
+            Username = displayName,
             DisplayName = displayName,
             PasswordHash = "hashed",
             CreatedAt = DateTimeOffset.UtcNow,

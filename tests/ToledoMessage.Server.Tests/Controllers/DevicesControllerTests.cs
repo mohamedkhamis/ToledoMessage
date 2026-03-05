@@ -4,11 +4,11 @@ using ToledoMessage.Controllers;
 using ToledoMessage.Services;
 using ToledoMessage.Shared.Constants;
 using ToledoMessage.Shared.DTOs;
+#pragma warning disable MSTEST0049
 
 namespace ToledoMessage.Server.Tests.Controllers;
 
-[TestClass]
-[SuppressMessage("ReSharper", "UnusedVariable")]
+[TestClass, SuppressMessage("ReSharper", "UnusedVariable")]
 public class DevicesControllerTests
 {
     private static (DevicesController controller, Data.ApplicationDbContext db) CreateController(decimal userId = 1m)

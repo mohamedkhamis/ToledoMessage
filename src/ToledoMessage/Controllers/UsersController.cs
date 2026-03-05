@@ -32,12 +32,14 @@ public class UsersController(ApplicationDbContext db, PreKeyService preKeyServic
         var userId = GetUserId();
 
         var users = await db.Users
-            .Where(u => u.IsActive && u.Id != userId && u.DisplayName.Contains(q))
-            .OrderBy(static u => u.DisplayName)
+            .Where(u => u.IsActive && u.Id != userId &&
+                        (u.Username.Contains(q) || u.DisplayName.Contains(q)))
+            .OrderBy(static u => u.Username)
             .Skip(skip)
             .Take(take)
             .Select(static u => new UserSearchResult(
                 u.Id,
+                u.Username,
                 u.DisplayName,
                 u.Devices.Count(static d => d.IsActive)))
             .ToListAsync();

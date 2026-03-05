@@ -453,6 +453,26 @@ label {
     background-image: var(--chat-bg-image, none);
     background-repeat: repeat;
 }
+.loading-older-indicator {
+    text-align: center;
+    padding: 8px 0;
+    color: var(--text-secondary);
+    font-size: 0.8em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.loading-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--text-secondary);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 /* chat-input-area: see refined version below */
 .chat-empty-state {
     text-align: center;

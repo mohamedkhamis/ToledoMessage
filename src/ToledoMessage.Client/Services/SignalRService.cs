@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.Extensions.DependencyInjection;
 using ToledoMessage.Shared.DTOs;
+
+// ReSharper disable RemoveRedundantBraces
 
 namespace ToledoMessage.Client.Services;
 
@@ -13,6 +14,8 @@ namespace ToledoMessage.Client.Services;
 public class SignalRService : IAsyncDisposable
 {
     private HubConnection? _hubConnection;
+    private string? _currentHubUrl;
+    private decimal _registeredDeviceId;
 
     /// <summary>Raised when a new encrypted message is received from the server.</summary>
     public event Action<MessageEnvelope>? OnMessageReceived;
@@ -61,19 +64,28 @@ public class SignalRService : IAsyncDisposable
 
     /// <summary>
     /// Builds and starts the SignalR hub connection with automatic reconnection.
+    /// Reuses the existing connection if already connected to the same hub.
     /// </summary>
     /// <param name="hubUrl">The full URL to the chat hub (e.g., "https://host/hubs/chat").</param>
     /// <param name="accessToken">The JWT access token for authentication.</param>
     public async Task ConnectAsync(string hubUrl, string accessToken)
     {
+        // Reuse existing connection if already connected to the same hub
+        if (_hubConnection?.State is HubConnectionState.Connected or HubConnectionState.Connecting or HubConnectionState.Reconnecting
+            && _currentHubUrl == hubUrl)
+        {
+            return;
+        }
+
         if (_hubConnection is not null) await _hubConnection.DisposeAsync();
+        _currentHubUrl = hubUrl;
 
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(hubUrl, options =>
             {
                 options.AccessTokenProvider = () => Task.FromResult<string?>(accessToken);
             })
-            .AddJsonProtocol(options =>
+            .AddJsonProtocol(static options =>
             {
                 // Match server: ensure enum values in positional records (ContentType, MessageType)
                 // deserialize correctly regardless of JSON property name casing.
@@ -157,12 +169,17 @@ public class SignalRService : IAsyncDisposable
     /// <summary>
     /// Registers this device with the hub so that messages can be routed to it.
     /// Also sets up automatic re-registration on reconnect.
+    /// Skips if the same device is already registered on this connection.
     /// </summary>
     /// <param name="deviceId">The local device ID.</param>
     public async Task RegisterDeviceAsync(decimal deviceId)
     {
         if (_hubConnection is null)
             throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
+
+        // Skip if already registered on this connection
+        if (_registeredDeviceId == deviceId)
+            return;
 
         _hubConnection.Reconnected += async _ =>
         {
@@ -177,6 +194,7 @@ public class SignalRService : IAsyncDisposable
         };
 
         await _hubConnection.InvokeAsync("RegisterDevice", deviceId);
+        _registeredDeviceId = deviceId;
     }
 
     /// <summary>
@@ -279,6 +297,8 @@ public class SignalRService : IAsyncDisposable
             _hubConnection = null;
         }
 
+        _currentHubUrl = null;
+        _registeredDeviceId = 0;
         GC.SuppressFinalize(this);
     }
 }

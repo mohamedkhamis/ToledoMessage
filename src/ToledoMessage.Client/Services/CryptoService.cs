@@ -3,6 +3,8 @@ using ToledoMessage.Crypto.Protocol;
 using ToledoMessage.Shared.DTOs;
 using ToledoMessage.Shared.Enums;
 
+// ReSharper disable RemoveRedundantBraces
+
 namespace ToledoMessage.Client.Services;
 
 /// <summary>
@@ -133,6 +135,7 @@ public class CryptoService(
 
     /// <summary>
     /// Encrypts raw bytes for all active devices of a recipient user (for media).
+    /// Continues to remaining devices if one device's session establishment fails.
     /// </summary>
     public async Task<List<(decimal deviceId, string ciphertextBase64, MessageType messageType)>> EncryptBytesForAllDevicesAsync(
         decimal recipientUserId, byte[] data)
@@ -146,10 +149,23 @@ public class CryptoService(
 
         foreach (var device in devices)
         {
-            await EstablishSessionAsync(recipientUserId, device.DeviceId);
-            var (ciphertextBase64, messageType) = await EncryptBytesAsync(device.DeviceId, data);
-            results.Add((device.DeviceId, ciphertextBase64, messageType));
+            try
+            {
+                await EstablishSessionAsync(recipientUserId, device.DeviceId);
+                var (ciphertextBase64, messageType) = await EncryptBytesAsync(device.DeviceId, data);
+                results.Add((device.DeviceId, ciphertextBase64, messageType));
+            }
+            catch (Exception ex)
+            {
+                // Skip this device but continue sending to others.
+                // Common cause: PreKey bundle fetch failed for an inactive/stale device.
+                Console.WriteLine($"Failed to encrypt for device {device.DeviceId}: {ex.Message}");
+            }
         }
+
+        if (results.Count == 0)
+            throw new InvalidOperationException(
+                $"Failed to encrypt message for any device of user {recipientUserId}.");
 
         return results;
     }

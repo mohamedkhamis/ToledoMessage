@@ -164,10 +164,48 @@ window.mediaHelpers = {
         textarea.dispatchEvent(new Event('input', { bubbles: true }));
     },
 
-    // Scroll chat container to bottom
-    scrollToBottom: function (selector) {
+    // Scroll chat container to bottom (instant on load, smooth for user actions)
+    scrollToBottom: function (selector, instant) {
         var el = document.querySelector(selector);
-        if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+        if (!el) return;
+        if (instant) {
+            el.scrollTop = el.scrollHeight;
+            // Retry after media may have loaded (images/videos change height)
+            setTimeout(function () { el.scrollTop = el.scrollHeight; }, 100);
+            setTimeout(function () { el.scrollTop = el.scrollHeight; }, 400);
+        } else {
+            el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+        }
+    },
+
+    // Observe scroll position: notify Blazor when near top (for loading older messages) or near bottom
+    observeScroll: function (selector, dotNetRef) {
+        var el = document.querySelector(selector);
+        if (!el) return;
+        if (el._scrollObserverSet) return;
+        el._scrollObserverSet = true;
+        el.addEventListener('scroll', function () {
+            var nearTop = el.scrollTop < 50;
+            var nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+            if (nearTop) {
+                dotNetRef.invokeMethodAsync('OnScrollNearTop');
+            }
+            dotNetRef.invokeMethodAsync('OnScrollPositionChanged', nearBottom);
+        });
+    },
+
+    // Get current scrollHeight (used to maintain scroll position after prepending messages)
+    getScrollHeight: function (selector) {
+        var el = document.querySelector(selector);
+        return el ? el.scrollHeight : 0;
+    },
+
+    // Adjust scrollTop after prepending content to maintain visual position
+    adjustScrollAfterPrepend: function (selector, previousScrollHeight) {
+        var el = document.querySelector(selector);
+        if (el) {
+            el.scrollTop = el.scrollHeight - previousScrollHeight;
+        }
     },
 
     // Scroll to a specific element by data attribute

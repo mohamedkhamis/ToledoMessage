@@ -20,7 +20,7 @@ else
 
 <div class="card mb-md">
     <div class="form-group mb-0">
-        <input placeholder="Search users by name..."
+        <input placeholder="Search by name or @@username..."
                @bind="_searchQuery"
                @bind:event="oninput"
                @bind:after="OnSearchInputChanged"
@@ -93,11 +93,19 @@ else if (_searchResults is not null && _searchResults.Count == 0 && !string.IsNu
 
     private async Task OnSearchInputChanged()
     {
-        await _debounceCts?.CancelAsync()!;
+        // Safely cancel previous search
+        if (_debounceCts is { } oldCts)
+        {
+            try { oldCts.Cancel(); } catch { }
+            try { oldCts.Dispose(); } catch { }
+        }
         _debounceCts = new CancellationTokenSource();
         var token = _debounceCts.Token;
 
-        if (string.IsNullOrWhiteSpace(_searchQuery) || _searchQuery.Length < 2)
+        // Strip @ prefix if present (Telegram-style search)
+        var searchQuery = (_searchQuery ?? "").TrimStart('@');
+
+        if (string.IsNullOrWhiteSpace(searchQuery) || searchQuery.Length < 2)
         {
             _searchResults = null;
             return;
@@ -115,7 +123,7 @@ else if (_searchResults is not null && _searchResults.Count == 0 && !string.IsNu
             StateHasChanged();
 
             var response = await Http.GetFromJsonAsync<UserSearchResponse>(
-                $"/api/users/search?q={Uri.EscapeDataString(_searchQuery)}", token);
+                $"/api/users/search?q={Uri.EscapeDataString(searchQuery)}", token);
 
             if (!token.IsCancellationRequested)
             {

@@ -31,9 +31,10 @@ public class UsersController(ApplicationDbContext db, PreKeyService preKeyServic
 
         var userId = GetUserId();
 
+        var qLower = q.ToLower();
         var users = await db.Users
             .Where(u => u.IsActive && u.Id != userId &&
-                        (u.Username.Contains(q) || u.DisplayName.Contains(q)))
+                        (u.Username.ToLower().Contains(qLower) || u.DisplayName.ToLower().Contains(qLower)))
             .OrderBy(static u => u.Username)
             .Skip(skip)
             .Take(take)

@@ -336,29 +336,60 @@ window.mediaHelpers = {
         });
     },
 
-    // Generate thumbnail from video (capture frame at 1 second)
-    captureVideoFrame: async function (byteArray, mimeType) {
+    // Generate thumbnail from video (capture frame at 1 second, resize to maxDim)
+    captureVideoFrame: async function (byteArray, mimeType, maxDimension, quality) {
+        maxDimension = maxDimension || 320;
+        quality = quality || 0.7;
         return new Promise(function (resolve, reject) {
+            var blobUrl = null;
+            var timeout = null;
             try {
                 var blob = new Blob([new Uint8Array(byteArray)], { type: mimeType });
+                blobUrl = URL.createObjectURL(blob);
                 var video = document.createElement('video');
-                video.preload = 'metadata';
+                video.preload = 'auto';
                 video.muted = true;
                 video.playsInline = true;
 
-                video.onloadedmetadata = function () {
-                    // Seek to 1 second or middle of video
-                    var seekTime = Math.min(1, video.duration / 2);
-                    if (isNaN(seekTime)) seekTime = 0;
+                // Timeout after 10s in case video never loads
+                timeout = setTimeout(function () {
+                    if (blobUrl) URL.revokeObjectURL(blobUrl);
+                    reject(new Error('Video frame capture timed out'));
+                }, 10000);
+
+                video.onloadeddata = function () {
+                    // Seek to 1 second or 10% into the video
+                    var seekTime = Math.min(1, video.duration * 0.1);
+                    if (isNaN(seekTime) || seekTime < 0) seekTime = 0;
                     video.currentTime = seekTime;
                 };
 
                 video.onseeked = function () {
+                    clearTimeout(timeout);
+                    var w = video.videoWidth;
+                    var h = video.videoHeight;
+
+                    // Resize to maxDimension maintaining aspect ratio
+                    if (w > h) {
+                        if (w > maxDimension) {
+                            h = Math.round((h * maxDimension) / w);
+                            w = maxDimension;
+                        }
+                    } else {
+                        if (h > maxDimension) {
+                            w = Math.round((w * maxDimension) / h);
+                            h = maxDimension;
+                        }
+                    }
+
                     var canvas = document.createElement('canvas');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
+                    canvas.width = w;
+                    canvas.height = h;
                     var ctx = canvas.getContext('2d');
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(video, 0, 0, w, h);
+
+                    // Clean up video blob URL
+                    if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; }
 
                     canvas.toBlob(function (resultBlob) {
                         if (!resultBlob) {
@@ -367,7 +398,6 @@ window.mediaHelpers = {
                         }
                         var reader = new FileReader();
                         reader.onloadend = function () {
-                            // Remove "data:image/jpeg;base64," prefix
                             var base64 = reader.result;
                             var commaIndex = base64.indexOf(',');
                             if (commaIndex > -1) {
@@ -377,13 +407,45 @@ window.mediaHelpers = {
                         };
                         reader.onerror = function () { reject(new Error('Failed to read video frame')); };
                         reader.readAsDataURL(resultBlob);
-                    }, 'image/jpeg', 0.6);
+                    }, 'image/jpeg', quality);
                 };
 
-                video.onerror = function () { reject(new Error('Failed to load video for frame capture')); };
-                video.src = URL.createObjectURL(blob);
+                video.onerror = function () {
+                    clearTimeout(timeout);
+                    if (blobUrl) URL.revokeObjectURL(blobUrl);
+                    reject(new Error('Failed to load video for frame capture'));
+                };
+                video.src = blobUrl;
                 video.load();
-            } catch (e) { reject(e); }
+            } catch (e) {
+                clearTimeout(timeout);
+                if (blobUrl) URL.revokeObjectURL(blobUrl);
+                reject(e);
+            }
+        });
+    },
+
+    // Get video duration in seconds from byte array
+    getVideoDuration: async function (byteArray, mimeType) {
+        return new Promise(function (resolve) {
+            try {
+                var blob = new Blob([new Uint8Array(byteArray)], { type: mimeType });
+                var blobUrl = URL.createObjectURL(blob);
+                var video = document.createElement('video');
+                video.preload = 'metadata';
+                video.muted = true;
+                video.onloadedmetadata = function () {
+                    var dur = isFinite(video.duration) ? video.duration : 0;
+                    URL.revokeObjectURL(blobUrl);
+                    resolve(dur);
+                };
+                video.onerror = function () {
+                    URL.revokeObjectURL(blobUrl);
+                    resolve(0);
+                };
+                setTimeout(function () { URL.revokeObjectURL(blobUrl); resolve(0); }, 5000);
+                video.src = blobUrl;
+            } catch (e) { resolve(0); }
         });
     },
 

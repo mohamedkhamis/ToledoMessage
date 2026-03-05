@@ -27,9 +27,9 @@
                     <button class="media-preview-close" @onclick="ClearSelectedFile" aria-label="Remove attachment">&times;</button>
                     <span class="media-preview-filename">@_selectedFile.Name</span>
                     <div class="media-preview-actions">
-                        <button class="hd-toggle-btn @(_sendAsHD ? "hd-active" : "")"
-                                @onclick="ToggleHDQuality"
-                                title="@(_sendAsHD ? "HD quality enabled" : "Standard quality")"
+                        <button class="hd-toggle-btn @(_sendAsHd ? "hd-active" : "")"
+                                @onclick="ToggleHdQuality"
+                                title="@(_sendAsHd ? "HD quality enabled" : "Standard quality")"
                                 aria-label="Toggle HD quality">
                             <span class="hd-label">HD</span>
                         </button>
@@ -47,7 +47,7 @@
                 </div>
                 <div class="media-preview-footer">
                     <span class="media-preview-size">
-                        @if (_sendAsHD)
+                        @if (_sendAsHd)
                         {
                             <span>@FormatFileSize(_originalFileSize) (Original)</span>
                         }
@@ -63,17 +63,29 @@
                 </div>
             </div>
         }
-        else if (_selectedContentType == ContentType.Video && _previewDataUrl is not null)
+        else if (_selectedContentType == ContentType.Video)
         {
-            @* Video preview — similar large panel *@
+            @* Video preview — playable video with controls *@
             <div class="media-preview-panel">
                 <div class="media-preview-header">
                     <button class="media-preview-close" @onclick="ClearSelectedFile" aria-label="Remove attachment">&times;</button>
                     <span class="media-preview-filename">@_selectedFile.Name</span>
                 </div>
                 <div class="media-preview-image-wrap">
-                    <img src="@_previewDataUrl" alt="Video preview" class="media-preview-image" />
-                    <div class="media-preview-video-badge">&#9658; Video</div>
+                    @if (_videoPreviewBlobUrl is not null)
+                    {
+                        <video src="@_videoPreviewBlobUrl" class="media-preview-video"
+                               controls playsinline muted preload="auto"></video>
+                    }
+                    else if (_previewDataUrl is not null)
+                    {
+                        <img src="@_previewDataUrl" alt="Video preview" class="media-preview-image" />
+                        <div class="media-preview-video-badge">&#9658; Video</div>
+                    }
+                    else
+                    {
+                        <div class="media-preview-placeholder">&#127909; Loading video...</div>
+                    }
                 </div>
                 <div class="media-preview-footer">
                     <span class="media-preview-size">@FormatFileSize(_selectedFile.Size)</span>
@@ -216,7 +228,8 @@
     private bool _showAttachMenu;
     private bool _showEmojiPicker;
     private bool _isRecording;
-    private bool _sendAsHD;
+    private bool _sendAsHd;
+    private string? _videoPreviewBlobUrl;
     private ElementReference _textareaRef;
 
     private bool CanSend => !string.IsNullOrWhiteSpace(_messageText) || _selectedFile is not null;
@@ -307,7 +320,7 @@
             }
 
             // If HD is on, send original bytes; otherwise send compressed
-            mediaBytes = _sendAsHD && _originalFileBytes is not null ? _originalFileBytes : _selectedFileBytes;
+            mediaBytes = _sendAsHd && _originalFileBytes is not null ? _originalFileBytes : _selectedFileBytes;
             fileName = _selectedFile.Name;
             // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
             mimeType = _selectedFile.ContentType ?? "image/jpeg";
@@ -324,7 +337,7 @@
             FileName = fileName,
             MimeType = mimeType,
             ContentType = contentType,
-            SendAsHD = _sendAsHD,
+            SendAsHd = _sendAsHd,
             ReplyToMessageId = ReplyContext?.MessageId
         };
 
@@ -347,7 +360,7 @@
         var contentType = file.ContentType ?? "image/jpeg";
         _selectedContentType = contentType.StartsWith("video/") ? ContentType.Video : ContentType.Image;
 
-        // For videos, generate a preview thumbnail
+        // For videos, create a playable blob URL for preview
         if (_selectedContentType == ContentType.Video)
         {
             await SetSelectedFile(file, createPreview: false);
@@ -355,18 +368,34 @@
             {
                 try
                 {
-                    var thumbnailBase64 = await Js.InvokeAsync<string>("mediaHelpers.captureVideoFrame",
-                        _selectedFileBytes, file.ContentType ?? "video/mp4");
-                    if (!string.IsNullOrEmpty(thumbnailBase64))
-                    {
-                        var thumbnailBytes = Convert.FromBase64String(thumbnailBase64);
-                        _previewDataUrl = await Js.InvokeAsync<string>(
-                            "mediaHelpers.createObjectUrl", thumbnailBytes, "image/jpeg");
-                    }
+                    // Create playable video blob URL for the preview panel
+                    var videoMime = file.ContentType ?? "video/mp4";
+                    _videoPreviewBlobUrl = await Js.InvokeAsync<string>(
+                        "mediaHelpers.createObjectUrl", _selectedFileBytes, videoMime);
                 }
                 catch
                 {
-                    // Video thumbnail generation failed — show without preview
+                    // Video blob creation failed — try thumbnail fallback
+                }
+
+                // Also generate a static thumbnail as fallback
+                if (_videoPreviewBlobUrl is null)
+                {
+                    try
+                    {
+                        var thumbnailBase64 = await Js.InvokeAsync<string>("mediaHelpers.captureVideoFrame",
+                            _selectedFileBytes, file.ContentType ?? "video/mp4", 320, 0.75);
+                        if (!string.IsNullOrEmpty(thumbnailBase64))
+                        {
+                            var thumbnailBytes = Convert.FromBase64String(thumbnailBase64);
+                            _previewDataUrl = await Js.InvokeAsync<string>(
+                                "mediaHelpers.createObjectUrl", thumbnailBytes, "image/jpeg");
+                        }
+                    }
+                    catch
+                    {
+                        // Video thumbnail generation failed — show without preview
+                    }
                 }
             }
         }
@@ -397,7 +426,7 @@
         ClearSelectedFile();
         _selectedContentType = savedContentType;
         _errorMessage = null;
-        _sendAsHD = false;
+        _sendAsHd = false;
 
         var maxFileSize = ProtocolConstants.MaxMediaFileSizeBytes;
         if (file.Size > maxFileSize)
@@ -480,11 +509,11 @@
         public int Height { get; set; }
     }
 
-    private async Task ToggleHDQuality()
+    private async Task ToggleHdQuality()
     {
         if (_selectedFile is null || _selectedContentType != ContentType.Image) return;
 
-        _sendAsHD = !_sendAsHD;
+        _sendAsHd = !_sendAsHd;
 
         // Revoke old preview
         if (_previewDataUrl is not null)
@@ -493,7 +522,7 @@
             _previewDataUrl = null;
         }
 
-        if (_sendAsHD)
+        if (_sendAsHd)
         {
             // Switch to original (HD) bytes for preview
             if (_originalFileBytes is not null)
@@ -547,12 +576,17 @@
             _ = Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _previewDataUrl);
             _previewDataUrl = null;
         }
+        if (_videoPreviewBlobUrl is not null)
+        {
+            _ = Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _videoPreviewBlobUrl);
+            _videoPreviewBlobUrl = null;
+        }
         _selectedFile = null;
         _selectedFileBytes = null;
         _originalFileBytes = null;
         _originalFileSize = 0;
         _selectedContentType = ContentType.Text;
-        _sendAsHD = false;
+        _sendAsHd = false;
         _errorMessage = null;
     }
 
@@ -603,7 +637,7 @@
         public string? FileName { get; set; }
         public string? MimeType { get; set; }
         public ContentType ContentType { get; set; } = ContentType.Text;
-        public bool SendAsHD { get; set; }
+        public bool SendAsHd { get; set; }
         public bool HasMedia => MediaBytes is not null;
         public decimal? ReplyToMessageId { get; set; }
     }
@@ -613,6 +647,11 @@
         if (_previewDataUrl is not null)
         {
             try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _previewDataUrl); }
+            catch { /* ignored */ }
+        }
+        if (_videoPreviewBlobUrl is not null)
+        {
+            try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _videoPreviewBlobUrl); }
             catch { /* ignored */ }
         }
     }

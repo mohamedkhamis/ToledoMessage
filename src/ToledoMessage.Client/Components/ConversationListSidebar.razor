@@ -11,8 +11,7 @@
 <div class="sidebar-header">
     <AvatarInitials DisplayName="@_userName" Size="40" />
     <div class="sidebar-user-info">
-        <span class="sidebar-user-name">@(string.IsNullOrEmpty(_userName) ? "You" : _userName)</span>
-        <span class="sidebar-version">v@(AppVersion.Current)</span>
+        <span class="sidebar-user-name" title="@(string.IsNullOrEmpty(_userName) ? "You" : _userName)">@(string.IsNullOrEmpty(_userName) ? "You" : _userName)</span>
     </div>
     <div class="sidebar-header-actions">
         <button class="sidebar-icon-btn" @onclick="NavigateToSettings" title="@Theme.Labels.SettingsLabel">⚙</button>
@@ -59,7 +58,7 @@
                 <AvatarInitials DisplayName="@conv.DisplayName" Size="46" />
                 <div class="sidebar-item-body">
                     <div class="sidebar-item-top">
-                        <span class="sidebar-item-name">@conv.DisplayName</span>
+                        <span class="sidebar-item-name" title="@conv.DisplayName">@conv.DisplayName</span>
                         @if (conv.LastMessageTime.HasValue)
                         {
                             <span class="sidebar-item-time">@FormatTime(conv.LastMessageTime.Value)</span>
@@ -76,6 +75,11 @@
             </div>
         }
     }
+</div>
+
+<div class="sidebar-footer">
+    <span class="sidebar-footer-name">Toledo Message</span>
+    <span class="sidebar-footer-version">v@(AppVersion.Current)</span>
 </div>
 
 @code {
@@ -147,7 +151,6 @@
             {
                 await Js.InvokeVoidAsync("toledoStorage.clearAuthData");
                 Navigation.NavigateTo("/login", forceLoad: true);
-                return;
             }
             catch
             {

@@ -49,26 +49,41 @@
                     document.documentElement.removeAttribute('data-theme');
                 }
             }
+            function applyFontSize() {
+                var fs = localStorage.getItem('app.fontSize');
+                if (fs && fs !== 'medium') {
+                    document.documentElement.setAttribute('data-font-size', fs);
+                } else {
+                    document.documentElement.removeAttribute('data-font-size');
+                }
+            }
             applyTheme();
+            applyFontSize();
             // Re-apply after Blazor enhanced navigation
 // ReSharper disable  Html.EventNotResolved
             document.addEventListener('blazor:enhancedload', function () {
                 applyTheme();
+                applyFontSize();
                 // Also re-apply after a frame in case Blazor patches DOM after the event
-                requestAnimationFrame(applyTheme);
+                requestAnimationFrame(function () { applyTheme(); applyFontSize(); });
             });
-            // MutationObserver: catch Blazor stripping data-theme during DOM patching
+            // MutationObserver: catch Blazor stripping data-theme/data-font-size during DOM patching
             var applying = false;
             new MutationObserver(function () {
                 if (applying) return;
+                applying = true;
                 var theme = getDesiredTheme();
                 var current = document.documentElement.getAttribute('data-theme');
                 if (theme && current !== theme) {
-                    applying = true;
                     document.documentElement.setAttribute('data-theme', theme);
-                    applying = false;
                 }
-            }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'lang'] });
+                var fs = localStorage.getItem('app.fontSize');
+                var currentFs = document.documentElement.getAttribute('data-font-size');
+                if (fs && fs !== 'medium' && currentFs !== fs) {
+                    document.documentElement.setAttribute('data-font-size', fs);
+                }
+                applying = false;
+            }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-font-size', 'lang'] });
 
             // Loading spinner: handled by inline script right after the spinner div.
             // See comment there for the full strategy.

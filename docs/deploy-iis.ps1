@@ -195,7 +195,12 @@ function Find-FreePort {
 function Publish-App {
     param([string]$OutputPath)
 
-    $projectPath = Join-Path $PSScriptRoot "src\ToledoMessage\ToledoMessage.csproj"
+    # Find project root (assumes script is in root or docs subfolder)
+    $scriptDir = $PSScriptRoot
+    if ($scriptDir -match "[/\\]docs$") {
+        $scriptDir = Split-Path $scriptDir -Parent
+    }
+    $projectPath = Join-Path $scriptDir "src\ToledoMessage\ToledoMessage.csproj"
     if (-not (Test-Path $projectPath)) {
         Write-Err "Project not found at: $projectPath"
         exit 1

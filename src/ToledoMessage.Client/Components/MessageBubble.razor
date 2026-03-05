@@ -70,16 +70,17 @@
                     }
                     else
                     {
-                        <video src="@MediaDataUrl" class="message-video-thumb-img"
-                               preload="metadata" muted aria-hidden="true"></video>
+                        <video src="@(MediaDataUrl + "#t=0.5")" class="message-video-thumb-img"
+                               preload="auto" muted playsinline aria-hidden="true"></video>
                     }
-                    <div class="message-video-play-btn">&#9658;</div>
+                    <div class="message-video-play-btn"></div>
                 </div>
             }
             else if (!string.IsNullOrEmpty(ThumbnailDataUrl))
             {
                 <div class="message-media message-video-container">
                     <img src="@ThumbnailDataUrl" alt="@(FileName ?? "Video")" class="message-video-thumb-img" />
+                    <div class="message-video-play-btn"></div>
                 </div>
             }
             else

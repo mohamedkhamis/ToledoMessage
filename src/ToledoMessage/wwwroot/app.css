@@ -763,6 +763,13 @@ label {
     font-size: 2em;
     padding: 40px 0;
 }
+.media-preview-video {
+    max-width: 100%;
+    max-height: 280px;
+    border-radius: 6px;
+    background: #000;
+    outline: none;
+}
 .media-preview-video-badge {
     position: absolute;
     bottom: 8px;
@@ -909,12 +916,15 @@ label {
 .message-video-container {
     position: relative;
     cursor: pointer;
+    background: #000;
+    min-height: 120px;
 }
 
 .message-video-thumb-img {
     display: block;
     width: 100%;
     max-height: 400px;
+    min-height: 120px;
     object-fit: cover;
 }
 
@@ -923,24 +933,30 @@ label {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 60px;
-    height: 60px;
-    background: rgba(0, 0, 0, 0.6);
+    width: 56px;
+    height: 56px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 30px;
-    color: white;
     pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    transition: background 0.15s;
+}
+
+.message-video-container:hover .message-video-play-btn {
+    background: rgba(0, 0, 0, 0.7);
 }
 
 .message-video-play-btn::before {
     content: "";
     border-style: solid;
-    border-width: 12px 0 12px 20px;
+    border-width: 10px 0 10px 18px;
     border-color: transparent transparent transparent white;
-    margin-left: 4px;
+    margin-left: 3px;
 }
 
 /* Caption text and timestamp get their own padding inside zero-padding bubble */
@@ -2272,13 +2288,26 @@ h1:focus { outline: none; }
     background: var(--input-bg);
 }
 
-/* Sidebar version label */
-.sidebar-version {
-    font-size: 0.7em;
-    color: var(--nav-text);
-    opacity: 0.5;
-    line-height: 1;
-    margin-top: 1px;
+/* Sidebar footer — app name and version at bottom */
+.sidebar-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.sidebar-footer-name {
+    font-size: 0.72em;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    font-weight: 500;
+}
+.sidebar-footer-version {
+    font-size: 0.68em;
+    color: var(--text-secondary);
+    opacity: 0.45;
 }
 
 /* ============ Sidebar conversation list ============ */
@@ -2559,6 +2588,52 @@ h1:focus { outline: none; }
 /* ─── Font Size Scaling ─── */
 html[data-font-size="small"] { font-size: 13px; }
 html[data-font-size="large"] { font-size: 17px; }
+
+/* Scale all text-bearing elements so font-size setting takes effect globally */
+html[data-font-size="small"] body { font-size: 13px; }
+html[data-font-size="large"] body { font-size: 17px; }
+
+html[data-font-size="small"] .message-text,
+html[data-font-size="small"] .msg-textarea,
+html[data-font-size="small"] .sidebar-item-name,
+html[data-font-size="small"] .sidebar-item-preview,
+html[data-font-size="small"] .sidebar-user-name,
+html[data-font-size="small"] .chat-header-title,
+html[data-font-size="small"] .chat-search-input,
+html[data-font-size="small"] .reply-quote-text,
+html[data-font-size="small"] .toggle-label,
+html[data-font-size="small"] .toggle-desc,
+html[data-font-size="small"] .settings-page,
+html[data-font-size="small"] .chat-typing-indicator,
+html[data-font-size="small"] .empty-state p,
+html[data-font-size="small"] .forward-search-input,
+html[data-font-size="small"] .forward-conversation-item,
+html[data-font-size="small"] input,
+html[data-font-size="small"] textarea,
+html[data-font-size="small"] button {
+    font-size: 0.87em;
+}
+
+html[data-font-size="large"] .message-text,
+html[data-font-size="large"] .msg-textarea,
+html[data-font-size="large"] .sidebar-item-name,
+html[data-font-size="large"] .sidebar-item-preview,
+html[data-font-size="large"] .sidebar-user-name,
+html[data-font-size="large"] .chat-header-title,
+html[data-font-size="large"] .chat-search-input,
+html[data-font-size="large"] .reply-quote-text,
+html[data-font-size="large"] .toggle-label,
+html[data-font-size="large"] .toggle-desc,
+html[data-font-size="large"] .settings-page,
+html[data-font-size="large"] .chat-typing-indicator,
+html[data-font-size="large"] .empty-state p,
+html[data-font-size="large"] .forward-search-input,
+html[data-font-size="large"] .forward-conversation-item,
+html[data-font-size="large"] input,
+html[data-font-size="large"] textarea,
+html[data-font-size="large"] button {
+    font-size: 1.13em;
+}
 
 /* ─── Font Size Selector ─── */
 .font-size-selector {

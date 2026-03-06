@@ -1115,6 +1115,54 @@ label {
     text-decoration: underline;
 }
 
+/* PDF Preview */
+.message-pdf-preview {
+    width: 260px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.pdf-preview-frame-wrapper {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    background: #f5f5f5;
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+}
+.pdf-preview-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+    pointer-events: none;
+}
+.pdf-preview-overlay {
+    position: absolute;
+    inset: 0;
+    cursor: pointer;
+}
+.message-file-card.pdf-card {
+    padding: 8px 10px;
+    min-width: unset;
+    border-top: 1px solid var(--border-color, rgba(0,0,0,0.08));
+}
+.message-file-download-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    font-size: 1.1em;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+.message-file-download-btn:hover {
+    opacity: 0.85;
+}
+
 /* ============ Enhanced Component Styles (WhatsApp/Telegram/Signal style) ============ */
 
 /* Enhanced message bubbles */
@@ -1914,6 +1962,42 @@ button.back-link {
     color: var(--text-primary);
 }
 
+/* ============ Wallpaper picker ============ */
+.wallpaper-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+}
+.wallpaper-card {
+    border: 2px solid var(--border);
+    border-radius: var(--radius, 8px);
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    text-align: center;
+}
+.wallpaper-card:hover {
+    border-color: var(--accent);
+}
+.wallpaper-card.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent);
+}
+.wallpaper-swatch {
+    width: 100%;
+    height: 72px;
+}
+.wallpaper-name {
+    font-size: 0.78em;
+    font-weight: 500;
+    color: var(--text-primary);
+    padding: 5px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* ============ Delivery status icons ============ */
 .delivery-status {
     font-size: 0.85em;
@@ -2252,20 +2336,21 @@ h1:focus { outline: none; }
 .sidebar-header-actions {
     margin-left: auto;
     display: flex;
-    gap: 8px;
+    gap: 2px;
+    flex-shrink: 0;
 }
 .sidebar-icon-btn {
     background: none;
     border: none;
     color: var(--nav-text);
-    opacity: 0.85;
-    padding: 8px;
+    opacity: 0.75;
+    padding: 6px;
     border-radius: 50%;
     cursor: pointer;
     font-size: 1.2em;
     line-height: 1;
-    min-width: 44px;
-    min-height: 44px;
+    width: 34px;
+    height: 34px;
     display: flex;
     align-items: center;
     justify-content: center;

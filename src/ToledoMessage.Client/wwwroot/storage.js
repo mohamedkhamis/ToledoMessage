@@ -42,6 +42,16 @@ window.toledoStorage = {
     getFontSize: function () {
         return localStorage.getItem('app.fontSize') || 'medium';
     },
+    setWallpaper: function (id) {
+        if (id && id !== 'default') {
+            localStorage.setItem('app.wallpaper', id);
+        } else {
+            localStorage.removeItem('app.wallpaper');
+        }
+    },
+    getWallpaper: function () {
+        return localStorage.getItem('app.wallpaper') || 'default';
+    },
     clearAuthData: function () {
         // Only clear the auth token — preserve device identity, crypto keys, sessions,
         // and preferences so the same device is reused on re-login and old messages
@@ -50,7 +60,7 @@ window.toledoStorage = {
     },
     clearAllData: function () {
         // Full wipe for account deletion — clear everything except UI preferences
-        var preserve = ['app.theme', 'app.fontSize'];
+        var preserve = ['app.theme', 'app.fontSize', 'app.wallpaper'];
         var saved = {};
         for (var i = 0; i < preserve.length; i++) {
             var v = localStorage.getItem(preserve[i]);

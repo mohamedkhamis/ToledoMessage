@@ -4,18 +4,23 @@ using ToledoMessage.Controllers;
 using ToledoMessage.Services;
 using ToledoMessage.Shared.Constants;
 using ToledoMessage.Shared.DTOs;
+using ToledoMessage.Server.Tests.Services;
+
 #pragma warning disable MSTEST0049
 
 namespace ToledoMessage.Server.Tests.Controllers;
 
-[TestClass, SuppressMessage("ReSharper", "UnusedVariable")]
+[TestClass]
+[SuppressMessage("ReSharper", "UnusedVariable")]
 public class DevicesControllerTests
 {
     private static (DevicesController controller, Data.ApplicationDbContext db) CreateController(decimal userId = 1m)
     {
         var db = TestDbContextFactory.Create();
         var preKeyService = new PreKeyService(db);
-        var controller = new DevicesController(db, preKeyService);
+        var hubContext = new StubHubContext();
+        var relayService = new MessageRelayService(db, hubContext);
+        var controller = new DevicesController(db, preKeyService, relayService);
         TestDbContextFactory.SetUser(controller, userId);
         return (controller, db);
     }

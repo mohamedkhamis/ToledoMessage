@@ -25,12 +25,6 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
     {
         var userId = GetUserId();
 
-        // Get the user's device IDs for unread count calculation
-        var userDeviceIds = await db.Devices
-            .Where(d => d.UserId == userId && d.IsActive)
-            .Select(static d => d.Id)
-            .ToListAsync();
-
         // Single query: join conversations with participants, messages for last-message-time,
         // and unread counts — avoids the previous N+1 loop
         var conversationIds = await db.ConversationParticipants
@@ -54,16 +48,10 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
             .Select(static g => new { ConversationId = g.Key, LastMessageTime = g.Max(static m => m.ServerTimestamp) })
             .ToDictionaryAsync(static x => x.ConversationId, static x => (DateTimeOffset?)x.LastMessageTime);
 
-        // Batch: get unread counts per conversation
-        var unreadCounts = userDeviceIds.Count > 0
-            ? await db.EncryptedMessages
-                .Where(m => conversationIds.Contains(m.ConversationId)
-                            && userDeviceIds.Contains(m.RecipientDeviceId)
-                            && !m.IsDelivered)
-                .GroupBy(static m => m.ConversationId)
-                .Select(static g => new { ConversationId = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(static x => x.ConversationId, static x => x.Count)
-            : new Dictionary<decimal, int>();
+        // Batch: get unread counts from read pointers — O(1) per conversation
+        var unreadCounts = await db.ConversationReadPointers
+            .Where(p => p.UserId == userId && conversationIds.Contains(p.ConversationId) && p.UnreadCount > 0)
+            .ToDictionaryAsync(static p => p.ConversationId, static p => p.UnreadCount);
 
         var results = conversations.Select(conversation =>
             {
@@ -445,5 +433,4 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
 
         return NoContent();
     }
-
 }

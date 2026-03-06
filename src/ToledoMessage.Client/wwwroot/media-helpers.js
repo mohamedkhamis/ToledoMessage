@@ -178,20 +178,54 @@ window.mediaHelpers = {
         }
     },
 
-    // Observe scroll position: notify Blazor when near top (for loading older messages) or near bottom
+    // Observe scroll position: notify Blazor when scrolled, debounced for read tracking
     observeScroll: function (selector, dotNetRef) {
         var el = document.querySelector(selector);
         if (!el) return;
-        if (el._scrollObserverSet) return;
-        el._scrollObserverSet = true;
-        el.addEventListener('scroll', function () {
-            var nearTop = el.scrollTop < 50;
-            var nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-            if (nearTop) {
-                dotNetRef.invokeMethodAsync('OnScrollNearTop');
+
+        // Remove old listener if re-binding with a new dotNetRef (component was recreated)
+        if (el._scrollHandler) {
+            el.removeEventListener('scroll', el._scrollHandler);
+        }
+
+        var scrollTimeout = null;
+
+        var notifyVisible = function () {
+            var lastVisibleId = mediaHelpers.getLastVisibleMessageId(selector);
+            if (lastVisibleId) {
+                try { dotNetRef.invokeMethodAsync('OnVisibleMessageChanged', lastVisibleId); } catch (e) { /* disposed */ }
             }
-            dotNetRef.invokeMethodAsync('OnScrollPositionChanged', nearBottom);
-        });
+        };
+
+        el._scrollHandler = function () {
+            var nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+            try { dotNetRef.invokeMethodAsync('OnScrollPositionChanged', nearBottom); } catch (e) { /* disposed */ }
+
+            // Debounced: notify about visible messages for read tracking (after 300ms pause)
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(notifyVisible, 300);
+        };
+        el.addEventListener('scroll', el._scrollHandler);
+
+        // Fire an initial check after a short delay (messages may be visible without scrolling)
+        setTimeout(notifyVisible, 500);
+    },
+
+    // Get the data-msg-id of the last message bubble visible in the scroll container
+    getLastVisibleMessageId: function (containerSelector) {
+        var container = document.querySelector(containerSelector);
+        if (!container) return null;
+        var messages = container.querySelectorAll('[data-msg-id]');
+        var containerRect = container.getBoundingClientRect();
+        var lastVisibleId = null;
+        for (var i = 0; i < messages.length; i++) {
+            var rect = messages[i].getBoundingClientRect();
+            // Message is visible if its top is within the container viewport
+            if (rect.top < containerRect.bottom && rect.bottom > containerRect.top) {
+                lastVisibleId = messages[i].getAttribute('data-msg-id');
+            }
+        }
+        return lastVisibleId;
     },
 
     // Get current scrollHeight (used to maintain scroll position after prepending messages)

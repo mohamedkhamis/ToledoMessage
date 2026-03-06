@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,7 @@ using ToledoMessage.Shared.Enums;
 
 namespace ToledoMessage.Services;
 
+[SuppressMessage("ReSharper", "RemoveRedundantBraces")]
 public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> hubContext)
 {
     /// <summary>
@@ -170,6 +172,196 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
         await db.SaveChangesAsync();
 
         return message;
+    }
+
+    /// <summary>
+    /// Bulk-acknowledge delivery for all pending messages of a device.
+    /// Returns the count of messages acknowledged.
+    /// </summary>
+    public async Task<int> BulkAcknowledgeDelivery(decimal deviceId)
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        if (db.Database.IsRelational())
+        {
+            return await db.Database.ExecuteSqlRawAsync(
+                """
+                UPDATE EncryptedMessages
+                SET IsDelivered = 1, DeliveredAt = {0}
+                WHERE RecipientDeviceId = {1} AND IsDelivered = 0
+                """, now, deviceId);
+        }
+
+        // Fallback for in-memory provider
+        var messages = await db.EncryptedMessages
+            .Where(m => m.RecipientDeviceId == deviceId && !m.IsDelivered)
+            .ToListAsync();
+        foreach (var m in messages)
+        {
+            m.IsDelivered = true;
+            m.DeliveredAt = now;
+        }
+
+        await db.SaveChangesAsync();
+        return messages.Count;
+    }
+
+    /// <summary>
+    /// Advance the read pointer for a user in a conversation up to the given sequence number.
+    /// Returns the list of newly-read message IDs + sender device IDs (for notifying senders).
+    /// O(1) pointer update + O(k) query for newly-read messages to notify senders.
+    /// </summary>
+    public async Task<List<(decimal MessageId, decimal SenderDeviceId)>> AdvanceReadPointer(
+        decimal userId, decimal conversationId, long upToSequenceNumber)
+    {
+        var pointer = await db.ConversationReadPointers
+            .FirstOrDefaultAsync(p => p.UserId == userId && p.ConversationId == conversationId);
+
+        if (pointer is null)
+        {
+            pointer = new ConversationReadPointer
+            {
+                UserId = userId,
+                ConversationId = conversationId,
+                LastReadSequenceNumber = 0,
+                UnreadCount = 0
+            };
+            db.ConversationReadPointers.Add(pointer);
+        }
+
+        if (upToSequenceNumber <= pointer.LastReadSequenceNumber)
+            return [];
+
+        var previousSeqNum = pointer.LastReadSequenceNumber;
+
+        // Get the user's device IDs
+        var userDeviceIds = await db.Devices
+            .Where(d => d.UserId == userId && d.IsActive)
+            .Select(static d => d.Id)
+            .ToListAsync();
+
+        // Find newly-read messages (between old pointer and new pointer) sent TO this user
+        var newlyReadMessages = await db.EncryptedMessages
+            .Where(m => m.ConversationId == conversationId
+                        && userDeviceIds.Contains(m.RecipientDeviceId)
+                        && m.SequenceNumber > previousSeqNum
+                        && m.SequenceNumber <= upToSequenceNumber)
+            .Select(static m => new { m.Id, m.SenderDeviceId })
+            .ToListAsync();
+
+        // Count remaining unread: messages after the new pointer sent TO this user
+        var remainingUnread = await db.EncryptedMessages
+            .CountAsync(m => m.ConversationId == conversationId
+                             && userDeviceIds.Contains(m.RecipientDeviceId)
+                             && m.SequenceNumber > upToSequenceNumber);
+
+        // Update pointer — single row update
+        pointer.LastReadSequenceNumber = upToSequenceNumber;
+        pointer.UnreadCount = remainingUnread;
+        pointer.LastReadAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+
+        return newlyReadMessages.Select(static m => (m.Id, m.SenderDeviceId)).ToList();
+    }
+
+    /// <summary>
+    /// Get the unread count for a user in a conversation from the read pointer.
+    /// Falls back to computing from messages if no pointer exists yet.
+    /// </summary>
+    public async Task<int> GetUnreadCount(decimal userId, decimal conversationId)
+    {
+        var pointer = await db.ConversationReadPointers
+            .FirstOrDefaultAsync(p => p.UserId == userId && p.ConversationId == conversationId);
+
+        if (pointer is not null)
+            return pointer.UnreadCount;
+
+        // No pointer yet — count all messages in conversation sent to this user's devices
+        var userDeviceIds = await db.Devices
+            .Where(d => d.UserId == userId && d.IsActive)
+            .Select(static d => d.Id)
+            .ToListAsync();
+
+        return await db.EncryptedMessages
+            .CountAsync(m => m.ConversationId == conversationId
+                             && userDeviceIds.Contains(m.RecipientDeviceId)
+                             && m.IsDelivered);
+    }
+
+    /// <summary>
+    /// Get unread counts for all conversations a user participates in.
+    /// Returns a dictionary of conversationId → unreadCount. O(1) per conversation via pointers.
+    /// </summary>
+    public async Task<Dictionary<decimal, int>> GetAllUnreadCounts(decimal userId)
+    {
+        return await db.ConversationReadPointers
+            .Where(p => p.UserId == userId && p.UnreadCount > 0)
+            .ToDictionaryAsync(static p => p.ConversationId, static p => p.UnreadCount);
+    }
+
+    /// <summary>
+    /// Increment the unread count for all participants (except sender) when a new message is sent.
+    /// Creates pointers for participants who don't have one yet.
+    /// </summary>
+    public async Task IncrementUnreadCountsForNewMessage(decimal conversationId, decimal senderUserId)
+    {
+        var participantUserIds = await db.ConversationParticipants
+            .Where(cp => cp.ConversationId == conversationId && cp.UserId != senderUserId)
+            .Select(static cp => cp.UserId)
+            .ToListAsync();
+
+        foreach (var participantId in participantUserIds)
+        {
+            var pointer = await db.ConversationReadPointers
+                .FirstOrDefaultAsync(p => p.UserId == participantId && p.ConversationId == conversationId);
+
+            if (pointer is null)
+            {
+                pointer = new ConversationReadPointer
+                {
+                    UserId = participantId,
+                    ConversationId = conversationId,
+                    LastReadSequenceNumber = 0,
+                    UnreadCount = 0
+                };
+                db.ConversationReadPointers.Add(pointer);
+            }
+
+            pointer.UnreadCount++;
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Mark all pending messages for a deactivated device as delivered.
+    /// </summary>
+    public async Task CleanupDeactivatedDeviceMessages(decimal deviceId)
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        if (db.Database.IsRelational())
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                """
+                UPDATE EncryptedMessages
+                SET IsDelivered = 1, DeliveredAt = COALESCE(DeliveredAt, {0})
+                WHERE RecipientDeviceId = {1} AND IsDelivered = 0
+                """, now, deviceId);
+        }
+        else
+        {
+            var messages = await db.EncryptedMessages
+                .Where(m => m.RecipientDeviceId == deviceId && !m.IsDelivered)
+                .ToListAsync();
+            foreach (var m in messages)
+            {
+                m.IsDelivered = true;
+                m.DeliveredAt ??= now;
+            }
+
+            await db.SaveChangesAsync();
+        }
     }
 
     /// <summary>

@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using ToledoMessage.Data;
+using ToledoMessage.Hubs;
 using ToledoMessage.Services;
 using ToledoMessage.Shared.DTOs;
 
@@ -12,7 +14,7 @@ namespace ToledoMessage.Controllers;
 [ApiController]
 [Route("api/messages")]
 [Authorize]
-public class MessagesController(ApplicationDbContext db, MessageRelayService relayService) : BaseApiController
+public class MessagesController(ApplicationDbContext db, MessageRelayService relayService, IHubContext<ChatHub> hubContext) : BaseApiController
 {
     /// <summary>
     /// Store and relay an encrypted message (REST fallback when SignalR is unavailable).
@@ -60,6 +62,9 @@ public class MessagesController(ApplicationDbContext db, MessageRelayService rel
 
         // Store the message
         var message = await relayService.StoreMessage(request.SenderDeviceId, request);
+
+        // Increment unread counts for all other participants
+        await relayService.IncrementUnreadCountsForNewMessage(request.ConversationId, userId);
 
         // Try to relay to online recipient via SignalR
         await relayService.TryRelayToOnlineRecipient(message);
@@ -123,5 +128,56 @@ public class MessagesController(ApplicationDbContext db, MessageRelayService rel
             return NotFound("Message not found.");
 
         return Ok(new { messageId, deliveredAt = acknowledged.DeliveredAt });
+    }
+
+    /// <summary>
+    /// Bulk-acknowledge delivery of all pending messages for a device.
+    /// </summary>
+    [HttpPost("acknowledge-all")]
+    public async Task<IActionResult> BulkAcknowledgeDelivery([FromQuery] decimal deviceId)
+    {
+        var userId = GetUserId();
+
+        var deviceOwned = await db.Devices.AnyAsync(d => d.Id == deviceId && d.UserId == userId && d.IsActive);
+        if (!deviceOwned)
+            return NotFound("Device not found or does not belong to the current user.");
+
+        var count = await relayService.BulkAcknowledgeDelivery(deviceId);
+        return Ok(new { acknowledged = count });
+    }
+
+    /// <summary>
+    /// Advance the read pointer up to a given sequence number in a conversation.
+    /// Uses watermark approach — O(1) pointer update instead of per-message updates.
+    /// </summary>
+    [HttpPost("read")]
+    public async Task<IActionResult> AdvanceReadPointer(
+        [FromQuery] decimal conversationId,
+        [FromQuery] long upToSequenceNumber)
+    {
+        var userId = GetUserId();
+
+        var readMessages = await relayService.AdvanceReadPointer(userId, conversationId, upToSequenceNumber);
+
+        // Notify senders that their messages were read (for blue ✓✓)
+        foreach (var (messageId, senderDeviceId) in readMessages)
+        {
+            await hubContext.Clients.Group($"device_{senderDeviceId}")
+                .SendAsync("MessageRead", messageId);
+        }
+
+        return Ok(new { markedRead = readMessages.Count });
+    }
+
+    /// <summary>
+    /// Get the unread message count for a conversation via the read pointer. O(1) lookup.
+    /// </summary>
+    [HttpGet("unread-count")]
+    public async Task<IActionResult> GetUnreadCount([FromQuery] decimal conversationId)
+    {
+        var userId = GetUserId();
+
+        var count = await relayService.GetUnreadCount(userId, conversationId);
+        return Ok(new { unreadCount = count });
     }
 }

@@ -15,7 +15,7 @@ namespace ToledoMessage.Controllers;
 [ApiController]
 [Route("api/devices")]
 [Authorize]
-public class DevicesController(ApplicationDbContext db, PreKeyService preKeyService) : BaseApiController
+public class DevicesController(ApplicationDbContext db, PreKeyService preKeyService, MessageRelayService relayService) : BaseApiController
 {
     /// <summary>
     /// Register a new device for the current user.
@@ -32,6 +32,8 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
         {
             existingDevice.IsActive = false;
             await db.SaveChangesAsync();
+            // Clean up stale undelivered messages for the deactivated device
+            await relayService.CleanupDeactivatedDeviceMessages(existingDevice.Id);
         }
 
         var activeDeviceCount = await db.Devices.CountAsync(d => d.UserId == userId && d.IsActive);
@@ -144,6 +146,9 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
 
         device.IsActive = false;
         await db.SaveChangesAsync();
+
+        // Clean up stale undelivered messages for the deactivated device
+        await relayService.CleanupDeactivatedDeviceMessages(deviceId);
 
         return NoContent();
     }

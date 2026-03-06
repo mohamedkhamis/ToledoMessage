@@ -53,6 +53,18 @@
         }
     </div>
 
+    <h4 class="subsection-title mt-md">Chat Wallpaper</h4>
+    <div class="wallpaper-grid">
+        @foreach (var wp in ThemeService.GetAvailableWallpapers())
+        {
+            <div class="wallpaper-card @(_currentWallpaper == wp.Id ? "active" : "")"
+                 @onclick="() => SelectWallpaper(wp.Id)">
+                <div class="wallpaper-swatch" style="@GetWallpaperSwatchStyle(wp)"></div>
+                <div class="wallpaper-name">@wp.DisplayName</div>
+            </div>
+        }
+    </div>
+
     <h3 class="section-title mt-lg">@Theme.Labels.Privacy</h3>
 
     <div class="settings-toggles">
@@ -233,6 +245,7 @@
     private decimal? _unlinkingDeviceId;
     private string _currentTheme = "default";
     private string _currentFontSize = "medium";
+    private string _currentWallpaper = "default";
     private bool _notificationsEnabled = true;
     private bool _readReceiptsEnabled = true;
     private bool _typingIndicatorsEnabled = true;
@@ -270,6 +283,7 @@
         {
             _currentTheme = await Theme.GetThemeAsync();
             _currentFontSize = await Theme.GetFontSizeAsync();
+            _currentWallpaper = await Theme.GetWallpaperAsync();
 
             var deviceIdBytes = await Storage.GetAsync("local.deviceId");
             var tokenBytes = await Storage.GetAsync("auth.token");
@@ -496,6 +510,41 @@
         {
             _unlinkingDeviceId = null;
         }
+    }
+
+    private async Task SelectWallpaper(string wallpaperId)
+    {
+        _currentWallpaper = wallpaperId;
+        await Theme.SetWallpaperAsync(wallpaperId);
+        _successMessage = "Wallpaper saved.";
+    }
+
+    private string GetWallpaperSwatchStyle(WallpaperInfo wp)
+    {
+        var isDark = ThemeService.IsDarkTheme(_currentTheme);
+        var bgColor = isDark ? "#1a1a2e" : "#efeae2";
+        var pattern = isDark ? wp.DarkPattern : wp.LightPattern;
+
+        if (wp.Id == "none")
+            return $"background: {bgColor};";
+
+        if (wp.Id == "default")
+            return $"background: {bgColor}; background-image: {GetDefaultPatternForTheme()}; background-repeat: repeat;";
+
+        return pattern is not null
+            ? $"background: {bgColor}; background-image: {pattern}; background-repeat: repeat;"
+            : $"background: {bgColor};";
+    }
+
+    private string GetDefaultPatternForTheme()
+    {
+        // Return the theme's built-in pattern if any
+        return _currentTheme switch
+        {
+            "whatsapp" => "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d1d7db' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+            "whatsapp-dark" => "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%233f4a53' fill-opacity='0.3'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+            _ => "none"
+        };
     }
 
     private sealed record FontSizeOption(string Id, string Label, string Preview);

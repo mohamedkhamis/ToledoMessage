@@ -16,7 +16,7 @@ public class MessagesControllerTests
         var db = TestDbContextFactory.Create();
         var hubContext = new StubHubContext();
         var relayService = new MessageRelayService(db, hubContext);
-        var controller = new MessagesController(db, relayService);
+        var controller = new MessagesController(db, relayService, hubContext);
         TestDbContextFactory.SetUser(controller, userId);
         return (controller, db);
     }

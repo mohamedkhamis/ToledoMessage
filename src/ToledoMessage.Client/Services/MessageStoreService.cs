@@ -59,6 +59,7 @@ public sealed class MessageStoreService(IJSRuntime js)
 public sealed class StoredMessage
 {
     public string MessageId { get; set; } = "";
+    public long SequenceNumber { get; set; }
     public string ConversationId { get; set; } = "";
     public string Text { get; set; } = "";
     public string Timestamp { get; set; } = "";

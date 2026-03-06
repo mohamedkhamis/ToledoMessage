@@ -31,6 +31,9 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
         await Groups.AddToGroupAsync(Context.ConnectionId, $"device_{deviceId}");
         await Groups.AddToGroupAsync(Context.ConnectionId, $"user_{userId}");
 
+        // Track connection → device mapping for read acknowledgment
+        ConnectionDeviceMap[Context.ConnectionId] = deviceId;
+
         // Track presence
         presence.AddConnection(userId, Context.ConnectionId);
 
@@ -86,6 +89,9 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
         // Store the message
         var message = await relayService.StoreMessage(request.SenderDeviceId, request);
 
+        // Increment unread counts for all other participants
+        await relayService.IncrementUnreadCountsForNewMessage(request.ConversationId, userId);
+
         // Try to relay to online recipient
         await relayService.TryRelayToOnlineRecipient(message);
 
@@ -115,23 +121,25 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     }
 
     /// <summary>
-    /// Acknowledge that a message has been read by the recipient.
+    /// Advance the read pointer for the current user in a conversation.
+    /// Notifies senders that their messages were read.
     /// </summary>
-    public async Task AcknowledgeRead(decimal messageId)
+    public async Task AdvanceReadPointer(decimal conversationId, long upToSequenceNumber)
     {
         var userId = GetUserId();
 
-        var message = await db.EncryptedMessages
-                          .Include(static m => m.RecipientDevice)
-                          .FirstOrDefaultAsync(m => m.Id == messageId)
-                      ?? throw new HubException("Message not found.");
-        if (message.RecipientDevice.UserId != userId)
-            throw new HubException("Message does not belong to the current user.");
+        var readMessages = await relayService.AdvanceReadPointer(userId, conversationId, upToSequenceNumber);
 
-        // Notify the sender's device that the message was read
-        await Clients.Group($"device_{message.SenderDeviceId}")
-            .SendAsync("MessageRead", messageId);
+        // Notify each sender's device that their messages were read
+        foreach (var (messageId, senderDeviceId) in readMessages)
+        {
+            await Clients.Group($"device_{senderDeviceId}")
+                .SendAsync("MessageRead", messageId);
+        }
     }
+
+    // Track connection → device mapping for delivery acknowledgment
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, decimal> ConnectionDeviceMap = new();
 
     /// <summary>
     /// Broadcast a typing indicator to other participants in the conversation.
@@ -347,6 +355,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
                     .SendAsync("UserOffline", userId, user?.LastSeenAt ?? DateTimeOffset.UtcNow);
         }
 
+        ConnectionDeviceMap.TryRemove(Context.ConnectionId, out _);
         await base.OnDisconnectedAsync(exception);
     }
 

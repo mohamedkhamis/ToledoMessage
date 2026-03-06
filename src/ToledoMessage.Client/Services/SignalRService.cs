@@ -56,6 +56,9 @@ public class SignalRService : IAsyncDisposable
     /// <summary>Raised when a message is deleted for everyone. Parameters: messageId, conversationId.</summary>
     public event Action<decimal, decimal>? OnMessageDeleted;
 
+    /// <summary>Raised locally when the Chat page marks messages as read. Parameters: conversationId, newUnreadCount.</summary>
+    public event Action<decimal, int>? OnUnreadCountChanged;
+
     /// <summary>
     /// Whether the hub connection is currently active.
     /// </summary>
@@ -223,16 +226,14 @@ public class SignalRService : IAsyncDisposable
     }
 
     /// <summary>
-    /// Acknowledges that a message has been read by the user.
+    /// Advances the read pointer for a conversation up to the given sequence number.
     /// </summary>
-    /// <param name="messageId">The ID of the read message.</param>
-    // ReSharper disable once UnusedMember.Global
-    public async Task AcknowledgeReadAsync(decimal messageId)
+    public async Task AdvanceReadPointerAsync(decimal conversationId, long upToSequenceNumber)
     {
         if (_hubConnection is null)
             throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
 
-        await _hubConnection.InvokeAsync("AcknowledgeRead", messageId);
+        await _hubConnection.InvokeAsync("AdvanceReadPointer", conversationId, upToSequenceNumber);
     }
 
     /// <summary>
@@ -275,6 +276,14 @@ public class SignalRService : IAsyncDisposable
             throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
 
         await _hubConnection.InvokeAsync("DeleteForEveryone", messageId);
+    }
+
+    /// <summary>
+    /// Notifies subscribers (e.g. sidebar) that the unread count for a conversation changed.
+    /// </summary>
+    public void NotifyUnreadCountChanged(decimal conversationId, int newUnreadCount)
+    {
+        OnUnreadCountChanged?.Invoke(conversationId, newUnreadCount);
     }
 
     public async Task ClearMessagesAsync(decimal conversationId, DateTimeOffset from, DateTimeOffset to)

@@ -138,16 +138,43 @@
         {
             if (!string.IsNullOrEmpty(MediaDataUrl))
             {
-                <div class="message-file-card">
-                    <div class="message-file-icon">@GetFileIconForMimeType(MimeType)</div>
-                    <div class="message-file-info">
-                        <span class="message-file-name">@(FileName ?? "File")</span>
-                        <a href="@MediaDataUrl" download="@(FileName ?? "file")"
-                           class="message-file-download" aria-label="Download @(FileName ?? "file")">
-                            &#8595; @Theme.Labels.Download
-                        </a>
+                @if (IsPdf)
+                {
+                    <div class="message-pdf-preview">
+                        <div class="pdf-preview-frame-wrapper">
+                            <iframe src="@(MediaDataUrl + "#toolbar=0&navpanes=0&scrollbar=0&view=FitH")"
+                                    class="pdf-preview-frame"
+                                    title="@(FileName ?? "PDF preview")"
+                                    loading="lazy">
+                            </iframe>
+                            <div class="pdf-preview-overlay" @onclick="() => OnPdfClick.InvokeAsync(MediaDataUrl)"></div>
+                        </div>
+                        <div class="message-file-card pdf-card">
+                            <div class="message-file-icon">📄</div>
+                            <div class="message-file-info">
+                                <span class="message-file-name">@(FileName ?? "Document.pdf")</span>
+                            </div>
+                            <a href="@MediaDataUrl" download="@(FileName ?? "document.pdf")"
+                               class="message-file-download-btn" aria-label="Download @(FileName ?? "file")"
+                               @onclick:stopPropagation="true">
+                                &#8595;
+                            </a>
+                        </div>
                     </div>
-                </div>
+                }
+                else
+                {
+                    <div class="message-file-card">
+                        <div class="message-file-icon">@GetFileIconForMimeType(MimeType)</div>
+                        <div class="message-file-info">
+                            <span class="message-file-name">@(FileName ?? "File")</span>
+                            <a href="@MediaDataUrl" download="@(FileName ?? "file")"
+                               class="message-file-download" aria-label="Download @(FileName ?? "file")">
+                                &#8595; @Theme.Labels.Download
+                            </a>
+                        </div>
+                    </div>
+                }
             }
             else
             {
@@ -398,6 +425,12 @@
 
     [Parameter]
     public bool IsSearchHighlight { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnPdfClick { get; set; }
+
+    private bool IsPdf => MimeType?.StartsWith("application/pdf", StringComparison.OrdinalIgnoreCase) == true
+                          || FileName?.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) == true;
 
     private async Task HandleContextMenu(MouseEventArgs e)
     {

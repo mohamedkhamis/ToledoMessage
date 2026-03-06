@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using ToledoMessage.Data;
 using ToledoMessage.Hubs;
 using ToledoMessage.Models;
@@ -309,36 +310,37 @@ public class ChatHubTests
         StringAssert.Contains(ex.Message, "not found");
     }
 
-    // --- AcknowledgeRead ---
+    // --- AdvanceReadPointer ---
 
     [TestMethod]
-    public async Task AcknowledgeRead_ValidMessage_NotifiesSenderDevice()
+    public async Task AdvanceReadPointer_ValidMessage_NotifiesSenderDevice()
     {
         var (hub, db, _, clients) = CreateHub();
         await TestDbContextFactory.SeedUser(db, 1m, "user1");
         await TestDbContextFactory.SeedDevice(db, 10m, 1m); // Recipient device belongs to hub user
 
+        // Register device so GetDeviceId() works
+        await hub.RegisterDevice(10m);
+
+        var ts = DateTimeOffset.UtcNow;
         db.EncryptedMessages.Add(new EncryptedMessage
         {
             Id = 500m, ConversationId = 100m, SenderDeviceId = 20m, RecipientDeviceId = 10m,
-            Ciphertext = [1, 2], SequenceNumber = 1, ServerTimestamp = DateTimeOffset.UtcNow,
+            Ciphertext = [1, 2], SequenceNumber = 1, ServerTimestamp = ts,
             IsDelivered = true
         });
         await db.SaveChangesAsync();
 
-        await hub.AcknowledgeRead(500m);
+        await hub.AdvanceReadPointer(100m, 1);
 
         Assert.IsTrue(clients.SentToGroups.ContainsKey("device_20"));
         Assert.IsTrue(clients.SentToGroups["device_20"].Any(static s => s.method == "MessageRead"));
-    }
 
-    [TestMethod]
-    public async Task AcknowledgeRead_MessageNotFound_ThrowsHubException()
-    {
-        var (hub, _, _, _) = CreateHub();
-
-        var ex = await Assert.ThrowsAsync<HubException>(() => hub.AcknowledgeRead(999m));
-        StringAssert.Contains(ex.Message, "not found");
+        // Verify read pointer was created
+        var pointer = await db.ConversationReadPointers
+            .FirstOrDefaultAsync(p => p.UserId == 1m && p.ConversationId == 100m);
+        Assert.IsNotNull(pointer);
+        Assert.AreEqual(1L, pointer.LastReadSequenceNumber);
     }
 
     // --- TypingIndicator ---
@@ -409,25 +411,34 @@ public class ChatHubTests
     }
 
     [TestMethod]
-    public async Task AcknowledgeRead_OtherUsersMessage_ThrowsHubException()
+    public async Task AdvanceReadPointer_NoUnreadMessages_CreatesPointerWithZeroUnread()
     {
         var (hub, db, _, _) = CreateHub(); // userId = 1
         await TestDbContextFactory.SeedUser(db, 1m, "user1");
         await TestDbContextFactory.SeedUser(db, 2m, "user2");
         await TestDbContextFactory.SeedDevice(db, 10m, 1m);
-        await TestDbContextFactory.SeedDevice(db, 20m, 2m); // Belongs to user 2
+        await TestDbContextFactory.SeedDevice(db, 20m, 2m);
 
+        // Register device so GetDeviceId() works
+        await hub.RegisterDevice(10m);
+
+        var ts = DateTimeOffset.UtcNow;
         db.EncryptedMessages.Add(new EncryptedMessage
         {
             Id = 500m, ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m,
-            Ciphertext = [1, 2], SequenceNumber = 1, ServerTimestamp = DateTimeOffset.UtcNow,
+            Ciphertext = [1, 2], SequenceNumber = 1, ServerTimestamp = ts,
             IsDelivered = true
         });
         await db.SaveChangesAsync();
 
-        // User 1 tries to mark as read a message destined for user 2's device
-        var ex = await Assert.ThrowsAsync<HubException>(() => hub.AcknowledgeRead(500m));
-        StringAssert.Contains(ex.Message, "does not belong");
+        // User 1 sent message 500, so advancing their pointer should not notify anyone
+        await hub.AdvanceReadPointer(100m, 1);
+
+        // Pointer should exist with 0 unread
+        var pointer = await db.ConversationReadPointers
+            .FirstOrDefaultAsync(p => p.UserId == 1m && p.ConversationId == 100m);
+        Assert.IsNotNull(pointer);
+        Assert.AreEqual(0, pointer.UnreadCount);
     }
 
     // --- OnDisconnectedAsync ---

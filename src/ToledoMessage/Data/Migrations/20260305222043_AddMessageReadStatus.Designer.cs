@@ -3,17 +3,20 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ToledoMessage.Data;
 
 #nullable disable
 
-namespace ToledoMessage.Migrations
+namespace ToledoMessage.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260305222043_AddMessageReadStatus")]
+    partial class AddMessageReadStatus
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -67,36 +70,6 @@ namespace ToledoMessage.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("ConversationParticipants");
-                });
-
-            modelBuilder.Entity("ToledoMessage.Models.ConversationReadPointer", b =>
-                {
-                    b.Property<decimal>("UserId")
-                        .HasPrecision(28, 8)
-                        .HasColumnType("decimal(28,8)");
-
-                    b.Property<decimal>("ConversationId")
-                        .HasPrecision(28, 8)
-                        .HasColumnType("decimal(28,8)");
-
-                    b.Property<DateTimeOffset?>("LastReadAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<long>("LastReadSequenceNumber")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasDefaultValue(0L);
-
-                    b.Property<int>("UnreadCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
-
-                    b.HasKey("UserId", "ConversationId");
-
-                    b.HasIndex("ConversationId");
-
-                    b.ToTable("ConversationReadPointers");
                 });
 
             modelBuilder.Entity("ToledoMessage.Models.Device", b =>
@@ -231,12 +204,18 @@ namespace ToledoMessage.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
                     b.Property<int>("MessageType")
                         .HasColumnType("int");
 
                     b.Property<string>("MimeType")
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<decimal>("RecipientDeviceId")
                         .HasPrecision(28, 8)
@@ -490,25 +469,6 @@ namespace ToledoMessage.Migrations
 
                     b.HasOne("ToledoMessage.Models.User", "User")
                         .WithMany("ConversationParticipants")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Conversation");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("ToledoMessage.Models.ConversationReadPointer", b =>
-                {
-                    b.HasOne("ToledoMessage.Models.Conversation", "Conversation")
-                        .WithMany()
-                        .HasForeignKey("ConversationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("ToledoMessage.Models.User", "User")
-                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

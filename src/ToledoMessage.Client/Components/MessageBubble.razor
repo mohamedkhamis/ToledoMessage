@@ -4,7 +4,7 @@
     <div class="message-bubble @(IsMine ? "mine" : "theirs")">
         @if (IsForwarded)
         {
-            <div class="forwarded-label">@Theme.Labels.Forwarded</div>
+            <div class="forwarded-label">@Loc["Forwarded"]</div>
         }
         @if (!string.IsNullOrEmpty(ReplyToSenderName))
         {
@@ -56,7 +56,7 @@
             }
             else
             {
-                <div class="message-media-placeholder">&#128247; @(FileName ?? Theme.Labels.ImageUnavailable)</div>
+                <div class="message-media-placeholder">&#128247; @(FileName ?? Loc["Image unavailable"])</div>
             }
         }
         else if (ContentType == ContentType.Video)
@@ -85,7 +85,7 @@
             }
             else
             {
-                <div class="message-media-placeholder">&#127909; @(FileName ?? Theme.Labels.VideoUnavailable)</div>
+                <div class="message-media-placeholder">&#127909; @(FileName ?? Loc["Video unavailable"])</div>
             }
         }
         else if (ContentType == ContentType.Audio)
@@ -131,7 +131,7 @@
             }
             else
             {
-                <div class="message-media-placeholder">&#127911; @(FileName ?? Theme.Labels.AudioUnavailable)</div>
+                <div class="message-media-placeholder">&#127911; @(FileName ?? Loc["Audio unavailable"])</div>
             }
         }
         else if (ContentType == ContentType.File)
@@ -170,7 +170,7 @@
                             <span class="message-file-name">@(FileName ?? "File")</span>
                             <a href="@MediaDataUrl" download="@(FileName ?? "file")"
                                class="message-file-download" aria-label="Download @(FileName ?? "file")">
-                                &#8595; @Theme.Labels.Download
+                                &#8595; @Loc["Download"]
                             </a>
                         </div>
                     </div>
@@ -178,7 +178,7 @@
             }
             else
             {
-                <div class="message-media-placeholder">@GetFileIconForMimeType(MimeType) @(FileName ?? Theme.Labels.FileUnavailable)</div>
+                <div class="message-media-placeholder">@GetFileIconForMimeType(MimeType) @(FileName ?? Loc["File unavailable"])</div>
             }
         }
         @if (!string.IsNullOrEmpty(Text))
@@ -220,25 +220,10 @@
 </div>
 
 @inject IJSRuntime Js
-@inject ThemeService Theme
+@inject IStringLocalizer<SharedResource> Loc
 
 @* ReSharper disable once NotAccessedField.Local *@
 @code {
-    protected override void OnInitialized()
-    {
-        Theme.OnThemeChanged += OnThemeChanged;
-    }
-
-    private void OnThemeChanged()
-    {
-        InvokeAsync(StateHasChanged);
-    }
-
-    public void Dispose()
-    {
-        Theme.OnThemeChanged -= OnThemeChanged;
-    }
-
     // Check if text contains only 1-3 emoji (for big emoji rendering)
     private static bool IsEmojiOnly(string? text)
     {

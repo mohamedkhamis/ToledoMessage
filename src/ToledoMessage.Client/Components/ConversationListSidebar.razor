@@ -5,7 +5,7 @@
 @inject HttpClient Http
 @inject SignalRService SignalR
 @inject IJSRuntime Js
-@inject ThemeService Theme
+@inject IStringLocalizer<SharedResource> Loc
 @implements IAsyncDisposable
 
 <div class="sidebar-header">
@@ -14,20 +14,20 @@
         <span class="sidebar-user-name" title="@(string.IsNullOrEmpty(_userName) ? "You" : _userName)">@(string.IsNullOrEmpty(_userName) ? "You" : _userName)</span>
     </div>
     <div class="sidebar-header-actions">
-        <button class="sidebar-icon-btn" @onclick="NavigateToSettings" title="@Theme.Labels.SettingsLabel">
+        <button class="sidebar-icon-btn" @onclick="NavigateToSettings" title="@Loc["Settings"]">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         </button>
-        <button class="sidebar-icon-btn" @onclick="NavigateToNewConversation" title="@Theme.Labels.NewChat">
+        <button class="sidebar-icon-btn" @onclick="NavigateToNewConversation" title="@Loc["New conversation"]">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         </button>
-        <button class="sidebar-icon-btn" @onclick="HandleLogout" title="@Theme.Labels.LogoutLabel">
+        <button class="sidebar-icon-btn" @onclick="HandleLogout" title="@Loc["Logout"]">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </button>
     </div>
 </div>
 
 <div class="sidebar-search">
-    <input placeholder="@Theme.Labels.SearchPlaceholder"
+    <input placeholder="@Loc["Search conversations..."]"
            value="@_searchQuery"
            @oninput="OnSearchInput"
            aria-label="Search conversations" />
@@ -41,15 +41,15 @@
     else if (FilteredConversations.Count == 0 && string.IsNullOrEmpty(_searchQuery))
     {
         <div style="text-align:center;padding:32px 16px;">
-            <p class="centered-text" style="padding:0 0 16px;">@Theme.Labels.NoConversations</p>
+            <p class="centered-text" style="padding:0 0 16px;">@Loc["No conversations yet"]</p>
             <button class="btn-outline btn-sm" @onclick="NavigateToNewConversation">
-                @Theme.Labels.StartConversation
+                @Loc["Start a conversation"]
             </button>
         </div>
     }
     else if (FilteredConversations.Count == 0)
     {
-        <p class="centered-text" style="padding:24px 16px;">No results for "@_searchQuery"</p>
+        <p class="centered-text" style="padding:24px 16px;">@string.Format(Loc["NoResultsFor"], _searchQuery)</p>
     }
     else
     {
@@ -75,7 +75,7 @@
                         {
                             <span class="conversation-item-badge" style="margin-right:4px;font-size:0.75em;">@conv.UnreadCount</span>
                         }
-                        @(conv.LastMessage ?? Theme.Labels.NoMessages)
+                        @(conv.LastMessage ?? Loc["No messages yet"])
                     </div>
                 </div>
             </div>
@@ -103,21 +103,6 @@
             : _conversations
                 .Where(c => c.DisplayName.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
                 .ToList();
-
-    protected override void OnInitialized()
-    {
-        Theme.OnThemeChanged += OnThemeChanged;
-    }
-
-    private void OnThemeChanged()
-    {
-        InvokeAsync(StateHasChanged);
-    }
-
-    public void Dispose()
-    {
-        Theme.OnThemeChanged -= OnThemeChanged;
-    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -200,8 +185,12 @@
     // ReSharper disable  AsyncVoidEventHandlerMethod
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        _currentPath = new Uri(e.Location).AbsolutePath;
-        await InvokeAsync(StateHasChanged);
+        try
+        {
+            _currentPath = new Uri(e.Location).AbsolutePath;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch { /* prevent async void crash */ }
     }
 
     private void OnSearchInput(ChangeEventArgs e)
@@ -241,20 +230,26 @@
     // ReSharper disable once AsyncVoidMethod
     private async void HandleUnreadCountChanged(decimal conversationId, int newUnreadCount)
     {
-        await InvokeAsync(() =>
+        try
         {
-            var index = _conversations.FindIndex(c => c.ConversationId == conversationId);
-            if (index >= 0)
+            await InvokeAsync(() =>
             {
-                _conversations[index] = _conversations[index] with { UnreadCount = newUnreadCount };
-                StateHasChanged();
-            }
-        });
+                var index = _conversations.FindIndex(c => c.ConversationId == conversationId);
+                if (index >= 0)
+                {
+                    _conversations[index] = _conversations[index] with { UnreadCount = newUnreadCount };
+                    StateHasChanged();
+                }
+            });
+        }
+        catch { /* prevent async void crash */ }
     }
 
     // ReSharper disable once AsyncVoidMethod
     private async void HandleMessageReceived(MessageEnvelope envelope)
     {
+        try
+        {
         await InvokeAsync(() =>
         {
             var index = _conversations.FindIndex(c => c.ConversationId == envelope.ConversationId);
@@ -285,6 +280,8 @@
 
             StateHasChanged();
         });
+        }
+        catch { /* prevent async void crash */ }
     }
 
     private static string FormatTime(DateTimeOffset time)
@@ -293,7 +290,7 @@
         if (diff.TotalMinutes < 1) return "now";
         if (diff.TotalHours < 24) return time.ToLocalTime().ToString("HH:mm");
         if (diff.TotalDays < 7) return time.ToLocalTime().ToString("ddd");
-        return time.ToString("MMM d");
+        return time.ToLocalTime().ToString("MMM d");
     }
 
     private static string ExtractDisplayNameFromJwt(string token)
@@ -308,6 +305,8 @@
                 case 2: payload += "=="; break;
                 case 3: payload += "="; break;
             }
+            // BUG-CR-003 FIX: Handle base64url encoding
+            payload = payload.Replace('-', '+').Replace('_', '/');
             var json = Encoding.UTF8.GetString(Convert.FromBase64String(payload));
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;

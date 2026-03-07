@@ -56,10 +56,15 @@ public class PreKeyService(ApplicationDbContext db)
             };
             var claimed = await db.Database.SqlQueryRaw<decimal>(
                 """
-                UPDATE TOP(1) OneTimePreKeys
+                WITH cte AS (
+                    SELECT TOP(1) Id, IsUsed
+                    FROM OneTimePreKeys
+                    WHERE DeviceId = @deviceId AND IsUsed = 0
+                    ORDER BY KeyId
+                )
+                UPDATE cte
                 SET IsUsed = 1
                 OUTPUT inserted.Id
-                WHERE DeviceId = @deviceId AND IsUsed = 0
                 """, deviceParam).ToListAsync();
 
             if (claimed.Count == 0)

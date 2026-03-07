@@ -17,6 +17,7 @@ Auto-generated from all feature plans. Last updated: 2026-02-25
 - SQL Server 2022 (server) + Browser IndexedDB (client via JS interop) (005-fix-chat-functions)
 - C# / .NET 10 (LTS), JavaScript (browser interop) + Blazor WebAssembly, ASP.NET Core, SignalR, BouncyCastle.Cryptography 2.6.2, EF Core 10 (006-fix-media-sharing)
 - SQL Server 2022 (server-side encrypted ciphertext), Browser IndexedDB (client-side cached media as base64) (006-fix-media-sharing)
+- C# / .NET 10 (LTS), CSS3, JavaScript (Blazor WASM interop) + Blazor WebAssembly, ASP.NET Core, SignalR (no new dependencies) (007-ui-polish)
 
 - C# / .NET 10 (LTS) + BouncyCastle.Cryptography 2.6.2, ASP.NET Core Identity, SignalR, EF Core 10 (001-secure-messaging)
 
@@ -37,9 +38,9 @@ tests/
 C# / .NET 10 (LTS): Follow standard conventions
 
 ## Recent Changes
+- 007-ui-polish: Added C# / .NET 10 (LTS), CSS3, JavaScript (Blazor WASM interop) + Blazor WebAssembly, ASP.NET Core, SignalR (no new dependencies)
 - 006-fix-media-sharing: Added C# / .NET 10 (LTS), JavaScript (browser interop) + Blazor WebAssembly, ASP.NET Core, SignalR, BouncyCastle.Cryptography 2.6.2, EF Core 10
 - 005-fix-chat-functions: Added C# / .NET 10 (LTS) + Blazor WebAssembly, ASP.NET Core, SignalR, BouncyCastle.Cryptography 2.6.2, EF Core 10
-- 005-fix-chat-functions: Added C# / .NET 10 (LTS), JavaScript (browser interop) + Blazor WebAssembly, ASP.NET Core, SignalR, BouncyCastle.Cryptography 2.6.2
 
 
 <!-- MANUAL ADDITIONS START -->

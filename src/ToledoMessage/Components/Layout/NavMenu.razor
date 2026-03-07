@@ -1,4 +1,5 @@
 @inject NavigationManager Navigation
+@inject IStringLocalizer<SharedResource> Loc
 @implements IDisposable
 
 <nav class="app-nav" role="navigation" aria-label="Main navigation">
@@ -7,9 +8,13 @@
     @if (IsPublicPage())
     {
         <div class="nav-links">
+            <button type="button" class="lang-switcher" onclick="window.__toggleLang()" title="@(IsCulture("ar") ? "Switch to English" : "التبديل إلى العربية")">
+                <span class="lang-label @(IsCulture("en") ? "lang-active" : "")">EN</span>
+                <span class="lang-label @(IsCulture("ar") ? "lang-active" : "")">عربي</span>
+            </button>
             @* ReSharper disable  Html.PathError *@
-            <a href="/login" class="@ActiveClass("/login")">Sign In</a>
-            <a href="/register" class="@ActiveClass("/register")">Register</a>
+            <a href="/login" class="@ActiveClass("/login")">@Loc["Sign In"]</a>
+            <a href="/register" class="@ActiveClass("/register")">@Loc["Register"]</a>
         </div>
     }
     else
@@ -19,11 +24,15 @@
             &#9776;
         </button>
         <div class="nav-links @(_isOpen ? "open" : "")">
+            <button type="button" class="lang-switcher" onclick="window.__toggleLang()" title="@(IsCulture("ar") ? "Switch to English" : "التبديل إلى العربية")">
+                <span class="lang-label @(IsCulture("en") ? "lang-active" : "")">EN</span>
+                <span class="lang-label @(IsCulture("ar") ? "lang-active" : "")">عربي</span>
+            </button>
             <a href="/chat" class="@ActiveClass("/chat")" @onclick="CloseNav"
-               aria-current="@(IsActive("/chat") ? "page" : null)">Chats</a>
+               aria-current="@(IsActive("/chat") ? "page" : null)">@Loc["Chats"]</a>
             <a href="/settings" class="@ActiveClass("/settings")" @onclick="CloseNav"
-               aria-current="@(IsActive("/settings") ? "page" : null)">Settings</a>
-            <button class="btn-logout" @onclick="HandleLogout">Logout</button>
+               aria-current="@(IsActive("/settings") ? "page" : null)">@Loc["Settings"]</a>
+            <button class="btn-logout" @onclick="HandleLogout">@Loc["Logout"]</button>
         </div>
     }
 </nav>
@@ -84,6 +93,11 @@
     {
         CloseNav();
         Navigation.NavigateTo("/login?logout=true", forceLoad: true);
+    }
+
+    private bool IsCulture(string culture)
+    {
+        return System.Globalization.CultureInfo.CurrentCulture.Name.StartsWith(culture, StringComparison.OrdinalIgnoreCase);
     }
 
     public void Dispose()

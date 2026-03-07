@@ -58,12 +58,10 @@ public class LocalStorageService(IJSRuntime js)
         // Check in-memory cache first
         if (_cache.TryGetValue(key, out var cached))
         {
-            if (_encryptionKey is not null)
-            {
-                var nonce = DeriveNonceFromKey(key);
-                return AesGcmCipher.Decrypt(_encryptionKey, nonce, cached);
-            }
-            return cached;
+            if (_encryptionKey is null) return cached;
+
+            var nonce = DeriveNonceFromKey(key);
+            return AesGcmCipher.Decrypt(_encryptionKey, nonce, cached);
         }
 
         // Fall back to browser localStorage
@@ -74,6 +72,7 @@ public class LocalStorageService(IJSRuntime js)
         var stored = Convert.FromBase64String(base64);
         _cache[key] = stored;
 
+        // ReSharper disable once InvertIf
         if (_encryptionKey is not null)
         {
             var nonce = DeriveNonceFromKey(key);

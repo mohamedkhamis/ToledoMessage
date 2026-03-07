@@ -1,5 +1,5 @@
 @inject IJSRuntime Js
-@inject ThemeService Theme
+@inject IStringLocalizer<SharedResource> Loc
 @implements IAsyncDisposable
 
 <div class="chat-input-area">
@@ -115,17 +115,17 @@
                     <div class="attach-menu-popup" role="menu">
                         <label class="attach-menu-item" role="menuitem" tabindex="0">
                             <span class="attach-menu-icon">&#128247;</span>
-                            <span>@Theme.Labels.PhotoOrVideo</span>
+                            <span>@Loc["Photo or Video"]</span>
                             <InputFile accept="image/*,video/*" OnChange="OnMediaSelected" style="display:none" />
                         </label>
                         <label class="attach-menu-item" role="menuitem" tabindex="0">
                             <span class="attach-menu-icon">&#127908;</span>
-                            <span>@Theme.Labels.Audio</span>
+                            <span>@Loc["Audio"]</span>
                             <InputFile accept="audio/*" OnChange="OnAudioSelected" style="display:none" />
                         </label>
                         <label class="attach-menu-item" role="menuitem" tabindex="0">
                             <span class="attach-menu-icon">&#128196;</span>
-                            <span>@Theme.Labels.Document</span>
+                            <span>@Loc["Document"]</span>
                             <InputFile OnChange="OnDocumentSelected" style="display:none" />
                         </label>
                     </div>
@@ -164,7 +164,7 @@
                       @bind:event="oninput"
                       @bind:after="OnTextInput"
                       @onkeydown="HandleKeyDown"
-                      placeholder="@Theme.Labels.TypeMessage"
+                      placeholder="@Loc["Type a message..."]"
                       rows="1"
                       class="msg-textarea"
                       aria-label="Message input"></textarea>
@@ -196,27 +196,12 @@
         }
         else
         {
-            <VoiceRecorder OnRecorded="HandleVoiceRecorded" OnCancelled="() => _isRecording = false" />
+            <VoiceRecorder OnRecorded="HandleVoiceRecorded" OnCancelled="HandleVoiceCancelled" />
         }
     </div>
 </div>
 
 @code {
-    protected override void OnInitialized()
-    {
-        Theme.OnThemeChanged += OnThemeChanged;
-    }
-
-    private void OnThemeChanged()
-    {
-        InvokeAsync(StateHasChanged);
-    }
-
-    public void Dispose()
-    {
-        Theme.OnThemeChanged -= OnThemeChanged;
-    }
-
     private string _messageText = "";
     private IBrowserFile? _selectedFile;
     private byte[]? _selectedFileBytes;
@@ -463,7 +448,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Image compression failed: {ex.Message}");
+                Console.WriteLine($@"Image compression failed: {ex.Message}");
                 // Continue without compression — original bytes will be used
             }
 
@@ -475,7 +460,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Preview blob URL failed, using data URL: {ex.Message}");
+                Console.WriteLine($@"Preview blob URL failed, using data URL: {ex.Message}");
             }
 
             // Fallback to data URL if blob creation failed
@@ -595,21 +580,33 @@
         _isRecording = true;
     }
 
-    private async Task HandleVoiceRecorded(byte[] audioData)
+    private async Task HandleVoiceRecorded(VoiceRecorder.VoiceRecordingResult result)
     {
         _isRecording = false;
+
+        var ext = result.MimeType switch
+        {
+            "audio/ogg" => "ogg",
+            "audio/mp4" => "m4a",
+            _ => "webm"
+        };
 
         var msg = new ChatInputMessage
         {
             Text = "",
-            MediaBytes = audioData,
-            FileName = $"voice_{DateTimeOffset.UtcNow:yyyyMMdd_HHmmss}.webm",
-            MimeType = "audio/webm",
+            MediaBytes = result.AudioData,
+            FileName = $"voice_{DateTimeOffset.UtcNow:yyyyMMdd_HHmmss}.{ext}",
+            MimeType = result.MimeType,
             ContentType = ContentType.Audio,
             ReplyToMessageId = ReplyContext?.MessageId
         };
 
         await OnSend.InvokeAsync(msg);
+    }
+
+    private void HandleVoiceCancelled()
+    {
+        _isRecording = false;
     }
 
     private static string GetFileIcon(ContentType type)

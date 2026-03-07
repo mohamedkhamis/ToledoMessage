@@ -9,12 +9,14 @@ public sealed class ThemeService(IJSRuntime js)
     // Event: fires when theme changes so components can re-render
     public event Action? OnThemeChanged;
 
-    public ThemeLabelSet Labels { get; private set; } = ThemeLabelSet.Default;
+    public ThemeStyleSet Styles { get; private set; } = ThemeStyleSet.Default;
+
+    public string CurrentTheme => _cachedThemeId;
 
     public async Task<string> GetThemeAsync()
     {
         _cachedThemeId = await js.InvokeAsync<string?>("toledoStorage.getTheme") ?? "default";
-        Labels = ResolveLabels(_cachedThemeId);
+        Styles = ResolveStyles(_cachedThemeId);
         return _cachedThemeId;
     }
 
@@ -22,18 +24,18 @@ public sealed class ThemeService(IJSRuntime js)
     {
         await js.InvokeVoidAsync("toledoStorage.setTheme", themeName);
         _cachedThemeId = themeName;
-        Labels = ResolveLabels(themeName);
+        Styles = ResolveStyles(themeName);
         OnThemeChanged?.Invoke();
     }
 
-    private static ThemeLabelSet ResolveLabels(string themeId)
+    private static ThemeStyleSet ResolveStyles(string themeId)
     {
         return themeId switch
         {
-            "whatsapp" or "whatsapp-dark" => ThemeLabelSet.WhatsApp,
-            "telegram" or "telegram-dark" => ThemeLabelSet.Telegram,
-            "signal" or "signal-dark" => ThemeLabelSet.Signal,
-            _ => ThemeLabelSet.Default
+            "whatsapp" or "whatsapp-dark" => ThemeStyleSet.WhatsApp,
+            "telegram" or "telegram-dark" => ThemeStyleSet.Telegram,
+            "signal" or "signal-dark" => ThemeStyleSet.Signal,
+            _ => ThemeStyleSet.Default
         };
     }
 
@@ -95,7 +97,7 @@ public sealed class ThemeService(IJSRuntime js)
                 "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='none' stroke='%23fff' stroke-opacity='0.03' stroke-width='1'%3E%3Ccircle cx='20' cy='20' r='12'/%3E%3Ccircle cx='60' cy='55' r='8'/%3E%3Ccircle cx='45' cy='15' r='5'/%3E%3Ccircle cx='12' cy='60' r='6'/%3E%3Ccircle cx='65' cy='25' r='4'/%3E%3C/g%3E%3C/svg%3E\")"),
             new WallpaperInfo("stars", "Starfield",
                 "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70' viewBox='0 0 70 70'%3E%3Cg fill='%23000' fill-opacity='0.04'%3E%3Cpath d='M15 5l1.5 3 3.5.5-2.5 2.5.5 3.5L15 13l-3 1.5.5-3.5L10 8.5l3.5-.5zM50 40l1 2 2.5.3-1.8 1.8.3 2.5L50 45.3l-2 1.3.3-2.5-1.8-1.8 2.5-.3zM35 60l.8 1.5 1.7.2-1.2 1.2.2 1.7-1.5-.8-1.5.8.2-1.7-1.2-1.2 1.7-.2z'/%3E%3C/g%3E%3C/svg%3E\")",
-                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70' viewBox='0 0 70 70'%3E%3Cg fill='%23fff' fill-opacity='0.04'%3E%3Cpath d='M15 5l1.5 3 3.5.5-2.5 2.5.5 3.5L15 13l-3 1.5.5-3.5L10 8.5l3.5-.5zM50 40l1 2 2.5.3-1.8 1.8.3 2.5L50 45.3l-2 1.3.3-2.5-1.8-1.8 2.5-.3zM35 60l.8 1.5 1.7.2-1.2 1.2.2 1.7-1.5-.8-1.5.8.2-1.7-1.2-1.2 1.7-.2z'/%3E%3C/g%3E%3C/svg%3E\")")
+                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70' viewBox='0 0 70 70'%3E%3Cg fill='%23fff' fill-opacity='0.04'%3E%3Cpath d='M15 5l1.5 3 3.5.5-2.5 2.5.5 3.5L15 13l-3 1.5.5-3.5L10 8.5l3.5-.5zM50 40l1 2 2.5.3-1.8 1.8.3 2.5L50 45.3l-2 1.3.3-2.5-1.8-1.8 2.5-.3zM35 60l.8 1.5 1.7.2-1.2 1.2.2 1.7-1.5-.8-1.5.8.2-1.7-1.2-1.2 1.7-.2z'/%3E%3C/g%3E%3C/svg%3E\")"),
         ];
     }
 

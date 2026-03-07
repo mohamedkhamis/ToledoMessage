@@ -80,3 +80,4 @@ appsettings.*.local.json
 /coverage-report-server
 /publish-temp
 /docs/ToledoMessage_Full_Presentation.pptx
+/publish_output

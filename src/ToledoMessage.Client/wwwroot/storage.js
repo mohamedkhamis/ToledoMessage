@@ -27,6 +27,18 @@ window.toledoStorage = {
     getTheme: function () {
         return localStorage.getItem('app.theme');
     },
+    toggleDarkMode: function () {
+        var current = localStorage.getItem('app.theme') || 'default';
+        var next = current.endsWith('-dark') ? current.replace('-dark', '') : current + '-dark';
+        this.setTheme(next);
+        return next;
+    },
+    isDarkTheme: function () {
+        var t = localStorage.getItem('app.theme') || '';
+        if (t.endsWith('-dark')) return true;
+        if (!t || t === 'default') return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        return false;
+    },
     prefersDarkMode: function () {
         return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     },
@@ -53,10 +65,11 @@ window.toledoStorage = {
         return localStorage.getItem('app.wallpaper') || 'default';
     },
     clearAuthData: function () {
-        // Only clear the auth token — preserve device identity, crypto keys, sessions,
+        // Only clear auth tokens — preserve device identity, crypto keys, sessions,
         // and preferences so the same device is reused on re-login and old messages
         // remain decryptable (Signal Protocol sessions are forward-secret).
         localStorage.removeItem('auth.token');
+        localStorage.removeItem('auth.refreshToken');
     },
     clearAllData: function () {
         // Full wipe for account deletion — clear everything except UI preferences

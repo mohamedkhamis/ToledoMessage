@@ -58,6 +58,17 @@ public class KeyBackupService(
         return payload;
     }
 
+    public async Task<DateTimeOffset?> GetBackupTimestampAsync()
+    {
+        var response = await http.GetAsync("/api/keys/backup");
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
+
+        response.EnsureSuccessStatusCode();
+        var backup = await response.Content.ReadFromJsonAsync<KeyBackupResponse>();
+        return backup?.UpdatedAt;
+    }
+
     public async Task DeleteBackupAsync()
     {
         var response = await http.DeleteAsync("/api/keys/backup");

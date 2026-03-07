@@ -57,17 +57,25 @@
                     document.documentElement.removeAttribute('data-font-size');
                 }
             }
+            function applyCulture() {
+                var c = localStorage.getItem('app.culture') || 'en';
+                var desiredDir = c.startsWith('ar') ? 'rtl' : 'ltr';
+                if (document.documentElement.lang !== c) document.documentElement.lang = c;
+                if (document.documentElement.dir !== desiredDir) document.documentElement.dir = desiredDir;
+            }
             applyTheme();
             applyFontSize();
+            applyCulture();
             // Re-apply after Blazor enhanced navigation
 // ReSharper disable  Html.EventNotResolved
             document.addEventListener('blazor:enhancedload', function () {
                 applyTheme();
                 applyFontSize();
+                applyCulture();
                 // Also re-apply after a frame in case Blazor patches DOM after the event
-                requestAnimationFrame(function () { applyTheme(); applyFontSize(); });
+                requestAnimationFrame(function () { applyTheme(); applyFontSize(); applyCulture(); });
             });
-            // MutationObserver: catch Blazor stripping data-theme/data-font-size during DOM patching
+            // MutationObserver: catch Blazor stripping data-theme/data-font-size/lang/dir during DOM patching
             var applying = false;
             new MutationObserver(function () {
                 if (applying) return;
@@ -82,11 +90,21 @@
                 if (fs && fs !== 'medium' && currentFs !== fs) {
                     document.documentElement.setAttribute('data-font-size', fs);
                 }
+                applyCulture();
                 applying = false;
-            }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-font-size', 'lang'] });
+            }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-font-size', 'lang', 'dir'] });
 
             // Loading spinner: handled by inline script right after the spinner div.
             // See comment there for the full strategy.
+
+            // Global language toggle (used by NavMenu and Home page switchers)
+            window.__toggleLang = function() {
+                var current = localStorage.getItem('app.culture') || 'en';
+                var next = current.startsWith('ar') ? 'en' : 'ar';
+                localStorage.setItem('app.culture', next);
+                document.cookie = '.AspNetCore.Culture=c=' + next + '|uic=' + next + ';path=/;max-age=31536000;samesite=lax';
+                location.reload();
+            };
         })();
     </script>
     <ResourcePreloader />

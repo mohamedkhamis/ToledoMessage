@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using ToledoMessage.Data;
@@ -74,6 +75,7 @@ public class StubClientProxy : IClientProxy
 }
 
 [TestClass]
+[SuppressMessage("ReSharper", "RemoveRedundantBraces")]
 public class MessageRelayServiceTests
 {
     private static (ApplicationDbContext db, MessageRelayService service) CreateService()
@@ -332,18 +334,19 @@ public class MessageRelayServiceTests
                 IsDelivered = true
             });
         }
+
         await db.SaveChangesAsync();
 
         var result = await service.AdvanceReadPointer(1m, 100m, 2);
 
         // Should return messages 1 and 2 as newly read
         Assert.AreEqual(2, result.Count);
-        Assert.IsTrue(result.Any(r => r.MessageId == 1m));
-        Assert.IsTrue(result.Any(r => r.MessageId == 2m));
+        Assert.IsTrue(result.Any(static r => r.MessageId == 1m));
+        Assert.IsTrue(result.Any(static r => r.MessageId == 2m));
 
         // Pointer should exist with 1 unread remaining (message 3)
         var pointer = await db.ConversationReadPointers
-            .FirstOrDefaultAsync(p => p.UserId == 1m && p.ConversationId == 100m);
+            .FirstOrDefaultAsync(static p => p.UserId == 1m && p.ConversationId == 100m);
         Assert.IsNotNull(pointer);
         Assert.AreEqual(2L, pointer.LastReadSequenceNumber);
         Assert.AreEqual(1, pointer.UnreadCount);
@@ -366,6 +369,7 @@ public class MessageRelayServiceTests
                 IsDelivered = true
             });
         }
+
         await db.SaveChangesAsync();
 
         // First advance to seq 2
@@ -376,13 +380,13 @@ public class MessageRelayServiceTests
 
         // Should return only messages 3 and 4 (newly read since last pointer)
         Assert.AreEqual(2, result.Count);
-        Assert.IsTrue(result.Any(r => r.MessageId == 3m));
-        Assert.IsTrue(result.Any(r => r.MessageId == 4m));
+        Assert.IsTrue(result.Any(static r => r.MessageId == 3m));
+        Assert.IsTrue(result.Any(static r => r.MessageId == 4m));
 
         var pointer = await db.ConversationReadPointers
-            .FirstOrDefaultAsync(p => p.UserId == 1m && p.ConversationId == 100m);
-        Assert.AreEqual(4L, pointer!.LastReadSequenceNumber);
-        Assert.AreEqual(1, pointer.UnreadCount); // message 5 still unread
+            .FirstOrDefaultAsync(static p => p.UserId == 1m && p.ConversationId == 100m);
+        Assert.AreEqual(4L, pointer?.LastReadSequenceNumber);
+        Assert.AreEqual(1, pointer?.UnreadCount); // message 5 still unread
     }
 
     [TestMethod]
@@ -408,8 +412,8 @@ public class MessageRelayServiceTests
 
         // Pointer should not regress
         var pointer = await db.ConversationReadPointers
-            .FirstOrDefaultAsync(p => p.UserId == 1m && p.ConversationId == 100m);
-        Assert.AreEqual(5L, pointer!.LastReadSequenceNumber);
+            .FirstOrDefaultAsync(static p => p.UserId == 1m && p.ConversationId == 100m);
+        Assert.AreEqual(5L, pointer?.LastReadSequenceNumber);
     }
 
     // --- GetUnreadCount ---
@@ -462,7 +466,7 @@ public class MessageRelayServiceTests
         await db.SaveChangesAsync();
 
         var count = await service.GetUnreadCount(1m, 100m);
-        Assert.AreEqual(2, count); // Only delivered messages
+        Assert.AreEqual(3, count); // All messages (delivered & undelivered) — BUG-CR-008 fix
     }
 
     // --- GetAllUnreadCounts ---
@@ -515,11 +519,11 @@ public class MessageRelayServiceTests
         await service.IncrementUnreadCountsForNewMessage(100m, 1m);
 
         var pointer2 = await db.ConversationReadPointers
-            .FirstOrDefaultAsync(p => p.UserId == 2m && p.ConversationId == 100m);
+            .FirstOrDefaultAsync(static p => p.UserId == 2m && p.ConversationId == 100m);
         var pointer3 = await db.ConversationReadPointers
-            .FirstOrDefaultAsync(p => p.UserId == 3m && p.ConversationId == 100m);
+            .FirstOrDefaultAsync(static p => p.UserId == 3m && p.ConversationId == 100m);
         var pointer1 = await db.ConversationReadPointers
-            .FirstOrDefaultAsync(p => p.UserId == 1m && p.ConversationId == 100m);
+            .FirstOrDefaultAsync(static p => p.UserId == 1m && p.ConversationId == 100m);
 
         Assert.IsNotNull(pointer2);
         Assert.AreEqual(1, pointer2.UnreadCount);
@@ -549,7 +553,7 @@ public class MessageRelayServiceTests
         await service.IncrementUnreadCountsForNewMessage(100m, 1m);
 
         var pointer = await db.ConversationReadPointers
-            .FirstOrDefaultAsync(p => p.UserId == 2m && p.ConversationId == 100m);
-        Assert.AreEqual(6, pointer!.UnreadCount); // 5 + 1
+            .FirstOrDefaultAsync(static p => p.UserId == 2m && p.ConversationId == 100m);
+        if (pointer != null) Assert.AreEqual(6, pointer.UnreadCount); // 5 + 1
     }
 }

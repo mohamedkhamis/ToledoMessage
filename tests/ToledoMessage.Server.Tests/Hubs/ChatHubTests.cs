@@ -318,6 +318,8 @@ public class ChatHubTests
         var (hub, db, _, clients) = CreateHub();
         await TestDbContextFactory.SeedUser(db, 1m, "user1");
         await TestDbContextFactory.SeedDevice(db, 10m, 1m); // Recipient device belongs to hub user
+        await TestDbContextFactory.SeedConversation(db, 100m);
+        await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
 
         // Register device so GetDeviceId() works
         await hub.RegisterDevice(10m);
@@ -418,6 +420,8 @@ public class ChatHubTests
         await TestDbContextFactory.SeedUser(db, 2m, "user2");
         await TestDbContextFactory.SeedDevice(db, 10m, 1m);
         await TestDbContextFactory.SeedDevice(db, 20m, 2m);
+        await TestDbContextFactory.SeedConversation(db, 100m);
+        await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
 
         // Register device so GetDeviceId() works
         await hub.RegisterDevice(10m);

@@ -112,7 +112,13 @@ builder.Services.AddSignalR(static options =>
 });
 
 // Controllers (for REST API endpoints)
-builder.Services.AddControllers();
+builder.Services.AddControllers(static options =>
+{
+    options.Filters.Add<ToledoMessage.Filters.UnauthorizedExceptionFilter>();
+});
+
+// Localization
+builder.Services.AddLocalization();
 
 // CORS — restrict origins based on environment
 builder.Services.AddCors(options =>
@@ -141,6 +147,14 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate();
 }
+
+var supportedCultures = new[] { "en", "ar" };
+var localizationOptions = new RequestLocalizationOptions()
+    .SetDefaultCulture("en")
+    .AddSupportedCultures(supportedCultures)
+    .AddSupportedUICultures(supportedCultures);
+
+app.UseRequestLocalization(localizationOptions);
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

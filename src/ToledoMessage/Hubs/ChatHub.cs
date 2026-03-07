@@ -128,6 +128,12 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     {
         var userId = GetUserId();
 
+        // BUG-CR-006 FIX: Verify user is a participant
+        var isParticipant = await db.ConversationParticipants
+            .AnyAsync(p => p.ConversationId == conversationId && p.UserId == userId);
+        if (!isParticipant)
+            throw new HubException("User is not a participant in this conversation");
+
         var readMessages = await relayService.AdvanceReadPointer(userId, conversationId, upToSequenceNumber);
 
         // Notify each sender's device that their messages were read
@@ -328,9 +334,24 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// Check if a specific user is online.
     /// </summary>
     // ReSharper disable once UnusedMember.Global
-    public Task<bool> IsUserOnline(decimal userId)
+    public async Task<bool> IsUserOnline(decimal targetUserId)
     {
-        return Task.FromResult(presence.IsOnline(userId));
+        // BUG-CR-007 FIX: Verify caller shares a conversation with the target user
+        var callerId = GetUserId();
+
+        // Get all conversation IDs the caller participates in
+        var callerConvos = await db.ConversationParticipants
+            .Where(p => p.UserId == callerId)
+            .Select(static p => p.ConversationId)
+            .ToListAsync();
+
+        // Check if target user participates in any of those conversations
+        var sharedConversation = await db.ConversationParticipants
+            .AnyAsync(p => p.UserId == targetUserId && callerConvos.Contains(p.ConversationId));
+
+        return sharedConversation &&
+               // Privacy: don't reveal online status to non-contacts
+               presence.IsOnline(targetUserId);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)

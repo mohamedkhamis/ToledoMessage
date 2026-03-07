@@ -18,10 +18,11 @@ public class PreferencesController(ApplicationDbContext db) : BaseApiController
     private static readonly HashSet<string> ValidThemes =
     [
         "default", "default-dark", "whatsapp", "whatsapp-dark",
-        "telegram", "signal", "signal-dark"
+        "telegram", "telegram-dark", "signal", "signal-dark"
     ];
 
     private static readonly HashSet<string> ValidFontSizes = ["small", "medium", "large"];
+    private static readonly HashSet<string> ValidLanguages = ["en", "ar"];
 
     [HttpGet]
     public async Task<IActionResult> GetPreferences()
@@ -48,6 +49,9 @@ public class PreferencesController(ApplicationDbContext db) : BaseApiController
 
         if (request.FontSize is not null && !ValidFontSizes.Contains(request.FontSize))
             return BadRequest("Invalid font size. Must be small, medium, or large.");
+
+        if (request.Language is not null && !ValidLanguages.Contains(request.Language))
+            return BadRequest("Invalid language.");
 
         var userId = GetUserId();
         var prefs = await db.UserPreferences.FirstOrDefaultAsync(p => p.UserId == userId);

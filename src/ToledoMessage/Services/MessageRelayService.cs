@@ -176,34 +176,47 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
 
     /// <summary>
     /// Bulk-acknowledge delivery for all pending messages of a device.
-    /// Returns the count of messages acknowledged.
+    /// Returns list of (messageId, senderDeviceId) for sending notifications.
     /// </summary>
-    public async Task<int> BulkAcknowledgeDelivery(decimal deviceId)
+    public async Task<List<(decimal MessageId, decimal SenderDeviceId)>> BulkAcknowledgeDelivery(decimal deviceId)
     {
         var now = DateTimeOffset.UtcNow;
+        List<(decimal, decimal)> result;
 
         if (db.Database.IsRelational())
         {
-            return await db.Database.ExecuteSqlRawAsync(
-                """
+            // Get messages to notify before updating
+            var toNotify = await db.EncryptedMessages
+                .Where(m => m.RecipientDeviceId == deviceId && !m.IsDelivered)
+                .Select(static m => new { m.Id, m.SenderDeviceId })
+                .ToListAsync();
+
+            await db.Database.ExecuteSqlAsync(
+                $"""
                 UPDATE EncryptedMessages
-                SET IsDelivered = 1, DeliveredAt = {0}
-                WHERE RecipientDeviceId = {1} AND IsDelivered = 0
-                """, now, deviceId);
-        }
+                SET IsDelivered = 1, DeliveredAt = {now}
+                WHERE RecipientDeviceId = {deviceId} AND IsDelivered = 0
+                """);
 
-        // Fallback for in-memory provider
-        var messages = await db.EncryptedMessages
-            .Where(m => m.RecipientDeviceId == deviceId && !m.IsDelivered)
-            .ToListAsync();
-        foreach (var m in messages)
+            result = toNotify.Select(static m => (m.Id, m.SenderDeviceId)).ToList();
+        }
+        else
         {
-            m.IsDelivered = true;
-            m.DeliveredAt = now;
+            // Fallback for in-memory provider
+            var messages = await db.EncryptedMessages
+                .Where(m => m.RecipientDeviceId == deviceId && !m.IsDelivered)
+                .ToListAsync();
+            foreach (var m in messages)
+            {
+                m.IsDelivered = true;
+                m.DeliveredAt = now;
+            }
+
+            await db.SaveChangesAsync();
+            result = messages.Select(static m => (m.Id, m.SenderDeviceId)).ToList();
         }
 
-        await db.SaveChangesAsync();
-        return messages.Count;
+        return result;
     }
 
     /// <summary>
@@ -284,8 +297,7 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
 
         return await db.EncryptedMessages
             .CountAsync(m => m.ConversationId == conversationId
-                             && userDeviceIds.Contains(m.RecipientDeviceId)
-                             && m.IsDelivered);
+                             && userDeviceIds.Contains(m.RecipientDeviceId)); // BUG-CR-008 FIX: count all messages (delivered & undelivered)
     }
 
     /// <summary>
@@ -342,12 +354,12 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
 
         if (db.Database.IsRelational())
         {
-            await db.Database.ExecuteSqlRawAsync(
-                """
+            await db.Database.ExecuteSqlAsync(
+                $"""
                 UPDATE EncryptedMessages
-                SET IsDelivered = 1, DeliveredAt = COALESCE(DeliveredAt, {0})
-                WHERE RecipientDeviceId = {1} AND IsDelivered = 0
-                """, now, deviceId);
+                SET IsDelivered = 1, DeliveredAt = COALESCE(DeliveredAt, {now})
+                WHERE RecipientDeviceId = {deviceId} AND IsDelivered = 0
+                """);
         }
         else
         {
@@ -381,15 +393,15 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
             int batchDeleted;
             do
             {
-                batchDeleted = await db.Database.ExecuteSqlRawAsync(
-                    """
+                batchDeleted = await db.Database.ExecuteSqlAsync(
+                    $"""
                     DELETE TOP(1000) em
                     FROM EncryptedMessages em
                     INNER JOIN Conversations c ON em.ConversationId = c.Id
                     WHERE em.IsDelivered = 1
                       AND c.DisappearingTimerSeconds IS NOT NULL
-                      AND DATEADD(SECOND, c.DisappearingTimerSeconds, em.ServerTimestamp) < {0}
-                    """, now);
+                      AND DATEADD(SECOND, c.DisappearingTimerSeconds, em.ServerTimestamp) < {now}
+                    """);
                 totalDeleted += batchDeleted;
             } while (batchDeleted == 1000);
 

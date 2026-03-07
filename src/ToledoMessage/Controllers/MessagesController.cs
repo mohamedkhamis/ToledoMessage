@@ -142,8 +142,23 @@ public class MessagesController(ApplicationDbContext db, MessageRelayService rel
         if (!deviceOwned)
             return NotFound("Device not found or does not belong to the current user.");
 
-        var count = await relayService.BulkAcknowledgeDelivery(deviceId);
-        return Ok(new { acknowledged = count });
+        var acknowledged = await relayService.BulkAcknowledgeDelivery(deviceId);
+        
+        // Notify each sender that their messages were delivered
+        foreach (var (messageId, senderDeviceId) in acknowledged)
+        {
+            try
+            {
+                await hubContext.Clients.Group($"device_{senderDeviceId}")
+                    .SendAsync("MessageDelivered", messageId);
+            }
+            catch
+            {
+                // Best effort - device might be offline
+            }
+        }
+        
+        return Ok(new { acknowledged = acknowledged.Count });
     }
 
     /// <summary>
@@ -156,6 +171,12 @@ public class MessagesController(ApplicationDbContext db, MessageRelayService rel
         [FromQuery] long upToSequenceNumber)
     {
         var userId = GetUserId();
+
+        // BUG-CR-006 FIX: Verify user is a participant in the conversation
+        var isParticipant = await db.ConversationParticipants
+            .AnyAsync(p => p.ConversationId == conversationId && p.UserId == userId);
+        if (!isParticipant)
+            return Forbid("User is not a participant in this conversation");
 
         var readMessages = await relayService.AdvanceReadPointer(userId, conversationId, upToSequenceNumber);
 

@@ -1,0 +1,573 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- ==================== Home Page ==================== -->
+  <data name="Ultra-Secure Messaging" xml:space="preserve">
+    <value>Ultra-Secure Messaging</value>
+  </data>
+  <data name="Simple, Secure Messaging for Everyone" xml:space="preserve">
+    <value>Simple, Secure Messaging for Everyone</value>
+  </data>
+  <data name="HeroDescription" xml:space="preserve">
+    <value>Your conversations are completely private. We use state-of-the-art security so only you and your friends can read your messages.</value>
+  </data>
+  <data name="Start Messaging" xml:space="preserve">
+    <value>Start Messaging</value>
+  </data>
+  <data name="Private" xml:space="preserve">
+    <value>Private</value>
+  </data>
+  <data name="Always Encrypted" xml:space="preserve">
+    <value>Always Encrypted</value>
+  </data>
+  <data name="Zero Data Collected" xml:space="preserve">
+    <value>Zero Data Collected</value>
+  </data>
+  <data name="Why ToledoMessage?" xml:space="preserve">
+    <value>Why ToledoMessage?</value>
+  </data>
+  <data name="Future-Proof Security" xml:space="preserve">
+    <value>Future-Proof Security</value>
+  </data>
+  <data name="FutureProofSecurityDesc" xml:space="preserve">
+    <value>Advanced protection keeps your messages safe from any outside threats, now and in the future.</value>
+  </data>
+  <data name="End-to-End Encrypted" xml:space="preserve">
+    <value>End-to-End Encrypted</value>
+  </data>
+  <data name="EndToEndEncryptedDesc" xml:space="preserve">
+    <value>Your messages are locked the moment you send them. Only the person you're chatting with can read them.</value>
+  </data>
+  <data name="Your Data is Yours" xml:space="preserve">
+    <value>Your Data is Yours</value>
+  </data>
+  <data name="YourDataIsYoursDesc" xml:space="preserve">
+    <value>We don't read your messages, we don't track who you talk to, and we never share your data.</value>
+  </data>
+
+  <!-- ==================== Auth (Login + Register) ==================== -->
+  <data name="Welcome Back" xml:space="preserve">
+    <value>Welcome Back</value>
+  </data>
+  <data name="Sign in to continue your secure conversations" xml:space="preserve">
+    <value>Sign in to continue your secure conversations</value>
+  </data>
+  <data name="Username" xml:space="preserve">
+    <value>Username</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="Signing in..." xml:space="preserve">
+    <value>Signing in...</value>
+  </data>
+  <data name="Sign In" xml:space="preserve">
+    <value>Sign In</value>
+  </data>
+  <data name="Don't have an account?" xml:space="preserve">
+    <value>Don't have an account?</value>
+  </data>
+  <data name="Create one" xml:space="preserve">
+    <value>Create one</value>
+  </data>
+  <data name="Create Account" xml:space="preserve">
+    <value>Create Account</value>
+  </data>
+  <data name="Start your private messaging journey" xml:space="preserve">
+    <value>Start your private messaging journey</value>
+  </data>
+  <data name="Choose a unique username" xml:space="preserve">
+    <value>Choose a unique username</value>
+  </data>
+  <data name="Letters, digits, hyphens, underscores only" xml:space="preserve">
+    <value>Letters, digits, hyphens, underscores only</value>
+  </data>
+  <data name="Display Name" xml:space="preserve">
+    <value>Display Name</value>
+  </data>
+  <data name="Your name shown to others" xml:space="preserve">
+    <value>Your name shown to others</value>
+  </data>
+  <data name="Minimum 8 characters" xml:space="preserve">
+    <value>Minimum 8 characters</value>
+  </data>
+  <data name="Creating account..." xml:space="preserve">
+    <value>Creating account...</value>
+  </data>
+  <data name="Already have an account?" xml:space="preserve">
+    <value>Already have an account?</value>
+  </data>
+  <data name="Weak" xml:space="preserve">
+    <value>Weak</value>
+  </data>
+  <data name="Fair" xml:space="preserve">
+    <value>Fair</value>
+  </data>
+  <data name="Strong" xml:space="preserve">
+    <value>Strong</value>
+  </data>
+  <data name="Get Started" xml:space="preserve">
+    <value>Get Started</value>
+  </data>
+  <data name="Invalid credentials." xml:space="preserve">
+    <value>Invalid credentials.</value>
+  </data>
+  <data name="Setting up encryption keys..." xml:space="preserve">
+    <value>Setting up encryption keys...</value>
+  </data>
+  <data name="Restoring encryption keys..." xml:space="preserve">
+    <value>Restoring encryption keys...</value>
+  </data>
+  <data name="Generating encryption keys..." xml:space="preserve">
+    <value>Generating encryption keys...</value>
+  </data>
+  <data name="DeviceRegistrationFailed" xml:space="preserve">
+    <value>Device registration failed: {0}</value>
+  </data>
+  <data name="Username already taken." xml:space="preserve">
+    <value>Username already taken.</value>
+  </data>
+  <data name="RegistrationFailed" xml:space="preserve">
+    <value>Registration failed: {0}</value>
+  </data>
+  <data name="Device registration failed." xml:space="preserve">
+    <value>Device registration failed.</value>
+  </data>
+
+  <!-- ==================== Navigation ==================== -->
+  <data name="Register" xml:space="preserve">
+    <value>Register</value>
+  </data>
+  <data name="Chats" xml:space="preserve">
+    <value>Chats</value>
+  </data>
+  <data name="Logout" xml:space="preserve">
+    <value>Logout</value>
+  </data>
+
+  <!-- ==================== Sidebar ==================== -->
+  <data name="Search conversations..." xml:space="preserve">
+    <value>Search conversations...</value>
+  </data>
+  <data name="No conversations yet" xml:space="preserve">
+    <value>No conversations yet</value>
+  </data>
+  <data name="Start a conversation" xml:space="preserve">
+    <value>Start a conversation</value>
+  </data>
+  <data name="New conversation" xml:space="preserve">
+    <value>New conversation</value>
+  </data>
+  <data name="No messages yet" xml:space="preserve">
+    <value>No messages yet</value>
+  </data>
+  <data name="NoResultsFor" xml:space="preserve">
+    <value>No results for "{0}"</value>
+  </data>
+
+  <!-- ==================== Chat ==================== -->
+  <data name="Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="online" xml:space="preserve">
+    <value>online</value>
+  </data>
+  <data name="last seen {0}" xml:space="preserve">
+    <value>last seen {0}</value>
+  </data>
+  <data name="{0} is typing..." xml:space="preserve">
+    <value>{0} is typing...</value>
+  </data>
+  <data name="{0} members" xml:space="preserve">
+    <value>{0} members</value>
+  </data>
+  <data name="Search messages..." xml:space="preserve">
+    <value>Search messages...</value>
+  </data>
+  <data name="Send the first message to start the conversation." xml:space="preserve">
+    <value>Send the first message to start the conversation.</value>
+  </data>
+  <data name="{0} new message(s)" xml:space="preserve">
+    <value>{0} new message(s)</value>
+  </data>
+  <data name="Copy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="Reply" xml:space="preserve">
+    <value>Reply</value>
+  </data>
+  <data name="Forward" xml:space="preserve">
+    <value>Forward</value>
+  </data>
+  <data name="Delete for me" xml:space="preserve">
+    <value>Delete for me</value>
+  </data>
+  <data name="Delete for everyone" xml:space="preserve">
+    <value>Delete for everyone</value>
+  </data>
+  <data name="Forward message" xml:space="preserve">
+    <value>Forward message</value>
+  </data>
+  <data name="Clear chat" xml:space="preserve">
+    <value>Clear chat</value>
+  </data>
+  <data name="Clear chat messages" xml:space="preserve">
+    <value>Clear chat messages</value>
+  </data>
+  <data name="Choose which messages to delete:" xml:space="preserve">
+    <value>Choose which messages to delete:</value>
+  </data>
+  <data name="Last hour" xml:space="preserve">
+    <value>Last hour</value>
+  </data>
+  <data name="Last 24 hours" xml:space="preserve">
+    <value>Last 24 hours</value>
+  </data>
+  <data name="Last 7 days" xml:space="preserve">
+    <value>Last 7 days</value>
+  </data>
+  <data name="Last 30 days" xml:space="preserve">
+    <value>Last 30 days</value>
+  </data>
+  <data name="All messages" xml:space="preserve">
+    <value>All messages</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="[Image]" xml:space="preserve">
+    <value>[Image]</value>
+  </data>
+  <data name="[Voice message]" xml:space="preserve">
+    <value>[Voice message]</value>
+  </data>
+  <data name="[Video]" xml:space="preserve">
+    <value>[Video]</value>
+  </data>
+  <data name="[File: {0}]" xml:space="preserve">
+    <value>[File: {0}]</value>
+  </data>
+
+  <!-- ==================== Message Input ==================== -->
+  <data name="Type a message..." xml:space="preserve">
+    <value>Type a message...</value>
+  </data>
+  <data name="Photo or Video" xml:space="preserve">
+    <value>Photo or Video</value>
+  </data>
+  <data name="Audio" xml:space="preserve">
+    <value>Audio</value>
+  </data>
+  <data name="Document" xml:space="preserve">
+    <value>Document</value>
+  </data>
+
+  <!-- ==================== Message Bubble ==================== -->
+  <data name="Forwarded" xml:space="preserve">
+    <value>Forwarded</value>
+  </data>
+  <data name="Image unavailable" xml:space="preserve">
+    <value>Image unavailable</value>
+  </data>
+  <data name="Video unavailable" xml:space="preserve">
+    <value>Video unavailable</value>
+  </data>
+  <data name="Audio unavailable" xml:space="preserve">
+    <value>Audio unavailable</value>
+  </data>
+  <data name="File unavailable" xml:space="preserve">
+    <value>File unavailable</value>
+  </data>
+  <data name="Download" xml:space="preserve">
+    <value>Download</value>
+  </data>
+
+  <!-- ==================== Settings ==================== -->
+  <data name="Appearance" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="Font Size" xml:space="preserve">
+    <value>Font Size</value>
+  </data>
+  <data name="Small" xml:space="preserve">
+    <value>Small</value>
+  </data>
+  <data name="Medium" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="Large" xml:space="preserve">
+    <value>Large</value>
+  </data>
+  <data name="Chat Wallpaper" xml:space="preserve">
+    <value>Chat Wallpaper</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Privacy" xml:space="preserve">
+    <value>Privacy</value>
+  </data>
+  <data name="Read Receipts" xml:space="preserve">
+    <value>Read Receipts</value>
+  </data>
+  <data name="ReadReceiptsDesc" xml:space="preserve">
+    <value>Let others know when you've read their messages</value>
+  </data>
+  <data name="Typing Indicators" xml:space="preserve">
+    <value>Typing Indicators</value>
+  </data>
+  <data name="TypingIndicatorsDesc" xml:space="preserve">
+    <value>Show when you're typing a message</value>
+  </data>
+  <data name="Security" xml:space="preserve">
+    <value>Security</value>
+  </data>
+  <data name="Share Keys Across Devices" xml:space="preserve">
+    <value>Share Keys Across Devices</value>
+  </data>
+  <data name="ShareKeysDesc" xml:space="preserve">
+    <value>Back up your identity keys (encrypted with your password) so new devices can decrypt previous conversations</value>
+  </data>
+  <data name="Notifications" xml:space="preserve">
+    <value>Notifications</value>
+  </data>
+  <data name="Desktop Notifications" xml:space="preserve">
+    <value>Desktop Notifications</value>
+  </data>
+  <data name="DesktopNotificationsDesc" xml:space="preserve">
+    <value>Receive notifications when a new message arrives</value>
+  </data>
+  <data name="Linked Devices" xml:space="preserve">
+    <value>Linked Devices</value>
+  </data>
+  <data name="Loading devices..." xml:space="preserve">
+    <value>Loading devices...</value>
+  </data>
+  <data name="No active devices found." xml:space="preserve">
+    <value>No active devices found.</value>
+  </data>
+  <data name="(this device)" xml:space="preserve">
+    <value>(this device)</value>
+  </data>
+  <data name="Linked {0}" xml:space="preserve">
+    <value>Linked {0}</value>
+  </data>
+  <data name="DeviceLastSeen" xml:space="preserve">
+    <value>Last seen {0}</value>
+  </data>
+  <data name="Unlink" xml:space="preserve">
+    <value>Unlink</value>
+  </data>
+  <data name="Unlinking..." xml:space="preserve">
+    <value>Unlinking...</value>
+  </data>
+  <data name="Link New Device" xml:space="preserve">
+    <value>Link New Device</value>
+  </data>
+  <data name="QrCodeComingSoon" xml:space="preserve">
+    <value>QR code scanning will be available in a future update.</value>
+  </data>
+  <data name="Account Deletion" xml:space="preserve">
+    <value>Account Deletion</value>
+  </data>
+  <data name="DeleteAccountDesc" xml:space="preserve">
+    <value>Permanently delete your account and all associated data. You will have a 7-day grace period to cancel by logging in.</value>
+  </data>
+  <data name="Delete Account" xml:space="preserve">
+    <value>Delete Account</value>
+  </data>
+  <data name="DeleteConfirmDesc" xml:space="preserve">
+    <value>Are you sure? This action will begin a 7-day deletion countdown. All your devices, keys, and messages will be permanently removed.</value>
+  </data>
+  <data name="Yes, Delete My Account" xml:space="preserve">
+    <value>Yes, Delete My Account</value>
+  </data>
+  <data name="Deleting..." xml:space="preserve">
+    <value>Deleting...</value>
+  </data>
+  <data name="DeletionScheduledDesc" xml:space="preserve">
+    <value>Account deletion is scheduled. Your account will be permanently deactivated on {0}.</value>
+  </data>
+  <data name="Log in again to cancel the deletion." xml:space="preserve">
+    <value>Log in again to cancel the deletion.</value>
+  </data>
+  <data name="Theme saved." xml:space="preserve">
+    <value>Theme saved.</value>
+  </data>
+  <data name="Font size saved." xml:space="preserve">
+    <value>Font size saved.</value>
+  </data>
+  <data name="Wallpaper saved." xml:space="preserve">
+    <value>Wallpaper saved.</value>
+  </data>
+  <data name="Language saved." xml:space="preserve">
+    <value>Language saved.</value>
+  </data>
+  <data name="Key sharing disabled. Server backup deleted." xml:space="preserve">
+    <value>Key sharing disabled. Server backup deleted.</value>
+  </data>
+  <data name="Key sharing disabled." xml:space="preserve">
+    <value>Key sharing disabled.</value>
+  </data>
+  <data name="Key sharing enabled. Backup will be created on next login." xml:space="preserve">
+    <value>Key sharing enabled. Backup will be created on next login.</value>
+  </data>
+  <data name="Account deletion scheduled. Log in again within 7 days to cancel." xml:space="preserve">
+    <value>Account deletion scheduled. Log in again within 7 days to cancel.</value>
+  </data>
+  <data name="FailedToLoadSettings" xml:space="preserve">
+    <value>Failed to load settings: {0}</value>
+  </data>
+  <data name="FailedToSave" xml:space="preserve">
+    <value>Failed to save: {0}</value>
+  </data>
+  <data name="Device unlinked successfully." xml:space="preserve">
+    <value>Device unlinked successfully.</value>
+  </data>
+  <data name="Failed to unlink device." xml:space="preserve">
+    <value>Failed to unlink device.</value>
+  </data>
+  <data name="ErrorUnlinkingDevice" xml:space="preserve">
+    <value>Error unlinking device: {0}</value>
+  </data>
+  <data name="Failed to initiate account deletion." xml:space="preserve">
+    <value>Failed to initiate account deletion.</value>
+  </data>
+  <data name="ErrorDeletingAccount" xml:space="preserve">
+    <value>Error deleting account: {0}</value>
+  </data>
+
+  <!-- ==================== New Conversation ==================== -->
+  <data name="NewConversationTitle" xml:space="preserve">
+    <value>New Conversation</value>
+  </data>
+  <data name="Search by name or @username..." xml:space="preserve">
+    <value>Search by name or @username...</value>
+  </data>
+  <data name="Loading..." xml:space="preserve">
+    <value>Loading...</value>
+  </data>
+  <data name="Searching..." xml:space="preserve">
+    <value>Searching...</value>
+  </data>
+  <data name="{0} device(s)" xml:space="preserve">
+    <value>{0} device(s)</value>
+  </data>
+  <data name="Message" xml:space="preserve">
+    <value>Message</value>
+  </data>
+  <data name="Creating..." xml:space="preserve">
+    <value>Creating...</value>
+  </data>
+  <data name="No users found." xml:space="preserve">
+    <value>No users found.</value>
+  </data>
+  <data name="Failed to create conversation." xml:space="preserve">
+    <value>Failed to create conversation.</value>
+  </data>
+  <data name="SearchFailed" xml:space="preserve">
+    <value>Search failed: {0}</value>
+  </data>
+
+  <!-- ==================== Security Info ==================== -->
+  <data name="Security Verification" xml:space="preserve">
+    <value>Security Verification</value>
+  </data>
+  <data name="Computing safety number..." xml:space="preserve">
+    <value>Computing safety number...</value>
+  </data>
+  <data name="Safety Number" xml:space="preserve">
+    <value>Safety Number</value>
+  </data>
+  <data name="Copied!" xml:space="preserve">
+    <value>Copied!</value>
+  </data>
+  <data name="Verified" xml:space="preserve">
+    <value>Verified</value>
+  </data>
+  <data name="Not Verified" xml:space="preserve">
+    <value>Not Verified</value>
+  </data>
+  <data name="Mark as Verified" xml:space="preserve">
+    <value>Mark as Verified</value>
+  </data>
+  <data name="Mark as Unverified" xml:space="preserve">
+    <value>Mark as Unverified</value>
+  </data>
+  <data name="SecurityInfoDesc" xml:space="preserve">
+    <value>Compare this safety number with your contact. If the numbers match, your communication is secure. You can compare in person or via a trusted channel such as a phone call.</value>
+  </data>
+
+  <!-- ==================== Common ==================== -->
+  <data name="Back to conversations" xml:space="preserve">
+    <value>Back to conversations</value>
+  </data>
+  <data name="Error: {0}" xml:space="preserve">
+    <value>Error: {0}</value>
+  </data>
+
+  <data name="BackupLastUpdated" xml:space="preserve">
+    <value>Keys backed up: {0}</value>
+  </data>
+  <data name="No backup found" xml:space="preserve">
+    <value>No backup found</value>
+  </data>
+  <data name="Backup Now" xml:space="preserve">
+    <value>Backup Now</value>
+  </data>
+  <data name="Enter your password" xml:space="preserve">
+    <value>Enter your password</value>
+  </data>
+  <data name="Confirm" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="Key backup uploaded successfully." xml:space="preserve">
+    <value>Key backup uploaded successfully.</value>
+  </data>
+  <data name="BackupFailed" xml:space="preserve">
+    <value>Backup failed: {0}</value>
+  </data>
+  <data name="Key backup failed. You can retry from Settings." xml:space="preserve">
+    <value>Key backup failed. You can retry from Settings.</value>
+  </data>
+
+</root>

@@ -81,6 +81,8 @@ public class SignalRService : IAsyncDisposable
         }
 
         if (_hubConnection is not null) await _hubConnection.DisposeAsync();
+        // BUG-CR-010 FIX: Reset registered device ID on new connection
+        _registeredDeviceId = 0;
         _currentHubUrl = hubUrl;
 
         _hubConnection = new HubConnectionBuilder()

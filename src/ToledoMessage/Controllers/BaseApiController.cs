@@ -18,7 +18,11 @@ public abstract class BaseApiController : ControllerBase
     {
         var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
                   ?? User.FindFirstValue("sub");
-        return sub == null ? 0 : decimal.Parse(sub);
+        // BUG-CR-005 FIX: Throw if claim missing or invalid
+        if (sub == null || !decimal.TryParse(sub, out var userId))
+            throw new UnauthorizedAccessException("Invalid user identity claim");
+
+        return userId;
     }
 
     /// <summary>

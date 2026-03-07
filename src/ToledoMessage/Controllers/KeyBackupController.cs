@@ -88,7 +88,8 @@ public class KeyBackupController(ApplicationDbContext db) : BaseApiController
             Convert.ToBase64String(backup.EncryptedBlob),
             Convert.ToBase64String(backup.Salt),
             Convert.ToBase64String(backup.Nonce),
-            backup.Version));
+            backup.Version,
+            backup.UpdatedAt));
     }
 
     [HttpDelete]

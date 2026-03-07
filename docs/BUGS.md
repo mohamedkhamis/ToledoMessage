@@ -32,6 +32,158 @@ The tasks.md specifies integration tests for media encryption round-trips (T016,
 
 ---
 
+### ~~BUG-CR-001: Theme event handler memory leak — Dispose() never called on 5 components~~ FIXED 2026-03-06
+Moved `Theme.OnThemeChanged -= OnThemeChanged` into `DisposeAsync()` for Chat.razor and ConversationListSidebar.razor (which had orphaned `Dispose()` methods that Blazor never called). MessageBubble.razor and Settings.razor already had `@implements IDisposable`.
+
+---
+
+### ~~BUG-CR-002: async void SignalR handlers missing try/catch — unhandled exceptions crash WASM~~ FIXED 2026-03-06
+Added try/catch wrapper to all async void SignalR event handlers in Chat.razor (HandleMessageDelivered, HandleMessageRead, HandleTypingIndicator, HandleParticipantAdded, HandleParticipantRemoved, HandleUserOnline, HandleUserOffline, HandleReactionAdded, HandleReactionRemoved, HandleMessageDeleted).
+
+---
+
+### BUG-CR-003: JWT base64url decoding missing character replacement (Medium)
+
+**Date:** 2026-03-06
+**Feature:** Core / ConversationListSidebar
+**Severity:** Medium
+**Category:** Logic
+
+**Description:**
+`ExtractDisplayNameFromJwt` adds base64 padding but does NOT replace base64url characters (`-` → `+`, `_` → `/`). JWT payloads use base64url encoding per RFC 7515. If the JWT payload contains `-` or `_`, `Convert.FromBase64String` throws `FormatException`, caught silently, returning `"?"` as display name.
+
+**Affected Files & Lines:**
+
+| File | Line | Current | Expected |
+|------|------|---------|----------|
+| `src/ToledoMessage.Client/Components/ConversationListSidebar.razor` | 311 | `Convert.FromBase64String(payload)` | Add `payload = payload.Replace('-', '+').Replace('_', '/');` before this line |
+
+**Impact:** Some users will see "?" as their display name in the sidebar instead of their actual name, depending on the JWT payload content.
+
+**Fix Steps:**
+1. In `ExtractDisplayNameFromJwt`, after the padding switch block (line 310), add: `payload = payload.Replace('-', '+').Replace('_', '/');`
+
+---
+
+### ~~BUG-CR-004: Forwarded message blob URL revoked before consumption~~ FIXED 2026-03-06
+Changed `ForwardToConversation` to async, pre-fetch blob bytes before navigation, and store bytes in PendingForward. Updated `SendForwardedMessage` to accept optional byte[] parameter.
+
+---
+
+### BUG-CR-005: GetUserId() returns 0 instead of failing on missing JWT claims (Medium)
+
+**Date:** 2026-03-06
+**Feature:** Core / BaseApiController
+**Severity:** Medium
+**Category:** Security
+
+**Description:**
+`BaseApiController.GetUserId()` returns `0` when the JWT `sub` claim is missing, instead of throwing or returning an error. All `[Authorize]` endpoints call this method. While userId `0` is unlikely to match real data, it's a defense-in-depth failure — the method should fail loudly rather than silently returning an invalid ID. Additionally, `decimal.Parse(sub)` will throw unhandled `FormatException` if the claim is present but not a valid decimal.
+
+**Affected Files & Lines:**
+
+| File | Line | Current | Expected |
+|------|------|---------|----------|
+| `src/ToledoMessage/Controllers/BaseApiController.cs` | 21 | `return sub == null ? 0 : decimal.Parse(sub);` | Throw `UnauthorizedAccessException` if sub is null or unparseable |
+
+**Impact:** If JWT is malformed or claims are stripped, API returns data for userId 0 instead of 401. Low real-world probability since [Authorize] validates the token, but violates defense-in-depth.
+
+**Fix Steps:**
+1. Replace line 21 with: `if (sub == null || !decimal.TryParse(sub, out var id)) throw new UnauthorizedAccessException("Invalid user identity claim"); return id;`
+
+---
+
+### BUG-CR-006: AdvanceReadPointer has no conversation participant authorization (Medium)
+
+**Date:** 2026-03-06
+**Feature:** Core / MessagesController + ChatHub
+**Severity:** Medium
+**Category:** Security
+
+**Description:**
+The `POST api/messages/read` endpoint and `ChatHub.AdvanceReadPointer` call `relayService.AdvanceReadPointer(userId, conversationId, sequenceNumber)` without verifying the user is a participant in the conversation. Any authenticated user can create read pointers in arbitrary conversations, polluting the database.
+
+**Affected Files & Lines:**
+
+| File | Line | Current | Expected |
+|------|------|---------|----------|
+| `src/ToledoMessage/Controllers/MessagesController.cs` | 154-170 | No participant check | Add participant verification before calling AdvanceReadPointer |
+| `src/ToledoMessage/Hubs/ChatHub.cs` | 127-139 | No participant check | Add participant verification |
+
+**Impact:** Data integrity issue. An attacker could create bogus read pointers for conversations they don't belong to.
+
+**Fix Steps:**
+1. Before calling `AdvanceReadPointer`, query `ConversationParticipants` to verify `userId` is a member of `conversationId`
+2. Return 403/throw if not a participant
+
+---
+
+### ~~BUG-CR-007: IsUserOnline exposes online status of any user without authorization~~ FIXED 2026-03-06
+Added authorization check in ChatHub.IsUserOnline - verifies caller shares a conversation with target user before revealing online status.
+
+---
+
+### BUG-CR-008: GetUnreadCount fallback excludes undelivered messages (Medium)
+
+**Date:** 2026-03-06
+**Feature:** Core / MessageRelayService
+**Severity:** Medium
+**Category:** Logic
+
+**Description:**
+When no read pointer exists (new conversation), `GetUnreadCount` fallback counts only messages where `IsDelivered = true`. But undelivered messages are also unread. This causes the unread badge to show fewer unreads than reality for new conversations.
+
+**Affected Files & Lines:**
+
+| File | Line | Current | Expected |
+|------|------|---------|----------|
+| `src/ToledoMessage/Services/MessageRelayService.cs` | 280-289 | `&& m.IsDelivered` filter | Remove `&& m.IsDelivered` — count all messages to user's devices |
+
+**Impact:** Unread badge shows incorrect (lower) count for conversations that haven't been opened yet.
+
+**Fix Steps:**
+1. Remove `&& m.IsDelivered` from the count query in the fallback branch of `GetUnreadCount`
+
+---
+
+### ~~BUG-CR-009: NewConversation.razor missing IDisposable — CancellationTokenSource leaks~~ FIXED 2026-03-06
+Added `@implements IDisposable` to NewConversation.razor and implemented Dispose() to cancel and dispose _debounceCts.
+
+---
+
+### BUG-CR-010: SignalRService _registeredDeviceId not reset on new connection (Medium)
+
+**Date:** 2026-03-06
+**Feature:** Core / SignalRService
+**Severity:** Medium
+**Category:** Logic
+
+**Description:**
+When `ConnectAsync` creates a new `HubConnection` (disposing the old one), `_registeredDeviceId` retains the old value. If `RegisterDeviceAsync` is called with the same device ID, it returns early (line 185) without registering the `Reconnected` handler on the new connection. After a reconnect on the new connection, the device won't be re-registered with the server.
+
+**Affected Files & Lines:**
+
+| File | Line | Current | Expected |
+|------|------|---------|----------|
+| `src/ToledoMessage.Client/Services/SignalRService.cs` | 184-185 | Guard `if (_registeredDeviceId == deviceId) return;` | Reset `_registeredDeviceId = 0` in `ConnectAsync` after creating new connection |
+
+**Impact:** After connection rebuild (e.g., network change), device may not re-register on reconnect, causing messages to not be delivered until manual refresh.
+
+**Fix Steps:**
+1. In `ConnectAsync`, after `_hubConnection = new HubConnectionBuilder()...`, add `_registeredDeviceId = 0;`
+
+---
+
+### ~~BUG-CR-011: Login/Register never stores refresh token — token refresh always fails~~ FIXED 2026-03-07
+Login.razor and Register.razor stored `auth.token` but never `auth.refreshToken`. AuthTokenHandler couldn't refresh expired JWTs. Also `clearAuthData` in storage.js didn't clear `auth.refreshToken`. Fixed all three.
+
+---
+
+### ~~BUG-CR-012: telegram-dark theme missing from PreferencesController ValidThemes~~ FIXED 2026-03-07
+Added `"telegram-dark"` to the valid themes set in PreferencesController.cs. Theme was offered by ThemeService but rejected by the API.
+
+---
+
 ## Resolved Bugs
 
 ### ~~BUG-MS-008: Sender does not display thumbnail for sent images/videos~~ FIXED 2026-03-04

@@ -15,6 +15,7 @@
 @inject IJSRuntime Js
 @inject MessageStoreService MessageStore
 @inject ThemeService Theme
+@inject IStringLocalizer<SharedResource> Loc
 @implements IAsyncDisposable
 
 <div class="chat-container">
@@ -30,15 +31,15 @@
             <h3 class="chat-header-title">@headerName</h3>
             @if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group)
             {
-                <span class="chat-header-subtitle">@string.Format(Theme.Labels.MembersFormat, _participants.Count)</span>
+                <span class="chat-header-subtitle">@string.Format(Loc["{0} members"], _participants.Count)</span>
             }
             else if (_peerIsOnline)
             {
-                <span class="chat-header-subtitle presence-online">@Theme.Labels.Online</span>
+                <span class="chat-header-subtitle presence-online">@Loc["online"]</span>
             }
             else if (_peerLastSeen.HasValue)
             {
-                <span class="chat-header-subtitle presence-text">@string.Format(Theme.Labels.LastSeen, _peerLastSeen.Value.ToLocalTime().ToString("MMM d, HH:mm"))</span>
+                <span class="chat-header-subtitle presence-text">@string.Format(Loc["last seen {0}"], _peerLastSeen.Value.ToLocalTime().ToString("MMM d, HH:mm"))</span>
             }
         </div>
         @if (!string.IsNullOrEmpty(_typingIndicator))
@@ -46,14 +47,14 @@
             <span class="chat-typing-indicator">@_typingIndicator</span>
         }
         <div style="margin-left:auto; display:flex; align-items:center; gap:4px;">
-            <button class="msg-action-btn" @onclick="ToggleSearch" title="@Theme.Labels.SearchMessages">&#128269;</button>
+            <button class="msg-action-btn" @onclick="ToggleSearch" title="@Loc["Search messages..."]">&#128269;</button>
             <button class="msg-action-btn" @onclick="() => _showChatMenu = !_showChatMenu" title="More options">&#8942;</button>
             @if (_showChatMenu)
             {
                 <div class="context-menu-backdrop" @onclick="() => _showChatMenu = false"></div>
                 <div class="context-menu chat-header-menu">
                     <button class="context-menu-item danger" @onclick="OpenClearChatDialog">
-                        <span class="context-menu-icon">&#128465;</span> @Theme.Labels.ClearChat
+                        <span class="context-menu-icon">&#128465;</span> @Loc["Clear chat"]
                     </button>
                 </div>
             }
@@ -63,7 +64,7 @@
     @if (_showSearch)
     {
         <div class="chat-search-bar">
-            <input type="text" class="chat-search-input" placeholder="@Theme.Labels.SearchMessages"
+            <input type="text" class="chat-search-input" placeholder="@Loc["Search messages..."]"
                    @bind="_searchQuery" @bind:event="oninput" @bind:after="UpdateSearchResults"
                    @onkeydown="HandleSearchKeyDown" />
             @if (_searchResults.Count > 0)
@@ -125,8 +126,8 @@
                 <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
                 </svg>
-                <h3>@Theme.Labels.NoMessages</h3>
-                <p>@Theme.Labels.SendFirstMessage</p>
+                <h3>@Loc["No messages yet"]</h3>
+                <p>@Loc["Send the first message to start the conversation."]</p>
             </div>
         }
         else
@@ -149,7 +150,7 @@
                 {
                     var unreadCount = _serverUnreadCount;
                     <div class="unread-divider">
-                        <span>@string.Format(Theme.Labels.NewMessagesFormat, unreadCount)</span>
+                        <span>@string.Format(Loc["{0} new message(s)"], unreadCount)</span>
                     </div>
                 }
 
@@ -220,21 +221,21 @@
     <div class="context-menu-backdrop" @onclick="CloseContextMenu"></div>
     <div class="context-menu" style="left: @(_contextMenuX)px; top: @(_contextMenuY)px;">
         <button class="context-menu-item" @onclick="CopyMessageText">
-            <span class="context-menu-icon">&#128203;</span> @Theme.Labels.Copy
+            <span class="context-menu-icon">&#128203;</span> @Loc["Copy"]
         </button>
         <button class="context-menu-item" @onclick="ReplyFromContextMenu">
-            <span class="context-menu-icon">&#8617;</span> @Theme.Labels.Reply
+            <span class="context-menu-icon">&#8617;</span> @Loc["Reply"]
         </button>
         <button class="context-menu-item" @onclick="ForwardFromContextMenu">
-            <span class="context-menu-icon">&#10150;</span> @Theme.Labels.Forward
+            <span class="context-menu-icon">&#10150;</span> @Loc["Forward"]
         </button>
         <button class="context-menu-item danger" @onclick="DeleteForMe">
-            <span class="context-menu-icon">&#128465;</span> @Theme.Labels.DeleteForMe
+            <span class="context-menu-icon">&#128465;</span> @Loc["Delete for me"]
         </button>
         @if (_contextMenuMessage.IsMine)
         {
             <button class="context-menu-item danger" @onclick="DeleteForEveryone">
-                <span class="context-menu-icon">&#128465;</span> @Theme.Labels.DeleteForEveryone
+                <span class="context-menu-icon">&#128465;</span> @Loc["Delete for everyone"]
             </button>
         }
     </div>
@@ -244,16 +245,16 @@
 {
     <div class="context-menu-backdrop" @onclick="() => _showClearChatDialog = false"></div>
     <div class="clear-chat-dialog">
-        <h4>@Theme.Labels.ClearChatHeader</h4>
-        <p>@Theme.Labels.ChooseMessages</p>
+        <h4>@Loc["Clear chat messages"]</h4>
+        <p>@Loc["Choose which messages to delete:"]</p>
         <div class="clear-chat-options">
-            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromHours(1))">@Theme.Labels.LastHour</button>
-            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromHours(24))">@Theme.Labels.Last24Hours</button>
-            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromDays(7))">@Theme.Labels.Last7Days</button>
-            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromDays(30))">@Theme.Labels.Last30Days</button>
-            <button class="clear-chat-option danger" @onclick="() => ClearChat(TimeSpan.Zero)">@Theme.Labels.AllMessages</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromHours(1))">@Loc["Last hour"]</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromHours(24))">@Loc["Last 24 hours"]</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromDays(7))">@Loc["Last 7 days"]</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromDays(30))">@Loc["Last 30 days"]</button>
+            <button class="clear-chat-option danger" @onclick="() => ClearChat(TimeSpan.Zero)">@Loc["All messages"]</button>
         </div>
-        <button class="clear-chat-cancel" @onclick="() => _showClearChatDialog = false">@Theme.Labels.Cancel</button>
+        <button class="clear-chat-cancel" @onclick="() => _showClearChatDialog = false">@Loc["Cancel"]</button>
     </div>
 }
 
@@ -262,10 +263,10 @@
     <div class="forward-dialog-overlay" @onclick="CloseForwardDialog">
         <div class="forward-dialog" @onclick:stopPropagation="true">
             <div class="forward-dialog-header">
-                <h4>@Theme.Labels.ForwardMessage</h4>
+                <h4>@Loc["Forward message"]</h4>
                 <button class="msg-action-btn" @onclick="CloseForwardDialog">&#10005;</button>
             </div>
-            <input type="text" class="forward-search-input" placeholder="Search conversations..."
+            <input type="text" class="forward-search-input" placeholder="@Loc["Search conversations..."]"
                    @bind="_forwardSearchQuery" @bind:event="oninput" />
             <div class="forward-conversation-list">
                 @if (_forwardConversations is null)
@@ -341,10 +342,11 @@
         else if (_needsScrollToBottom)
         {
             _needsScrollToBottom = false;
+            var isFirstScroll = !_initialScrollDone;
             _initialScrollDone = true;
             try
             {
-                await Js.InvokeVoidAsync("mediaHelpers.scrollToBottom", ".chat-messages", !_initialScrollDone);
+                await Js.InvokeVoidAsync("mediaHelpers.scrollToBottom", ".chat-messages", isFirstScroll);
             }
             catch { /* ignored */ }
         }
@@ -357,11 +359,6 @@
             await LoadWallpaperStyle();
             StateHasChanged();
         });
-    }
-
-    public void Dispose()
-    {
-        Theme.OnThemeChanged -= OnThemeChanged;
     }
 
     private readonly List<ChatMessage> _messages = [];
@@ -414,7 +411,7 @@
     private List<ConversationListItemResponse>? _forwardConversations;
 
     // Static pending forward — survives navigation between chat pages
-    internal static (string Text, ContentType ContentType, string? FileName, string? MimeType, string? MediaDataUrl, bool IsForwarded)? PendingForward;
+    internal static (string Text, ContentType ContentType, string? FileName, string? MimeType, string? MediaDataUrl, bool IsForwarded, byte[]? MediaBytes)? PendingForward;
 
     protected override async Task OnInitializedAsync()
     {
@@ -544,7 +541,7 @@
         if (pendingFwd is not null)
         {
             var fwd = pendingFwd.Value;
-            await SendForwardedMessage(fwd.Text, fwd.ContentType, fwd.FileName, fwd.MimeType, fwd.MediaDataUrl);
+            await SendForwardedMessage(fwd.Text, fwd.ContentType, fwd.FileName, fwd.MimeType, fwd.MediaDataUrl, fwd.MediaBytes);
         }
     }
 
@@ -807,7 +804,7 @@
     // ReSharper disable once AsyncVoidMethod
     private async void HandleMessageDelivered(decimal messageId)
     {
-        await InvokeAsync(async () =>
+        try { await InvokeAsync(async () =>
         {
             var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
             if (msg is not null)
@@ -822,12 +819,13 @@
                 StateHasChanged();
             }
         });
+        } catch { /* prevent async void crash */ }
     }
 
     // ReSharper disable  AsyncVoidMethod
     private async void HandleMessageRead(decimal messageId)
     {
-        await InvokeAsync(async () =>
+        try { await InvokeAsync(async () =>
         {
             var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
             if (msg is not null)
@@ -842,16 +840,18 @@
                 StateHasChanged();
             }
         });
+        } catch { /* prevent async void crash */ }
     }
 
     private async void HandleTypingIndicator(decimal conversationId, string displayName)
     {
+        try {
         if (conversationId != ConversationId)
             return;
 
         await InvokeAsync(() =>
         {
-            _typingIndicator = string.Format(Theme.Labels.TypingFormat, displayName);
+            _typingIndicator = string.Format(Loc["{0} is typing..."], displayName);
             StateHasChanged();
         });
 
@@ -869,10 +869,12 @@
             });
         };
         _typingTimer.Start();
+        } catch { /* prevent async void crash */ }
     }
 
     private async void HandleParticipantAdded(decimal conversationId, decimal userId, string displayName)
     {
+        try {
         if (conversationId != ConversationId)
             return;
 
@@ -885,10 +887,12 @@
             }
             StateHasChanged();
         });
+        } catch { /* prevent async void crash */ }
     }
 
     private async void HandleParticipantRemoved(decimal conversationId, decimal userId)
     {
+        try {
         if (conversationId != ConversationId)
             return;
 
@@ -897,10 +901,12 @@
             _participants.RemoveAll(p => p.UserId == userId);
             StateHasChanged();
         });
+        } catch { /* prevent async void crash */ }
     }
 
     private async void HandleUserOnline(decimal userId)
     {
+        try {
         var peer = _participants.FirstOrDefault(p => p.UserId != _localUserId);
         if (peer is not null && peer.UserId == userId)
         {
@@ -910,10 +916,12 @@
                 StateHasChanged();
             });
         }
+        } catch { /* prevent async void crash */ }
     }
 
     private async void HandleUserOffline(decimal userId, DateTimeOffset lastSeen)
     {
+        try {
         var peer = _participants.FirstOrDefault(p => p.UserId != _localUserId);
         if (peer is not null && peer.UserId == userId)
         {
@@ -924,10 +932,12 @@
                 StateHasChanged();
             });
         }
+        } catch { /* prevent async void crash */ }
     }
 
     private async void HandleReactionAdded(decimal messageId, decimal userId, string displayName, string emoji)
     {
+        try {
         await InvokeAsync(() =>
         {
             if (!_messageReactions.TryGetValue(messageId, out var reactions))
@@ -943,10 +953,12 @@
 
             StateHasChanged();
         });
+        } catch { /* prevent async void crash */ }
     }
 
     private async void HandleReactionRemoved(decimal messageId, decimal userId, string emoji)
     {
+        try {
         await InvokeAsync(() =>
         {
             if (_messageReactions.TryGetValue(messageId, out var reactions))
@@ -956,6 +968,7 @@
 
             StateHasChanged();
         });
+        } catch { /* prevent async void crash */ }
     }
 
     private async Task HandleSend(MessageInput.ChatInputMessage input)
@@ -1563,6 +1576,8 @@
             case 2: payload += "=="; break;
             case 3: payload += "="; break;
         }
+        // Handle base64url encoding (JWT uses base64url per RFC 7515)
+        payload = payload.Replace('-', '+').Replace('_', '/');
 
         var jsonBytes = Convert.FromBase64String(payload);
         using var doc = JsonDocument.Parse(jsonBytes);
@@ -1630,14 +1645,14 @@
         _showContextMenu = false;
     }
 
-    private static string FormatReplyText(ChatMessage msg)
+    private string FormatReplyText(ChatMessage msg)
     {
         return msg.ContentType switch
         {
-            ContentType.Image => "[Image]",
-            ContentType.Audio => "[Voice message]",
-            ContentType.Video => "[Video]",
-            ContentType.File => $"[File: {msg.FileName ?? "file"}]",
+            ContentType.Image => Loc["[Image]"],
+            ContentType.Audio => Loc["[Voice message]"],
+            ContentType.Video => Loc["[Video]"],
+            ContentType.File => string.Format(Loc["[File: {0}]"], msg.FileName ?? "file"),
             _ => msg.Text.Length > 80 ? msg.Text[..80] + "..." : msg.Text
         };
     }
@@ -1747,6 +1762,7 @@
 
     private async void HandleMessageDeleted(decimal messageId, decimal conversationId)
     {
+        try {
         if (conversationId != ConversationId)
             return;
 
@@ -1783,6 +1799,7 @@
             }
             StateHasChanged();
         });
+        } catch { /* prevent async void crash */ }
     }
 
     private void OpenClearChatDialog()
@@ -2047,39 +2064,61 @@
         _forwardSearchQuery = "";
     }
 
-    private void ForwardToConversation(decimal targetConversationId)
+    private async void ForwardToConversation(decimal targetConversationId)
     {
         if (_forwardingMessage is null) return;
 
+        // BUG-CR-004 FIX: Convert blob URL to bytes before navigation
+        // otherwise the URL gets revoked when the old component disposes
+        string? mediaDataUrl = _forwardingMessage.MediaDataUrl;
+        byte[]? mediaBytes = null;
+        if (_forwardingMessage.ContentType != ContentType.Text && !string.IsNullOrEmpty(mediaDataUrl))
+        {
+            try
+            {
+                mediaBytes = await Js.InvokeAsync<byte[]>("mediaHelpers.fetchBlobAsBytes", mediaDataUrl);
+            }
+            catch
+            {
+                _errorMessage = "Could not forward media — the file is no longer available.";
+                return;
+            }
+        }
+
+        // Store bytes instead of blob URL (null means bytes are in MediaBytes)
         PendingForward = (
             _forwardingMessage.Text,
             _forwardingMessage.ContentType,
             _forwardingMessage.FileName,
             _forwardingMessage.MimeType,
-            _forwardingMessage.MediaDataUrl,
-            true
+            mediaBytes is not null ? null : mediaDataUrl, // if we have bytes, don't need URL
+            true,
+            mediaBytes
         );
 
         CloseForwardDialog();
         Navigation.NavigateTo($"/chat/{targetConversationId}", forceLoad: false);
     }
 
-    private async Task SendForwardedMessage(string text, ContentType contentType, string? fileName, string? mimeType, string? mediaDataUrl)
+    private async Task SendForwardedMessage(string text, ContentType contentType, string? fileName, string? mimeType, string? mediaDataUrl, byte[]? mediaBytesFromForward = null)
     {
         try
         {
-            if (contentType != ContentType.Text && !string.IsNullOrEmpty(mediaDataUrl))
+            if (contentType != ContentType.Text && (mediaBytesFromForward is not null || !string.IsNullOrEmpty(mediaDataUrl)))
             {
-                // For media: read bytes from blob URL via JS, then re-encrypt and send
-                byte[]? mediaBytes;
-                try
+                // For media: use pre-fetched bytes if available, otherwise fetch from blob URL
+                byte[]? mediaBytes = mediaBytesFromForward;
+                if (mediaBytes is null)
                 {
-                    mediaBytes = await Js.InvokeAsync<byte[]>("mediaHelpers.fetchBlobAsBytes", mediaDataUrl);
-                }
-                catch
-                {
-                    _errorMessage = "Could not forward media — the file is no longer available. Try re-sending.";
-                    return;
+                    try
+                    {
+                        mediaBytes = await Js.InvokeAsync<byte[]>("mediaHelpers.fetchBlobAsBytes", mediaDataUrl);
+                    }
+                    catch
+                    {
+                        _errorMessage = "Could not forward media — the file is no longer available. Try re-sending.";
+                        return;
+                    }
                 }
 
                 if (mediaBytes.Length == 0)
@@ -2148,6 +2187,9 @@
 
     public async ValueTask DisposeAsync()
     {
+        // Unsubscribe from theme changes (BUG-CR-001 fix: must be in DisposeAsync, not Dispose)
+        Theme.OnThemeChanged -= OnThemeChanged;
+
         // Unsubscribe from events
         SignalR.OnMessageReceived -= HandleMessageReceived;
         SignalR.OnMessageDelivered -= HandleMessageDelivered;

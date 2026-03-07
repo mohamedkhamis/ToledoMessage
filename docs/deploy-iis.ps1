@@ -84,7 +84,7 @@ param(
 )
 
 Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 
 # -- Colours ---------------------------------------------------------------
 function Write-Step   { param([string]$Msg) Write-Host "[*] $Msg" -ForegroundColor Cyan }
@@ -115,13 +115,14 @@ function Assert-Prerequisites {
         exit 1
     }
     $sdkList = & dotnet --list-sdks 2>&1
-    $hasNet10 = $sdkList | Where-Object { $_ -match "^10\." }
-    if (-not $hasNet10) {
-        Write-Err ".NET 10 SDK not found. Installed SDKs:"
+    $hasNet = $sdkList | Where-Object { $_ -match "^1[01]\." }
+    if (-not $hasNet) {
+        Write-Err ".NET 10+ SDK not found. Installed SDKs:"
         $sdkList | ForEach-Object { Write-Info $_ }
         exit 1
     }
-    Write-Ok ".NET 10 SDK found"
+    $sdkVersion = (& dotnet --version 2>&1).Trim()
+    Write-Ok ".NET SDK found ($sdkVersion)"
 
     # IIS
     $iisFeature = Get-WindowsOptionalFeature -Online -FeatureName IIS-WebServer -ErrorAction SilentlyContinue
@@ -173,6 +174,7 @@ function Assert-Prerequisites {
         & "$env:SystemRoot\System32\inetsrv\appcmd.exe" unlock config /section:$section 2>&1 | Out-Null
     }
     Write-Ok "IIS configuration sections unlocked"
+    Write-Step "Prerequisites check complete"
 }
 
 function Find-FreePort {
@@ -432,6 +434,13 @@ function Start-IISSite {
 function Invoke-Deploy {
     Assert-Admin
     Assert-Prerequisites
+    Write-Step "Starting deployment..."
+
+    trap {
+        Write-Err "Unexpected error: $_"
+        Write-Err ($_.ScriptStackTrace)
+        break
+    }
 
     # Validate JWT key
     if ([string]::IsNullOrWhiteSpace($JwtSecretKey)) {
@@ -476,41 +485,48 @@ function Invoke-Deploy {
         $selectedPort = Find-FreePort
         Write-Ok "Auto-selected port: $selectedPort"
     } else {
-        # Check if specified port is in use
-        $usedPorts = (Get-NetTCPConnection -ErrorAction SilentlyContinue |
-            Where-Object { $_.State -eq "Listen" } |
-            Select-Object -ExpandProperty LocalPort -Unique)
-        if ($selectedPort -in $usedPorts) {
-            Write-Warn "Port $selectedPort is already in use."
-            if (-not $Force) {
-                $reply = Read-Host "Continue anyway? (y/N)"
-                if ($reply -ne "y") { exit 0 }
+        # Quick port check using netstat (much faster than Get-NetTCPConnection)
+        $portInUse = netstat -an 2>$null | Select-String ":$selectedPort\s+.*LISTENING"
+        if ($portInUse) {
+            # Check if it's our own IIS site
+            $mgr = Get-IISServerManager
+            $existingSite = $mgr.Sites[$SiteName]
+            if ($existingSite) {
+                Write-Info "Port $selectedPort is used by existing '$SiteName' site (will be restarted)"
+            } else {
+                Write-Warn "Port $selectedPort is already in use by another process."
             }
         }
     }
 
-    # Confirm
-    if (-not $Force) {
-        Write-Host ""
-        Write-Host "  Deployment Summary" -ForegroundColor White
-        Write-Host "  --------------------------------------"
-        Write-Info "  Site Name:    $SiteName"
-        Write-Info "  HTTP Port:    $selectedPort"
-        if ($Domain) {
-            Write-Info "  Domain:       $Domain"
-            Write-Info "  HTTPS Port:   $HttpsPort"
-            if ($CertThumbprint) {
-                Write-Info "  SSL Cert:     $CertThumbprint"
-            } else {
-                Write-Host "  SSL Cert:     (none - HTTPS binding skipped)" -ForegroundColor Yellow
-            }
+    # Show deployment summary
+    Write-Host ""
+    Write-Host "  Deployment Summary" -ForegroundColor White
+    Write-Host "  --------------------------------------"
+    Write-Info "  Site Name:    $SiteName"
+    Write-Info "  HTTP Port:    $selectedPort"
+    if ($Domain) {
+        Write-Info "  Domain:       $Domain"
+        Write-Info "  HTTPS Port:   $HttpsPort"
+        if ($CertThumbprint) {
+            Write-Info "  SSL Cert:     $CertThumbprint"
+        } else {
+            Write-Host "  SSL Cert:     (none - HTTPS binding skipped)" -ForegroundColor Yellow
         }
-        Write-Info "  Publish Path: $PublishPath"
-        Write-Info "  Environment:  $Environment"
-        Write-Info "  Conn String:  $connStr"
-        Write-Host ""
+    }
+    Write-Info "  Publish Path: $PublishPath"
+    Write-Info "  Environment:  $Environment"
+    Write-Info "  Conn String:  $connStr"
+    Write-Host ""
+
+    # Auto-skip confirmation for redeployments or when -Force is set
+    $mgr = Get-IISServerManager
+    $isRedeploy = $null -ne $mgr.Sites[$SiteName]
+    if (-not $Force -and -not $isRedeploy) {
         $reply = Read-Host "Proceed? (Y/n)"
         if ($reply -eq "n") { exit 0 }
+    } elseif ($isRedeploy) {
+        Write-Info "Redeploying existing site '$SiteName' - skipping confirmation"
     }
 
     # Stop existing site/pool if running
@@ -566,11 +582,11 @@ function Invoke-Deploy {
     Write-Info "  If using Windows Authentication (Trusted_Connection=True),"
     Write-Info "  grant the IIS app pool identity access to SQL Server:"
     Write-Host ""
-    Write-Host "    USE [master]" -ForegroundColor White
-    Write-Host "    CREATE LOGIN [IIS AppPool\$SiteName] FROM WINDOWS;" -ForegroundColor White
-    Write-Host "    USE [ToledoMessage]" -ForegroundColor White
-    Write-Host "    CREATE USER [IIS AppPool\$SiteName] FOR LOGIN [IIS AppPool\$SiteName];" -ForegroundColor White
-    Write-Host "    ALTER ROLE [db_owner] ADD MEMBER [IIS AppPool\$SiteName];" -ForegroundColor White
+    Write-Host ('    USE [master]') -ForegroundColor White
+    Write-Host ('    CREATE LOGIN [IIS AppPool\' + $SiteName + '] FROM WINDOWS;') -ForegroundColor White
+    Write-Host ('    USE [ToledoMessage]') -ForegroundColor White
+    Write-Host ('    CREATE USER [IIS AppPool\' + $SiteName + '] FOR LOGIN [IIS AppPool\' + $SiteName + '];') -ForegroundColor White
+    Write-Host ('    ALTER ROLE [db_owner] ADD MEMBER [IIS AppPool\' + $SiteName + '];') -ForegroundColor White
     Write-Host ""
     Write-Info "  Run these commands in SSMS or sqlcmd."
     Write-Host ""

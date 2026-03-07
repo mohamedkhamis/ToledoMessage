@@ -4,12 +4,13 @@
 @inject FingerprintService Fingerprint
 @inject NavigationManager Navigation
 @inject IJSRuntime Js
+@inject IStringLocalizer<SharedResource> Loc
 
 <div class="panel-content-scroll">
 <div class="security-page fade-in">
     <div class="security-header">
-        <button @onclick="GoBack" class="back-link" aria-label="Go back">&larr;</button>
-        <h3>Security Verification</h3>
+        <button @onclick="GoBack" class="back-link" aria-label="@Loc["Back to conversations"]">&larr;</button>
+        <h3>@Loc["Security Verification"]</h3>
     </div>
 
     @if (!string.IsNullOrEmpty(_errorMessage))
@@ -18,18 +19,18 @@
     }
     else if (_isLoading)
     {
-        <p class="centered-text"><span class="spinner"></span> Computing safety number...</p>
+        <p class="centered-text"><span class="spinner"></span> @Loc["Computing safety number..."]</p>
     }
     else
     {
         <div class="safety-number-card">
-            <p class="safety-number-label">Safety Number</p>
+            <p class="safety-number-label">@Loc["Safety Number"]</p>
             <div class="safety-number-value">
                 @_safetyNumber
             </div>
             <button class="btn-copy @(_copied ? "copied" : "")" @onclick="CopySafetyNumber"
-                    aria-label="Copy safety number">
-                @(_copied ? "Copied!" : "Copy")
+                    aria-label="@Loc["Copy"]">
+                @(_copied ? Loc["Copied!"] : Loc["Copy"])
             </button>
         </div>
 
@@ -37,13 +38,13 @@
             @if (_isVerified)
             {
                 <div class="verification-badge verified">
-                    <span>Verified</span>
+                    <span>@Loc["Verified"]</span>
                 </div>
             }
             else
             {
                 <div class="verification-badge unverified">
-                    <span>Not Verified</span>
+                    <span>@Loc["Not Verified"]</span>
                 </div>
             }
         </div>
@@ -52,22 +53,20 @@
             @if (_isVerified)
             {
                 <button class="btn-unverify" @onclick="HandleMarkUnverified">
-                    Mark as Unverified
+                    @Loc["Mark as Unverified"]
                 </button>
             }
             else
             {
                 <button class="btn-verify" @onclick="HandleMarkVerified">
-                    Mark as Verified
+                    @Loc["Mark as Verified"]
                 </button>
             }
         </div>
 
         <div class="security-info-box">
             <p>
-                Compare this safety number with your contact. If the numbers match,
-                your communication is secure. You can compare in person or via a trusted
-                channel such as a phone call.
+                @Loc["SecurityInfoDesc"]
             </p>
         </div>
     }

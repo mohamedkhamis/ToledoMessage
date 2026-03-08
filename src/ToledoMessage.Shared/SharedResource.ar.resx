@@ -66,7 +66,7 @@
     <value>لماذا ToledoMessage؟</value>
   </data>
   <data name="Future-Proof Security" xml:space="preserve">
-    <value>أمان مُستقبلي متطوّر</value>
+    <value>أمان المستقبل</value>
   </data>
   <data name="FutureProofSecurityDesc" xml:space="preserve">
     <value>حماية متقدّمة تحافظ على أمان رسائلك من أيّ تهديدات خارجية، الآن وفي المستقبل.</value>
@@ -98,7 +98,7 @@
     <value>كلمة المرور</value>
   </data>
   <data name="Signing in..." xml:space="preserve">
-    <value>جارٍ تسجيل الدخول...</value>
+  <value>جارٍ تسجيل الدخول…</value>
   </data>
   <data name="Sign In" xml:space="preserve">
     <value>تسجيل الدخول</value>
@@ -122,11 +122,11 @@
     <value>يُسمح بالأحرف والأرقام والشرطات فقط</value>
   </data>
   <data name="Display Name" xml:space="preserve">
-    <value>الاسم الظاهر</value>
-  </data>
+  <value>الاسم الظاهر</value>
+</data>
   <data name="Your name shown to others" xml:space="preserve">
-    <value>اسمك الذي يظهر للآخرين</value>
-  </data>
+  <value>الاسم الذي سيظهر للآخرين</value>
+</data>
   <data name="Minimum 8 characters" xml:space="preserve">
     <value>8 أحرف على الأقل</value>
   </data>
@@ -149,7 +149,7 @@
     <value>ابدأ الآن</value>
   </data>
   <data name="Invalid credentials." xml:space="preserve">
-    <value>بيانات الدخول غير صحيحة.</value>
+  <value>بيانات تسجيل الدخول غير صحيحة.</value>
   </data>
   <data name="Setting up encryption keys..." xml:space="preserve">
     <value>جارٍ إعداد مفاتيح التشفير...</value>
@@ -164,7 +164,7 @@
     <value>فشل تسجيل الجهاز: {0}</value>
   </data>
   <data name="Username already taken." xml:space="preserve">
-    <value>اسم المستخدم محجوز.</value>
+  <value>اسم المستخدم مستخدم بالفعل.</value>
   </data>
   <data name="RegistrationFailed" xml:space="preserve">
     <value>فشل التسجيل: {0}</value>
@@ -236,7 +236,7 @@
     <value>ردّ</value>
   </data>
   <data name="Forward" xml:space="preserve">
-    <value>تمرير</value>
+    <value>إعادة توجيه</value>
   </data>
   <data name="Delete for me" xml:space="preserve">
     <value>حذف لي</value>
@@ -245,7 +245,7 @@
     <value>حذف للجميع</value>
   </data>
   <data name="Forward message" xml:space="preserve">
-    <value>تمرير الرسالة</value>
+    <value>إعادة توجيه الرسالة</value>
   </data>
   <data name="Clear chat" xml:space="preserve">
     <value>مسح المحادثة</value>
@@ -389,10 +389,10 @@
     <value>(هذا الجهاز)</value>
   </data>
   <data name="Linked {0}" xml:space="preserve">
-    <value>مرتبط {0}</value>
+    <value>مرتبط منذ {0}</value>
   </data>
   <data name="DeviceLastSeen" xml:space="preserve">
-    <value>آخر ظهور {0}</value>
+    <value>شوهد آخر مرة: {0}</value>
   </data>
   <data name="Unlink" xml:space="preserve">
     <value>إلغاء الربط</value>
@@ -493,7 +493,7 @@
     <value>{0} جهاز</value>
   </data>
   <data name="Message" xml:space="preserve">
-    <value>مراسلة</value>
+    <value>رسالة</value>
   </data>
   <data name="Creating..." xml:space="preserve">
     <value>جارٍ الإنشاء...</value>

@@ -1,4 +1,4 @@
-@page "/security/{DeviceId:decimal}"
+@page "/security/{DeviceId:long}"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @layout ChatLayout
 @inject FingerprintService Fingerprint
@@ -75,14 +75,14 @@
 
 @code {
     [Parameter]
-    public decimal DeviceId { get; set; }
+    public long DeviceId { get; set; }
 
     /// <summary>
     /// Optional conversation ID used for tracking verification state and for the back link.
     /// Passed as a query parameter: /security/{DeviceId}?conversationId=123
     /// </summary>
     [SupplyParameterFromQuery]
-    public decimal? ConversationId { get; set; }
+    public long? ConversationId { get; set; }
 
     private string? _safetyNumber;
     private bool _isVerified;

@@ -6,14 +6,14 @@ namespace ToledoMessage.Client.Services;
 /// </summary>
 public class MessageExpiryService : IDisposable
 {
-    private readonly Dictionary<decimal, DateTimeOffset> _trackedMessages = new();
+    private readonly Dictionary<long, DateTimeOffset> _trackedMessages = new();
     private readonly Timer _timer;
 
     /// <summary>
     /// Fired when a message has expired and should be removed from display.
     /// The parameter is the expired message ID.
     /// </summary>
-    public event Action<decimal>? OnMessageExpired;
+    public event Action<long>? OnMessageExpired;
 
     public MessageExpiryService()
     {
@@ -24,7 +24,7 @@ public class MessageExpiryService : IDisposable
     /// <summary>
     /// Begin tracking a message for expiry. If timerSeconds is null, the message is not tracked.
     /// </summary>
-    public void TrackMessage(decimal messageId, DateTimeOffset receivedAt, int? timerSeconds)
+    public void TrackMessage(long messageId, DateTimeOffset receivedAt, int? timerSeconds)
     {
         if (!timerSeconds.HasValue || timerSeconds.Value <= 0)
             return;
@@ -36,7 +36,7 @@ public class MessageExpiryService : IDisposable
     /// <summary>
     /// Stop tracking a message (e.g., if it was manually deleted).
     /// </summary>
-    public void UntrackMessage(decimal messageId)
+    public void UntrackMessage(long messageId)
     {
         _trackedMessages.Remove(messageId);
     }
@@ -47,7 +47,7 @@ public class MessageExpiryService : IDisposable
     private void CheckExpiredMessages()
     {
         var now = DateTimeOffset.UtcNow;
-        var expiredIds = new List<decimal>();
+        var expiredIds = new List<long>();
 
         foreach (var (messageId, expiresAt) in _trackedMessages)
             if (now >= expiresAt)

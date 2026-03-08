@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.JSInterop;
 using Org.BouncyCastle.Crypto.Digests;
@@ -40,8 +41,13 @@ public class LocalStorageService(IJSRuntime js)
         byte[] toStore;
         if (_encryptionKey is not null)
         {
-            var nonce = DeriveNonceFromKey(key);
-            toStore = AesGcmCipher.Encrypt(_encryptionKey, nonce, value);
+            var nonce = new byte[12];
+            RandomNumberGenerator.Fill(nonce);
+            var ciphertext = AesGcmCipher.Encrypt(_encryptionKey, nonce, value);
+            // Prepend nonce to ciphertext: [12-byte nonce][ciphertext]
+            toStore = new byte[12 + ciphertext.Length];
+            Buffer.BlockCopy(nonce, 0, toStore, 0, 12);
+            Buffer.BlockCopy(ciphertext, 0, toStore, 12, ciphertext.Length);
         }
         else
         {
@@ -60,8 +66,9 @@ public class LocalStorageService(IJSRuntime js)
         {
             if (_encryptionKey is null) return cached;
 
-            var nonce = DeriveNonceFromKey(key);
-            return AesGcmCipher.Decrypt(_encryptionKey, nonce, cached);
+            var nonce = cached.AsSpan(0, 12).ToArray();
+            var ciphertext = cached.AsSpan(12).ToArray();
+            return AesGcmCipher.Decrypt(_encryptionKey, nonce, ciphertext);
         }
 
         // Fall back to browser localStorage
@@ -75,8 +82,9 @@ public class LocalStorageService(IJSRuntime js)
         // ReSharper disable once InvertIf
         if (_encryptionKey is not null)
         {
-            var nonce = DeriveNonceFromKey(key);
-            return AesGcmCipher.Decrypt(_encryptionKey, nonce, stored);
+            var nonce = stored.AsSpan(0, 12).ToArray();
+            var ciphertext = stored.AsSpan(12).ToArray();
+            return AesGcmCipher.Decrypt(_encryptionKey, nonce, ciphertext);
         }
 
         return stored;
@@ -94,18 +102,5 @@ public class LocalStorageService(IJSRuntime js)
             return true;
 
         return await js.InvokeAsync<bool>("toledoStorage.containsKey", key);
-    }
-
-    private static byte[] DeriveNonceFromKey(string key)
-    {
-        var keyBytes = Encoding.UTF8.GetBytes(key);
-        var sha256 = new Sha256Digest();
-        var hash = new byte[sha256.GetDigestSize()];
-        sha256.BlockUpdate(keyBytes, 0, keyBytes.Length);
-        sha256.DoFinal(hash, 0);
-
-        var nonce = new byte[12];
-        Buffer.BlockCopy(hash, 0, nonce, 0, 12);
-        return nonce;
     }
 }

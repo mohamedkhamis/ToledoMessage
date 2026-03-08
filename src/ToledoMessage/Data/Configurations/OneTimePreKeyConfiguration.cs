@@ -9,8 +9,6 @@ public class OneTimePreKeyConfiguration : IEntityTypeConfiguration<OneTimePreKey
     public void Configure(EntityTypeBuilder<OneTimePreKey> builder)
     {
         builder.HasKey(static k => k.Id);
-        builder.Property(static k => k.Id).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
-        builder.Property(static k => k.DeviceId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
         builder.HasIndex(static k => new { k.DeviceId, k.KeyId }).IsUnique();
         builder.Property(static k => k.PublicKey).IsRequired();
         builder.Property(static k => k.IsUsed).IsRequired().HasDefaultValue(false);

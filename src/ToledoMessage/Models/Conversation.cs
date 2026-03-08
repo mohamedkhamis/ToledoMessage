@@ -4,7 +4,7 @@ namespace ToledoMessage.Models;
 
 public class Conversation
 {
-    public decimal Id { get; set; }
+    public long Id { get; set; }
     public ConversationType Type { get; set; }
     public string? GroupName { get; set; }
     public DateTimeOffset CreatedAt { get; set; }

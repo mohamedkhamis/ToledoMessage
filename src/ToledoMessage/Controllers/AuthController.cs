@@ -59,7 +59,7 @@ public class AuthController(
 
         var user = new User
         {
-            Id = DecimalTools.GetNewId(),
+            Id = IdGenerator.GetNewId(),
             Username = request.Username,
             DisplayName = request.DisplayName,
             CreatedAt = DateTimeOffset.UtcNow,
@@ -115,7 +115,7 @@ public class AuthController(
 
         var userIdClaim = principal.FindFirst(JwtRegisteredClaimNames.Sub)
                           ?? principal.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !decimal.TryParse(userIdClaim.Value, out var userId))
+        if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out var userId))
             return Unauthorized("Invalid access token claims.");
 
         var storedToken = await db.RefreshTokens
@@ -234,13 +234,13 @@ public class AuthController(
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private async Task<string> CreateRefreshTokenAsync(decimal userId)
+    private async Task<string> CreateRefreshTokenAsync(long userId)
     {
         var tokenValue = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
 
         var refreshToken = new RefreshToken
         {
-            Id = DecimalTools.GetNewId(),
+            Id = IdGenerator.GetNewId(),
             UserId = userId,
             Token = tokenValue,
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(30),

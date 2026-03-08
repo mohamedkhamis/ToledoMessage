@@ -19,7 +19,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// <summary>
     /// Register the current connection with a specific device, adding it to device and user groups.
     /// </summary>
-    public async Task RegisterDevice(decimal deviceId)
+    public async Task RegisterDevice(long deviceId)
     {
         var userId = GetUserId();
 
@@ -101,7 +101,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// <summary>
     /// Acknowledge that a message has been delivered to the recipient device.
     /// </summary>
-    public async Task AcknowledgeDelivery(decimal messageId)
+    public async Task AcknowledgeDelivery(long messageId)
     {
         var userId = GetUserId();
 
@@ -124,7 +124,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// Advance the read pointer for the current user in a conversation.
     /// Notifies senders that their messages were read.
     /// </summary>
-    public async Task AdvanceReadPointer(decimal conversationId, long upToSequenceNumber)
+    public async Task AdvanceReadPointer(long conversationId, long upToSequenceNumber)
     {
         var userId = GetUserId();
 
@@ -145,12 +145,12 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     }
 
     // Track connection → device mapping for delivery acknowledgment
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, decimal> ConnectionDeviceMap = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> ConnectionDeviceMap = new();
 
     /// <summary>
     /// Broadcast a typing indicator to other participants in the conversation.
     /// </summary>
-    public async Task TypingIndicator(decimal conversationId)
+    public async Task TypingIndicator(long conversationId)
     {
         var userId = GetUserId();
 
@@ -175,7 +175,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// Add a reaction to a message.
     /// </summary>
     // ReSharper disable once UnusedMember.Global
-    public async Task AddReaction(decimal messageId, string emoji)
+    public async Task AddReaction(long messageId, string emoji)
     {
         if (string.IsNullOrWhiteSpace(emoji) || emoji.Length > 32)
             throw new HubException("Invalid emoji.");
@@ -199,7 +199,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
 
         var reaction = new MessageReaction
         {
-            Id = Toledo.SharedKernel.Helpers.DecimalTools.GetNewId(),
+            Id = Toledo.SharedKernel.Helpers.IdGenerator.GetNewId(),
             MessageId = messageId,
             UserId = userId,
             Emoji = emoji,
@@ -228,7 +228,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// Remove a reaction from a message.
     /// </summary>
     // ReSharper disable once UnusedMember.Global
-    public async Task RemoveReaction(decimal messageId, string emoji)
+    public async Task RemoveReaction(long messageId, string emoji)
     {
         if (string.IsNullOrWhiteSpace(emoji) || emoji.Length > 32)
             throw new HubException("Invalid emoji.");
@@ -262,7 +262,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// Delete a message for everyone in the conversation.
     /// </summary>
     // ReSharper disable once UnusedMember.Global
-    public async Task DeleteForEveryone(decimal messageId)
+    public async Task DeleteForEveryone(long messageId)
     {
         var userId = GetUserId();
 
@@ -299,7 +299,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// Clear messages in a conversation up to a given cutoff time. Server-side deletion for the requesting user.
     /// </summary>
     // ReSharper disable once UnusedMember.Global
-    public async Task ClearMessages(decimal conversationId, DateTimeOffset from, DateTimeOffset to)
+    public async Task ClearMessages(long conversationId, DateTimeOffset from, DateTimeOffset to)
     {
         var userId = GetUserId();
 
@@ -334,7 +334,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// Check if a specific user is online.
     /// </summary>
     // ReSharper disable once UnusedMember.Global
-    public async Task<bool> IsUserOnline(decimal targetUserId)
+    public async Task<bool> IsUserOnline(long targetUserId)
     {
         // BUG-CR-007 FIX: Verify caller shares a conversation with the target user
         var callerId = GetUserId();
@@ -380,7 +380,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
         await base.OnDisconnectedAsync(exception);
     }
 
-    private async Task<List<decimal>> GetContactUserIds(decimal userId)
+    private async Task<List<long>> GetContactUserIds(long userId)
     {
         // Get all users that share at least one conversation with this user
         var conversationIds = await db.ConversationParticipants
@@ -395,11 +395,11 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
             .ToListAsync();
     }
 
-    private decimal GetUserId()
+    private long GetUserId()
     {
         var sub = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier)
                   ?? Context.User?.FindFirstValue("sub");
-        if (string.IsNullOrEmpty(sub) || !decimal.TryParse(sub, out var userId))
+        if (string.IsNullOrEmpty(sub) || !long.TryParse(sub, out var userId))
             throw new HubException("Authentication required.");
 
         return userId;

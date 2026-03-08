@@ -37,7 +37,7 @@ public class PreKeyReplenishmentService : IDisposable
         _signalR.OnPreKeyCountLow += HandlePreKeyCountLow;
     }
 
-    private async void HandlePreKeyCountLow(decimal deviceId, int remainingCount)
+    private async void HandlePreKeyCountLow(long deviceId, int remainingCount)
     {
         if (remainingCount >= LowThreshold)
             return;

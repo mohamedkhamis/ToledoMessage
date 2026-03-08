@@ -6,11 +6,11 @@ namespace ToledoMessage.Services;
 
 public class PresenceService
 {
-    private readonly ConcurrentDictionary<decimal, HashSet<string>> _userConnections = new();
+    private readonly ConcurrentDictionary<long, HashSet<string>> _userConnections = new();
 
     private readonly Lock _lock = new();
 
-    public void AddConnection(decimal userId, string connectionId)
+    public void AddConnection(long userId, string connectionId)
     {
         lock (_lock)
         {
@@ -25,7 +25,7 @@ public class PresenceService
         }
     }
 
-    public bool RemoveConnection(decimal userId, string connectionId)
+    public bool RemoveConnection(long userId, string connectionId)
     {
         lock (_lock)
         {
@@ -44,7 +44,7 @@ public class PresenceService
         }
     }
 
-    public bool IsOnline(decimal userId)
+    public bool IsOnline(long userId)
     {
         lock (_lock)
         {
@@ -53,7 +53,7 @@ public class PresenceService
     }
 
     // ReSharper disable once UnusedMember.Global
-    public IReadOnlyCollection<decimal> GetOnlineUserIds()
+    public IReadOnlyCollection<long> GetOnlineUserIds()
     {
         lock (_lock)
         {

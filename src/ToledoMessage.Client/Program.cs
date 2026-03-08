@@ -1,10 +1,20 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.JSInterop;
 using ToledoMessage.Client.Services;
+using ToledoMessage.Shared.Converters;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
 builder.Services.AddLocalization();
+// Register JSON options with LongToStringConverter for HttpClient deserialization
+builder.Services.AddSingleton(_ =>
+{
+    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+    options.Converters.Add(new LongToStringConverter());
+    options.Converters.Add(new LongNullableToStringConverter());
+    return options;
+});
 builder.Services.AddScoped<LocalStorageService>();
 builder.Services.AddScoped<AuthTokenHandler>();
 builder.Services.AddScoped(sp =>

@@ -52,7 +52,7 @@ public class UsersController(ApplicationDbContext db, PreKeyService preKeyServic
     /// Fetch pre-key bundle for a specific device of a user, consuming one one-time pre-key.
     /// </summary>
     [HttpGet("{userId}/prekey-bundle")]
-    public async Task<IActionResult> GetPreKeyBundle(decimal userId, [FromQuery] decimal deviceId)
+    public async Task<IActionResult> GetPreKeyBundle(long userId, [FromQuery] long deviceId)
     {
         var device = await db.Devices
             .FirstOrDefaultAsync(d => d.Id == deviceId && d.UserId == userId && d.IsActive);
@@ -84,7 +84,7 @@ public class UsersController(ApplicationDbContext db, PreKeyService preKeyServic
     /// List all active devices for a specific user (used for fan-out encryption).
     /// </summary>
     [HttpGet("{userId}/devices")]
-    public async Task<IActionResult> GetUserDevices(decimal userId)
+    public async Task<IActionResult> GetUserDevices(long userId)
     {
         var devices = await db.Devices
             .Where(d => d.UserId == userId && d.IsActive)

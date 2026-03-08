@@ -93,7 +93,7 @@
     private string _searchQuery = "";
     private bool _isLoading = true;
     private string? _accessToken;
-    private decimal _localDeviceId;
+    private long _localDeviceId;
     private string _userName = "";
     private string _currentPath = "";
 
@@ -123,7 +123,7 @@
 
             var deviceIdBytes = await Storage.GetAsync("local.deviceId");
             if (deviceIdBytes is not null)
-                _localDeviceId = decimal.Parse(Encoding.UTF8.GetString(deviceIdBytes));
+                _localDeviceId = long.Parse(Encoding.UTF8.GetString(deviceIdBytes));
 
             Http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
@@ -177,7 +177,7 @@
         }
     }
 
-    private bool IsActiveConversation(decimal conversationId)
+    private bool IsActiveConversation(long conversationId)
     {
         return _currentPath.Equals($"/chat/{conversationId}", StringComparison.OrdinalIgnoreCase);
     }
@@ -198,7 +198,7 @@
         _searchQuery = e.Value?.ToString() ?? "";
     }
 
-    private void SelectConversation(decimal conversationId)
+    private void SelectConversation(long conversationId)
     {
         var index = _conversations.FindIndex(c => c.ConversationId == conversationId);
         if (index >= 0 && IsActiveConversation(conversationId))
@@ -206,7 +206,7 @@
         Navigation.NavigateTo($"/chat/{conversationId}");
     }
 
-    private void HandleKeyDown(KeyboardEventArgs e, decimal conversationId)
+    private void HandleKeyDown(KeyboardEventArgs e, long conversationId)
     {
         if (e.Key is "Enter" or " ")
             SelectConversation(conversationId);
@@ -228,7 +228,7 @@
     }
 
     // ReSharper disable once AsyncVoidMethod
-    private async void HandleUnreadCountChanged(decimal conversationId, int newUnreadCount)
+    private async void HandleUnreadCountChanged(long conversationId, int newUnreadCount)
     {
         try
         {

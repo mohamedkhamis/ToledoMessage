@@ -77,7 +77,7 @@ public class MessagesController(ApplicationDbContext db, MessageRelayService rel
     /// Get pending (undelivered) messages for a specific device.
     /// </summary>
     [HttpGet("pending")]
-    public async Task<IActionResult> GetPendingMessages([FromQuery] decimal deviceId)
+    public async Task<IActionResult> GetPendingMessages([FromQuery] long deviceId)
     {
         var userId = GetUserId();
 
@@ -108,7 +108,7 @@ public class MessagesController(ApplicationDbContext db, MessageRelayService rel
     /// Acknowledge delivery of a message.
     /// </summary>
     [HttpPost("{messageId}/acknowledge")]
-    public async Task<IActionResult> AcknowledgeDelivery(decimal messageId)
+    public async Task<IActionResult> AcknowledgeDelivery(long messageId)
     {
         var userId = GetUserId();
 
@@ -134,7 +134,7 @@ public class MessagesController(ApplicationDbContext db, MessageRelayService rel
     /// Bulk-acknowledge delivery of all pending messages for a device.
     /// </summary>
     [HttpPost("acknowledge-all")]
-    public async Task<IActionResult> BulkAcknowledgeDelivery([FromQuery] decimal deviceId)
+    public async Task<IActionResult> BulkAcknowledgeDelivery([FromQuery] long deviceId)
     {
         var userId = GetUserId();
 
@@ -167,7 +167,7 @@ public class MessagesController(ApplicationDbContext db, MessageRelayService rel
     /// </summary>
     [HttpPost("read")]
     public async Task<IActionResult> AdvanceReadPointer(
-        [FromQuery] decimal conversationId,
+        [FromQuery] long conversationId,
         [FromQuery] long upToSequenceNumber)
     {
         var userId = GetUserId();
@@ -194,7 +194,7 @@ public class MessagesController(ApplicationDbContext db, MessageRelayService rel
     /// Get the unread message count for a conversation via the read pointer. O(1) lookup.
     /// </summary>
     [HttpGet("unread-count")]
-    public async Task<IActionResult> GetUnreadCount([FromQuery] decimal conversationId)
+    public async Task<IActionResult> GetUnreadCount([FromQuery] long conversationId)
     {
         var userId = GetUserId();
 

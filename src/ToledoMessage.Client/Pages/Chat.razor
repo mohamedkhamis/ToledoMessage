@@ -1,4 +1,4 @@
-@page "/chat/{ConversationId:decimal}"
+@page "/chat/{ConversationId:long}"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @layout ChatLayout
 @using System.Globalization
@@ -299,13 +299,14 @@
 @* ReSharper disable NotAccessedField.Local *@
 @code {
     [Parameter]
-    public decimal ConversationId { get; set; }
+    public long ConversationId { get; set; }
 
     protected override void OnInitialized()
     {
         Theme.OnThemeChanged += OnThemeChanged;
     }
 
+    private bool _disposed;
     private bool _needsScrollToUnread;
     private bool _needsScrollToBottom;
     private bool _initialScrollDone;
@@ -367,15 +368,15 @@
     private bool _isLoading = true;
     private string _wallpaperStyle = "";
     private string? _typingIndicator;
-    private decimal _localDeviceId;
-    private decimal _localUserId;
+    private long _localDeviceId;
+    private long _localUserId;
     private string? _accessToken;
     private System.Timers.Timer? _typingTimer;
     private ConversationDetailResponse? _conversationDetail;
     private List<ParticipantResponse> _participants = [];
     private bool _showParticipants;
     private bool _showScrollButton;
-    private decimal? _firstUnreadMessageId;
+    private long? _firstUnreadMessageId;
     private int _serverUnreadCount;
     private bool _lightboxVisible;
     private List<string> _lightboxImageUrls = [];
@@ -431,7 +432,7 @@
                 return;
             }
 
-            _localDeviceId = decimal.Parse(Encoding.UTF8.GetString(deviceIdBytes));
+            _localDeviceId = long.Parse(Encoding.UTF8.GetString(deviceIdBytes));
             _accessToken = Encoding.UTF8.GetString(tokenBytes);
 
             // Extract userId from JWT token
@@ -586,7 +587,7 @@
 
                 _messages.Add(new ChatMessage
                 {
-                    MessageId = decimal.TryParse(stored.MessageId, out var mid) ? mid : 0,
+                    MessageId = long.TryParse(stored.MessageId, out var mid) ? mid : 0,
                     SequenceNumber = stored.SequenceNumber,
                     Text = stored.Text,
                     Timestamp = DateTimeOffset.TryParse(stored.Timestamp, out var ts) ? ts : DateTimeOffset.UtcNow,
@@ -598,7 +599,7 @@
                         ? await CreateMediaBlobUrlFromBase64(stored.MediaDataBase64, stored.MimeType, stored.FileName)
                         : null,
                     Status = (Shared.Enums.DeliveryStatus)stored.Status,
-                    ReplyToMessageId = decimal.TryParse(stored.ReplyToMessageId, out var rid) ? rid : null,
+                    ReplyToMessageId = long.TryParse(stored.ReplyToMessageId, out var rid) ? rid : null,
                     ReplyToText = stored.ReplyToText,
                     ReplyToSenderName = stored.ReplyToSenderName
                 });
@@ -750,6 +751,7 @@
     // ReSharper disable once AsyncVoidMethod
     private async void HandleMessageReceived(MessageEnvelope envelope)
     {
+        if (_disposed) return;
         if (envelope.ConversationId != ConversationId)
             return;
 
@@ -802,8 +804,9 @@
     }
 
     // ReSharper disable once AsyncVoidMethod
-    private async void HandleMessageDelivered(decimal messageId)
+    private async void HandleMessageDelivered(long messageId)
     {
+        if (_disposed) return;
         try { await InvokeAsync(async () =>
         {
             var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
@@ -823,8 +826,9 @@
     }
 
     // ReSharper disable  AsyncVoidMethod
-    private async void HandleMessageRead(decimal messageId)
+    private async void HandleMessageRead(long messageId)
     {
+        if (_disposed) return;
         try { await InvokeAsync(async () =>
         {
             var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
@@ -843,8 +847,9 @@
         } catch { /* prevent async void crash */ }
     }
 
-    private async void HandleTypingIndicator(decimal conversationId, string displayName)
+    private async void HandleTypingIndicator(long conversationId, string displayName)
     {
+        if (_disposed) return;
         try {
         if (conversationId != ConversationId)
             return;
@@ -872,8 +877,9 @@
         } catch { /* prevent async void crash */ }
     }
 
-    private async void HandleParticipantAdded(decimal conversationId, decimal userId, string displayName)
+    private async void HandleParticipantAdded(long conversationId, long userId, string displayName)
     {
+        if (_disposed) return;
         try {
         if (conversationId != ConversationId)
             return;
@@ -890,8 +896,9 @@
         } catch { /* prevent async void crash */ }
     }
 
-    private async void HandleParticipantRemoved(decimal conversationId, decimal userId)
+    private async void HandleParticipantRemoved(long conversationId, long userId)
     {
+        if (_disposed) return;
         try {
         if (conversationId != ConversationId)
             return;
@@ -904,8 +911,9 @@
         } catch { /* prevent async void crash */ }
     }
 
-    private async void HandleUserOnline(decimal userId)
+    private async void HandleUserOnline(long userId)
     {
+        if (_disposed) return;
         try {
         var peer = _participants.FirstOrDefault(p => p.UserId != _localUserId);
         if (peer is not null && peer.UserId == userId)
@@ -919,8 +927,9 @@
         } catch { /* prevent async void crash */ }
     }
 
-    private async void HandleUserOffline(decimal userId, DateTimeOffset lastSeen)
+    private async void HandleUserOffline(long userId, DateTimeOffset lastSeen)
     {
+        if (_disposed) return;
         try {
         var peer = _participants.FirstOrDefault(p => p.UserId != _localUserId);
         if (peer is not null && peer.UserId == userId)
@@ -935,8 +944,9 @@
         } catch { /* prevent async void crash */ }
     }
 
-    private async void HandleReactionAdded(decimal messageId, decimal userId, string displayName, string emoji)
+    private async void HandleReactionAdded(long messageId, long userId, string displayName, string emoji)
     {
+        if (_disposed) return;
         try {
         await InvokeAsync(() =>
         {
@@ -956,8 +966,9 @@
         } catch { /* prevent async void crash */ }
     }
 
-    private async void HandleReactionRemoved(decimal messageId, decimal userId, string emoji)
+    private async void HandleReactionRemoved(long messageId, long userId, string emoji)
     {
+        if (_disposed) return;
         try {
         await InvokeAsync(() =>
         {
@@ -1056,7 +1067,7 @@
         StateHasChanged();
     }
 
-    private async Task SendTextToRecipients(string text, ChatMessage tempMessage, decimal? replyToMessageId = null)
+    private async Task SendTextToRecipients(string text, ChatMessage tempMessage, long? replyToMessageId = null)
     {
         if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group)
         {
@@ -1458,7 +1469,7 @@
     [JSInvokable]
     public void OnVisibleMessageChanged(string messageIdStr)
     {
-        if (!decimal.TryParse(messageIdStr, out var messageId))
+        if (!long.TryParse(messageIdStr, out var messageId))
             return;
 
         var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
@@ -1563,7 +1574,7 @@
     /// <summary>
     /// Extracts the user ID from a JWT token by decoding the payload.
     /// </summary>
-    private static decimal ExtractUserIdFromJwt(string token)
+    private static long ExtractUserIdFromJwt(string token)
     {
         var parts = token.Split('.');
         if (parts.Length != 3)
@@ -1585,13 +1596,13 @@
 
         // Try "sub" claim first, then "nameid"
         if (root.TryGetProperty("sub", out var subProp))
-            return decimal.Parse(subProp.GetString()!);
+            return long.Parse(subProp.GetString()!);
 
         if (root.TryGetProperty("nameid", out var nameidProp))
-            return decimal.Parse(nameidProp.GetString()!);
+            return long.Parse(nameidProp.GetString()!);
 
         if (root.TryGetProperty("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier", out var fullProp))
-            return decimal.Parse(fullProp.GetString()!);
+            return long.Parse(fullProp.GetString()!);
 
         throw new InvalidOperationException("JWT token does not contain a user ID claim.");
     }
@@ -1631,7 +1642,7 @@
     private MessageInput.ReplyContextModel? _replyContext;
 
     // Reaction state: messageId -> list of (userId, emoji)
-    private readonly Dictionary<decimal, List<(decimal UserId, string Emoji, string DisplayName)>> _messageReactions = [];
+    private readonly Dictionary<long, List<(long UserId, string Emoji, string DisplayName)>> _messageReactions = [];
 
     private void SetReplyTo(ChatMessage msg)
     {
@@ -1760,8 +1771,9 @@
         CloseContextMenu();
     }
 
-    private async void HandleMessageDeleted(decimal messageId, decimal conversationId)
+    private async void HandleMessageDeleted(long messageId, long conversationId)
     {
+        if (_disposed) return;
         try {
         if (conversationId != ConversationId)
             return;
@@ -1862,7 +1874,7 @@
         StateHasChanged();
     }
 
-    private async Task ScrollToMessage(decimal messageId)
+    private async Task ScrollToMessage(long messageId)
     {
         try
         {
@@ -1874,7 +1886,7 @@
         }
     }
 
-    private List<MessageBubble.ReactionBadgeModel> GetReactionBadges(decimal messageId)
+    private List<MessageBubble.ReactionBadgeModel> GetReactionBadges(long messageId)
     {
         if (!_messageReactions.TryGetValue(messageId, out var reactions) || reactions.Count == 0)
             return [];
@@ -1890,7 +1902,7 @@
             .ToList();
     }
 
-    private async Task ToggleReaction(decimal messageId, string emoji)
+    private async Task ToggleReaction(long messageId, string emoji)
     {
         try
         {
@@ -2022,7 +2034,7 @@
         await ScrollToMessage(_searchResults[_searchIndex].MessageId);
     }
 
-    private bool IsSearchHighlighted(decimal messageId)
+    private bool IsSearchHighlighted(long messageId)
     {
         return _searchResults.Count > 0 && _searchResults[_searchIndex].MessageId == messageId;
     }
@@ -2064,7 +2076,7 @@
         _forwardSearchQuery = "";
     }
 
-    private async void ForwardToConversation(decimal targetConversationId)
+    private async void ForwardToConversation(long targetConversationId)
     {
         if (_forwardingMessage is null) return;
 
@@ -2187,6 +2199,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        _disposed = true;
         // Unsubscribe from theme changes (BUG-CR-001 fix: must be in DisposeAsync, not Dispose)
         Theme.OnThemeChanged -= OnThemeChanged;
 
@@ -2224,7 +2237,7 @@
     /// </summary>
     private sealed class ChatMessage
     {
-        public decimal MessageId { get; set; }
+        public long MessageId { get; set; }
         public long SequenceNumber { get; set; }
         // ReSharper disable once PropertyCanBeMadeInitOnly.Local
         public string Text { get; set; } = "";
@@ -2237,7 +2250,7 @@
         public byte[]? MediaBytes { get; set; }
         public string? MimeType { get; init; }
         public string? FileName { get; init; }
-        public decimal? ReplyToMessageId { get; init; }
+        public long? ReplyToMessageId { get; init; }
         public string? ReplyToText { get; init; }
         public string? ReplyToSenderName { get; init; }
         public string? ReplyToMediaDataUrl { get; init; }

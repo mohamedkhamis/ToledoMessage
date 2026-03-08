@@ -80,7 +80,7 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
         {
             var device = new Device
             {
-                Id = DecimalTools.GetNewId(),
+                Id = IdGenerator.GetNewId(),
                 UserId = userId,
                 DeviceName = request.DeviceName,
                 IdentityPublicKeyClassical = classicalIdentityKey,
@@ -134,7 +134,7 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
     /// Revoke/deactivate a device belonging to the requesting user.
     /// </summary>
     [HttpDelete("{deviceId}")]
-    public async Task<IActionResult> RevokeDevice(decimal deviceId)
+    public async Task<IActionResult> RevokeDevice(long deviceId)
     {
         var userId = GetUserId();
 
@@ -157,7 +157,7 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
     /// Get remaining pre-key count for a device belonging to the requesting user.
     /// </summary>
     [HttpGet("{deviceId}/prekeys/count")]
-    public async Task<IActionResult> GetPreKeyCount(decimal deviceId)
+    public async Task<IActionResult> GetPreKeyCount(long deviceId)
     {
         var userId = GetUserId();
 
@@ -176,7 +176,7 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
     /// </summary>
     [HttpPost("{deviceId}/prekeys")]
     public async Task<IActionResult> ReplenishPreKeys(
-        decimal deviceId,
+        long deviceId,
         [FromBody] List<OneTimePreKeyDto> preKeys)
     {
         var userId = GetUserId();

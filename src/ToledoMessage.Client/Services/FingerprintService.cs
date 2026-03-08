@@ -18,7 +18,7 @@ public class FingerprintService(LocalStorageService storage, HttpClient http)
     /// </summary>
     /// <param name="remoteDeviceId">The remote device's ID.</param>
     /// <returns>A 30-digit safety number formatted as 6 groups of 5 digits.</returns>
-    public async Task<string> ComputeSafetyNumberAsync(decimal remoteDeviceId)
+    public async Task<string> ComputeSafetyNumberAsync(long remoteDeviceId)
     {
         // 1. Load local identity key
         var localKey = await storage.GetAsync("identity.classical.public")
@@ -40,7 +40,7 @@ public class FingerprintService(LocalStorageService storage, HttpClient http)
     /// </summary>
     /// <param name="conversationId">The conversation ID to check.</param>
     /// <returns>True if the conversation has been marked as verified.</returns>
-    public async Task<bool> IsVerifiedAsync(decimal conversationId)
+    public async Task<bool> IsVerifiedAsync(long conversationId)
     {
         return await storage.ContainsKeyAsync($"verified.{conversationId}");
     }
@@ -50,7 +50,7 @@ public class FingerprintService(LocalStorageService storage, HttpClient http)
     /// the safety number matches out-of-band.
     /// </summary>
     /// <param name="conversationId">The conversation ID to mark as verified.</param>
-    public async Task MarkVerifiedAsync(decimal conversationId)
+    public async Task MarkVerifiedAsync(long conversationId)
     {
         await storage.StoreAsync($"verified.{conversationId}", [1]);
     }
@@ -60,7 +60,7 @@ public class FingerprintService(LocalStorageService storage, HttpClient http)
     /// a key change has been detected.
     /// </summary>
     /// <param name="conversationId">The conversation ID to mark as unverified.</param>
-    public async Task MarkUnverifiedAsync(decimal conversationId)
+    public async Task MarkUnverifiedAsync(long conversationId)
     {
         await storage.DeleteAsync($"verified.{conversationId}");
     }

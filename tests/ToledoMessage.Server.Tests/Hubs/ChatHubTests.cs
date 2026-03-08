@@ -38,7 +38,7 @@ public class StubGroupManager : IGroupManager
 /// <summary>
 /// Stub HubCallerContext with configurable user and connection ID.
 /// </summary>
-public class StubHubCallerContext(decimal userId, string connectionId = "test-connection") : HubCallerContext
+public class StubHubCallerContext(long userId, string connectionId = "test-connection") : HubCallerContext
 {
     public override string ConnectionId { get; } = connectionId;
     public override string? UserIdentifier => null;
@@ -151,7 +151,7 @@ public class RecordingClientProxy(Dictionary<string, List<(string method, object
 [TestClass]
 public class ChatHubTests
 {
-    private static (ChatHub hub, ApplicationDbContext db, StubGroupManager groups, StubHubCallerClients clients) CreateHub(decimal userId = 1m)
+    private static (ChatHub hub, ApplicationDbContext db, StubGroupManager groups, StubHubCallerClients clients) CreateHub(long userId = 1L)
     {
         var db = TestDbContextFactory.Create();
         var hubContext = new StubHubContext();
@@ -177,10 +177,10 @@ public class ChatHubTests
     public async Task RegisterDevice_OwnDevice_AddsToGroups()
     {
         var (hub, db, groups, _) = CreateHub();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m, "MyDevice");
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L, "MyDevice");
 
-        await hub.RegisterDevice(10m);
+        await hub.RegisterDevice(10L);
 
         Assert.AreEqual(2, groups.Added.Count);
         Assert.IsTrue(groups.Added.Any(static g => g.groupName == "device_10"));
@@ -191,11 +191,11 @@ public class ChatHubTests
     public async Task RegisterDevice_OtherUsersDevice_ThrowsHubException()
     {
         var (hub, db, _, _) = CreateHub();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedUser(db, 2m, "user2");
-        await TestDbContextFactory.SeedDevice(db, 20m, 2m, "OtherDevice");
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedUser(db, 2L, "user2");
+        await TestDbContextFactory.SeedDevice(db, 20L, 2L, "OtherDevice");
 
-        var ex = await Assert.ThrowsAsync<HubException>(() => hub.RegisterDevice(20m));
+        var ex = await Assert.ThrowsAsync<HubException>(() => hub.RegisterDevice(20L));
         StringAssert.Contains(ex.Message, "not found");
     }
 
@@ -203,12 +203,12 @@ public class ChatHubTests
     public async Task RegisterDevice_InactiveDevice_ThrowsHubException()
     {
         var (hub, db, _, _) = CreateHub();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        var device = await TestDbContextFactory.SeedDevice(db, 10m, 1m, "Inactive");
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        var device = await TestDbContextFactory.SeedDevice(db, 10L, 1L, "Inactive");
         device.IsActive = false;
         await db.SaveChangesAsync();
 
-        var ex = await Assert.ThrowsAsync<HubException>(() => hub.RegisterDevice(10m));
+        var ex = await Assert.ThrowsAsync<HubException>(() => hub.RegisterDevice(10L));
         StringAssert.Contains(ex.Message, "not found");
     }
 
@@ -216,9 +216,9 @@ public class ChatHubTests
     public async Task RegisterDevice_NonExistentDevice_ThrowsHubException()
     {
         var (hub, db, _, _) = CreateHub();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
 
-        var ex = await Assert.ThrowsAsync<HubException>(() => hub.RegisterDevice(999m));
+        var ex = await Assert.ThrowsAsync<HubException>(() => hub.RegisterDevice(999L));
         StringAssert.Contains(ex.Message, "not found");
     }
 
@@ -228,19 +228,19 @@ public class ChatHubTests
     public async Task SendMessage_AsParticipant_ReturnsResult()
     {
         var (hub, db, _, _) = CreateHub();
-        await TestDbContextFactory.SeedUser(db, 1m, "sender");
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m, "SenderDevice");
-        await TestDbContextFactory.SeedUser(db, 2m, "recipient");
-        await TestDbContextFactory.SeedDevice(db, 20m, 2m, "RecipientDevice");
-        await TestDbContextFactory.SeedConversation(db, 100m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
+        await TestDbContextFactory.SeedUser(db, 1L, "sender");
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L, "SenderDevice");
+        await TestDbContextFactory.SeedUser(db, 2L, "recipient");
+        await TestDbContextFactory.SeedDevice(db, 20L, 2L, "RecipientDevice");
+        await TestDbContextFactory.SeedConversation(db, 100L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 2L);
 
-        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m, Ciphertext = Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
+        var request = new SendMessageRequest { ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L, Ciphertext = Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var result = await hub.SendMessage(request);
 
-        Assert.AreNotEqual(0m, result.MessageId);
+        Assert.AreNotEqual(0L, result.MessageId);
         Assert.AreEqual(1, result.SequenceNumber);
     }
 
@@ -248,12 +248,12 @@ public class ChatHubTests
     public async Task SendMessage_NotParticipant_ThrowsHubException()
     {
         var (hub, db, _, _) = CreateHub();
-        await TestDbContextFactory.SeedUser(db, 1m, "sender");
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m, "SenderDevice");
-        await TestDbContextFactory.SeedConversation(db, 100m);
+        await TestDbContextFactory.SeedUser(db, 1L, "sender");
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L, "SenderDevice");
+        await TestDbContextFactory.SeedConversation(db, 100L);
         // User 1 is NOT a participant
 
-        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m, Ciphertext = Convert.ToBase64String(new byte[] { 1 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
+        var request = new SendMessageRequest { ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L, Ciphertext = Convert.ToBase64String(new byte[] { 1 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.SendMessage(request));
         StringAssert.Contains(ex.Message, "not a participant");
@@ -263,13 +263,13 @@ public class ChatHubTests
     public async Task SendMessage_DeviceNotOwnedBySender_ThrowsHubException()
     {
         var (hub, db, _, _) = CreateHub();
-        await TestDbContextFactory.SeedUser(db, 1m, "sender");
-        await TestDbContextFactory.SeedUser(db, 2m, "other");
-        await TestDbContextFactory.SeedDevice(db, 20m, 2m, "OtherDevice"); // Device belongs to user 2
-        await TestDbContextFactory.SeedConversation(db, 100m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
+        await TestDbContextFactory.SeedUser(db, 1L, "sender");
+        await TestDbContextFactory.SeedUser(db, 2L, "other");
+        await TestDbContextFactory.SeedDevice(db, 20L, 2L, "OtherDevice"); // Device belongs to user 2
+        await TestDbContextFactory.SeedConversation(db, 100L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L);
 
-        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 20m, RecipientDeviceId = 30m, Ciphertext = Convert.ToBase64String(new byte[] { 1 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
+        var request = new SendMessageRequest { ConversationId = 100L, SenderDeviceId = 20L, RecipientDeviceId = 30L, Ciphertext = Convert.ToBase64String(new byte[] { 1 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.SendMessage(request));
         StringAssert.Contains(ex.Message, "Sender device not found");
@@ -281,20 +281,20 @@ public class ChatHubTests
     public async Task AcknowledgeDelivery_ValidMessage_MarksDelivered()
     {
         var (hub, db, _, clients) = CreateHub();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m);
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L);
 
         db.EncryptedMessages.Add(new EncryptedMessage
         {
-            Id = 500m, ConversationId = 100m, SenderDeviceId = 20m, RecipientDeviceId = 10m,
+            Id = 500L, ConversationId = 100L, SenderDeviceId = 20L, RecipientDeviceId = 10L,
             Ciphertext = [1, 2], SequenceNumber = 1, ServerTimestamp = DateTimeOffset.UtcNow,
             IsDelivered = false
         });
         await db.SaveChangesAsync(TestContext.CancellationToken);
 
-        await hub.AcknowledgeDelivery(500m);
+        await hub.AcknowledgeDelivery(500L);
 
-        var msg = await db.EncryptedMessages.FindAsync(500m);
+        var msg = await db.EncryptedMessages.FindAsync(500L);
         Assert.IsTrue(msg?.IsDelivered);
         // Verify notification was sent to the sender's device group
         Assert.IsTrue(clients.SentToGroups.ContainsKey("device_20"));
@@ -306,7 +306,7 @@ public class ChatHubTests
     {
         var (hub, _, _, _) = CreateHub();
 
-        var ex = await Assert.ThrowsAsync<HubException>(() => hub.AcknowledgeDelivery(999m));
+        var ex = await Assert.ThrowsAsync<HubException>(() => hub.AcknowledgeDelivery(999L));
         StringAssert.Contains(ex.Message, "not found");
     }
 
@@ -316,31 +316,31 @@ public class ChatHubTests
     public async Task AdvanceReadPointer_ValidMessage_NotifiesSenderDevice()
     {
         var (hub, db, _, clients) = CreateHub();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m); // Recipient device belongs to hub user
-        await TestDbContextFactory.SeedConversation(db, 100m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L); // Recipient device belongs to hub user
+        await TestDbContextFactory.SeedConversation(db, 100L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L);
 
         // Register device so GetDeviceId() works
-        await hub.RegisterDevice(10m);
+        await hub.RegisterDevice(10L);
 
         var ts = DateTimeOffset.UtcNow;
         db.EncryptedMessages.Add(new EncryptedMessage
         {
-            Id = 500m, ConversationId = 100m, SenderDeviceId = 20m, RecipientDeviceId = 10m,
+            Id = 500L, ConversationId = 100L, SenderDeviceId = 20L, RecipientDeviceId = 10L,
             Ciphertext = [1, 2], SequenceNumber = 1, ServerTimestamp = ts,
             IsDelivered = true
         });
         await db.SaveChangesAsync();
 
-        await hub.AdvanceReadPointer(100m, 1);
+        await hub.AdvanceReadPointer(100L, 1);
 
         Assert.IsTrue(clients.SentToGroups.ContainsKey("device_20"));
         Assert.IsTrue(clients.SentToGroups["device_20"].Any(static s => s.method == "MessageRead"));
 
         // Verify read pointer was created
         var pointer = await db.ConversationReadPointers
-            .FirstOrDefaultAsync(p => p.UserId == 1m && p.ConversationId == 100m);
+            .FirstOrDefaultAsync(p => p.UserId == 1L && p.ConversationId == 100L);
         Assert.IsNotNull(pointer);
         Assert.AreEqual(1L, pointer.LastReadSequenceNumber);
     }
@@ -351,15 +351,15 @@ public class ChatHubTests
     public async Task TypingIndicator_NotifiesOtherParticipants()
     {
         var (hub, db, _, clients) = CreateHub();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedUser(db, 2m, "user2");
-        await TestDbContextFactory.SeedUser(db, 3m, "user3");
-        await TestDbContextFactory.SeedConversation(db, 100m, ConversationType.Group, "TestGroup");
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 3m);
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedUser(db, 2L, "user2");
+        await TestDbContextFactory.SeedUser(db, 3L, "user3");
+        await TestDbContextFactory.SeedConversation(db, 100L, ConversationType.Group, "TestGroup");
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 2L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 3L);
 
-        await hub.TypingIndicator(100m);
+        await hub.TypingIndicator(100L);
 
         // Should notify user_2 and user_3 but NOT user_1 (the sender)
         Assert.IsTrue(clients.SentToGroups.ContainsKey("user_2"));
@@ -375,16 +375,16 @@ public class ChatHubTests
     public async Task SendMessage_OtherUsersDevice_ThrowsHubException()
     {
         var (hub, db, _, _) = CreateHub(); // userId = 1
-        await TestDbContextFactory.SeedUser(db, 1m, "sender");
-        await TestDbContextFactory.SeedUser(db, 2m, "other");
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m, "MyDevice");
-        await TestDbContextFactory.SeedDevice(db, 20m, 2m, "OtherDevice");
-        await TestDbContextFactory.SeedConversation(db, 100m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
+        await TestDbContextFactory.SeedUser(db, 1L, "sender");
+        await TestDbContextFactory.SeedUser(db, 2L, "other");
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L, "MyDevice");
+        await TestDbContextFactory.SeedDevice(db, 20L, 2L, "OtherDevice");
+        await TestDbContextFactory.SeedConversation(db, 100L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 2L);
 
         // Try to send from user 2's device as user 1
-        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 20m, RecipientDeviceId = 10m, Ciphertext = Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
+        var request = new SendMessageRequest { ConversationId = 100L, SenderDeviceId = 20L, RecipientDeviceId = 10L, Ciphertext = Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.SendMessage(request));
         StringAssert.Contains(ex.Message, "Sender device not found");
@@ -394,21 +394,21 @@ public class ChatHubTests
     public async Task AcknowledgeDelivery_OtherUsersMessage_ThrowsHubException()
     {
         var (hub, db, _, _) = CreateHub(); // userId = 1
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedUser(db, 2m, "user2");
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m);
-        await TestDbContextFactory.SeedDevice(db, 20m, 2m); // Belongs to user 2
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedUser(db, 2L, "user2");
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L);
+        await TestDbContextFactory.SeedDevice(db, 20L, 2L); // Belongs to user 2
 
         db.EncryptedMessages.Add(new EncryptedMessage
         {
-            Id = 500m, ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m,
+            Id = 500L, ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L,
             Ciphertext = [1, 2], SequenceNumber = 1, ServerTimestamp = DateTimeOffset.UtcNow,
             IsDelivered = false
         });
         await db.SaveChangesAsync();
 
         // User 1 tries to acknowledge a message destined for user 2's device
-        var ex = await Assert.ThrowsAsync<HubException>(() => hub.AcknowledgeDelivery(500m));
+        var ex = await Assert.ThrowsAsync<HubException>(() => hub.AcknowledgeDelivery(500L));
         StringAssert.Contains(ex.Message, "does not belong");
     }
 
@@ -416,31 +416,31 @@ public class ChatHubTests
     public async Task AdvanceReadPointer_NoUnreadMessages_CreatesPointerWithZeroUnread()
     {
         var (hub, db, _, _) = CreateHub(); // userId = 1
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedUser(db, 2m, "user2");
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m);
-        await TestDbContextFactory.SeedDevice(db, 20m, 2m);
-        await TestDbContextFactory.SeedConversation(db, 100m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedUser(db, 2L, "user2");
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L);
+        await TestDbContextFactory.SeedDevice(db, 20L, 2L);
+        await TestDbContextFactory.SeedConversation(db, 100L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L);
 
         // Register device so GetDeviceId() works
-        await hub.RegisterDevice(10m);
+        await hub.RegisterDevice(10L);
 
         var ts = DateTimeOffset.UtcNow;
         db.EncryptedMessages.Add(new EncryptedMessage
         {
-            Id = 500m, ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m,
+            Id = 500L, ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L,
             Ciphertext = [1, 2], SequenceNumber = 1, ServerTimestamp = ts,
             IsDelivered = true
         });
         await db.SaveChangesAsync();
 
         // User 1 sent message 500, so advancing their pointer should not notify anyone
-        await hub.AdvanceReadPointer(100m, 1);
+        await hub.AdvanceReadPointer(100L, 1);
 
         // Pointer should exist with 0 unread
         var pointer = await db.ConversationReadPointers
-            .FirstOrDefaultAsync(p => p.UserId == 1m && p.ConversationId == 100m);
+            .FirstOrDefaultAsync(p => p.UserId == 1L && p.ConversationId == 100L);
         Assert.IsNotNull(pointer);
         Assert.AreEqual(0, pointer.UnreadCount);
     }
@@ -462,20 +462,20 @@ public class ChatHubTests
     public async Task SendMessage_Media_FileName_MimeType_Null_On_Request()
     {
         var (hub, db, _, _) = CreateHub();
-        await TestDbContextFactory.SeedUser(db, 1m, "sender");
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m, "SenderDevice");
-        await TestDbContextFactory.SeedUser(db, 2m, "recipient");
-        await TestDbContextFactory.SeedDevice(db, 20m, 2m, "RecipientDevice");
-        await TestDbContextFactory.SeedConversation(db, 100m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
+        await TestDbContextFactory.SeedUser(db, 1L, "sender");
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L, "SenderDevice");
+        await TestDbContextFactory.SeedUser(db, 2L, "recipient");
+        await TestDbContextFactory.SeedDevice(db, 20L, 2L, "RecipientDevice");
+        await TestDbContextFactory.SeedConversation(db, 100L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 2L);
 
         // Send media message with null FileName and MimeType (metadata inside ciphertext)
-        var request = new SendMessageRequest { ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m, Ciphertext = Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Image };
+        var request = new SendMessageRequest { ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L, Ciphertext = Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Image };
 
         var result = await hub.SendMessage(request);
 
-        Assert.AreNotEqual(0m, result.MessageId);
+        Assert.AreNotEqual(0L, result.MessageId);
     }
 
     public TestContext TestContext { get; set; }

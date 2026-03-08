@@ -10,7 +10,7 @@ namespace ToledoMessage.Services;
 public class PreKeyService(ApplicationDbContext db)
 {
     /// <summary>Store one-time pre-keys for a device. Validates Base64 input.</summary>
-    public async Task StoreOneTimePreKeys(decimal deviceId, List<OneTimePreKeyDto> preKeys)
+    public async Task StoreOneTimePreKeys(long deviceId, List<OneTimePreKeyDto> preKeys)
     {
         foreach (var pk in preKeys)
         {
@@ -26,7 +26,7 @@ public class PreKeyService(ApplicationDbContext db)
 
             db.OneTimePreKeys.Add(new OneTimePreKey
             {
-                Id = DecimalTools.GetNewId(),
+                Id = IdGenerator.GetNewId(),
                 DeviceId = deviceId,
                 KeyId = pk.KeyId,
                 PublicKey = publicKeyBytes,
@@ -43,18 +43,18 @@ public class PreKeyService(ApplicationDbContext db)
     /// where two concurrent requests could consume the same one-time pre-key.
     /// Falls back to EF-based approach for in-memory provider (testing).
     /// </remarks>
-    public async Task<OneTimePreKey?> ConsumeOneTimePreKey(decimal deviceId)
+    public async Task<OneTimePreKey?> ConsumeOneTimePreKey(long deviceId)
     {
         if (db.Database.IsRelational())
         {
             // Atomic: claim the lowest-KeyId unused pre-key in a single UPDATE+OUTPUT statement.
             // This prevents two concurrent requests from consuming the same key.
             // Must use explicit SqlParameter with precision/scale for decimal(28,8) columns.
-            var deviceParam = new SqlParameter("@deviceId", System.Data.SqlDbType.Decimal)
+            var deviceParam = new SqlParameter("@deviceId", System.Data.SqlDbType.BigInt)
             {
-                Precision = 28, Scale = 8, Value = deviceId
+                Value = deviceId
             };
-            var claimed = await db.Database.SqlQueryRaw<decimal>(
+            var claimed = await db.Database.SqlQueryRaw<long>(
                 """
                 WITH cte AS (
                     SELECT TOP(1) Id, IsUsed
@@ -89,7 +89,7 @@ public class PreKeyService(ApplicationDbContext db)
     }
 
     /// <summary>Count remaining unused pre-keys for a device.</summary>
-    public async Task<int> CountRemainingPreKeys(decimal deviceId)
+    public async Task<int> CountRemainingPreKeys(long deviceId)
     {
         return await db.OneTimePreKeys.CountAsync(k => k.DeviceId == deviceId && !k.IsUsed);
     }

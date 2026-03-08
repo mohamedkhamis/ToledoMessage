@@ -11,6 +11,7 @@ using ToledoMessage.Hubs;
 using ToledoMessage.Middleware;
 using ToledoMessage.Client.Services;
 using ToledoMessage.Services;
+using ToledoMessage.Shared.Converters;
 
 // ReSharper disable RemoveRedundantBraces
 
@@ -106,15 +107,19 @@ builder.Services.AddSignalR(static options =>
     options.MaximumReceiveMessageSize = 35 * 1024 * 1024; // 35 MB (16 MB file → ~22 MB ciphertext as Base64 + JSON overhead)
 }).AddJsonProtocol(static options =>
 {
-    // Ensure enum values (ContentType, MessageType) survive positional record deserialization.
-    // Without this, enum parameters in records may default to 0 (Text) on some .NET versions.
     options.PayloadSerializerOptions.PropertyNameCaseInsensitive = true;
+    options.PayloadSerializerOptions.Converters.Add(new LongToStringConverter());
+    options.PayloadSerializerOptions.Converters.Add(new LongNullableToStringConverter());
 });
 
 // Controllers (for REST API endpoints)
 builder.Services.AddControllers(static options =>
 {
     options.Filters.Add<ToledoMessage.Filters.UnauthorizedExceptionFilter>();
+}).AddJsonOptions(static options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new LongToStringConverter());
+    options.JsonSerializerOptions.Converters.Add(new LongNullableToStringConverter());
 });
 
 // Localization
@@ -156,6 +161,15 @@ var localizationOptions = new RequestLocalizationOptions()
 
 app.UseRequestLocalization(localizationOptions);
 
+// Security headers
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    await next();
+});
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -163,6 +177,7 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
+    app.UseHsts();
     app.UseExceptionHandler("/Error", true);
 }
 

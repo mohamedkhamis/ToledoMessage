@@ -68,7 +68,7 @@ window.toledoTabLeader = (function () {
                 if (isLeader && msg.tabId !== tabId) {
                     // Another tab claimed leadership with lower/different id - defer
                     isLeader = false;
-                    dotNetRef.invokeMethodAsync('OnLeaderElected', false);
+                    try { dotNetRef.invokeMethodAsync('OnLeaderElected', false); } catch (e) { /* .NET ref disposed */ }
                 }
                 break;
 
@@ -100,7 +100,7 @@ window.toledoTabLeader = (function () {
             channel.postMessage({ type: 'leader-announce', tabId: tabId });
         }
         if (dotNetRef) {
-            dotNetRef.invokeMethodAsync('OnLeaderElected', true);
+            try { dotNetRef.invokeMethodAsync('OnLeaderElected', true); } catch (e) { /* .NET ref disposed */ }
         }
     }
 

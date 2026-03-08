@@ -32,7 +32,7 @@
         if (path.StartsWith("/chat/", StringComparison.OrdinalIgnoreCase))
         {
             var segment = path["/chat/".Length..];
-            return decimal.TryParse(segment, out _);
+            return long.TryParse(segment, out _);
         }
 
         return false;

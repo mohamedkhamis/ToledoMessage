@@ -2,9 +2,9 @@ namespace ToledoMessage.Models;
 
 public class MessageReaction
 {
-    public decimal Id { get; set; }
-    public decimal MessageId { get; set; }
-    public decimal UserId { get; set; }
+    public long Id { get; set; }
+    public long MessageId { get; set; }
+    public long UserId { get; set; }
     public string Emoji { get; set; } = "";
     public DateTimeOffset CreatedAt { get; set; }
 

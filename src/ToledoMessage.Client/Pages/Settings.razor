@@ -293,7 +293,7 @@
 
 @code {
     private List<DeviceInfoResponse> _devices = [];
-    private decimal _currentDeviceId;
+    private long _currentDeviceId;
     private bool _isLoading = true;
     private string? _errorMessage;
 
@@ -303,7 +303,7 @@
     }
 
     private string? _successMessage;
-    private decimal? _unlinkingDeviceId;
+    private long? _unlinkingDeviceId;
     private string _currentTheme = "default";
     private string _currentFontSize = "medium";
     private string _currentWallpaper = "default";
@@ -364,7 +364,7 @@
                 return;
             }
 
-            _currentDeviceId = decimal.Parse(Encoding.UTF8.GetString(deviceIdBytes));
+            _currentDeviceId = long.Parse(Encoding.UTF8.GetString(deviceIdBytes));
             var accessToken = Encoding.UTF8.GetString(tokenBytes);
 
             Http.DefaultRequestHeaders.Authorization =
@@ -592,7 +592,7 @@
         }
     }
 
-    private async Task UnlinkDevice(decimal deviceId)
+    private async Task UnlinkDevice(long deviceId)
     {
         _errorMessage = null;
         _successMessage = null;

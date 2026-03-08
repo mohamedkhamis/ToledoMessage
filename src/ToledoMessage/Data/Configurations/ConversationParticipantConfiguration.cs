@@ -9,8 +9,6 @@ public class ConversationParticipantConfiguration : IEntityTypeConfiguration<Con
     public void Configure(EntityTypeBuilder<ConversationParticipant> builder)
     {
         builder.HasKey(static cp => new { cp.ConversationId, cp.UserId });
-        builder.Property(static cp => cp.ConversationId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
-        builder.Property(static cp => cp.UserId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
         builder.Property(static cp => cp.JoinedAt).IsRequired();
         builder.Property(static cp => cp.Role).IsRequired();
         builder.HasOne(static cp => cp.Conversation)

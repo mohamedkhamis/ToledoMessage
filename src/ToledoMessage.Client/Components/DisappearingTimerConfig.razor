@@ -34,7 +34,7 @@
 </div>
 
 @code {
-    [Parameter] public decimal ConversationId { get; set; }
+    [Parameter] public long ConversationId { get; set; }
     [Parameter] public int? CurrentTimer { get; set; }
     [Parameter] public EventCallback<int?> OnTimerChanged { get; set; }
 

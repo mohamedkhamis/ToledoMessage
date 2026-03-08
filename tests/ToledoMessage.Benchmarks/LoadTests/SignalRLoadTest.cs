@@ -120,7 +120,7 @@ public static class SignalRLoadTest
             {
                 // RegisterDevice with an invalid deviceId is fast and exercises
                 // the full hub dispatch path without requiring real crypto state.
-                await conn.InvokeAsync("RegisterDevice", 0m, context.ScenarioCancellationToken);
+                await conn.InvokeAsync("RegisterDevice", 0L, context.ScenarioCancellationToken);
                 return Response.Ok();
             }
             catch

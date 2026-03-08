@@ -78,7 +78,7 @@ else if (_searchResults is not null && _searchResults.Count == 0 && !string.IsNu
     }
 
     private bool _isCreating;
-    private decimal? _creatingUserId;
+    private long? _creatingUserId;
     private List<UserSearchResult>? _searchResults;
     private CancellationTokenSource? _debounceCts;
 

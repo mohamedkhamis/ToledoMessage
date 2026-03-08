@@ -3,8 +3,8 @@ namespace ToledoMessage.Models;
 public class EncryptedKeyBackup
 {
     // ReSharper disable  NullableWarningSuppressionIsUsed
-    public decimal Id { get; set; }
-    public decimal UserId { get; set; }
+    public long Id { get; set; }
+    public long UserId { get; set; }
     public byte[] EncryptedBlob { get; set; } = [];
     public byte[] Salt { get; set; } = [];
     public byte[] Nonce { get; set; } = [];

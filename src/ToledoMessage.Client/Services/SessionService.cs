@@ -22,7 +22,7 @@ public class SessionService(HttpClient http, LocalStorageService storage)
     /// <param name="userId">The remote user's ID (used for the API route).</param>
     /// <param name="deviceId">The remote device's ID.</param>
     /// <returns>A tuple of the ready-to-use <see cref="DoubleRatchet"/> session and the X3DH initiation result.</returns>
-    public async Task<(DoubleRatchet session, X3dhInitiator.InitiationResult initiationResult)> EstablishSessionAsync(decimal userId, decimal deviceId)
+    public async Task<(DoubleRatchet session, X3dhInitiator.InitiationResult initiationResult)> EstablishSessionAsync(long userId, long deviceId)
     {
         // 1. Fetch pre-key bundle from server
         var bundleResponse = await http.GetFromJsonAsync<PreKeyBundleResponse>(
@@ -64,7 +64,7 @@ public class SessionService(HttpClient http, LocalStorageService storage)
         byte[] ephemeralPublicKey,
         byte[] kemCiphertext,
         int? usedOneTimePreKeyId,
-        decimal senderDeviceId)
+        long senderDeviceId)
     {
         // 1. Load private keys from local storage
         var signedPreKeyPrivate = await storage.GetAsync("signedPreKey.private")
@@ -103,7 +103,7 @@ public class SessionService(HttpClient http, LocalStorageService storage)
     /// Loads an existing session for the specified remote device, if one exists.
     /// </summary>
     /// <returns>The restored <see cref="DoubleRatchet"/> session, or null if no session exists.</returns>
-    public async Task<DoubleRatchet?> LoadSessionAsync(decimal deviceId)
+    public async Task<DoubleRatchet?> LoadSessionAsync(long deviceId)
     {
         var stateBytes = await storage.GetAsync(SessionKey(deviceId));
         if (stateBytes is null)
@@ -120,7 +120,7 @@ public class SessionService(HttpClient http, LocalStorageService storage)
     /// <summary>
     /// Persists the current session state for the specified remote device.
     /// </summary>
-    public async Task SaveSessionAsync(decimal deviceId, RatchetState state)
+    public async Task SaveSessionAsync(long deviceId, RatchetState state)
     {
         var stateJson = JsonSerializer.Serialize(state);
         var stateBytes = Encoding.UTF8.GetBytes(stateJson);
@@ -130,7 +130,7 @@ public class SessionService(HttpClient http, LocalStorageService storage)
     /// <summary>
     /// Checks whether a session already exists for the specified remote device.
     /// </summary>
-    public Task<bool> HasSessionAsync(decimal deviceId)
+    public Task<bool> HasSessionAsync(long deviceId)
     {
         return storage.ContainsKeyAsync(SessionKey(deviceId));
     }
@@ -156,7 +156,7 @@ public class SessionService(HttpClient http, LocalStorageService storage)
         };
     }
 
-    private static string SessionKey(decimal deviceId)
+    private static string SessionKey(long deviceId)
     {
         return $"session.{deviceId}";
     }

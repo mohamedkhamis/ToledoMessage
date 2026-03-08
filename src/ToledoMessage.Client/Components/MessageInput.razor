@@ -636,7 +636,7 @@
         public ContentType ContentType { get; set; } = ContentType.Text;
         public bool SendAsHd { get; set; }
         public bool HasMedia => MediaBytes is not null;
-        public decimal? ReplyToMessageId { get; set; }
+        public long? ReplyToMessageId { get; set; }
     }
 
     public async ValueTask DisposeAsync()
@@ -655,7 +655,7 @@
 
     public sealed class ReplyContextModel
     {
-        public decimal MessageId { get; set; }
+        public long MessageId { get; set; }
         public string SenderName { get; set; } = "";
         public string Text { get; set; } = "";
     }

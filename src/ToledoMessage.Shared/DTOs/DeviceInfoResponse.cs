@@ -1,7 +1,7 @@
 namespace ToledoMessage.Shared.DTOs;
 
 public sealed record DeviceInfoResponse(
-    decimal DeviceId,
+    long DeviceId,
     string DeviceName,
     DateTimeOffset CreatedAt,
     DateTimeOffset LastSeenAt);

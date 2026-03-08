@@ -111,7 +111,7 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
                 .Where(static c => c.Type == ConversationType.OneToOne)
                 .Where(c => c.Participants.Any(p => p.UserId == userId))
                 .Where(c => c.Participants.Any(p => p.UserId == request.ParticipantUserId))
-                .Select(static c => (decimal?)c.Id)
+                .Select(static c => (long?)c.Id)
                 .FirstOrDefaultAsync();
 
             if (existingConversationId.HasValue)
@@ -121,7 +121,7 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
             }
 
             // Create new conversation
-            var conversationId = DecimalTools.GetNewId();
+            var conversationId = IdGenerator.GetNewId();
             var now = DateTimeOffset.UtcNow;
 
             var conversation = new Conversation
@@ -163,7 +163,7 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
                 .Where(static c => c.Type == ConversationType.OneToOne)
                 .Where(c => c.Participants.Any(p => p.UserId == userId))
                 .Where(c => c.Participants.Any(p => p.UserId == request.ParticipantUserId))
-                .Select(static c => (decimal?)c.Id)
+                .Select(static c => (long?)c.Id)
                 .FirstOrDefaultAsync();
 
             if (existingId.HasValue)
@@ -212,7 +212,7 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
         if (activeUserCount != participantIds.Count)
             return BadRequest("One or more participants do not exist or are inactive.");
 
-        var conversationId = DecimalTools.GetNewId();
+        var conversationId = IdGenerator.GetNewId();
         var now = DateTimeOffset.UtcNow;
 
         var conversation = new Conversation
@@ -255,7 +255,7 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
     /// Add a participant to a group conversation. Only Admins may add participants.
     /// </summary>
     [HttpPost("{conversationId}/participants")]
-    public async Task<IActionResult> AddParticipant(decimal conversationId, [FromBody] AddParticipantRequest request)
+    public async Task<IActionResult> AddParticipant(long conversationId, [FromBody] AddParticipantRequest request)
     {
         var userId = GetUserId();
 
@@ -311,7 +311,7 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
     /// Admins can remove any member. Any user can remove themselves (leave the group).
     /// </summary>
     [HttpDelete("{conversationId}/participants/{targetUserId}")]
-    public async Task<IActionResult> RemoveParticipant(decimal conversationId, decimal targetUserId)
+    public async Task<IActionResult> RemoveParticipant(long conversationId, long targetUserId)
     {
         var userId = GetUserId();
 
@@ -348,7 +348,7 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
     /// Get conversation details including type, group name, and participant count.
     /// </summary>
     [HttpGet("{conversationId}")]
-    public async Task<IActionResult> GetConversation(decimal conversationId)
+    public async Task<IActionResult> GetConversation(long conversationId)
     {
         var userId = GetUserId();
 
@@ -380,7 +380,7 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
     /// Get the list of participants in a conversation.
     /// </summary>
     [HttpGet("{conversationId}/participants")]
-    public async Task<IActionResult> GetParticipants(decimal conversationId)
+    public async Task<IActionResult> GetParticipants(long conversationId)
     {
         var userId = GetUserId();
 
@@ -404,7 +404,7 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
     /// Only participants may change the timer.
     /// </summary>
     [HttpPut("{conversationId}/timer")]
-    public async Task<IActionResult> SetTimer(decimal conversationId, [FromBody] SetTimerRequest request)
+    public async Task<IActionResult> SetTimer(long conversationId, [FromBody] SetTimerRequest request)
     {
         var userId = GetUserId();
 

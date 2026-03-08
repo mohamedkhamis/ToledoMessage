@@ -10,7 +10,7 @@ namespace ToledoMessage.Services;
 
 public class AccountDeletionService(ApplicationDbContext db, ILogger<AccountDeletionService> logger)
 {
-    public async Task<DateTimeOffset> InitiateDeletionAsync(decimal userId)
+    public async Task<DateTimeOffset> InitiateDeletionAsync(long userId)
     {
         var user = await db.Users.FindAsync(userId)
                    ?? throw new InvalidOperationException("User not found.");
@@ -24,7 +24,7 @@ public class AccountDeletionService(ApplicationDbContext db, ILogger<AccountDele
         return user.DeletionRequestedAt.Value;
     }
 
-    public async Task CancelDeletionAsync(decimal userId)
+    public async Task CancelDeletionAsync(long userId)
     {
         var user = await db.Users.FindAsync(userId);
         if (user?.DeletionRequestedAt is not null)

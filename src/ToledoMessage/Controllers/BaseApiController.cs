@@ -14,12 +14,11 @@ public abstract class BaseApiController : ControllerBase
     /// Extracts the authenticated user's ID from the JWT claims.
     /// Throws if no valid claim is present (should only be called from [Authorize] endpoints).
     /// </summary>
-    protected decimal GetUserId()
+    protected long GetUserId()
     {
         var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
                   ?? User.FindFirstValue("sub");
-        // BUG-CR-005 FIX: Throw if claim missing or invalid
-        if (sub == null || !decimal.TryParse(sub, out var userId))
+        if (sub == null || !long.TryParse(sub, out var userId))
             throw new UnauthorizedAccessException("Invalid user identity claim");
 
         return userId;
@@ -29,11 +28,11 @@ public abstract class BaseApiController : ControllerBase
     /// Tries to extract the authenticated user's ID from the JWT claims.
     /// Returns false if no valid claim is present.
     /// </summary>
-    protected bool TryGetUserId(out decimal userId)
+    protected bool TryGetUserId(out long userId)
     {
         userId = 0;
         var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
                   ?? User.FindFirstValue("sub");
-        return sub != null && decimal.TryParse(sub, out userId);
+        return sub != null && long.TryParse(sub, out userId);
     }
 }

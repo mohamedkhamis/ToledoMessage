@@ -17,12 +17,12 @@ public class AccountDeletionServiceTests
     public async Task InitiateDeletionAsync_SetsDeletionRequestedAt()
     {
         var db = TestDbContextFactory.Create();
-        await TestDbContextFactory.SeedUser(db, 1m);
+        await TestDbContextFactory.SeedUser(db, 1L);
         var service = CreateService(db);
 
-        var result = await service.InitiateDeletionAsync(1m);
+        var result = await service.InitiateDeletionAsync(1L);
 
-        var user = await db.Users.FindAsync(1m);
+        var user = await db.Users.FindAsync(1L);
         Assert.IsNotNull(user!.DeletionRequestedAt);
         Assert.AreEqual(result, user.DeletionRequestedAt.Value);
     }
@@ -34,21 +34,21 @@ public class AccountDeletionServiceTests
         var service = CreateService(db);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.InitiateDeletionAsync(999m));
+            () => service.InitiateDeletionAsync(999L));
     }
 
     [TestMethod]
     public async Task CancelDeletionAsync_ClearsDeletionRequestedAt()
     {
         var db = TestDbContextFactory.Create();
-        var user = await TestDbContextFactory.SeedUser(db, 1m);
+        var user = await TestDbContextFactory.SeedUser(db, 1L);
         user.DeletionRequestedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync();
 
         var service = CreateService(db);
-        await service.CancelDeletionAsync(1m);
+        await service.CancelDeletionAsync(1L);
 
-        var refreshedUser = await db.Users.FindAsync(1m);
+        var refreshedUser = await db.Users.FindAsync(1L);
         Assert.IsNull(refreshedUser!.DeletionRequestedAt);
     }
 
@@ -56,13 +56,13 @@ public class AccountDeletionServiceTests
     public async Task CancelDeletionAsync_NoDeletionPending_DoesNothing()
     {
         var db = TestDbContextFactory.Create();
-        await TestDbContextFactory.SeedUser(db, 1m);
+        await TestDbContextFactory.SeedUser(db, 1L);
         var service = CreateService(db);
 
         // Should not throw
-        await service.CancelDeletionAsync(1m);
+        await service.CancelDeletionAsync(1L);
 
-        var user = await db.Users.FindAsync(1m);
+        var user = await db.Users.FindAsync(1L);
         Assert.IsNull(user!.DeletionRequestedAt);
     }
 
@@ -73,15 +73,15 @@ public class AccountDeletionServiceTests
         var service = CreateService(db);
 
         // Should not throw
-        await service.CancelDeletionAsync(999m);
+        await service.CancelDeletionAsync(999L);
     }
 
     [TestMethod]
     public async Task ProcessExpiredDeletionsAsync_DeactivatesExpiredAccounts()
     {
         var db = TestDbContextFactory.Create();
-        var user = await TestDbContextFactory.SeedUser(db, 1m);
-        var device = await TestDbContextFactory.SeedDevice(db, 10m, 1m);
+        var user = await TestDbContextFactory.SeedUser(db, 1L);
+        var device = await TestDbContextFactory.SeedDevice(db, 10L, 1L);
 
         // Set deletion to well past the grace period
         user.DeletionRequestedAt = DateTimeOffset.UtcNow.AddDays(-(ProtocolConstants.AccountDeletionGracePeriodDays + 1));
@@ -90,10 +90,10 @@ public class AccountDeletionServiceTests
         var service = CreateService(db);
         await service.ProcessExpiredDeletionsAsync(CancellationToken.None);
 
-        var refreshedUser = await db.Users.FindAsync(1m);
+        var refreshedUser = await db.Users.FindAsync(1L);
         Assert.IsFalse(refreshedUser!.IsActive);
 
-        var refreshedDevice = await db.Devices.FindAsync(10m);
+        var refreshedDevice = await db.Devices.FindAsync(10L);
         Assert.IsFalse(refreshedDevice!.IsActive);
     }
 
@@ -101,15 +101,15 @@ public class AccountDeletionServiceTests
     public async Task ProcessExpiredDeletionsAsync_RevokesRefreshTokens()
     {
         var db = TestDbContextFactory.Create();
-        var user = await TestDbContextFactory.SeedUser(db, 1m);
+        var user = await TestDbContextFactory.SeedUser(db, 1L);
 
         user.DeletionRequestedAt = DateTimeOffset.UtcNow.AddDays(-(ProtocolConstants.AccountDeletionGracePeriodDays + 1));
         await db.SaveChangesAsync();
 
         db.RefreshTokens.Add(new Models.RefreshToken
         {
-            Id = 100m,
-            UserId = 1m,
+            Id = 100L,
+            UserId = 1L,
             Token = "test-token",
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(30),
             CreatedAt = DateTimeOffset.UtcNow,
@@ -120,7 +120,7 @@ public class AccountDeletionServiceTests
         var service = CreateService(db);
         await service.ProcessExpiredDeletionsAsync(CancellationToken.None);
 
-        var token = await db.RefreshTokens.FindAsync(100m);
+        var token = await db.RefreshTokens.FindAsync(100L);
         Assert.IsTrue(token!.IsRevoked);
     }
 
@@ -128,7 +128,7 @@ public class AccountDeletionServiceTests
     public async Task ProcessExpiredDeletionsAsync_SkipsAccountsWithinGracePeriod()
     {
         var db = TestDbContextFactory.Create();
-        var user = await TestDbContextFactory.SeedUser(db, 1m);
+        var user = await TestDbContextFactory.SeedUser(db, 1L);
 
         // Set deletion to only 1 day ago (within 7-day grace period)
         user.DeletionRequestedAt = DateTimeOffset.UtcNow.AddDays(-1);
@@ -137,7 +137,7 @@ public class AccountDeletionServiceTests
         var service = CreateService(db);
         await service.ProcessExpiredDeletionsAsync(CancellationToken.None);
 
-        var refreshedUser = await db.Users.FindAsync(1m);
+        var refreshedUser = await db.Users.FindAsync(1L);
         Assert.IsTrue(refreshedUser!.IsActive); // Should still be active
     }
 
@@ -145,7 +145,7 @@ public class AccountDeletionServiceTests
     public async Task ProcessExpiredDeletionsAsync_SkipsAlreadyDeactivated()
     {
         var db = TestDbContextFactory.Create();
-        var user = await TestDbContextFactory.SeedUser(db, 1m, isActive: false);
+        var user = await TestDbContextFactory.SeedUser(db, 1L, isActive: false);
         user.DeletionRequestedAt = DateTimeOffset.UtcNow.AddDays(-30);
         await db.SaveChangesAsync();
 

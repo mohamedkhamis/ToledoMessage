@@ -58,7 +58,7 @@ public class KeyBackupController(ApplicationDbContext db) : BaseApiController
         {
             db.EncryptedKeyBackups.Add(new EncryptedKeyBackup
             {
-                Id = DecimalTools.GetNewId(),
+                Id = IdGenerator.GetNewId(),
                 UserId = userId,
                 EncryptedBlob = blob,
                 Salt = salt,

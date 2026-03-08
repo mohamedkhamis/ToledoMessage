@@ -4,8 +4,8 @@ public class OneTimePreKey
 {
     // ReSharper disable  NullableWarningSuppressionIsUsed
 
-    public decimal Id { get; set; }
-    public decimal DeviceId { get; set; }
+    public long Id { get; set; }
+    public long DeviceId { get; set; }
     public int KeyId { get; set; }
     public byte[] PublicKey { get; set; } = [];
     public bool IsUsed { get; set; }

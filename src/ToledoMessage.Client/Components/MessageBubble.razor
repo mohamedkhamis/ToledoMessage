@@ -331,7 +331,7 @@
     }
 
     [Parameter]
-    public decimal MessageId { get; set; }
+    public long MessageId { get; set; }
 
     [Parameter, EditorRequired]
     public string Text { get; set; } = "";
@@ -379,7 +379,7 @@
     public EventCallback<(double X, double Y)> OnContextMenu { get; set; }
 
     [Parameter]
-    public decimal? ReplyToMessageId { get; set; }
+    public long? ReplyToMessageId { get; set; }
 
     [Parameter]
     public string? ReplyToSenderName { get; set; }
@@ -397,7 +397,7 @@
     public ContentType ReplyToContentType { get; set; } = ContentType.Text;
 
     [Parameter]
-    public EventCallback<decimal> OnReplyQuoteClick { get; set; }
+    public EventCallback<long> OnReplyQuoteClick { get; set; }
 
     [Parameter]
     public List<ReactionBadgeModel> ReactionBadges { get; set; } = [];

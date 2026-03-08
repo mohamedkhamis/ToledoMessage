@@ -98,7 +98,7 @@ public class AuthControllerTests
     public async Task Register_DuplicateUsername_ReturnsConflict()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "existing");
+        await TestDbContextFactory.SeedUser(db, 1L, "existing");
 
         var result = await controller.Register(new RegisterRequest("existing", "Existing User", "MySecurePass12"));
         Assert.IsInstanceOfType<ConflictObjectResult>(result);
@@ -265,8 +265,8 @@ public class AuthControllerTests
     public async Task DeleteAccount_Authenticated_ReturnsOk()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 42m, "deleteuser");
-        TestDbContextFactory.SetUser(controller, 42m, "deleteuser");
+        await TestDbContextFactory.SeedUser(db, 42L, "deleteuser");
+        TestDbContextFactory.SetUser(controller, 42L, "deleteuser");
 
         var result = await controller.DeleteAccount();
 
@@ -279,7 +279,7 @@ public class AuthControllerTests
 #pragma warning restore MSTEST0037
 
 #pragma warning disable MSTEST0049
-        var user = await db.Users.FindAsync(42m);
+        var user = await db.Users.FindAsync(42L);
 #pragma warning restore MSTEST0049
         if (user != null) Assert.IsNotNull(user.DeletionRequestedAt);
     }
@@ -385,7 +385,7 @@ public class AuthControllerTests
         // Manually add an expired token for this user
         db.RefreshTokens.Add(new RefreshToken
         {
-            Id = 999m,
+            Id = 999L,
             UserId = authResponse.UserId,
             Token = "expired-token",
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(-1), // Already expired

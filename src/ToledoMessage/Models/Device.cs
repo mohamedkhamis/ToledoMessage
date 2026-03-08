@@ -4,8 +4,8 @@ public class Device
 {
     // ReSharper disable  NullableWarningSuppressionIsUsed
 
-    public decimal Id { get; set; }
-    public decimal UserId { get; set; }
+    public long Id { get; set; }
+    public long UserId { get; set; }
     public string DeviceName { get; set; } = string.Empty;
     public byte[] IdentityPublicKeyClassical { get; set; } = [];
     public byte[] IdentityPublicKeyPostQuantum { get; set; } = [];

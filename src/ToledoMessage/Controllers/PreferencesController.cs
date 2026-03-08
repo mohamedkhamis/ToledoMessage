@@ -60,7 +60,7 @@ public class PreferencesController(ApplicationDbContext db) : BaseApiController
         {
             prefs = new UserPreferences
             {
-                Id = DecimalTools.GetNewId(),
+                Id = IdGenerator.GetNewId(),
                 UserId = userId,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow

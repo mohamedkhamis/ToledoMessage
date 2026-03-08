@@ -9,9 +9,6 @@ public class MessageReactionConfiguration : IEntityTypeConfiguration<MessageReac
     public void Configure(EntityTypeBuilder<MessageReaction> builder)
     {
         builder.HasKey(static r => r.Id);
-        builder.Property(static r => r.Id).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
-        builder.Property(static r => r.MessageId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
-        builder.Property(static r => r.UserId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
         builder.Property(static r => r.Emoji).IsRequired().HasMaxLength(32);
         builder.Property(static r => r.CreatedAt).IsRequired();
 

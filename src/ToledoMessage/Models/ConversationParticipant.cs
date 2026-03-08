@@ -4,8 +4,8 @@ namespace ToledoMessage.Models;
 
 public class ConversationParticipant
 {
-    public decimal ConversationId { get; set; }
-    public decimal UserId { get; set; }
+    public long ConversationId { get; set; }
+    public long UserId { get; set; }
     public DateTimeOffset JoinedAt { get; set; }
     public ParticipantRole Role { get; set; }
 

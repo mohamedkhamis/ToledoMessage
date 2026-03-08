@@ -1,6 +1,6 @@
 namespace ToledoMessage.Shared.DTOs;
 
 public sealed record SendMessageResult(
-    decimal MessageId,
+    long MessageId,
     DateTimeOffset ServerTimestamp,
     long SequenceNumber);

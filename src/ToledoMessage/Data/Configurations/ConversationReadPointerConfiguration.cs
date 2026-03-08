@@ -9,8 +9,6 @@ public class ConversationReadPointerConfiguration : IEntityTypeConfiguration<Con
     public void Configure(EntityTypeBuilder<ConversationReadPointer> builder)
     {
         builder.HasKey(static p => new { p.UserId, p.ConversationId });
-        builder.Property(static p => p.UserId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
-        builder.Property(static p => p.ConversationId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
         builder.Property(static p => p.LastReadSequenceNumber).IsRequired().HasDefaultValue(0L);
         builder.Property(static p => p.UnreadCount).IsRequired().HasDefaultValue(0);
 

@@ -22,14 +22,14 @@ public class CryptoService(
     /// Caches X3DH InitiationResults per device for embedding in PreKeyMessages.
     /// Consumed on first encrypt, then removed (subsequent messages are NormalMessages).
     /// </summary>
-    private readonly Dictionary<decimal, X3dhInitiator.InitiationResult> _pendingInitiationResults = new();
+    private readonly Dictionary<long, X3dhInitiator.InitiationResult> _pendingInitiationResults = new();
 
     /// <summary>
     /// Ensures an encrypted session exists with the specified remote device.
     /// If no session exists, establishes one via the X3DH protocol and caches
     /// the InitiationResult for embedding in the first (PreKey) message.
     /// </summary>
-    public async Task EstablishSessionAsync(decimal userId, decimal deviceId)
+    public async Task EstablishSessionAsync(long userId, long deviceId)
     {
         var hasSession = await sessionService.HasSessionAsync(deviceId);
         if (!hasSession)
@@ -46,7 +46,7 @@ public class CryptoService(
     /// </summary>
     /// <returns>Tuple of (base64 ciphertext, MessageType).</returns>
     public async Task<(string ciphertextBase64, MessageType messageType)> EncryptBytesAsync(
-        decimal recipientDeviceId, byte[] data)
+        long recipientDeviceId, byte[] data)
     {
         var session = await sessionService.LoadSessionAsync(recipientDeviceId)
                       ?? throw new InvalidOperationException(
@@ -87,7 +87,7 @@ public class CryptoService(
     /// session using the embedded X3DH handshake data, then decrypts.
     /// </summary>
     public async Task<byte[]> DecryptToBytesAsync(
-        decimal senderDeviceId, string ciphertextBase64, MessageType messageType)
+        long senderDeviceId, string ciphertextBase64, MessageType messageType)
     {
         var ciphertextWithHeader = Convert.FromBase64String(ciphertextBase64);
 
@@ -126,8 +126,8 @@ public class CryptoService(
     /// Encrypts a plaintext message for all active devices of a recipient user.
     /// Returns a list of (deviceId, ciphertextBase64, messageType) tuples.
     /// </summary>
-    public async Task<List<(decimal deviceId, string ciphertextBase64, MessageType messageType)>> EncryptMessageForAllDevicesAsync(
-        decimal recipientUserId, string plaintext)
+    public async Task<List<(long deviceId, string ciphertextBase64, MessageType messageType)>> EncryptMessageForAllDevicesAsync(
+        long recipientUserId, string plaintext)
     {
         var data = System.Text.Encoding.UTF8.GetBytes(plaintext);
         return await EncryptBytesForAllDevicesAsync(recipientUserId, data);
@@ -137,15 +137,15 @@ public class CryptoService(
     /// Encrypts raw bytes for all active devices of a recipient user (for media).
     /// Continues to remaining devices if one device's session establishment fails.
     /// </summary>
-    public async Task<List<(decimal deviceId, string ciphertextBase64, MessageType messageType)>> EncryptBytesForAllDevicesAsync(
-        decimal recipientUserId, byte[] data)
+    public async Task<List<(long deviceId, string ciphertextBase64, MessageType messageType)>> EncryptBytesForAllDevicesAsync(
+        long recipientUserId, byte[] data)
     {
         var devices = await http.GetFromJsonAsync<List<DeviceInfoResponse>>(
                           $"/api/users/{recipientUserId}/devices")
                       ?? throw new InvalidOperationException(
                           $"Failed to fetch devices for user {recipientUserId}.");
 
-        var results = new List<(decimal deviceId, string ciphertextBase64, MessageType messageType)>();
+        var results = new List<(long deviceId, string ciphertextBase64, MessageType messageType)>();
 
         foreach (var device in devices)
         {
@@ -174,7 +174,7 @@ public class CryptoService(
     /// Encrypts a plaintext message for all participants in a group conversation.
     /// </summary>
     public async Task<List<SendMessageRequest>> EncryptGroupMessageAsync(
-        decimal conversationId, decimal selfUserId, decimal senderDeviceId, string plaintext)
+        long conversationId, long selfUserId, long senderDeviceId, string plaintext)
     {
         return await EncryptGroupBytesAsync(
             conversationId, selfUserId, senderDeviceId,
@@ -185,7 +185,7 @@ public class CryptoService(
     /// Encrypts raw bytes (media) for all participants in a group conversation.
     /// </summary>
     public async Task<List<SendMessageRequest>> EncryptGroupBytesAsync(
-        decimal conversationId, decimal selfUserId, decimal senderDeviceId,
+        long conversationId, long selfUserId, long senderDeviceId,
         byte[] data, ContentType contentType, string? fileName, string? mimeType)
     {
         var participants = await http.GetFromJsonAsync<List<ParticipantResponse>>(

@@ -36,6 +36,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 
 // Application services
+builder.Services.AddScoped<ToledoMessage.Filters.TransactionFilter>();
 builder.Services.AddScoped<PreKeyService>();
 builder.Services.AddScoped<MessageRelayService>();
 builder.Services.AddScoped<AccountDeletionService>();
@@ -116,6 +117,7 @@ builder.Services.AddSignalR(static options =>
 builder.Services.AddControllers(static options =>
 {
     options.Filters.Add<ToledoMessage.Filters.UnauthorizedExceptionFilter>();
+    options.Filters.AddService<ToledoMessage.Filters.TransactionFilter>();
 }).AddJsonOptions(static options =>
 {
     options.JsonSerializerOptions.Converters.Add(new LongToStringConverter());
@@ -162,7 +164,7 @@ var localizationOptions = new RequestLocalizationOptions()
 app.UseRequestLocalization(localizationOptions);
 
 // Security headers
-app.Use(async (context, next) =>
+app.Use(static async (context, next) =>
 {
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
     context.Response.Headers["X-Frame-Options"] = "DENY";

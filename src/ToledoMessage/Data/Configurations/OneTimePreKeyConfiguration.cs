@@ -9,6 +9,7 @@ public class OneTimePreKeyConfiguration : IEntityTypeConfiguration<OneTimePreKey
     public void Configure(EntityTypeBuilder<OneTimePreKey> builder)
     {
         builder.HasKey(static k => k.Id);
+        builder.Property(static k => k.Id).ValueGeneratedNever();
         builder.HasIndex(static k => new { k.DeviceId, k.KeyId }).IsUnique();
         builder.Property(static k => k.PublicKey).IsRequired();
         builder.Property(static k => k.IsUsed).IsRequired().HasDefaultValue(false);

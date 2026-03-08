@@ -34,7 +34,9 @@ public class UsersController(ApplicationDbContext db, PreKeyService preKeyServic
         var qLower = q.ToLower();
         var users = await db.Users
             .Where(u => u.IsActive && u.Id != userId &&
-                        (u.Username.ToLower().Contains(qLower) || u.DisplayName.ToLower().Contains(qLower)))
+                        (u.Username.ToLower().Contains(qLower) ||
+                         u.DisplayName.ToLower().Contains(qLower) ||
+                         (u.DisplayNameSecondary != null && u.DisplayNameSecondary.ToLower().Contains(qLower))))
             .OrderBy(static u => u.Username)
             .Skip(skip)
             .Take(take)
@@ -42,7 +44,8 @@ public class UsersController(ApplicationDbContext db, PreKeyService preKeyServic
                 u.Id,
                 u.Username,
                 u.DisplayName,
-                u.Devices.Count(static d => d.IsActive)))
+                u.Devices.Count(static d => d.IsActive),
+                u.DisplayNameSecondary))
             .ToListAsync();
 
         return Ok(new UserSearchResponse(users));
@@ -93,5 +96,4 @@ public class UsersController(ApplicationDbContext db, PreKeyService preKeyServic
 
         return Ok(devices);
     }
-
 }

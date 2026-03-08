@@ -429,6 +429,117 @@ function Start-IISSite {
     Write-Ok "App pool and site started"
 }
 
+function Setup-SqlLogin {
+    param(
+        [string]$PoolName,
+        [string]$ConnStr
+    )
+
+    Write-Step "Setting up SQL Server login for IIS AppPool\$PoolName..."
+
+    # Parse server name from connection string
+    $serverName = "."
+    if ($ConnStr -match "Server=([^;]+)") { $serverName = $Matches[1] }
+
+    # Parse database name from connection string
+    $dbName = "ToledoMessage"
+    if ($ConnStr -match "Database=([^;]+)") { $dbName = $Matches[1] }
+
+    $identity = "IIS AppPool\$PoolName"
+
+    # Check if sqlcmd is available
+    $sqlcmd = Get-Command sqlcmd -ErrorAction SilentlyContinue
+    if (-not $sqlcmd) {
+        # Try the new go-sqlcmd or the path-based one
+        $sqlcmdPaths = @(
+            "$env:ProgramFiles\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\SQLCMD.EXE",
+            "$env:ProgramFiles\Microsoft SQL Server\Client SDK\ODBC\130\Tools\Binn\SQLCMD.EXE",
+            "$env:ProgramFiles\Microsoft SQL Server\110\Tools\Binn\SQLCMD.EXE"
+        )
+        foreach ($p in $sqlcmdPaths) {
+            if (Test-Path $p) { $sqlcmd = $p; break }
+        }
+    } else {
+        $sqlcmd = $sqlcmd.Source
+    }
+
+    if (-not $sqlcmd) {
+        Write-Warn "sqlcmd not found. Trying Invoke-Sqlcmd (SqlServer module)..."
+
+        # Fallback: use Invoke-Sqlcmd if available
+        if (Get-Command Invoke-Sqlcmd -ErrorAction SilentlyContinue) {
+            try {
+                # Create login (ignore error if exists)
+                Invoke-Sqlcmd -ServerInstance $serverName -Database "master" -Query @"
+IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'$identity')
+    CREATE LOGIN [$identity] FROM WINDOWS;
+"@ -ErrorAction Stop
+
+                # Ensure database exists (EF Migrate will create it, but we need it for the user grant)
+                Invoke-Sqlcmd -ServerInstance $serverName -Database "master" -Query @"
+IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = N'$dbName')
+    CREATE DATABASE [$dbName];
+"@ -ErrorAction Stop
+
+                # Create user and grant db_owner
+                Invoke-Sqlcmd -ServerInstance $serverName -Database $dbName -Query @"
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'$identity')
+    CREATE USER [$identity] FOR LOGIN [$identity];
+IF NOT IS_ROLEMEMBER('db_owner', N'$identity') = 1
+    ALTER ROLE [db_owner] ADD MEMBER [$identity];
+"@ -ErrorAction Stop
+
+                Write-Ok "SQL Server login and permissions configured via Invoke-Sqlcmd"
+                return
+            } catch {
+                Write-Warn "Invoke-Sqlcmd failed: $_"
+            }
+        }
+
+        Write-Warn "Cannot auto-configure SQL Server. Please run manually:"
+        Write-Host ""
+        Write-Host "    USE [master]" -ForegroundColor White
+        Write-Host "    CREATE LOGIN [$identity] FROM WINDOWS;" -ForegroundColor White
+        Write-Host "    USE [$dbName]" -ForegroundColor White
+        Write-Host "    CREATE USER [$identity] FOR LOGIN [$identity];" -ForegroundColor White
+        Write-Host "    ALTER ROLE [db_owner] ADD MEMBER [$identity];" -ForegroundColor White
+        Write-Host ""
+        return
+    }
+
+    # Use sqlcmd
+    $sql = @"
+USE [master];
+IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'$identity')
+    CREATE LOGIN [$identity] FROM WINDOWS;
+
+IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = N'$dbName')
+    CREATE DATABASE [$dbName];
+GO
+
+USE [$dbName];
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'$identity')
+    CREATE USER [$identity] FOR LOGIN [$identity];
+
+IF IS_ROLEMEMBER('db_owner', N'$identity') = 0
+    ALTER ROLE [db_owner] ADD MEMBER [$identity];
+GO
+"@
+
+    try {
+        $result = $sql | & $sqlcmd -S $serverName -E -b 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warn "sqlcmd returned exit code $LASTEXITCODE"
+            $result | ForEach-Object { Write-Info $_ }
+        } else {
+            Write-Ok "SQL Server login and permissions configured for $identity"
+        }
+    } catch {
+        Write-Warn "sqlcmd failed: $_"
+        Write-Info "You may need to configure SQL Server permissions manually."
+    }
+}
+
 # -- Actions ---------------------------------------------------------------
 
 function Invoke-Deploy {
@@ -558,6 +669,9 @@ function Invoke-Deploy {
     # Folder permissions
     Set-FolderPermissions -Path $PublishPath -PoolName $SiteName
 
+    # Auto-setup SQL Server login for IIS app pool identity
+    Setup-SqlLogin -PoolName $SiteName -ConnStr $connStr
+
     # Start
     Start-IISSite -Name $SiteName
 
@@ -574,21 +688,6 @@ function Invoke-Deploy {
     }
     Write-Info "  HTTP:     http://localhost:$selectedPort"
     Write-Info "  Logs:     $PublishPath\logs\stdout*.log"
-    Write-Host ""
-
-    # SQL Server instructions
-    Write-Host "  -- SQL Server Setup --------------------------" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Info "  If using Windows Authentication (Trusted_Connection=True),"
-    Write-Info "  grant the IIS app pool identity access to SQL Server:"
-    Write-Host ""
-    Write-Host ('    USE [master]') -ForegroundColor White
-    Write-Host ('    CREATE LOGIN [IIS AppPool\' + $SiteName + '] FROM WINDOWS;') -ForegroundColor White
-    Write-Host ('    USE [ToledoMessage]') -ForegroundColor White
-    Write-Host ('    CREATE USER [IIS AppPool\' + $SiteName + '] FOR LOGIN [IIS AppPool\' + $SiteName + '];') -ForegroundColor White
-    Write-Host ('    ALTER ROLE [db_owner] ADD MEMBER [IIS AppPool\' + $SiteName + '];') -ForegroundColor White
-    Write-Host ""
-    Write-Info "  Run these commands in SSMS or sqlcmd."
     Write-Host ""
 }
 

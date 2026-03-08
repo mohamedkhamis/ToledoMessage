@@ -46,6 +46,11 @@
                            required aria-required="true" />
                     <label for="displayName" class="floating-label">@Loc["Display Name"]</label>
                 </div>
+                <div class="form-group floating-group">
+                    <input id="displayNameSecondary" @bind="_displayNameSecondary" class="floating-input" placeholder=" " />
+                    <label for="displayNameSecondary" class="floating-label">@Loc["Display Name (Secondary Language)"]</label>
+                    <span class="auth-hint">@Loc["Optional - shown when app language changes"]</span>
+                </div>
                 <div class="form-group floating-group" style="margin-bottom: 28px;">
                     <input id="password" type="password" @bind="_password" @bind:event="oninput"
                            @bind:after="OnPasswordChanged" class="floating-input" placeholder=" "
@@ -296,6 +301,7 @@
 @code {
     private string _username = "";
     private string _displayName = "";
+    private string _displayNameSecondary = "";
     private string _password = "";
     private string? _errorMessage;
     private bool _isLoading;
@@ -347,9 +353,13 @@
 
         try
         {
-            // 1. Register account
-            var registerRequest = new RegisterRequest(_username, _displayName, _password);
-            var response = await Http.PostAsJsonAsync("/api/auth/register", registerRequest);
+            // 1. Generate crypto keys first (before any server calls)
+            var deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+
+            // 2. Combined register + device in a single atomic request
+            var secondaryName = string.IsNullOrWhiteSpace(_displayNameSecondary) ? null : _displayNameSecondary;
+            var request = new RegisterWithDeviceRequest(_username, _displayName, _password, deviceRequest, secondaryName);
+            var response = await Http.PostAsJsonAsync("/api/auth/register-with-device", request);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -360,35 +370,17 @@
                 return;
             }
 
-            var authResponse = await response.Content.ReadFromJsonAsync<AuthResponse>();
+            var result = await response.Content.ReadFromJsonAsync<RegisterWithDeviceResponse>();
 
-            // 2. Generate crypto keys
-            var deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+            // 3. Store auth tokens and deviceId locally
+            await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(result!.Token));
+            if (result.RefreshToken is not null)
+                await Storage.StoreAsync("auth.refreshToken", Encoding.UTF8.GetBytes(result.RefreshToken));
+            await Storage.StoreAsync("local.deviceId", Encoding.UTF8.GetBytes(result.DeviceId.ToString(CultureInfo.InvariantCulture)));
 
-            // 3. Register device with pre-key bundle
+            // 4. Upload key backup if shared keys enabled (default: true)
             Http.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authResponse!.Token);
-            var deviceResponse = await Http.PostAsJsonAsync("/api/devices", deviceRequest);
-
-            if (!deviceResponse.IsSuccessStatusCode)
-            {
-                _errorMessage = Loc["Device registration failed."];
-                return;
-            }
-
-            // 4. Extract deviceId from response
-            var deviceResult = await deviceResponse.Content.ReadFromJsonAsync<DeviceRegistrationResult>();
-
-            // 5. Store auth tokens and deviceId for later use
-            await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse.Token));
-            if (authResponse.RefreshToken is not null)
-                await Storage.StoreAsync("auth.refreshToken", Encoding.UTF8.GetBytes(authResponse.RefreshToken));
-            if (deviceResult is not null)
-            {
-                await Storage.StoreAsync("local.deviceId", Encoding.UTF8.GetBytes(deviceResult.DeviceId.ToString(CultureInfo.InvariantCulture)));
-            }
-
-            // 6. Upload key backup if shared keys enabled (default: true)
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", result.Token);
             try
             {
                 var prefs = await Preferences.GetPreferencesAsync();
@@ -402,7 +394,7 @@
                 // Non-critical: backup upload failure doesn't block registration
             }
 
-            // 7. Navigate to chat
+            // 5. Navigate to chat
             Navigation.NavigateTo("/chat");
         }
         catch (Exception ex)
@@ -414,6 +406,4 @@
             _isLoading = false;
         }
     }
-
-    private sealed record DeviceRegistrationResult(long DeviceId);
 }

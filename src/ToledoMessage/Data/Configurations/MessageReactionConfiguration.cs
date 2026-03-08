@@ -9,6 +9,7 @@ public class MessageReactionConfiguration : IEntityTypeConfiguration<MessageReac
     public void Configure(EntityTypeBuilder<MessageReaction> builder)
     {
         builder.HasKey(static r => r.Id);
+        builder.Property(static r => r.Id).ValueGeneratedNever();
         builder.Property(static r => r.Emoji).IsRequired().HasMaxLength(32);
         builder.Property(static r => r.CreatedAt).IsRequired();
 

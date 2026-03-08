@@ -9,6 +9,7 @@ public class EncryptedMessageConfiguration : IEntityTypeConfiguration<EncryptedM
     public void Configure(EntityTypeBuilder<EncryptedMessage> builder)
     {
         builder.HasKey(static m => m.Id);
+        builder.Property(static m => m.Id).ValueGeneratedNever();
         builder.HasIndex(static m => new { m.RecipientDeviceId, m.IsDelivered });
         builder.HasIndex(static m => new { m.ConversationId, m.SequenceNumber }).IsUnique();
         builder.Property(static m => m.Ciphertext).IsRequired().HasColumnType("varbinary(max)");

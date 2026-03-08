@@ -4,6 +4,7 @@
 @using System.Globalization
 @using System.Text
 @using System.Text.Json
+@using ToledoMessage.Shared.Helpers
 @using ToledoMessage.Shared.Models
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -22,9 +23,10 @@
     <div class="chat-header">
         <button class="back-link back-link-desktop-hidden" @onclick="NavigateBack" aria-label="Back to conversations">&larr;</button>
         @{
+            var peer = _participants.FirstOrDefault(p => p.UserId != _localUserId);
             var headerName = _conversationDetail?.Type == ConversationType.Group
                 ? (_conversationDetail.GroupName ?? "Group")
-                : (_participants.FirstOrDefault(p => p.UserId != _localUserId)?.DisplayName ?? "Conversation");
+                : (peer is not null ? DisplayNameHelper.Resolve(peer.DisplayName, peer.DisplayNameSecondary) : "Conversation");
         }
         <AvatarInitials DisplayName="@headerName" Size="38" />
         <div>
@@ -88,7 +90,7 @@
                 @foreach (var p in _participants)
                 {
                     <span class="participant-tag">
-                        @p.DisplayName
+                        @DisplayNameHelper.Resolve(p.DisplayName, p.DisplayNameSecondary)
                         @if (p.Role == ParticipantRole.Admin)
                         {
                             <span class="participant-admin">Admin</span>
@@ -998,7 +1000,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Blob URL creation failed, using data URL fallback: {ex.Message}");
+                Console.WriteLine($@"Blob URL creation failed, using data URL fallback: {ex.Message}");
             }
 
             // Fallback to data URL if blob URL creation failed
@@ -1143,7 +1145,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to generate thumbnail: {ex.Message}");
+                Console.WriteLine($@"Failed to generate thumbnail: {ex.Message}");
             }
         }
         else if (input.ContentType == ContentType.Video)
@@ -1159,7 +1161,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to capture video frame: {ex.Message}");
+                Console.WriteLine($@"Failed to capture video frame: {ex.Message}");
             }
         }
 
@@ -1173,7 +1175,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to create sender thumbnail URL: {ex.Message}");
+                Console.WriteLine($@"Failed to create sender thumbnail URL: {ex.Message}");
             }
         }
 
@@ -1305,7 +1307,7 @@
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Failed to create thumbnail URL: {ex.Message}");
+                    Console.WriteLine($@"Failed to create thumbnail URL: {ex.Message}");
                 }
             }
 

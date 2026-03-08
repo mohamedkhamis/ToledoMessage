@@ -2497,6 +2497,10 @@ h1:focus { outline: none; }
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    max-width: 100%;
+    display: block;
+    direction: ltr;
+    text-align: start;
 }
 
 /* ============ Sidebar search ============ */
@@ -2578,7 +2582,9 @@ h1:focus { outline: none; }
     white-space: nowrap;
     flex: 1;
     min-width: 0;
-    margin-right: 8px;
+    margin-inline-end: 8px;
+    direction: ltr;
+    text-align: start;
 }
 .sidebar-item-time {
     font-size: 0.75em;

@@ -74,44 +74,32 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
         if (kyberPreKeySig.Length != ProtocolConstants.HybridSignatureSize)
             return BadRequest("Invalid Kyber pre-key signature size.");
 
-        // Wrap device creation and pre-key storage in a transaction for atomicity
-        await using var transaction = await db.Database.BeginTransactionAsync();
-        try
+        var device = new Device
         {
-            var device = new Device
-            {
-                Id = IdGenerator.GetNewId(),
-                UserId = userId,
-                DeviceName = request.DeviceName,
-                IdentityPublicKeyClassical = classicalIdentityKey,
-                IdentityPublicKeyPostQuantum = pqIdentityKey,
-                SignedPreKeyPublic = signedPreKeyPublic,
-                SignedPreKeySignature = signedPreKeySig,
-                SignedPreKeyId = request.SignedPreKeyId,
-                KyberPreKeyPublic = kyberPreKeyPublic,
-                KyberPreKeySignature = kyberPreKeySig,
-                CreatedAt = DateTimeOffset.UtcNow,
-                LastSeenAt = DateTimeOffset.UtcNow,
-                IsActive = true
-            };
+            Id = IdGenerator.GetNewId(),
+            UserId = userId,
+            DeviceName = request.DeviceName,
+            IdentityPublicKeyClassical = classicalIdentityKey,
+            IdentityPublicKeyPostQuantum = pqIdentityKey,
+            SignedPreKeyPublic = signedPreKeyPublic,
+            SignedPreKeySignature = signedPreKeySig,
+            SignedPreKeyId = request.SignedPreKeyId,
+            KyberPreKeyPublic = kyberPreKeyPublic,
+            KyberPreKeySignature = kyberPreKeySig,
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastSeenAt = DateTimeOffset.UtcNow,
+            IsActive = true
+        };
 
-            db.Devices.Add(device);
-            await db.SaveChangesAsync();
+        db.Devices.Add(device);
+        await db.SaveChangesAsync();
 
-            if (request.OneTimePreKeys is { Count: > 0 and <= ProtocolConstants.OneTimePreKeyBatchSize })
-            {
-                await preKeyService.StoreOneTimePreKeys(device.Id, request.OneTimePreKeys);
-            }
-
-            await transaction.CommitAsync();
-
-            return Created(string.Empty, new { deviceId = device.Id });
-        }
-        catch
+        if (request.OneTimePreKeys is { Count: > 0 and <= ProtocolConstants.OneTimePreKeyBatchSize })
         {
-            await transaction.RollbackAsync();
-            throw;
+            await preKeyService.StoreOneTimePreKeys(device.Id, request.OneTimePreKeys);
         }
+
+        return Created(string.Empty, new { deviceId = device.Id });
     }
 
     /// <summary>

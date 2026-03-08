@@ -127,6 +127,12 @@
   <data name="Your name shown to others" xml:space="preserve">
   <value>الاسم الذي سيظهر للآخرين</value>
 </data>
+  <data name="Display Name (Secondary Language)" xml:space="preserve">
+    <value>الاسم الظاهر (لغة ثانية)</value>
+  </data>
+  <data name="Optional - shown when app language changes" xml:space="preserve">
+    <value>اختياري - يظهر عند تغيير لغة التطبيق</value>
+  </data>
   <data name="Minimum 8 characters" xml:space="preserve">
     <value>8 أحرف على الأقل</value>
   </data>

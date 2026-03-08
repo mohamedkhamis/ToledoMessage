@@ -12,7 +12,7 @@ using ToledoMessage.Data;
 namespace ToledoMessage.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260308001813_InitialCreate")]
+    [Migration("20260308041542_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -28,10 +28,7 @@ namespace ToledoMessage.Data.Migrations
             modelBuilder.Entity("ToledoMessage.Models.Conversation", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
@@ -103,10 +100,7 @@ namespace ToledoMessage.Data.Migrations
             modelBuilder.Entity("ToledoMessage.Models.Device", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
@@ -164,10 +158,7 @@ namespace ToledoMessage.Data.Migrations
             modelBuilder.Entity("ToledoMessage.Models.EncryptedKeyBackup", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
@@ -208,10 +199,7 @@ namespace ToledoMessage.Data.Migrations
             modelBuilder.Entity("ToledoMessage.Models.EncryptedMessage", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<byte[]>("Ciphertext")
                         .IsRequired()
@@ -272,10 +260,7 @@ namespace ToledoMessage.Data.Migrations
             modelBuilder.Entity("ToledoMessage.Models.MessageReaction", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
@@ -304,10 +289,7 @@ namespace ToledoMessage.Data.Migrations
             modelBuilder.Entity("ToledoMessage.Models.OneTimePreKey", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<long>("DeviceId")
                         .HasColumnType("bigint");
@@ -335,10 +317,7 @@ namespace ToledoMessage.Data.Migrations
             modelBuilder.Entity("ToledoMessage.Models.RefreshToken", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
@@ -377,10 +356,7 @@ namespace ToledoMessage.Data.Migrations
             modelBuilder.Entity("ToledoMessage.Models.User", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
@@ -422,10 +398,7 @@ namespace ToledoMessage.Data.Migrations
             modelBuilder.Entity("ToledoMessage.Models.UserPreferences", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");

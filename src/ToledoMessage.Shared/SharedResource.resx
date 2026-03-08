@@ -127,6 +127,12 @@
   <data name="Your name shown to others" xml:space="preserve">
     <value>Your name shown to others</value>
   </data>
+  <data name="Display Name (Secondary Language)" xml:space="preserve">
+    <value>Display Name (Secondary Language)</value>
+  </data>
+  <data name="Optional - shown when app language changes" xml:space="preserve">
+    <value>Optional - shown when app language changes</value>
+  </data>
   <data name="Minimum 8 characters" xml:space="preserve">
     <value>Minimum 8 characters</value>
   </data>

@@ -56,6 +56,7 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
         var results = conversations.Select(conversation =>
             {
                 string displayName;
+                string? displayNameSecondary = null;
                 if (conversation.Type == ConversationType.Group)
                 {
                     displayName = conversation.GroupName ?? "Group";
@@ -65,6 +66,7 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
                     var otherParticipant = conversation.Participants
                         .FirstOrDefault(p => p.UserId != userId);
                     displayName = otherParticipant?.User.DisplayName ?? "Unknown";
+                    displayNameSecondary = otherParticipant?.User.DisplayNameSecondary;
                 }
 
                 lastMessageTimes.TryGetValue(conversation.Id, out var lastMessageTime);
@@ -75,7 +77,8 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
                     conversation.Type,
                     displayName,
                     lastMessageTime,
-                    unreadCount);
+                    unreadCount,
+                    DisplayNameSecondary: displayNameSecondary);
             })
             .OrderByDescending(static r => r.LastMessageTime.HasValue)
             .ThenByDescending(static r => r.LastMessageTime)
@@ -87,8 +90,7 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
     /// <summary>
     /// Create a one-to-one conversation between the requesting user and another user.
     /// Returns the existing conversation if one already exists.
-    /// Uses a transaction to prevent TOCTOU race conditions where concurrent requests
-    /// could create duplicate conversations.
+    /// Atomicity is handled by the global TransactionFilter.
     /// </summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateConversationRequest request)
@@ -102,75 +104,49 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
         if (!participantExists)
             return NotFound("Participant user not found.");
 
-        // Use a transaction to atomically check-then-create
-        await using var transaction = await db.Database.BeginTransactionAsync();
-        try
+        // Check for an existing OneToOne conversation between these two users
+        var existingConversationId = await db.Conversations
+            .Where(static c => c.Type == ConversationType.OneToOne)
+            .Where(c => c.Participants.Any(p => p.UserId == userId))
+            .Where(c => c.Participants.Any(p => p.UserId == request.ParticipantUserId))
+            .Select(static c => (long?)c.Id)
+            .FirstOrDefaultAsync();
+
+        if (existingConversationId.HasValue)
+            return Ok(new ConversationResponse(existingConversationId.Value, false));
+
+        // Create new conversation
+        var conversationId = IdGenerator.GetNewId();
+        var now = DateTimeOffset.UtcNow;
+
+        var conversation = new Conversation
         {
-            // Check for an existing OneToOne conversation between these two users
-            var existingConversationId = await db.Conversations
-                .Where(static c => c.Type == ConversationType.OneToOne)
-                .Where(c => c.Participants.Any(p => p.UserId == userId))
-                .Where(c => c.Participants.Any(p => p.UserId == request.ParticipantUserId))
-                .Select(static c => (long?)c.Id)
-                .FirstOrDefaultAsync();
+            Id = conversationId,
+            Type = ConversationType.OneToOne,
+            CreatedAt = now
+        };
 
-            if (existingConversationId.HasValue)
-            {
-                await transaction.CommitAsync();
-                return Ok(new ConversationResponse(existingConversationId.Value, false));
-            }
+        db.Conversations.Add(conversation);
 
-            // Create new conversation
-            var conversationId = IdGenerator.GetNewId();
-            var now = DateTimeOffset.UtcNow;
-
-            var conversation = new Conversation
-            {
-                Id = conversationId,
-                Type = ConversationType.OneToOne,
-                CreatedAt = now
-            };
-
-            db.Conversations.Add(conversation);
-
-            db.ConversationParticipants.Add(new ConversationParticipant
-            {
-                ConversationId = conversationId,
-                UserId = userId,
-                JoinedAt = now,
-                Role = ParticipantRole.Member
-            });
-
-            db.ConversationParticipants.Add(new ConversationParticipant
-            {
-                ConversationId = conversationId,
-                UserId = request.ParticipantUserId,
-                JoinedAt = now,
-                Role = ParticipantRole.Member
-            });
-
-            await db.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            return Created(string.Empty, new ConversationResponse(conversationId, true));
-        }
-        catch
+        db.ConversationParticipants.Add(new ConversationParticipant
         {
-            await transaction.RollbackAsync();
+            ConversationId = conversationId,
+            UserId = userId,
+            JoinedAt = now,
+            Role = ParticipantRole.Member
+        });
 
-            // If we hit a race condition, the other request won — return the existing conversation
-            var existingId = await db.Conversations
-                .Where(static c => c.Type == ConversationType.OneToOne)
-                .Where(c => c.Participants.Any(p => p.UserId == userId))
-                .Where(c => c.Participants.Any(p => p.UserId == request.ParticipantUserId))
-                .Select(static c => (long?)c.Id)
-                .FirstOrDefaultAsync();
+        db.ConversationParticipants.Add(new ConversationParticipant
+        {
+            ConversationId = conversationId,
+            UserId = request.ParticipantUserId,
+            JoinedAt = now,
+            Role = ParticipantRole.Member
+        });
 
-            if (existingId.HasValue)
-                return Ok(new ConversationResponse(existingId.Value, false));
+        await db.SaveChangesAsync();
 
-            throw;
-        }
+        return Created(string.Empty, new ConversationResponse(conversationId, true));
     }
 
     /// <summary>
@@ -393,7 +369,7 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
 
         var participants = await db.ConversationParticipants
             .Where(p => p.ConversationId == conversationId)
-            .Select(static p => new ParticipantResponse(p.UserId, p.User.DisplayName, p.Role))
+            .Select(static p => new ParticipantResponse(p.UserId, p.User.DisplayName, p.Role, p.User.DisplayNameSecondary))
             .ToListAsync();
 
         return Ok(participants);

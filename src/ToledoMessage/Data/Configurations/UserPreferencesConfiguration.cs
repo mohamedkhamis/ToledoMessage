@@ -9,6 +9,7 @@ public class UserPreferencesConfiguration : IEntityTypeConfiguration<UserPrefere
     public void Configure(EntityTypeBuilder<UserPreferences> builder)
     {
         builder.HasKey(static p => p.Id);
+        builder.Property(static p => p.Id).ValueGeneratedNever();
         builder.HasIndex(static p => p.UserId).IsUnique();
         builder.HasOne(static p => p.User).WithOne().HasForeignKey<UserPreferences>(static p => p.UserId).OnDelete(DeleteBehavior.Cascade);
         builder.Property(static p => p.Theme).HasMaxLength(50).HasDefaultValue("default");

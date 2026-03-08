@@ -15,8 +15,7 @@ namespace ToledoMessage.Data.Migrations
                 name: "Conversations",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     Type = table.Column<int>(type: "int", nullable: false),
                     GroupName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
@@ -31,8 +30,7 @@ namespace ToledoMessage.Data.Migrations
                 name: "Users",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     Username = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
                     DisplayName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     PasswordHash = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
@@ -103,8 +101,7 @@ namespace ToledoMessage.Data.Migrations
                 name: "Devices",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     UserId = table.Column<long>(type: "bigint", nullable: false),
                     DeviceName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     IdentityPublicKeyClassical = table.Column<byte[]>(type: "varbinary(max)", nullable: false),
@@ -133,8 +130,7 @@ namespace ToledoMessage.Data.Migrations
                 name: "EncryptedKeyBackups",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     UserId = table.Column<long>(type: "bigint", nullable: false),
                     EncryptedBlob = table.Column<byte[]>(type: "varbinary(max)", nullable: false),
                     Salt = table.Column<byte[]>(type: "varbinary(16)", maxLength: 16, nullable: false),
@@ -158,8 +154,7 @@ namespace ToledoMessage.Data.Migrations
                 name: "UserPreferences",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     UserId = table.Column<long>(type: "bigint", nullable: false),
                     Theme = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false, defaultValue: "default"),
                     FontSize = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "medium"),
@@ -186,8 +181,7 @@ namespace ToledoMessage.Data.Migrations
                 name: "EncryptedMessages",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     ConversationId = table.Column<long>(type: "bigint", nullable: false),
                     SenderDeviceId = table.Column<long>(type: "bigint", nullable: false),
                     RecipientDeviceId = table.Column<long>(type: "bigint", nullable: false),
@@ -227,8 +221,7 @@ namespace ToledoMessage.Data.Migrations
                 name: "OneTimePreKeys",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     DeviceId = table.Column<long>(type: "bigint", nullable: false),
                     KeyId = table.Column<int>(type: "int", nullable: false),
                     PublicKey = table.Column<byte[]>(type: "varbinary(max)", nullable: false),
@@ -249,8 +242,7 @@ namespace ToledoMessage.Data.Migrations
                 name: "RefreshTokens",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     UserId = table.Column<long>(type: "bigint", nullable: false),
                     Token = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: false),
                     DeviceId = table.Column<long>(type: "bigint", nullable: true),
@@ -278,8 +270,7 @@ namespace ToledoMessage.Data.Migrations
                 name: "MessageReactions",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     MessageId = table.Column<long>(type: "bigint", nullable: false),
                     UserId = table.Column<long>(type: "bigint", nullable: false),
                     Emoji = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),

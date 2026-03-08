@@ -9,6 +9,7 @@ public class EncryptedKeyBackupConfiguration : IEntityTypeConfiguration<Encrypte
     public void Configure(EntityTypeBuilder<EncryptedKeyBackup> builder)
     {
         builder.HasKey(static b => b.Id);
+        builder.Property(static b => b.Id).ValueGeneratedNever();
         builder.HasIndex(static b => b.UserId).IsUnique();
         builder.HasOne(static b => b.User).WithOne().HasForeignKey<EncryptedKeyBackup>(static b => b.UserId).OnDelete(DeleteBehavior.Cascade);
         builder.Property(static b => b.EncryptedBlob).IsRequired();

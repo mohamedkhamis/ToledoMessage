@@ -8,4 +8,5 @@ public sealed record ConversationListItemResponse(
     string DisplayName,
     DateTimeOffset? LastMessageTime,
     int UnreadCount,
-    string? LastMessage = null);
+    string? LastMessage = null,
+    string? DisplayNameSecondary = null);

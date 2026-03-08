@@ -29,7 +29,8 @@ public class AuthControllerTests
             })
             .Build();
         var deletionService = new AccountDeletionService(db, NullLogger<AccountDeletionService>.Instance);
-        var controller = new AuthController(db, passwordHasher, config, deletionService);
+        var preKeyService = new PreKeyService(db);
+        var controller = new AuthController(db, passwordHasher, config, deletionService, preKeyService);
         return (controller, db);
     }
 

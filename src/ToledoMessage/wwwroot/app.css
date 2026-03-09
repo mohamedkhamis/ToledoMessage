@@ -2821,85 +2821,124 @@ h1:focus { outline: none; }
     .emoji-picker-popup { max-height: 200px; }
 }
 
-/* ─── Font Size Scaling ─── */
-html[data-font-size="small"] { font-size: 13px; }
-html[data-font-size="large"] { font-size: 17px; }
-
-/* Scale all text-bearing elements so font-size setting takes effect globally */
-html[data-font-size="small"] body { font-size: 13px; }
-html[data-font-size="large"] body { font-size: 17px; }
-
-html[data-font-size="small"] .message-text,
-html[data-font-size="small"] .msg-textarea,
-html[data-font-size="small"] .sidebar-item-name,
-html[data-font-size="small"] .sidebar-item-preview,
-html[data-font-size="small"] .sidebar-user-name,
-html[data-font-size="small"] .chat-header-title,
-html[data-font-size="small"] .chat-search-input,
-html[data-font-size="small"] .reply-quote-text,
-html[data-font-size="small"] .toggle-label,
-html[data-font-size="small"] .toggle-desc,
-html[data-font-size="small"] .settings-page,
-html[data-font-size="small"] .chat-typing-indicator,
-html[data-font-size="small"] .empty-state p,
-html[data-font-size="small"] .forward-search-input,
-html[data-font-size="small"] .forward-conversation-item,
-html[data-font-size="small"] input,
-html[data-font-size="small"] textarea,
-html[data-font-size="small"] button {
-    font-size: 0.87em;
+/* ─── Font Size Scaling (CSS custom property driven) ─── */
+html {
+    --app-font-size: 15px;
+    font-size: var(--app-font-size);
 }
+body { font-size: var(--app-font-size); }
 
-html[data-font-size="large"] .message-text,
-html[data-font-size="large"] .msg-textarea,
-html[data-font-size="large"] .sidebar-item-name,
-html[data-font-size="large"] .sidebar-item-preview,
-html[data-font-size="large"] .sidebar-user-name,
-html[data-font-size="large"] .chat-header-title,
-html[data-font-size="large"] .chat-search-input,
-html[data-font-size="large"] .reply-quote-text,
-html[data-font-size="large"] .toggle-label,
-html[data-font-size="large"] .toggle-desc,
-html[data-font-size="large"] .settings-page,
-html[data-font-size="large"] .chat-typing-indicator,
-html[data-font-size="large"] .empty-state p,
-html[data-font-size="large"] .forward-search-input,
-html[data-font-size="large"] .forward-conversation-item,
-html[data-font-size="large"] input,
-html[data-font-size="large"] textarea,
-html[data-font-size="large"] button {
-    font-size: 1.13em;
-}
-
-/* ─── Font Size Selector ─── */
-.font-size-selector {
-    display: flex;
-    gap: 12px;
-    margin-top: 8px;
-}
-.font-size-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: 12px 20px;
-    border: 2px solid var(--border);
-    border-radius: var(--radius);
+/* ─── Font Size Slider ─── */
+.font-size-slider-container {
+    margin-top: 12px;
+    padding: 20px 24px 16px;
     background: var(--card-bg);
-    cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+}
+.font-size-preview {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 16px;
+    border-radius: 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    transition: font-size 0.15s ease-out;
     color: var(--text-primary);
+    line-height: 1.5;
 }
-.font-size-btn:hover {
-    border-color: var(--accent);
-}
-.font-size-btn.active {
-    border-color: var(--accent);
-    background: var(--accent-light);
-}
-.font-size-label {
-    font-size: 0.75rem;
+.font-size-preview-label {
+    display: block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
     color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+.font-size-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.font-size-slider-row .slider-icon {
+    flex-shrink: 0;
+    color: var(--text-secondary);
+    font-weight: 700;
+    user-select: none;
+}
+.font-size-slider-row .slider-icon-sm {
+    font-size: 12px;
+}
+.font-size-slider-row .slider-icon-lg {
+    font-size: 22px;
+}
+.font-size-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    outline: none;
+    transition: background 0.2s;
+    cursor: pointer;
+}
+.font-size-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 3px solid var(--bg-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+.font-size-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+}
+.font-size-slider::-webkit-slider-thumb:active {
+    transform: scale(1.25);
+    box-shadow: 0 2px 16px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.font-size-slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 3px solid var(--bg-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+.font-size-slider::-moz-range-thumb:hover {
+    transform: scale(1.15);
+}
+.font-size-slider::-moz-range-track {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+}
+.font-size-value {
+    text-align: center;
+    margin-top: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+}
+.font-size-ticks {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 12px;
+    margin-top: 4px;
+}
+.font-size-ticks span {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    opacity: 0.6;
 }
 
 /* ─── Settings Toggles ─── */

@@ -17,8 +17,12 @@ public class RateLimitMiddleware(RequestDelegate next, RateLimitService rateLimi
     [
         ("/api/auth/register", 5, TimeSpan.FromMinutes(1), false),
         ("/api/auth/login", 10, TimeSpan.FromMinutes(1), false),
+        ("/api/auth/refresh", 10, TimeSpan.FromMinutes(1), false),
+        ("/api/auth/logout", 10, TimeSpan.FromMinutes(1), false),
         ("/api/messages", 60, TimeSpan.FromMinutes(1), true),
-        ("/api/users/search", 10, TimeSpan.FromMinutes(1), true)
+        ("/api/users/search", 10, TimeSpan.FromMinutes(1), true),
+        ("/api/conversations", 30, TimeSpan.FromMinutes(1), true),
+        ("/api/devices", 20, TimeSpan.FromMinutes(1), true)
     ];
 
     public async Task InvokeAsync(HttpContext context)
@@ -36,7 +40,7 @@ public class RateLimitMiddleware(RequestDelegate next, RateLimitService rateLimi
                 continue;
 
             var key = BuildKey(context, rule.Path, rule.ByUser);
-            if (key is null)
+            if (string.IsNullOrWhiteSpace(key))
             {
                 // If we need a user key but the user is not authenticated, let the
                 // request through — the [Authorize] attribute will handle rejection.
@@ -47,6 +51,9 @@ public class RateLimitMiddleware(RequestDelegate next, RateLimitService rateLimi
             {
                 context.Response.StatusCode = (int)HttpStatusCode.TooManyRequests;
                 context.Response.ContentType = "application/json";
+                context.Response.Headers["X-RateLimit-Limit"] = rule.MaxRequests.ToString();
+                context.Response.Headers["X-RateLimit-Remaining"] = "0";
+                context.Response.Headers["Retry-After"] = ((int)rule.Window.TotalSeconds).ToString();
                 await context.Response.WriteAsync("{\"error\":\"Rate limit exceeded. Please try again later.\"}");
                 return;
             }
@@ -58,7 +65,7 @@ public class RateLimitMiddleware(RequestDelegate next, RateLimitService rateLimi
         await next(context);
     }
 
-    private static string? BuildKey(HttpContext context, string path, bool byUser)
+    private static string BuildKey(HttpContext context, string path, bool byUser)
     {
         var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
@@ -68,12 +75,10 @@ public class RateLimitMiddleware(RequestDelegate next, RateLimitService rateLimi
             var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
                          ?? context.User.FindFirstValue("sub");
 
-            // User not authenticated yet — cannot rate-limit by user
+            // Fall back to IP-based rate limiting when user not authenticated
             return string.IsNullOrEmpty(userId)
-                ? null
-                :
-                // Combine IP + UserId to rate-limit per user-IP pair
-                $"user:{userId}:ip:{ip}:{path}";
+                ? $"ip:{ip}:{path}"
+                : $"user:{userId}:ip:{ip}:{path}";
         }
 
         // Rate-limit by IP address for anonymous endpoints

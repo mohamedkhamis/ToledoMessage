@@ -8,7 +8,7 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
 builder.Services.AddLocalization();
 // Register JSON options with LongToStringConverter for HttpClient deserialization
-builder.Services.AddSingleton(_ =>
+builder.Services.AddSingleton(static _ =>
 {
     var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
     options.Converters.Add(new LongToStringConverter());
@@ -46,7 +46,7 @@ builder.Services.AddScoped<NotificationService>();
 var host = builder.Build();
 
 var js = host.Services.GetRequiredService<IJSRuntime>();
-var cultureName = await js.InvokeAsync<string>("localStorage.getItem", "app.culture") ?? "en";
+var cultureName = await js.InvokeAsync<string>("localStorage.getItem", "app.culture");
 var culture = new System.Globalization.CultureInfo(cultureName);
 System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
 System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = culture;

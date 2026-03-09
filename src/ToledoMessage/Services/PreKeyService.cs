@@ -55,6 +55,7 @@ public class PreKeyService(ApplicationDbContext db)
                 Value = deviceId
             };
             var claimed = await db.Database.SqlQueryRaw<long>(
+                // ReSharper disable once FormatStringProblem
                 """
                 WITH cte AS (
                     SELECT TOP(1) Id, IsUsed
@@ -76,9 +77,10 @@ public class PreKeyService(ApplicationDbContext db)
         // Fallback for in-memory provider (unit tests)
         var key = await db.OneTimePreKeys
             .Where(k => k.DeviceId == deviceId && !k.IsUsed)
-            .OrderBy(k => k.KeyId)
+            .OrderBy(static k => k.KeyId)
             .FirstOrDefaultAsync();
 
+        // ReSharper disable once InvertIf
         if (key != null)
         {
             key.IsUsed = true;

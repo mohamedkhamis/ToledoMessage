@@ -43,15 +43,20 @@
     </div>
 
     <h4 class="subsection-title mt-md">@Loc["Font Size"]</h4>
-    <div class="font-size-selector">
-        @foreach (var size in FontSizes)
-        {
-            <button class="font-size-btn @(_currentFontSize == size.Id ? "active" : "")"
-                    @onclick="() => SelectFontSize(size.Id)">
-                <span style="font-size:@size.Preview">A</span>
-                <span class="font-size-label">@size.Label</span>
-            </button>
-        }
+    <div class="font-size-slider-container">
+        <div class="font-size-preview" style="font-size:@(_currentFontSize)px;">
+            <span class="font-size-preview-label" style="font-size:0.7rem;">@Loc["Font Size"]</span>
+            @Loc["Ultra-Secure Messaging"]
+        </div>
+        <div class="font-size-slider-row">
+            <span class="slider-icon slider-icon-sm">A</span>
+            <input type="range" class="font-size-slider" min="12" max="20" step="1"
+                   value="@_currentFontSize"
+                   @oninput="OnFontSizeSliderInput"
+                   @onchange="OnFontSizeSliderCommit" />
+            <span class="slider-icon slider-icon-lg">A</span>
+        </div>
+        <div class="font-size-value">@(_currentFontSize)px</div>
     </div>
 
     <h4 class="subsection-title mt-md">@Loc["Language"]</h4>
@@ -305,7 +310,7 @@
     private string? _successMessage;
     private long? _unlinkingDeviceId;
     private string _currentTheme = "default";
-    private string _currentFontSize = "medium";
+    private int _currentFontSize = 15;
     private string _currentWallpaper = "default";
     private bool _notificationsEnabled = true;
     private bool _readReceiptsEnabled = true;
@@ -324,12 +329,8 @@
 
     private static readonly LanguageOption[] Languages = [new("en", "English", "🇬🇧"), new("ar", "العربية", "🇸🇦")];
 
-    private static readonly FontSizeOption[] FontSizes =
-    [
-        new("small", "Small", "12px"),
-        new("medium", "Medium", "15px"),
-        new("large", "Large", "18px"),
-    ];
+    private const int FontSizeMin = 12;
+    private const int FontSizeMax = 20;
 
     protected override void OnInitialized()
     {
@@ -384,10 +385,11 @@
                 catch { /* best effort */ }
             }
 
-            if (prefs.FontSize != _currentFontSize)
+            var serverFontSize = int.TryParse(prefs.FontSize, out var fsPx) ? fsPx : 15;
+            if (serverFontSize != _currentFontSize)
             {
-                _currentFontSize = prefs.FontSize;
-                await Theme.SetFontSizeAsync(prefs.FontSize);
+                _currentFontSize = serverFontSize;
+                await Theme.SetFontSizeAsync(serverFontSize);
             }
 
             await LoadDevices();
@@ -424,18 +426,30 @@
         }
     }
 
-    private async Task SelectFontSize(string size)
+    private async Task OnFontSizeSliderInput(ChangeEventArgs e)
     {
-        _currentFontSize = size;
-        await Theme.SetFontSizeAsync(size);
-        try
+        if (int.TryParse(e.Value?.ToString(), out var px) && px is >= FontSizeMin and <= FontSizeMax)
         {
-            await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(FontSize: size));
-            _successMessage = Loc["Font size saved."];
+            _currentFontSize = px;
+            await Theme.SetFontSizeAsync(px);
         }
-        catch
+    }
+
+    private async Task OnFontSizeSliderCommit(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var px) && px is >= FontSizeMin and <= FontSizeMax)
         {
-            // Local change still applied
+            _currentFontSize = px;
+            await Theme.SetFontSizeAsync(px);
+            try
+            {
+                await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(FontSize: px.ToString()));
+                _successMessage = Loc["Font size saved."];
+            }
+            catch
+            {
+                // Local change still applied
+            }
         }
     }
 
@@ -671,6 +685,5 @@
         };
     }
 
-    private sealed record FontSizeOption(string Id, string Label, string Preview);
     private sealed record LanguageOption(string Id, string Label, string Flag);
 }

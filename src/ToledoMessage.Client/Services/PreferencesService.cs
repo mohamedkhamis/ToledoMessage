@@ -20,7 +20,7 @@ public sealed class PreferencesService(HttpClient http)
             // Fallback to defaults if API unreachable
         }
 
-        return _cached ?? new UserPreferencesResponse("default", "medium", "en", true, true, true, true);
+        return _cached ?? new UserPreferencesResponse("default", "15", "en", true, true, true, true);
     }
 
     public async Task<UserPreferencesResponse?> UpdatePreferencesAsync(UpdatePreferencesRequest request)

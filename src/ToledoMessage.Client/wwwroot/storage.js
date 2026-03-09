@@ -43,16 +43,23 @@ window.toledoStorage = {
         return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     },
     setFontSize: function (size) {
-        if (size && size !== 'medium') {
-            localStorage.setItem('app.fontSize', size);
-            document.documentElement.setAttribute('data-font-size', size);
-        } else {
-            localStorage.removeItem('app.fontSize');
-            document.documentElement.removeAttribute('data-font-size');
+        // Accept numeric px value (12–20) or legacy string ('small'/'medium'/'large')
+        var px = parseInt(size, 10);
+        if (isNaN(px)) {
+            // Legacy migration: convert old string values to px
+            px = size === 'small' ? 13 : size === 'large' ? 17 : 15;
         }
+        localStorage.setItem('app.fontSize', String(px));
+        document.documentElement.style.setProperty('--app-font-size', px + 'px');
     },
     getFontSize: function () {
-        return localStorage.getItem('app.fontSize') || 'medium';
+        var stored = localStorage.getItem('app.fontSize');
+        if (!stored) return '15';
+        // Legacy migration
+        if (stored === 'small') return '13';
+        if (stored === 'medium') return '15';
+        if (stored === 'large') return '17';
+        return stored;
     },
     setWallpaper: function (id) {
         if (id && id !== 'default') {

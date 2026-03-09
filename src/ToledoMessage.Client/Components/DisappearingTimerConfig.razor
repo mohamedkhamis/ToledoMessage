@@ -72,7 +72,7 @@
             if (response.IsSuccessStatusCode)
             {
                 _status = timerSeconds.HasValue
-                    ? $"Disappearing timer set."
+                    ? "Disappearing timer set."
                     : "Disappearing messages disabled.";
                 _isError = false;
                 await OnTimerChanged.InvokeAsync(timerSeconds);

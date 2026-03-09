@@ -143,13 +143,6 @@
 
     private void GoBack()
     {
-        if (ConversationId.HasValue)
-        {
-            Navigation.NavigateTo($"/chat/{ConversationId.Value}");
-        }
-        else
-        {
-            Navigation.NavigateTo("/chat");
-        }
+        Navigation.NavigateTo(ConversationId.HasValue ? $"/chat/{ConversationId.Value}" : "/chat");
     }
 }

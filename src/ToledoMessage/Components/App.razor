@@ -51,11 +51,11 @@
             }
             function applyFontSize() {
                 var fs = localStorage.getItem('app.fontSize');
-                if (fs && fs !== 'medium') {
-                    document.documentElement.setAttribute('data-font-size', fs);
-                } else {
-                    document.documentElement.removeAttribute('data-font-size');
-                }
+                // Legacy migration: convert old string values to px
+                if (fs === 'small') fs = '13';
+                else if (fs === 'large') fs = '17';
+                else if (fs === 'medium' || !fs) fs = '15';
+                document.documentElement.style.setProperty('--app-font-size', fs + 'px');
             }
             function applyCulture() {
                 var c = localStorage.getItem('app.culture') || 'en';
@@ -85,14 +85,10 @@
                 if (theme && current !== theme) {
                     document.documentElement.setAttribute('data-theme', theme);
                 }
-                var fs = localStorage.getItem('app.fontSize');
-                var currentFs = document.documentElement.getAttribute('data-font-size');
-                if (fs && fs !== 'medium' && currentFs !== fs) {
-                    document.documentElement.setAttribute('data-font-size', fs);
-                }
+                applyFontSize();
                 applyCulture();
                 applying = false;
-            }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-font-size', 'lang', 'dir'] });
+            }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'lang', 'dir', 'style'] });
 
             // Loading spinner: handled by inline script right after the spinner div.
             // See comment there for the full strategy.

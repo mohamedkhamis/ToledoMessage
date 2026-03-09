@@ -190,7 +190,9 @@ public class SignalRService : IAsyncDisposable
 
         // Remove previous reconnect handler before adding a new one
         if (_reconnectedHandler is not null)
+        {
             _hubConnection.Reconnected -= _reconnectedHandler;
+        }
 
         _reconnectedHandler = async _ =>
         {
@@ -232,17 +234,6 @@ public class SignalRService : IAsyncDisposable
             throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
 
         await _hubConnection.InvokeAsync("AcknowledgeDelivery", messageId);
-    }
-
-    /// <summary>
-    /// Advances the read pointer for a conversation up to the given sequence number.
-    /// </summary>
-    public async Task AdvanceReadPointerAsync(long conversationId, long upToSequenceNumber)
-    {
-        if (_hubConnection is null)
-            throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
-
-        await _hubConnection.InvokeAsync("AdvanceReadPointer", conversationId, upToSequenceNumber);
     }
 
     /// <summary>

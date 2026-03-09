@@ -6,7 +6,7 @@ public class UserPreferences
     public long Id { get; set; }
     public long UserId { get; set; }
     public string Theme { get; set; } = "default";
-    public string FontSize { get; set; } = "medium";
+    public string FontSize { get; set; } = "15";
     public string Language { get; set; } = "en";
     public bool NotificationsEnabled { get; set; } = true;
     public bool ReadReceiptsEnabled { get; set; } = true;

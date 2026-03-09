@@ -7,10 +7,8 @@ namespace ToledoMessage.Client.Services;
 /// Safety numbers allow users to verify that they are communicating with the intended party
 /// by comparing a shared numeric fingerprint out-of-band.
 /// </summary>
-public class FingerprintService(LocalStorageService storage, HttpClient http)
+public class FingerprintService(LocalStorageService storage)
 {
-    private readonly HttpClient _http = http;
-
     /// <summary>
     /// Computes the safety number for verification with a remote device.
     /// Loads the local identity key and the cached remote identity key, then
@@ -22,14 +20,14 @@ public class FingerprintService(LocalStorageService storage, HttpClient http)
     {
         // 1. Load local identity key
         var localKey = await storage.GetAsync("identity.classical.public")
-            ?? throw new InvalidOperationException(
-                "Local identity key not found. Please register or log in first.");
+                       ?? throw new InvalidOperationException(
+                           "Local identity key not found. Please register or log in first.");
 
         // 2. Load remote device's identity key (cached during session establishment)
         var remoteKey = await storage.GetAsync($"remote.identity.{remoteDeviceId}")
-            ?? throw new InvalidOperationException(
-                $"Remote identity key for device {remoteDeviceId} not found. " +
-                "A session must be established before verifying the safety number.");
+                        ?? throw new InvalidOperationException(
+                            $"Remote identity key for device {remoteDeviceId} not found. " +
+                            "A session must be established before verifying the safety number.");
 
         // 3. Generate the safety number using both identity keys
         return FingerprintGenerator.GenerateFingerprint(localKey, remoteKey);

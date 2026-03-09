@@ -84,7 +84,7 @@ public class MessagesController(ApplicationDbContext db, MessageRelayService rel
         // Validate the device belongs to the requesting user
         var deviceOwned = await db.Devices.AnyAsync(d => d.Id == deviceId && d.UserId == userId && d.IsActive);
         if (!deviceOwned)
-            return NotFound("Device not found or does not belong to the current user.");
+            return NotFound("The requested resource was not found.");
 
         var messages = await relayService.GetPendingMessages(deviceId);
 

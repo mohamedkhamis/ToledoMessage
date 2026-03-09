@@ -25,7 +25,7 @@ public class UsersControllerTests
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<UserSearchResponse>(ok.Value);
-        var response = (UserSearchResponse)ok.Value!;
+        var response = (UserSearchResponse)ok.Value;
         Assert.IsFalse(response.Users.Any());
     }
 
@@ -37,7 +37,7 @@ public class UsersControllerTests
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<UserSearchResponse>(ok.Value);
-        var response = (UserSearchResponse)ok.Value!;
+        var response = (UserSearchResponse)ok.Value;
         Assert.IsFalse(response.Users.Any());
     }
 
@@ -54,7 +54,7 @@ public class UsersControllerTests
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<UserSearchResponse>(ok.Value);
-        var response = (UserSearchResponse)ok.Value!;
+        var response = (UserSearchResponse)ok.Value;
         Assert.AreEqual(2, response.Users.Count);
     }
 
@@ -68,7 +68,7 @@ public class UsersControllerTests
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<UserSearchResponse>(ok.Value);
-        var response = (UserSearchResponse)ok.Value!;
+        var response = (UserSearchResponse)ok.Value;
         Assert.IsFalse(response.Users.Any());
     }
 
@@ -77,13 +77,13 @@ public class UsersControllerTests
     {
         var (controller, db) = CreateController();
         await TestDbContextFactory.SeedUser(db, 1L, "currentuser");
-        await TestDbContextFactory.SeedUser(db, 2L, "inactive", isActive: false);
+        await TestDbContextFactory.SeedUser(db, 2L, "inactive", false);
 
         var result = await controller.Search("inactive");
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<UserSearchResponse>(ok.Value);
-        var response = (UserSearchResponse)ok.Value!;
+        var response = (UserSearchResponse)ok.Value;
         Assert.IsFalse(response.Users.Any());
     }
 
@@ -103,7 +103,7 @@ public class UsersControllerTests
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<PreKeyBundleResponse>(ok.Value);
-        var bundle = (PreKeyBundleResponse)ok.Value!;
+        var bundle = (PreKeyBundleResponse)ok.Value;
         Assert.AreEqual(20L, bundle.DeviceId);
         Assert.IsNotNull(bundle.OneTimePreKey);
     }
@@ -121,7 +121,7 @@ public class UsersControllerTests
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<PreKeyBundleResponse>(ok.Value);
-        var bundle = (PreKeyBundleResponse)ok.Value!;
+        var bundle = (PreKeyBundleResponse)ok.Value;
         Assert.IsNull(bundle.OneTimePreKey);
     }
 
@@ -149,7 +149,7 @@ public class UsersControllerTests
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<List<DeviceInfoResponse>>(ok.Value);
-        var devices = (List<DeviceInfoResponse>)ok.Value!;
+        var devices = (List<DeviceInfoResponse>)ok.Value;
         Assert.AreEqual(1, devices.Count);
         Assert.AreEqual("Active", devices[0].DeviceName);
     }
@@ -163,13 +163,13 @@ public class UsersControllerTests
         await TestDbContextFactory.SeedUser(db, 1L, "currentuser");
 
         // Create 60 users matching "testuser"
-        for (int i = 2; i <= 61; i++) await TestDbContextFactory.SeedUser(db, (long)i, $"testuser{i:D3}");
+        for (var i = 2; i <= 61; i++) await TestDbContextFactory.SeedUser(db, i, $"testuser{i:D3}");
 
         var result = await controller.Search("testuser");
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<UserSearchResponse>(ok.Value);
-        var response = (UserSearchResponse)ok.Value!;
+        var response = (UserSearchResponse)ok.Value;
 
         // Default take is 50
         Assert.AreEqual(50, response.Users.Count);
@@ -188,7 +188,7 @@ public class UsersControllerTests
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<UserSearchResponse>(ok.Value);
-        var response = (UserSearchResponse)ok.Value!;
+        var response = (UserSearchResponse)ok.Value;
 
         Assert.AreEqual(2, response.Users.Count);
     }
@@ -202,11 +202,12 @@ public class UsersControllerTests
         await TestDbContextFactory.SeedUser(db, 3L, "alice2");
         await TestDbContextFactory.SeedUser(db, 4L, "alice3");
 
+        // ReSharper disable  ArgumentsStyleLiteral
         var result = await controller.Search("alice", skip: 1, take: 10);
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<UserSearchResponse>(ok.Value);
-        var response = (UserSearchResponse)ok.Value!;
+        var response = (UserSearchResponse)ok.Value;
 
         Assert.AreEqual(2, response.Users.Count); // 3 total alice, skip 1, take 2 remaining
     }

@@ -159,7 +159,7 @@ public class CryptoService(
             {
                 // Skip this device but continue sending to others.
                 // Common cause: PreKey bundle fetch failed for an inactive/stale device.
-                Console.WriteLine($"Failed to encrypt for device {device.DeviceId}: {ex.Message}");
+                Console.WriteLine($@"Failed to encrypt for device {device.DeviceId}: {ex.Message}");
             }
         }
 

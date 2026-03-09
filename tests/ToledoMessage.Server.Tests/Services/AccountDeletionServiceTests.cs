@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using ToledoMessage.Services;
 using ToledoMessage.Shared.Constants;
@@ -23,7 +22,7 @@ public class AccountDeletionServiceTests
         var result = await service.InitiateDeletionAsync(1L);
 
         var user = await db.Users.FindAsync(1L);
-        Assert.IsNotNull(user!.DeletionRequestedAt);
+        Assert.IsNotNull(user?.DeletionRequestedAt);
         Assert.AreEqual(result, user.DeletionRequestedAt.Value);
     }
 
@@ -33,8 +32,7 @@ public class AccountDeletionServiceTests
         var db = TestDbContextFactory.Create();
         var service = CreateService(db);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.InitiateDeletionAsync(999L));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.InitiateDeletionAsync(999L));
     }
 
     [TestMethod]
@@ -49,7 +47,7 @@ public class AccountDeletionServiceTests
         await service.CancelDeletionAsync(1L);
 
         var refreshedUser = await db.Users.FindAsync(1L);
-        Assert.IsNull(refreshedUser!.DeletionRequestedAt);
+        Assert.IsNull(refreshedUser?.DeletionRequestedAt);
     }
 
     [TestMethod]
@@ -63,7 +61,7 @@ public class AccountDeletionServiceTests
         await service.CancelDeletionAsync(1L);
 
         var user = await db.Users.FindAsync(1L);
-        Assert.IsNull(user!.DeletionRequestedAt);
+        Assert.IsNull(user?.DeletionRequestedAt);
     }
 
     [TestMethod]
@@ -81,6 +79,7 @@ public class AccountDeletionServiceTests
     {
         var db = TestDbContextFactory.Create();
         var user = await TestDbContextFactory.SeedUser(db, 1L);
+        // ReSharper disable once UnusedVariable
         var device = await TestDbContextFactory.SeedDevice(db, 10L, 1L);
 
         // Set deletion to well past the grace period
@@ -91,10 +90,10 @@ public class AccountDeletionServiceTests
         await service.ProcessExpiredDeletionsAsync(CancellationToken.None);
 
         var refreshedUser = await db.Users.FindAsync(1L);
-        Assert.IsFalse(refreshedUser!.IsActive);
+        Assert.IsFalse(refreshedUser?.IsActive);
 
         var refreshedDevice = await db.Devices.FindAsync(10L);
-        Assert.IsFalse(refreshedDevice!.IsActive);
+        Assert.IsFalse(refreshedDevice?.IsActive);
     }
 
     [TestMethod]
@@ -121,7 +120,7 @@ public class AccountDeletionServiceTests
         await service.ProcessExpiredDeletionsAsync(CancellationToken.None);
 
         var token = await db.RefreshTokens.FindAsync(100L);
-        Assert.IsTrue(token!.IsRevoked);
+        Assert.IsTrue(token?.IsRevoked);
     }
 
     [TestMethod]
@@ -138,7 +137,7 @@ public class AccountDeletionServiceTests
         await service.ProcessExpiredDeletionsAsync(CancellationToken.None);
 
         var refreshedUser = await db.Users.FindAsync(1L);
-        Assert.IsTrue(refreshedUser!.IsActive); // Should still be active
+        Assert.IsTrue(refreshedUser?.IsActive ?? false); // Should still be active
     }
 
     [TestMethod]

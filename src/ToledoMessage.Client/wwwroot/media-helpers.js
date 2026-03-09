@@ -145,7 +145,7 @@ window.mediaHelpers = {
         try {
             await navigator.clipboard.writeText(text);
             return true;
-        } catch {
+        } catch (e) {
             return false;
         }
     },
@@ -266,6 +266,7 @@ window.mediaHelpers = {
     playAudio: function (messageId) {
         var audio = document.querySelector('[data-msg-id="' + messageId + '"] audio');
         if (audio) return audio.play();
+        return false;
     },
     pauseAudio: function (messageId) {
         var audio = document.querySelector('[data-msg-id="' + messageId + '"] audio');

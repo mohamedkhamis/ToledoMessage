@@ -276,7 +276,7 @@
             {
                 var prefs = await Preferences.GetPreferencesAsync();
                 await Theme.SetThemeAsync(prefs.Theme);
-                await Theme.SetFontSizeAsync(prefs.FontSize);
+                await Theme.SetFontSizeAsync(int.TryParse(prefs.FontSize, out var fsPx) ? fsPx : 15);
                 // Sync language from server — if different, apply and reload
                 var localLang = await Js.InvokeAsync<string?>("localStorage.getItem", "app.culture") ?? "en";
                 if (!string.Equals(localLang, prefs.Language, StringComparison.OrdinalIgnoreCase))

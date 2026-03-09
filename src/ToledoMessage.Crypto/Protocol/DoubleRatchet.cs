@@ -269,13 +269,7 @@ public class DoubleRatchet
         if (a.Length != b.Length)
             return false;
 
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var i = 0; i < a.Length; i++)
-        {
-            if (a[i] != b[i])
-                return false;
-        }
-
-        return true;
+        // Constant-time comparison to prevent timing side-channel attacks
+        return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(a, b);
     }
 }

@@ -1,11 +1,13 @@
 namespace ToledoMessage.Client.Services;
 
+/// <inheritdoc />
 /// <summary>
 /// Tracks messages that have a disappearing timer and fires expiry events
 /// when messages should be removed from the local display.
 /// </summary>
 public class MessageExpiryService : IDisposable
 {
+    // ReSharper disable once CollectionNeverUpdated.Local
     private readonly Dictionary<long, DateTimeOffset> _trackedMessages = new();
     private readonly Timer _timer;
 
@@ -19,26 +21,6 @@ public class MessageExpiryService : IDisposable
     {
         // Check for expired messages every 30 seconds
         _timer = new Timer(_ => CheckExpiredMessages(), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
-    }
-
-    /// <summary>
-    /// Begin tracking a message for expiry. If timerSeconds is null, the message is not tracked.
-    /// </summary>
-    public void TrackMessage(long messageId, DateTimeOffset receivedAt, int? timerSeconds)
-    {
-        if (!timerSeconds.HasValue || timerSeconds.Value <= 0)
-            return;
-
-        var expiresAt = receivedAt + TimeSpan.FromSeconds(timerSeconds.Value);
-        _trackedMessages[messageId] = expiresAt;
-    }
-
-    /// <summary>
-    /// Stop tracking a message (e.g., if it was manually deleted).
-    /// </summary>
-    public void UntrackMessage(long messageId)
-    {
-        _trackedMessages.Remove(messageId);
     }
 
     /// <summary>

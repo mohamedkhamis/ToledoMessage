@@ -19,20 +19,32 @@ public class LocalStorageService(IJSRuntime js)
     private byte[]? _encryptionKey;
 
     /// <summary>
-    /// Derives a 32-byte AES key from the given password and enables
-    /// encryption-at-rest for all subsequent store/get operations.
+    /// Derives a 32-byte AES key from the given password using iterated SHA-256 + HKDF.
+    /// Enables encryption-at-rest for all subsequent store/get operations.
     /// </summary>
     public void InitializeEncryption(string password)
     {
         var passwordBytes = Encoding.UTF8.GetBytes(password);
+        var salt = "ToledoMessage-StorageEncryption-Salt-v2"u8.ToArray();
 
+        // Iterated hashing (100k rounds) to slow down brute-force attacks
         var sha256 = new Sha256Digest();
         var ikm = new byte[sha256.GetDigestSize()];
+
+        // First round: hash(password || salt)
         sha256.BlockUpdate(passwordBytes, 0, passwordBytes.Length);
+        sha256.BlockUpdate(salt, 0, salt.Length);
         sha256.DoFinal(ikm, 0);
 
-        var info = "ToledoMessage-StorageEncryption-v1"u8.ToArray();
+        // Subsequent rounds
+        for (var i = 1; i < 100_000; i++)
+        {
+            sha256.Reset();
+            sha256.BlockUpdate(ikm, 0, ikm.Length);
+            sha256.DoFinal(ikm, 0);
+        }
 
+        var info = "ToledoMessage-StorageEncryption-v2"u8.ToArray();
         _encryptionKey = HybridKeyDerivation.DeriveKey(ikm, info, 32);
     }
 

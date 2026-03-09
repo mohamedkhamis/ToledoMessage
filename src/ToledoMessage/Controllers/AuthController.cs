@@ -59,7 +59,7 @@ public class AuthController(
 
         var exists = await db.Users.AnyAsync(u => u.Username == request.Username);
         if (exists)
-            return Conflict("A user with this username already exists.");
+            return Conflict("This username is not available.");
 
         var user = new User
         {
@@ -109,7 +109,7 @@ public class AuthController(
 
         var exists = await db.Users.AnyAsync(u => u.Username == request.Username);
         if (exists)
-            return Conflict("A user with this username already exists.");
+            return Conflict("This username is not available.");
 
         // --- Device validation ---
         var dev = request.Device;

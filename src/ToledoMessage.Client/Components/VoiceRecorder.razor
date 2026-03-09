@@ -240,7 +240,7 @@ else if (_phase == Phase.Preview)
             var mimeType = await Js.InvokeAsync<string>("voiceRecorder.getRecordedMimeType");
             try { await Js.InvokeVoidAsync("voiceRecorder.revokePreview"); }
             catch { /* cleanup best-effort */ }
-            await OnRecorded.InvokeAsync(new VoiceRecordingResult(bytes, mimeType ?? "audio/webm"));
+            await OnRecorded.InvokeAsync(new VoiceRecordingResult(bytes, mimeType));
         }
     }
 

@@ -65,6 +65,12 @@ var jwtSection = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSection["SecretKey"]
                 ?? throw new InvalidOperationException("Jwt:SecretKey is not configured.");
 
+if (secretKey.Length < 32)
+    throw new InvalidOperationException("Jwt:SecretKey must be at least 32 characters (256 bits) for HS256.");
+
+if (!builder.Environment.IsDevelopment() && secretKey.Contains("MUST-BE-REPLACED", StringComparison.OrdinalIgnoreCase))
+    throw new InvalidOperationException("Production JWT secret key has not been configured. Set Jwt:SecretKey in appsettings.Production.json or environment variables.");
+
 builder.Services.AddAuthentication(static options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -135,9 +141,14 @@ builder.Services.AddCors(options =>
         var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
                              ?? [builder.Environment.IsDevelopment() ? "https://localhost:7159" : ""];
 
+        // Filter out empty strings to prevent wildcard-like behavior
+        allowedOrigins = allowedOrigins.Where(static o => !string.IsNullOrWhiteSpace(o)).ToArray();
+        if (allowedOrigins.Length == 0)
+            throw new InvalidOperationException("CORS: No allowed origins configured. Set Cors:AllowedOrigins in appsettings.");
+
         policy.WithOrigins(allowedOrigins)
-            .AllowAnyMethod()
-            .AllowAnyHeader()
+            .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+            .WithHeaders("Authorization", "Content-Type", "Accept", "X-Requested-With")
             .AllowCredentials();
     });
 });
@@ -169,6 +180,13 @@ app.Use(static async (context, next) =>
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
     context.Response.Headers["X-Frame-Options"] = "DENY";
     context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(self), geolocation=(), payment=()";
+    context.Response.Headers["X-Permitted-Cross-Domain-Policies"] = "none";
+    // CSP: Blazor WASM requires unsafe-eval for .NET IL interpreter; unsafe-inline for component styles
+    context.Response.Headers["Content-Security-Policy"] =
+        "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; " +
+        "connect-src 'self' ws: wss:; img-src 'self' data: blob:; media-src 'self' blob:; " +
+        "frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
     await next();
 });
 

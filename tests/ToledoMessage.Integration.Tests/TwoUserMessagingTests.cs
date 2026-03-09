@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using ToledoMessage.Crypto.KeyManagement;
 using ToledoMessage.Crypto.Protocol;
@@ -5,6 +6,8 @@ using ToledoMessage.Crypto.Protocol;
 namespace ToledoMessage.Integration.Tests;
 
 [TestClass]
+[SuppressMessage("ReSharper", "ArgumentsStyleLiteral")]
+[SuppressMessage("ReSharper", "ArgumentsStyleNamedExpression")]
 public class TwoUserMessagingTests
 {
     [TestMethod]
@@ -13,7 +16,6 @@ public class TwoUserMessagingTests
         // ================================================================
         // 1. Generate identity keys for Alice and Bob
         // ================================================================
-        var aliceIdentity = IdentityKeyGenerator.Generate();
         var bobIdentity = IdentityKeyGenerator.Generate();
 
         // ================================================================
@@ -119,7 +121,7 @@ public class TwoUserMessagingTests
         // ================================================================
         var expectedMessages = new List<string>();
 
-        for (int i = 0; i < 10; i++)
+        for (var i = 0; i < 10; i++)
         {
             string messageText;
             byte[] ciphertext;
@@ -161,7 +163,6 @@ public class TwoUserMessagingTests
         // Tests the flow when no one-time pre-key is available (all consumed)
 
         // 1. Generate identity keys
-        var aliceIdentity = IdentityKeyGenerator.Generate();
         var bobIdentity = IdentityKeyGenerator.Generate();
 
         // 2. Bob generates pre-keys (no one-time pre-keys)
@@ -222,7 +223,6 @@ public class TwoUserMessagingTests
         // Tests multiple messages from the same sender before the other replies
         // (no DH ratchet step between them, just symmetric ratchet)
 
-        var aliceIdentity = IdentityKeyGenerator.Generate();
         var bobIdentity = IdentityKeyGenerator.Generate();
 
         var bobSignedPreKey = PreKeyGenerator.GenerateSignedPreKey(
@@ -257,14 +257,14 @@ public class TwoUserMessagingTests
 
         // Alice sends 5 messages in a row before Bob replies
         var aliceMessages = new List<(byte[] ciphertext, MessageHeader header)>();
-        for (int i = 0; i < 5; i++)
+        for (var i = 0; i < 5; i++)
         {
             var msg = Encoding.UTF8.GetBytes($"Alice burst message {i}");
             aliceMessages.Add(aliceRatchet.Encrypt(msg));
         }
 
         // Bob decrypts all 5
-        for (int i = 0; i < 5; i++)
+        for (var i = 0; i < 5; i++)
         {
             var decrypted = bobRatchet.Decrypt(aliceMessages[i].ciphertext, aliceMessages[i].header);
             Assert.AreEqual($"Alice burst message {i}", Encoding.UTF8.GetString(decrypted));
@@ -272,14 +272,14 @@ public class TwoUserMessagingTests
 
         // Now Bob sends 3 messages in a row
         var bobMessages = new List<(byte[] ciphertext, MessageHeader header)>();
-        for (int i = 0; i < 3; i++)
+        for (var i = 0; i < 3; i++)
         {
             var msg = Encoding.UTF8.GetBytes($"Bob burst message {i}");
             bobMessages.Add(bobRatchet.Encrypt(msg));
         }
 
         // Alice decrypts all 3
-        for (int i = 0; i < 3; i++)
+        for (var i = 0; i < 3; i++)
         {
             var decrypted = aliceRatchet.Decrypt(bobMessages[i].ciphertext, bobMessages[i].header);
             Assert.AreEqual($"Bob burst message {i}", Encoding.UTF8.GetString(decrypted));

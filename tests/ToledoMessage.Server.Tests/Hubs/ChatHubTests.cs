@@ -290,7 +290,7 @@ public class ChatHubTests
             Ciphertext = [1, 2], SequenceNumber = 1, ServerTimestamp = DateTimeOffset.UtcNow,
             IsDelivered = false
         });
-        await db.SaveChangesAsync(TestContext.CancellationToken);
+        if (TestContext != null) await db.SaveChangesAsync(TestContext.CancellationToken);
 
         await hub.AcknowledgeDelivery(500L);
 
@@ -340,7 +340,7 @@ public class ChatHubTests
 
         // Verify read pointer was created
         var pointer = await db.ConversationReadPointers
-            .FirstOrDefaultAsync(p => p.UserId == 1L && p.ConversationId == 100L);
+            .FirstOrDefaultAsync(static p => p.UserId == 1L && p.ConversationId == 100L);
         Assert.IsNotNull(pointer);
         Assert.AreEqual(1L, pointer.LastReadSequenceNumber);
     }
@@ -440,7 +440,7 @@ public class ChatHubTests
 
         // Pointer should exist with 0 unread
         var pointer = await db.ConversationReadPointers
-            .FirstOrDefaultAsync(p => p.UserId == 1L && p.ConversationId == 100L);
+            .FirstOrDefaultAsync(static p => p.UserId == 1L && p.ConversationId == 100L);
         Assert.IsNotNull(pointer);
         Assert.AreEqual(0, pointer.UnreadCount);
     }
@@ -478,5 +478,5 @@ public class ChatHubTests
         Assert.AreNotEqual(0L, result.MessageId);
     }
 
-    public TestContext TestContext { get; set; }
+    public TestContext? TestContext { get; set; }
 }

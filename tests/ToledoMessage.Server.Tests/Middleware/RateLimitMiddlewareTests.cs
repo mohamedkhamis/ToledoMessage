@@ -9,22 +9,32 @@ namespace ToledoMessage.Server.Tests.Middleware;
 [TestClass]
 public class RateLimitMiddlewareTests
 {
+    // ReSharper disable once UnusedTupleComponentInReturnValue
     private static (RateLimitMiddleware middleware, RateLimitService service) CreateMiddleware(
         RequestDelegate? next = null)
     {
         var service = new RateLimitService();
-        next ??= _ => Task.CompletedTask;
+        next ??= static _ => Task.CompletedTask;
         return (new RateLimitMiddleware(next, service), service);
     }
 
     [TestMethod]
     public async Task InvokeAsync_NullPath_PassesThrough()
     {
-        bool nextCalled = false;
-        var (middleware, _) = CreateMiddleware(_ => { nextCalled = true; return Task.CompletedTask; });
+        var nextCalled = false;
+        var (middleware, _) = CreateMiddleware(_ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
 
-        var context = new DefaultHttpContext();
-        context.Request.Path = new PathString();
+        var context = new DefaultHttpContext
+        {
+            Request =
+            {
+                Path = new PathString()
+            }
+        };
 
         await middleware.InvokeAsync(context);
 
@@ -34,12 +44,24 @@ public class RateLimitMiddlewareTests
     [TestMethod]
     public async Task InvokeAsync_NonRateLimitedPath_PassesThrough()
     {
-        bool nextCalled = false;
-        var (middleware, _) = CreateMiddleware(_ => { nextCalled = true; return Task.CompletedTask; });
+        var nextCalled = false;
+        var (middleware, _) = CreateMiddleware(_ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
 
-        var context = new DefaultHttpContext();
-        context.Request.Path = "/api/devices";
-        context.Connection.RemoteIpAddress = IPAddress.Loopback;
+        var context = new DefaultHttpContext
+        {
+            Request =
+            {
+                Path = "/api/devices"
+            },
+            Connection =
+            {
+                RemoteIpAddress = IPAddress.Loopback
+            }
+        };
 
         await middleware.InvokeAsync(context);
 
@@ -51,20 +73,39 @@ public class RateLimitMiddlewareTests
     {
         var (middleware, _) = CreateMiddleware();
 
-        for (int i = 0; i < 5; i++)
+        for (var i = 0; i < 5; i++)
         {
-            var context = new DefaultHttpContext();
-            context.Request.Path = "/api/auth/register";
-            context.Connection.RemoteIpAddress = IPAddress.Parse("10.0.0.1");
+            var context = new DefaultHttpContext
+            {
+                Request =
+                {
+                    Path = "/api/auth/register"
+                },
+                Connection =
+                {
+                    RemoteIpAddress = IPAddress.Parse("10.0.0.1")
+                }
+            };
             await middleware.InvokeAsync(context);
             Assert.AreNotEqual(429, context.Response.StatusCode);
         }
 
         // 6th request should be rate limited
-        var limitedContext = new DefaultHttpContext();
-        limitedContext.Request.Path = "/api/auth/register";
-        limitedContext.Connection.RemoteIpAddress = IPAddress.Parse("10.0.0.1");
-        limitedContext.Response.Body = new MemoryStream();
+        var limitedContext = new DefaultHttpContext
+        {
+            Request =
+            {
+                Path = "/api/auth/register"
+            },
+            Connection =
+            {
+                RemoteIpAddress = IPAddress.Parse("10.0.0.1")
+            },
+            Response =
+            {
+                Body = new MemoryStream()
+            }
+        };
 
         await middleware.InvokeAsync(limitedContext);
 
@@ -74,11 +115,20 @@ public class RateLimitMiddlewareTests
     [TestMethod]
     public async Task InvokeAsync_ByUserRoute_NoAuthUser_PassesThrough()
     {
-        bool nextCalled = false;
-        var (middleware, _) = CreateMiddleware(_ => { nextCalled = true; return Task.CompletedTask; });
+        var nextCalled = false;
+        var (middleware, _) = CreateMiddleware(_ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
 
-        var context = new DefaultHttpContext();
-        context.Request.Path = "/api/messages";
+        var context = new DefaultHttpContext
+        {
+            Request =
+            {
+                Path = "/api/messages"
+            }
+        };
         // No authenticated user
 
         await middleware.InvokeAsync(context);
@@ -91,21 +141,34 @@ public class RateLimitMiddlewareTests
     {
         var (middleware, _) = CreateMiddleware();
 
-        for (int i = 0; i < 60; i++)
+        for (var i = 0; i < 60; i++)
         {
-            var context = new DefaultHttpContext();
-            context.Request.Path = "/api/messages";
-            context.User = new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim(ClaimTypes.NameIdentifier, "user1")], "Test"));
+            var context = new DefaultHttpContext
+            {
+                Request =
+                {
+                    Path = "/api/messages"
+                },
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim(ClaimTypes.NameIdentifier, "user1")], "Test"))
+            };
             await middleware.InvokeAsync(context);
         }
 
         // 61st request should be rate limited
-        var limitedContext = new DefaultHttpContext();
-        limitedContext.Request.Path = "/api/messages";
-        limitedContext.User = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, "user1")], "Test"));
-        limitedContext.Response.Body = new MemoryStream();
+        var limitedContext = new DefaultHttpContext
+        {
+            Request =
+            {
+                Path = "/api/messages"
+            },
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, "user1")], "Test")),
+            Response =
+            {
+                Body = new MemoryStream()
+            }
+        };
 
         await middleware.InvokeAsync(limitedContext);
 
@@ -117,20 +180,33 @@ public class RateLimitMiddlewareTests
     {
         var (middleware, _) = CreateMiddleware();
 
-        for (int i = 0; i < 10; i++)
+        for (var i = 0; i < 10; i++)
         {
-            var context = new DefaultHttpContext();
-            context.Request.Path = "/api/users/search";
-            context.User = new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim(ClaimTypes.NameIdentifier, "searcher")], "Test"));
+            var context = new DefaultHttpContext
+            {
+                Request =
+                {
+                    Path = "/api/users/search"
+                },
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim(ClaimTypes.NameIdentifier, "searcher")], "Test"))
+            };
             await middleware.InvokeAsync(context);
         }
 
-        var limitedContext = new DefaultHttpContext();
-        limitedContext.Request.Path = "/api/users/search";
-        limitedContext.User = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, "searcher")], "Test"));
-        limitedContext.Response.Body = new MemoryStream();
+        var limitedContext = new DefaultHttpContext
+        {
+            Request =
+            {
+                Path = "/api/users/search"
+            },
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, "searcher")], "Test")),
+            Response =
+            {
+                Body = new MemoryStream()
+            }
+        };
 
         await middleware.InvokeAsync(limitedContext);
 
@@ -143,19 +219,38 @@ public class RateLimitMiddlewareTests
         var (middleware, _) = CreateMiddleware();
 
         // Exhaust limit for IP 1
-        for (int i = 0; i < 6; i++)
+        for (var i = 0; i < 6; i++)
         {
-            var context = new DefaultHttpContext();
-            context.Request.Path = "/api/auth/register";
-            context.Connection.RemoteIpAddress = IPAddress.Parse("10.0.0.1");
-            context.Response.Body = new MemoryStream();
+            var context = new DefaultHttpContext
+            {
+                Request =
+                {
+                    Path = "/api/auth/register"
+                },
+                Connection =
+                {
+                    RemoteIpAddress = IPAddress.Parse("10.0.0.1")
+                },
+                Response =
+                {
+                    Body = new MemoryStream()
+                }
+            };
             await middleware.InvokeAsync(context);
         }
 
         // IP 2 should still be allowed
-        var context2 = new DefaultHttpContext();
-        context2.Request.Path = "/api/auth/register";
-        context2.Connection.RemoteIpAddress = IPAddress.Parse("10.0.0.2");
+        var context2 = new DefaultHttpContext
+        {
+            Request =
+            {
+                Path = "/api/auth/register"
+            },
+            Connection =
+            {
+                RemoteIpAddress = IPAddress.Parse("10.0.0.2")
+            }
+        };
 
         await middleware.InvokeAsync(context2);
 

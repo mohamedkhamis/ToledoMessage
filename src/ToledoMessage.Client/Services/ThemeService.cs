@@ -39,14 +39,15 @@ public sealed class ThemeService(IJSRuntime js)
         };
     }
 
-    public async Task<string> GetFontSizeAsync()
+    public async Task<int> GetFontSizeAsync()
     {
-        return await js.InvokeAsync<string?>("toledoStorage.getFontSize") ?? "medium";
+        var stored = await js.InvokeAsync<string?>("toledoStorage.getFontSize") ?? "15";
+        return int.TryParse(stored, out var px) ? px : 15;
     }
 
-    public async Task SetFontSizeAsync(string fontSize)
+    public async Task SetFontSizeAsync(int fontSizePx)
     {
-        await js.InvokeVoidAsync("toledoStorage.setFontSize", fontSize);
+        await js.InvokeVoidAsync("toledoStorage.setFontSize", fontSizePx.ToString());
     }
 
     public async Task<string> GetWallpaperAsync()

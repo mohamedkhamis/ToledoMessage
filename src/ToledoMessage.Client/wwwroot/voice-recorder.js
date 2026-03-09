@@ -15,10 +15,10 @@ window.voiceRecorder = {
 
         this._stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         var mimeType = 'audio/webm;codecs=opus';
-        if (typeof MediaRecorder.isTypeSupported === 'function') {
-            if (!MediaRecorder.isTypeSupported(mimeType)) {
-                if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) mimeType = 'audio/ogg;codecs=opus';
-                else if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+        if (typeof window.MediaRecorder.isTypeSupported === 'function') {
+            if (!window.MediaRecorder.isTypeSupported(mimeType)) {
+                if (window.MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) mimeType = 'audio/ogg;codecs=opus';
+                else if (window.MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
                 else mimeType = '';
             }
         }

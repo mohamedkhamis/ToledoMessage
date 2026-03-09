@@ -187,12 +187,10 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
                 .Select(static m => new { m.Id, m.SenderDeviceId })
                 .ToListAsync();
 
-            await db.Database.ExecuteSqlAsync(
-                $"""
-                UPDATE EncryptedMessages
-                SET IsDelivered = 1, DeliveredAt = {now}
-                WHERE RecipientDeviceId = {deviceId} AND IsDelivered = 0
-                """);
+            await db.Database.ExecuteSqlRawAsync(
+                "UPDATE EncryptedMessages SET IsDelivered = 1, DeliveredAt = @now WHERE RecipientDeviceId = @deviceId AND IsDelivered = 0",
+                new SqlParameter("@now", System.Data.SqlDbType.DateTimeOffset) { Value = now },
+                new SqlParameter("@deviceId", System.Data.SqlDbType.BigInt) { Value = deviceId });
 
             result = toNotify.Select(static m => (m.Id, m.SenderDeviceId)).ToList();
         }
@@ -350,12 +348,10 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
 
         if (db.Database.IsRelational())
         {
-            await db.Database.ExecuteSqlAsync(
-                $"""
-                UPDATE EncryptedMessages
-                SET IsDelivered = 1, DeliveredAt = COALESCE(DeliveredAt, {now})
-                WHERE RecipientDeviceId = {deviceId} AND IsDelivered = 0
-                """);
+            await db.Database.ExecuteSqlRawAsync(
+                "UPDATE EncryptedMessages SET IsDelivered = 1, DeliveredAt = COALESCE(DeliveredAt, @now) WHERE RecipientDeviceId = @deviceId AND IsDelivered = 0",
+                new SqlParameter("@now", System.Data.SqlDbType.DateTimeOffset) { Value = now },
+                new SqlParameter("@deviceId", System.Data.SqlDbType.BigInt) { Value = deviceId });
         }
         else
         {
@@ -389,15 +385,16 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
             int batchDeleted;
             do
             {
-                batchDeleted = await db.Database.ExecuteSqlAsync(
-                    $"""
+                var nowParam = new SqlParameter("@now", System.Data.SqlDbType.DateTimeOffset) { Value = now };
+                batchDeleted = await db.Database.ExecuteSqlRawAsync(
+                    """
                     DELETE TOP(1000) em
                     FROM EncryptedMessages em
                     INNER JOIN Conversations c ON em.ConversationId = c.Id
                     WHERE em.IsDelivered = 1
                       AND c.DisappearingTimerSeconds IS NOT NULL
-                      AND DATEADD(SECOND, c.DisappearingTimerSeconds, em.ServerTimestamp) < {now}
-                    """);
+                      AND DATEADD(SECOND, c.DisappearingTimerSeconds, em.ServerTimestamp) < @now
+                    """, nowParam);
                 totalDeleted += batchDeleted;
             } while (batchDeleted == 1000);
 

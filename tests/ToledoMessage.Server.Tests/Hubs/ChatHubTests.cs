@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http.Features;
@@ -11,6 +10,12 @@ using ToledoMessage.Services;
 using ToledoMessage.Server.Tests.Services;
 using ToledoMessage.Shared.DTOs;
 using ToledoMessage.Shared.Enums;
+
+
+// ReSharper disable RemoveRedundantBraces
+
+#pragma warning disable CA1854
+#pragma warning disable CA1859
 
 namespace ToledoMessage.Server.Tests.Hubs;
 
@@ -61,7 +66,6 @@ public class StubHubCallerContext(long userId, string connectionId = "test-conne
 /// <summary>
 /// Stub IHubCallerClients that records sent messages for assertions.
 /// </summary>
-[SuppressMessage("ReSharper", "RemoveRedundantBraces")]
 public class StubHubCallerClients : IHubCallerClients
 {
     public Dictionary<string, List<(string method, object?[] args)>> SentToGroups { get; } = [];
@@ -127,7 +131,6 @@ public class StubHubCallerClients : IHubCallerClients
     }
 }
 
-[SuppressMessage("ReSharper", "RemoveRedundantBraces")]
 public class RecordingClientProxy(Dictionary<string, List<(string method, object?[] args)>>? groups, string? groupName)
     : IClientProxy
 {

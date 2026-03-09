@@ -79,8 +79,6 @@ public class AccountDeletionServiceTests
     {
         var db = TestDbContextFactory.Create();
         var user = await TestDbContextFactory.SeedUser(db, 1L);
-        // ReSharper disable once UnusedVariable
-        var device = await TestDbContextFactory.SeedDevice(db, 10L, 1L);
 
         // Set deletion to well past the grace period
         user.DeletionRequestedAt = DateTimeOffset.UtcNow.AddDays(-(ProtocolConstants.AccountDeletionGracePeriodDays + 1));

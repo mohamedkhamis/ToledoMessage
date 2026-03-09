@@ -5,9 +5,9 @@ using ToledoMessage.Crypto.Protocol;
 
 namespace ToledoMessage.Integration.Tests;
 
-[TestClass]
 [SuppressMessage("ReSharper", "ArgumentsStyleLiteral")]
 [SuppressMessage("ReSharper", "ArgumentsStyleNamedExpression")]
+[TestClass]
 public class TwoUserMessagingTests
 {
     [TestMethod]

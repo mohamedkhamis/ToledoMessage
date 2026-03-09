@@ -8,7 +8,7 @@ namespace ToledoMessage.Server.Tests.Controllers;
 [TestClass]
 public class ConversationsControllerTests
 {
-    private static (ConversationsController controller, Data.ApplicationDbContext db) CreateController(decimal userId = 1m)
+    private static (ConversationsController controller, Data.ApplicationDbContext db) CreateController(long userId = 1L)
     {
         var db = TestDbContextFactory.Create();
         var controller = new ConversationsController(db);
@@ -22,10 +22,10 @@ public class ConversationsControllerTests
     public async Task Create_ValidRequest_ReturnsCreated()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedUser(db, 2m, "user2");
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedUser(db, 2L, "user2");
 
-        var result = await controller.Create(new CreateConversationRequest(2m));
+        var result = await controller.Create(new CreateConversationRequest(2L));
 
         Assert.IsInstanceOfType<CreatedResult>(result);
         var created = (CreatedResult)result;
@@ -38,14 +38,14 @@ public class ConversationsControllerTests
     public async Task Create_ExistingConversation_ReturnsExisting()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedUser(db, 2m, "user2");
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedUser(db, 2L, "user2");
 
         // Create first
-        await controller.Create(new CreateConversationRequest(2m));
+        await controller.Create(new CreateConversationRequest(2L));
 
         // Try again — should return existing
-        var result = await controller.Create(new CreateConversationRequest(2m));
+        var result = await controller.Create(new CreateConversationRequest(2L));
 
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
@@ -58,9 +58,9 @@ public class ConversationsControllerTests
     public async Task Create_WithSelf_ReturnsBadRequest()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
 
-        var result = await controller.Create(new CreateConversationRequest(1m));
+        var result = await controller.Create(new CreateConversationRequest(1L));
         Assert.IsInstanceOfType<BadRequestObjectResult>(result);
     }
 
@@ -68,9 +68,9 @@ public class ConversationsControllerTests
     public async Task Create_NonExistentParticipant_ReturnsNotFound()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
 
-        var result = await controller.Create(new CreateConversationRequest(999m));
+        var result = await controller.Create(new CreateConversationRequest(999L));
         Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 
@@ -80,11 +80,11 @@ public class ConversationsControllerTests
     public async Task CreateGroup_ValidRequest_ReturnsCreated()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "creator");
-        await TestDbContextFactory.SeedUser(db, 2m, "user2");
-        await TestDbContextFactory.SeedUser(db, 3m, "user3");
+        await TestDbContextFactory.SeedUser(db, 1L, "creator");
+        await TestDbContextFactory.SeedUser(db, 2L, "user2");
+        await TestDbContextFactory.SeedUser(db, 3L, "user3");
 
-        var request = new CreateGroupConversationRequest("TestGroup", [2m, 3m]);
+        var request = new CreateGroupConversationRequest("TestGroup", [2L, 3L]);
         var result = await controller.CreateGroup(request);
 
         Assert.IsInstanceOfType<CreatedResult>(result);
@@ -98,7 +98,7 @@ public class ConversationsControllerTests
     public async Task CreateGroup_EmptyName_ReturnsBadRequest()
     {
         var (controller, _) = CreateController();
-        var result = await controller.CreateGroup(new CreateGroupConversationRequest("", [2m, 3m]));
+        var result = await controller.CreateGroup(new CreateGroupConversationRequest("", [2L, 3L]));
         Assert.IsInstanceOfType<BadRequestObjectResult>(result);
     }
 
@@ -106,7 +106,7 @@ public class ConversationsControllerTests
     public async Task CreateGroup_TooFewParticipants_ReturnsBadRequest()
     {
         var (controller, _) = CreateController();
-        var result = await controller.CreateGroup(new CreateGroupConversationRequest("Group", [2m]));
+        var result = await controller.CreateGroup(new CreateGroupConversationRequest("Group", [2L]));
         Assert.IsInstanceOfType<BadRequestObjectResult>(result);
     }
 
@@ -114,7 +114,7 @@ public class ConversationsControllerTests
     public async Task CreateGroup_TooManyParticipants_ReturnsBadRequest()
     {
         var (controller, _) = CreateController();
-        var ids = Enumerable.Range(2, 101).Select(i => (decimal)i).ToList();
+        var ids = Enumerable.Range(2, 101).Select(i => (long)i).ToList();
         var result = await controller.CreateGroup(new CreateGroupConversationRequest("Group", ids));
         Assert.IsInstanceOfType<BadRequestObjectResult>(result);
     }
@@ -123,11 +123,11 @@ public class ConversationsControllerTests
     public async Task CreateGroup_InactiveParticipant_ReturnsBadRequest()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "creator");
-        await TestDbContextFactory.SeedUser(db, 2m, "active");
-        await TestDbContextFactory.SeedUser(db, 3m, "inactive", isActive: false);
+        await TestDbContextFactory.SeedUser(db, 1L, "creator");
+        await TestDbContextFactory.SeedUser(db, 2L, "active");
+        await TestDbContextFactory.SeedUser(db, 3L, "inactive", isActive: false);
 
-        var result = await controller.CreateGroup(new CreateGroupConversationRequest("Group", [2m, 3m]));
+        var result = await controller.CreateGroup(new CreateGroupConversationRequest("Group", [2L, 3L]));
         Assert.IsInstanceOfType<BadRequestObjectResult>(result);
     }
 
@@ -137,29 +137,29 @@ public class ConversationsControllerTests
     public async Task AddParticipant_AsAdmin_ReturnsNoContent()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "admin");
-        await TestDbContextFactory.SeedUser(db, 2m, "member");
-        await TestDbContextFactory.SeedUser(db, 3m, "newmember");
-        await TestDbContextFactory.SeedConversation(db, 100m, ConversationType.Group, "TestGroup");
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m, ParticipantRole.Admin);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
+        await TestDbContextFactory.SeedUser(db, 1L, "admin");
+        await TestDbContextFactory.SeedUser(db, 2L, "member");
+        await TestDbContextFactory.SeedUser(db, 3L, "newmember");
+        await TestDbContextFactory.SeedConversation(db, 100L, ConversationType.Group, "TestGroup");
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L, ParticipantRole.Admin);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 2L);
 
-        var result = await controller.AddParticipant(100m, new AddParticipantRequest(3m));
+        var result = await controller.AddParticipant(100L, new AddParticipantRequest(3L));
         Assert.IsInstanceOfType<NoContentResult>(result);
     }
 
     [TestMethod]
     public async Task AddParticipant_AsMember_ReturnsForbid()
     {
-        var (controller, db) = CreateController(2m); // user 2 is a member, not admin
-        await TestDbContextFactory.SeedUser(db, 1m, "admin");
-        await TestDbContextFactory.SeedUser(db, 2m, "member");
-        await TestDbContextFactory.SeedUser(db, 3m, "newmember");
-        await TestDbContextFactory.SeedConversation(db, 100m, ConversationType.Group, "TestGroup");
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m, ParticipantRole.Admin);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
+        var (controller, db) = CreateController(2L); // user 2 is a member, not admin
+        await TestDbContextFactory.SeedUser(db, 1L, "admin");
+        await TestDbContextFactory.SeedUser(db, 2L, "member");
+        await TestDbContextFactory.SeedUser(db, 3L, "newmember");
+        await TestDbContextFactory.SeedConversation(db, 100L, ConversationType.Group, "TestGroup");
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L, ParticipantRole.Admin);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 2L);
 
-        var result = await controller.AddParticipant(100m, new AddParticipantRequest(3m));
+        var result = await controller.AddParticipant(100L, new AddParticipantRequest(3L));
         Assert.IsInstanceOfType<ForbidResult>(result);
     }
 
@@ -167,27 +167,27 @@ public class ConversationsControllerTests
     public async Task AddParticipant_AlreadyParticipant_ReturnsBadRequest()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "admin");
-        await TestDbContextFactory.SeedUser(db, 2m, "member");
-        await TestDbContextFactory.SeedConversation(db, 100m, ConversationType.Group, "TestGroup");
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m, ParticipantRole.Admin);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
+        await TestDbContextFactory.SeedUser(db, 1L, "admin");
+        await TestDbContextFactory.SeedUser(db, 2L, "member");
+        await TestDbContextFactory.SeedConversation(db, 100L, ConversationType.Group, "TestGroup");
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L, ParticipantRole.Admin);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 2L);
 
-        var result = await controller.AddParticipant(100m, new AddParticipantRequest(2m));
+        var result = await controller.AddParticipant(100L, new AddParticipantRequest(2L));
         Assert.IsInstanceOfType<BadRequestObjectResult>(result);
     }
 
     [TestMethod]
     public async Task RemoveParticipant_SelfLeave_ReturnsNoContent()
     {
-        var (controller, db) = CreateController(2m);
-        await TestDbContextFactory.SeedUser(db, 1m, "admin");
-        await TestDbContextFactory.SeedUser(db, 2m, "member");
-        await TestDbContextFactory.SeedConversation(db, 100m, ConversationType.Group, "TestGroup");
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m, ParticipantRole.Admin);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
+        var (controller, db) = CreateController(2L);
+        await TestDbContextFactory.SeedUser(db, 1L, "admin");
+        await TestDbContextFactory.SeedUser(db, 2L, "member");
+        await TestDbContextFactory.SeedConversation(db, 100L, ConversationType.Group, "TestGroup");
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L, ParticipantRole.Admin);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 2L);
 
-        var result = await controller.RemoveParticipant(100m, 2m);
+        var result = await controller.RemoveParticipant(100L, 2L);
         Assert.IsInstanceOfType<NoContentResult>(result);
     }
 
@@ -195,29 +195,29 @@ public class ConversationsControllerTests
     public async Task RemoveParticipant_AdminRemovesMember_ReturnsNoContent()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "admin");
-        await TestDbContextFactory.SeedUser(db, 2m, "member");
-        await TestDbContextFactory.SeedConversation(db, 100m, ConversationType.Group, "TestGroup");
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m, ParticipantRole.Admin);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
+        await TestDbContextFactory.SeedUser(db, 1L, "admin");
+        await TestDbContextFactory.SeedUser(db, 2L, "member");
+        await TestDbContextFactory.SeedConversation(db, 100L, ConversationType.Group, "TestGroup");
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L, ParticipantRole.Admin);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 2L);
 
-        var result = await controller.RemoveParticipant(100m, 2m);
+        var result = await controller.RemoveParticipant(100L, 2L);
         Assert.IsInstanceOfType<NoContentResult>(result);
     }
 
     [TestMethod]
     public async Task RemoveParticipant_MemberRemovesOther_ReturnsForbid()
     {
-        var (controller, db) = CreateController(2m);
-        await TestDbContextFactory.SeedUser(db, 1m, "admin");
-        await TestDbContextFactory.SeedUser(db, 2m, "member");
-        await TestDbContextFactory.SeedUser(db, 3m, "other");
-        await TestDbContextFactory.SeedConversation(db, 100m, ConversationType.Group, "TestGroup");
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m, ParticipantRole.Admin);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 3m);
+        var (controller, db) = CreateController(2L);
+        await TestDbContextFactory.SeedUser(db, 1L, "admin");
+        await TestDbContextFactory.SeedUser(db, 2L, "member");
+        await TestDbContextFactory.SeedUser(db, 3L, "other");
+        await TestDbContextFactory.SeedConversation(db, 100L, ConversationType.Group, "TestGroup");
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L, ParticipantRole.Admin);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 2L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 3L);
 
-        var result = await controller.RemoveParticipant(100m, 3m);
+        var result = await controller.RemoveParticipant(100L, 3L);
         Assert.IsInstanceOfType<ForbidResult>(result);
     }
 
@@ -227,19 +227,19 @@ public class ConversationsControllerTests
     public async Task GetConversation_AsParticipant_ReturnsDetails()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedUser(db, 2m, "user2");
-        await TestDbContextFactory.SeedConversation(db, 100m, ConversationType.Group, "TestGroup");
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m, ParticipantRole.Admin);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedUser(db, 2L, "user2");
+        await TestDbContextFactory.SeedConversation(db, 100L, ConversationType.Group, "TestGroup");
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L, ParticipantRole.Admin);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 2L);
 
-        var result = await controller.GetConversation(100m);
+        var result = await controller.GetConversation(100L);
 
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<ConversationDetailResponse>(ok.Value);
         var detail = (ConversationDetailResponse)ok.Value!;
-        Assert.AreEqual(100m, detail.ConversationId);
+        Assert.AreEqual(100L, detail.ConversationId);
         Assert.AreEqual(ConversationType.Group, detail.Type);
         Assert.AreEqual("TestGroup", detail.GroupName);
         Assert.AreEqual(2, detail.ParticipantCount);
@@ -249,10 +249,10 @@ public class ConversationsControllerTests
     public async Task GetConversation_NotParticipant_ReturnsNotFound()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedConversation(db, 100m);
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedConversation(db, 100L);
 
-        var result = await controller.GetConversation(100m);
+        var result = await controller.GetConversation(100L);
         Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 
@@ -262,13 +262,13 @@ public class ConversationsControllerTests
     public async Task GetParticipants_AsParticipant_ReturnsList()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedUser(db, 2m, "user2");
-        await TestDbContextFactory.SeedConversation(db, 100m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedUser(db, 2L, "user2");
+        await TestDbContextFactory.SeedConversation(db, 100L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 2L);
 
-        var result = await controller.GetParticipants(100m);
+        var result = await controller.GetParticipants(100L);
 
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
@@ -281,10 +281,10 @@ public class ConversationsControllerTests
     public async Task GetParticipants_NotParticipant_ReturnsNotFound()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedConversation(db, 100m);
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedConversation(db, 100L);
 
-        var result = await controller.GetParticipants(100m);
+        var result = await controller.GetParticipants(100L);
         Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 
@@ -294,14 +294,14 @@ public class ConversationsControllerTests
     public async Task SetTimer_ValidRequest_ReturnsNoContent()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedConversation(db, 100m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedConversation(db, 100L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L);
 
-        var result = await controller.SetTimer(100m, new SetTimerRequest(3600));
+        var result = await controller.SetTimer(100L, new SetTimerRequest(3600));
 
         Assert.IsInstanceOfType<NoContentResult>(result);
-        var conv = await db.Conversations.FindAsync(100m);
+        var conv = await db.Conversations.FindAsync(100L);
         Assert.AreEqual(3600, conv!.DisappearingTimerSeconds);
     }
 
@@ -309,16 +309,16 @@ public class ConversationsControllerTests
     public async Task SetTimer_NullToDisable_ReturnsNoContent()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        var conv = await TestDbContextFactory.SeedConversation(db, 100m);
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        var conv = await TestDbContextFactory.SeedConversation(db, 100L);
         conv.DisappearingTimerSeconds = 3600;
         await db.SaveChangesAsync();
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L);
 
-        var result = await controller.SetTimer(100m, new SetTimerRequest(null));
+        var result = await controller.SetTimer(100L, new SetTimerRequest(null));
 
         Assert.IsInstanceOfType<NoContentResult>(result);
-        var refreshed = await db.Conversations.FindAsync(100m);
+        var refreshed = await db.Conversations.FindAsync(100L);
         Assert.IsNull(refreshed!.DisappearingTimerSeconds);
     }
 
@@ -326,11 +326,11 @@ public class ConversationsControllerTests
     public async Task SetTimer_NegativeValue_ReturnsBadRequest()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedConversation(db, 100m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedConversation(db, 100L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L);
 
-        var result = await controller.SetTimer(100m, new SetTimerRequest(-1));
+        var result = await controller.SetTimer(100L, new SetTimerRequest(-1));
         Assert.IsInstanceOfType<BadRequestObjectResult>(result);
     }
 
@@ -338,10 +338,10 @@ public class ConversationsControllerTests
     public async Task SetTimer_NotParticipant_ReturnsNotFound()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedConversation(db, 100m);
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedConversation(db, 100L);
 
-        var result = await controller.SetTimer(100m, new SetTimerRequest(3600));
+        var result = await controller.SetTimer(100L, new SetTimerRequest(3600));
         Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 
@@ -351,11 +351,11 @@ public class ConversationsControllerTests
     public async Task ListConversations_ReturnsUserConversations()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedUser(db, 2m, "user2");
-        await TestDbContextFactory.SeedConversation(db, 100m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedUser(db, 2L, "user2");
+        await TestDbContextFactory.SeedConversation(db, 100L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 2L);
 
         var result = await controller.ListConversations();
 
@@ -370,7 +370,7 @@ public class ConversationsControllerTests
     public async Task ListConversations_NoConversations_ReturnsEmpty()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
 
         var result = await controller.ListConversations();
 
@@ -385,12 +385,12 @@ public class ConversationsControllerTests
     public async Task Create_ConcurrentCalls_ReturnsSameConversation()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m, "user1");
-        await TestDbContextFactory.SeedUser(db, 2m, "user2");
+        await TestDbContextFactory.SeedUser(db, 1L, "user1");
+        await TestDbContextFactory.SeedUser(db, 2L, "user2");
 
         // Two sequential create calls should produce the same conversation
-        var result1 = await controller.Create(new CreateConversationRequest(2m));
-        var result2 = await controller.Create(new CreateConversationRequest(2m));
+        var result1 = await controller.Create(new CreateConversationRequest(2L));
+        var result2 = await controller.Create(new CreateConversationRequest(2L));
 
         // First should be Created, second should be Ok (existing)
         Assert.IsInstanceOfType<CreatedResult>(result1);

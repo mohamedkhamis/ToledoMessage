@@ -19,6 +19,6 @@ public static class HybridKeyDerivation
 
     public static byte[] DeriveKey(byte[] inputKeyMaterial, byte[] info, int outputLength)
     {
-        return DeriveKey(inputKeyMaterial, Array.Empty<byte>(), info, outputLength);
+        return DeriveKey(inputKeyMaterial, [], info, outputLength);
     }
 }

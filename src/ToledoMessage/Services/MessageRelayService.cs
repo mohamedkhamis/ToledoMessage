@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,7 @@ using ToledoMessage.Shared.Enums;
 
 namespace ToledoMessage.Services;
 
+[SuppressMessage("ReSharper", "RemoveRedundantBraces")]
 public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> hubContext)
 {
     /// <summary>
@@ -19,7 +21,7 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
     /// Falls back to EF-based approach for in-memory provider (testing).
     /// </summary>
     public async Task<EncryptedMessage> StoreMessage(
-        decimal senderDeviceId,
+        long senderDeviceId,
         SendMessageRequest request)
     {
         var now = DateTimeOffset.UtcNow;
@@ -27,19 +29,15 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
         if (!IsValidBase64(request.Ciphertext, out var ciphertext))
             throw new ArgumentException("Invalid Base64 ciphertext.");
 
-        var messageId = DecimalTools.GetNewId();
+        var messageId = IdGenerator.GetNewId();
 
         if (db.Database.IsRelational())
         {
             // Atomic: INSERT with subquery that computes MAX+1 in a single statement.
             // This prevents two concurrent messages from getting the same sequence number.
-            // Must use explicit SqlParameter with precision/scale for decimal(28,8) columns.
-            static SqlParameter DecParam(string name, decimal value)
+            static SqlParameter BigIntParam(string name, long value)
             {
-                return new SqlParameter(name, System.Data.SqlDbType.Decimal)
-                {
-                    Precision = 28, Scale = 8, Value = value
-                };
+                return new SqlParameter(name, System.Data.SqlDbType.BigInt) { Value = value };
             }
 
             await db.Database.ExecuteSqlRawAsync(
@@ -47,16 +45,16 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
                 INSERT INTO EncryptedMessages (Id, ConversationId, SenderDeviceId, RecipientDeviceId, Ciphertext, MessageType, ContentType, FileName, MimeType, ReplyToMessageId, SequenceNumber, ServerTimestamp, IsDelivered)
                 VALUES (@id, @convId, @senderDevId, @recipDevId, @cipher, @msgType, @contentType, @fileName, @mimeType, @replyTo, ISNULL((SELECT MAX(SequenceNumber) FROM EncryptedMessages WITH (UPDLOCK) WHERE ConversationId = @convId), 0) + 1, @ts, 0)
                 """,
-                DecParam("@id", messageId),
-                DecParam("@convId", request.ConversationId),
-                DecParam("@senderDevId", senderDeviceId),
-                DecParam("@recipDevId", request.RecipientDeviceId),
+                BigIntParam("@id", messageId),
+                BigIntParam("@convId", request.ConversationId),
+                BigIntParam("@senderDevId", senderDeviceId),
+                BigIntParam("@recipDevId", request.RecipientDeviceId),
                 new SqlParameter("@cipher", System.Data.SqlDbType.VarBinary) { Value = ciphertext },
                 new SqlParameter("@msgType", System.Data.SqlDbType.Int) { Value = (int)request.MessageType },
                 new SqlParameter("@contentType", System.Data.SqlDbType.Int) { Value = (int)request.ContentType },
                 new SqlParameter("@fileName", System.Data.SqlDbType.NVarChar, 256) { Value = (object?)request.FileName ?? DBNull.Value },
                 new SqlParameter("@mimeType", System.Data.SqlDbType.NVarChar, 128) { Value = (object?)request.MimeType ?? DBNull.Value },
-                new SqlParameter("@replyTo", System.Data.SqlDbType.Decimal) { Precision = 28, Scale = 8, Value = (object?)request.ReplyToMessageId ?? DBNull.Value },
+                new SqlParameter("@replyTo", System.Data.SqlDbType.BigInt) { Value = (object?)request.ReplyToMessageId ?? DBNull.Value },
                 new SqlParameter("@ts", System.Data.SqlDbType.DateTimeOffset) { Value = now });
 
             var message = await db.EncryptedMessages.FirstAsync(m => m.Id == messageId);
@@ -148,7 +146,7 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
     /// <summary>
     /// Get all pending (undelivered) messages for a specific device.
     /// </summary>
-    public async Task<List<EncryptedMessage>> GetPendingMessages(decimal deviceId)
+    public async Task<List<EncryptedMessage>> GetPendingMessages(long deviceId)
     {
         return await db.EncryptedMessages
             .Where(m => m.RecipientDeviceId == deviceId && !m.IsDelivered)
@@ -159,7 +157,7 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
     /// <summary>
     /// Mark a message as delivered.
     /// </summary>
-    public async Task<EncryptedMessage?> AcknowledgeDelivery(decimal messageId)
+    public async Task<EncryptedMessage?> AcknowledgeDelivery(long messageId)
     {
         var message = await db.EncryptedMessages.FindAsync(messageId);
         if (message == null)
@@ -170,6 +168,204 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
         await db.SaveChangesAsync();
 
         return message;
+    }
+
+    /// <summary>
+    /// Bulk-acknowledge delivery for all pending messages of a device.
+    /// Returns list of (messageId, senderDeviceId) for sending notifications.
+    /// </summary>
+    public async Task<List<(long MessageId, long SenderDeviceId)>> BulkAcknowledgeDelivery(long deviceId)
+    {
+        var now = DateTimeOffset.UtcNow;
+        List<(long, long)> result;
+
+        if (db.Database.IsRelational())
+        {
+            // Get messages to notify before updating
+            var toNotify = await db.EncryptedMessages
+                .Where(m => m.RecipientDeviceId == deviceId && !m.IsDelivered)
+                .Select(static m => new { m.Id, m.SenderDeviceId })
+                .ToListAsync();
+
+            await db.Database.ExecuteSqlRawAsync(
+                "UPDATE EncryptedMessages SET IsDelivered = 1, DeliveredAt = @now WHERE RecipientDeviceId = @deviceId AND IsDelivered = 0",
+                new SqlParameter("@now", System.Data.SqlDbType.DateTimeOffset) { Value = now },
+                new SqlParameter("@deviceId", System.Data.SqlDbType.BigInt) { Value = deviceId });
+
+            result = toNotify.Select(static m => (m.Id, m.SenderDeviceId)).ToList();
+        }
+        else
+        {
+            // Fallback for in-memory provider
+            var messages = await db.EncryptedMessages
+                .Where(m => m.RecipientDeviceId == deviceId && !m.IsDelivered)
+                .ToListAsync();
+            foreach (var m in messages)
+            {
+                m.IsDelivered = true;
+                m.DeliveredAt = now;
+            }
+
+            await db.SaveChangesAsync();
+            result = messages.Select(static m => (m.Id, m.SenderDeviceId)).ToList();
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Advance the read pointer for a user in a conversation up to the given sequence number.
+    /// Returns the list of newly-read message IDs + sender device IDs (for notifying senders).
+    /// O(1) pointer update + O(k) query for newly-read messages to notify senders.
+    /// </summary>
+    public async Task<List<(long MessageId, long SenderDeviceId)>> AdvanceReadPointer(
+        long userId, long conversationId, long upToSequenceNumber)
+    {
+        var pointer = await db.ConversationReadPointers
+            .FirstOrDefaultAsync(p => p.UserId == userId && p.ConversationId == conversationId);
+
+        if (pointer is null)
+        {
+            pointer = new ConversationReadPointer
+            {
+                UserId = userId,
+                ConversationId = conversationId,
+                LastReadSequenceNumber = 0,
+                UnreadCount = 0
+            };
+            db.ConversationReadPointers.Add(pointer);
+        }
+
+        if (upToSequenceNumber <= pointer.LastReadSequenceNumber)
+            return [];
+
+        var previousSeqNum = pointer.LastReadSequenceNumber;
+
+        // Get the user's device IDs
+        var userDeviceIds = await db.Devices
+            .Where(d => d.UserId == userId && d.IsActive)
+            .Select(static d => d.Id)
+            .ToListAsync();
+
+        // Find newly-read messages (between old pointer and new pointer) sent TO this user
+        var newlyReadMessages = await db.EncryptedMessages
+            .Where(m => m.ConversationId == conversationId
+                        && userDeviceIds.Contains(m.RecipientDeviceId)
+                        && m.SequenceNumber > previousSeqNum
+                        && m.SequenceNumber <= upToSequenceNumber)
+            .Select(static m => new { m.Id, m.SenderDeviceId })
+            .ToListAsync();
+
+        // Count remaining unread: messages after the new pointer sent TO this user
+        var remainingUnread = await db.EncryptedMessages
+            .CountAsync(m => m.ConversationId == conversationId
+                             && userDeviceIds.Contains(m.RecipientDeviceId)
+                             && m.SequenceNumber > upToSequenceNumber);
+
+        // Update pointer — single row update
+        pointer.LastReadSequenceNumber = upToSequenceNumber;
+        pointer.UnreadCount = remainingUnread;
+        pointer.LastReadAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+
+        return newlyReadMessages.Select(static m => (m.Id, m.SenderDeviceId)).ToList();
+    }
+
+    /// <summary>
+    /// Get the unread count for a user in a conversation from the read pointer.
+    /// Falls back to computing from messages if no pointer exists yet.
+    /// </summary>
+    public async Task<int> GetUnreadCount(long userId, long conversationId)
+    {
+        var pointer = await db.ConversationReadPointers
+            .FirstOrDefaultAsync(p => p.UserId == userId && p.ConversationId == conversationId);
+
+        if (pointer is not null)
+            return pointer.UnreadCount;
+
+        // No pointer yet — count all messages in conversation sent to this user's devices
+        var userDeviceIds = await db.Devices
+            .Where(d => d.UserId == userId && d.IsActive)
+            .Select(static d => d.Id)
+            .ToListAsync();
+
+        return await db.EncryptedMessages
+            .CountAsync(m => m.ConversationId == conversationId
+                             && userDeviceIds.Contains(m.RecipientDeviceId)); // BUG-CR-008 FIX: count all messages (delivered & undelivered)
+    }
+
+    /// <summary>
+    /// Get unread counts for all conversations a user participates in.
+    /// Returns a dictionary of conversationId → unreadCount. O(1) per conversation via pointers.
+    /// </summary>
+    public async Task<Dictionary<long, int>> GetAllUnreadCounts(long userId)
+    {
+        return await db.ConversationReadPointers
+            .Where(p => p.UserId == userId && p.UnreadCount > 0)
+            .ToDictionaryAsync(static p => p.ConversationId, static p => p.UnreadCount);
+    }
+
+    /// <summary>
+    /// Increment the unread count for all participants (except sender) when a new message is sent.
+    /// Creates pointers for participants who don't have one yet.
+    /// </summary>
+    public async Task IncrementUnreadCountsForNewMessage(long conversationId, long senderUserId)
+    {
+        var participantUserIds = await db.ConversationParticipants
+            .Where(cp => cp.ConversationId == conversationId && cp.UserId != senderUserId)
+            .Select(static cp => cp.UserId)
+            .ToListAsync();
+
+        foreach (var participantId in participantUserIds)
+        {
+            var pointer = await db.ConversationReadPointers
+                .FirstOrDefaultAsync(p => p.UserId == participantId && p.ConversationId == conversationId);
+
+            if (pointer is null)
+            {
+                pointer = new ConversationReadPointer
+                {
+                    UserId = participantId,
+                    ConversationId = conversationId,
+                    LastReadSequenceNumber = 0,
+                    UnreadCount = 0
+                };
+                db.ConversationReadPointers.Add(pointer);
+            }
+
+            pointer.UnreadCount++;
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Mark all pending messages for a deactivated device as delivered.
+    /// </summary>
+    public async Task CleanupDeactivatedDeviceMessages(long deviceId)
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        if (db.Database.IsRelational())
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "UPDATE EncryptedMessages SET IsDelivered = 1, DeliveredAt = COALESCE(DeliveredAt, @now) WHERE RecipientDeviceId = @deviceId AND IsDelivered = 0",
+                new SqlParameter("@now", System.Data.SqlDbType.DateTimeOffset) { Value = now },
+                new SqlParameter("@deviceId", System.Data.SqlDbType.BigInt) { Value = deviceId });
+        }
+        else
+        {
+            var messages = await db.EncryptedMessages
+                .Where(m => m.RecipientDeviceId == deviceId && !m.IsDelivered)
+                .ToListAsync();
+            foreach (var m in messages)
+            {
+                m.IsDelivered = true;
+                m.DeliveredAt ??= now;
+            }
+
+            await db.SaveChangesAsync();
+        }
     }
 
     /// <summary>
@@ -189,6 +385,7 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
             int batchDeleted;
             do
             {
+                var nowParam = new SqlParameter("@now", System.Data.SqlDbType.DateTimeOffset) { Value = now };
                 batchDeleted = await db.Database.ExecuteSqlRawAsync(
                     """
                     DELETE TOP(1000) em
@@ -196,8 +393,8 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
                     INNER JOIN Conversations c ON em.ConversationId = c.Id
                     WHERE em.IsDelivered = 1
                       AND c.DisappearingTimerSeconds IS NOT NULL
-                      AND DATEADD(SECOND, c.DisappearingTimerSeconds, em.ServerTimestamp) < {0}
-                    """, now);
+                      AND DATEADD(SECOND, c.DisappearingTimerSeconds, em.ServerTimestamp) < @now
+                    """, nowParam);
                 totalDeleted += batchDeleted;
             } while (batchDeleted == 1000);
 

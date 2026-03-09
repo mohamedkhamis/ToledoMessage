@@ -9,4 +9,5 @@ public sealed record KeyBackupResponse(
     string EncryptedBlob,
     string Salt,
     string Nonce,
-    int Version);
+    int Version,
+    DateTimeOffset? UpdatedAt = null);

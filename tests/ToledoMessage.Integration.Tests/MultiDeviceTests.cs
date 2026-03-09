@@ -2,6 +2,8 @@ using System.Text;
 using ToledoMessage.Crypto.KeyManagement;
 using ToledoMessage.Crypto.Protocol;
 
+// ReSharper disable ArgumentsStyleNamedExpression
+
 namespace ToledoMessage.Integration.Tests;
 
 [TestClass]
@@ -13,20 +15,19 @@ public class MultiDeviceTests
         // ================================================================
         // 1. Alice generates identity + pre-keys
         // ================================================================
-        var aliceIdentity = IdentityKeyGenerator.Generate();
 
         // ================================================================
         // 2. Bob generates identity + pre-keys for Device1
         // ================================================================
         var bobDevice1Identity = IdentityKeyGenerator.Generate();
         var bobDevice1SignedPreKey = PreKeyGenerator.GenerateSignedPreKey(
-            keyId: 1,
+            1,
             identityClassicalPrivate: bobDevice1Identity.ClassicalPrivateKey,
             identityPqPrivate: bobDevice1Identity.PostQuantumPrivateKey);
         var bobDevice1KyberPreKey = PreKeyGenerator.GenerateKyberPreKey(
             bobDevice1Identity.ClassicalPrivateKey,
             bobDevice1Identity.PostQuantumPrivateKey);
-        var bobDevice1OneTimePreKeys = PreKeyGenerator.GenerateOneTimePreKeys(startKeyId: 1, count: 5);
+        var bobDevice1OneTimePreKeys = PreKeyGenerator.GenerateOneTimePreKeys(1, 5);
 
         // ================================================================
         // 3. Bob generates SEPARATE identity + pre-keys for Device2
@@ -34,13 +35,13 @@ public class MultiDeviceTests
         // ================================================================
         var bobDevice2Identity = IdentityKeyGenerator.Generate();
         var bobDevice2SignedPreKey = PreKeyGenerator.GenerateSignedPreKey(
-            keyId: 1,
+            1,
             identityClassicalPrivate: bobDevice2Identity.ClassicalPrivateKey,
             identityPqPrivate: bobDevice2Identity.PostQuantumPrivateKey);
         var bobDevice2KyberPreKey = PreKeyGenerator.GenerateKyberPreKey(
             bobDevice2Identity.ClassicalPrivateKey,
             bobDevice2Identity.PostQuantumPrivateKey);
-        var bobDevice2OneTimePreKeys = PreKeyGenerator.GenerateOneTimePreKeys(startKeyId: 10, count: 5);
+        var bobDevice2OneTimePreKeys = PreKeyGenerator.GenerateOneTimePreKeys(10, 5);
 
         // ================================================================
         // 4. Alice performs X3DH with Bob's Device1 -> session1
@@ -127,7 +128,7 @@ public class MultiDeviceTests
         // ================================================================
         // 7. Alice encrypts the same message for both sessions (fan-out)
         // ================================================================
-        var messageText = "Hello Bob, this is a fan-out message!";
+        const string messageText = "Hello Bob, this is a fan-out message!";
         var plaintext = Encoding.UTF8.GetBytes(messageText);
 
         var (ciphertextD1, headerD1) = aliceToD1Ratchet.Encrypt(plaintext);
@@ -159,7 +160,6 @@ public class MultiDeviceTests
         // after receiving a fan-out message.
 
         // Setup: Alice + Bob with 2 devices
-        var aliceIdentity = IdentityKeyGenerator.Generate();
 
         var bobD1Identity = IdentityKeyGenerator.Generate();
         var bobD1Spk = PreKeyGenerator.GenerateSignedPreKey(1, bobD1Identity.ClassicalPrivateKey, bobD1Identity.PostQuantumPrivateKey);

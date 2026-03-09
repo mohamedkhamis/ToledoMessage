@@ -34,7 +34,7 @@
 </div>
 
 @code {
-    [Parameter] public decimal ConversationId { get; set; }
+    [Parameter] public long ConversationId { get; set; }
     [Parameter] public int? CurrentTimer { get; set; }
     [Parameter] public EventCallback<int?> OnTimerChanged { get; set; }
 
@@ -72,7 +72,7 @@
             if (response.IsSuccessStatusCode)
             {
                 _status = timerSeconds.HasValue
-                    ? $"Disappearing timer set."
+                    ? "Disappearing timer set."
                     : "Disappearing messages disabled.";
                 _isError = false;
                 await OnTimerChanged.InvokeAsync(timerSeconds);

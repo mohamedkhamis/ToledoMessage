@@ -1,26 +1,29 @@
 @page "/new-conversation"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @layout ChatLayout
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject LocalStorageService Storage
+@using ToledoMessage.Shared.Helpers
+@inject IStringLocalizer<SharedResource> Loc
 
 <div class="panel-content-scroll">
 
 @if (!_isAuthenticated)
 {
-    <p class="centered-text"><span class="spinner"></span> Loading...</p>
+    <p class="centered-text"><span class="spinner"></span> @Loc["Loading..."]</p>
 }
 else
 {
 <div class="page-header">
     <button class="back-link back-link-desktop-hidden" @onclick="GoBackToChat" aria-label="Back to conversations">&larr;</button>
-    <h2>New Conversation</h2>
+    <h2>@Loc["NewConversationTitle"]</h2>
 </div>
 
 <div class="card mb-md">
     <div class="form-group mb-0">
-        <input placeholder="Search users by name..."
+        <input placeholder="@Loc["Search by name or @username..."]"
                @bind="_searchQuery"
                @bind:event="oninput"
                @bind:after="OnSearchInputChanged"
@@ -35,7 +38,7 @@ else
 
 @if (_isSearching)
 {
-    <p class="centered-text"><span class="spinner"></span> Searching...</p>
+    <p class="centered-text"><span class="spinner"></span> @Loc["Searching..."]</p>
 }
 else if (_searchResults is not null && _searchResults.Count > 0)
 {
@@ -44,13 +47,13 @@ else if (_searchResults is not null && _searchResults.Count > 0)
         {
             <div class="search-result-item">
                 <div>
-                    <span class="search-result-name">@user.DisplayName</span>
-                    <span class="search-result-meta">@user.DeviceCount device(s)</span>
+                    <span class="search-result-name">@DisplayNameHelper.Resolve(user.DisplayName, user.DisplayNameSecondary)</span>
+                    <span class="search-result-meta">@@@user.Username · @string.Format(Loc["{0} device(s)"], user.DeviceCount)</span>
                 </div>
                 <button class="btn-primary btn-sm"
                         @onclick="() => StartConversation(user)"
                         disabled="@_isCreating">
-                    @(_isCreating && _creatingUserId == user.UserId ? "Creating..." : "Message")
+                    @(_isCreating && _creatingUserId == user.UserId ? Loc["Creating..."] : Loc["Message"])
                 </button>
             </div>
         }
@@ -58,7 +61,7 @@ else if (_searchResults is not null && _searchResults.Count > 0)
 }
 else if (_searchResults is not null && _searchResults.Count == 0 && !string.IsNullOrWhiteSpace(_searchQuery))
 {
-    <p class="centered-text">No users found.</p>
+    <p class="centered-text">@Loc["No users found."]</p>
 }
 }
 
@@ -76,7 +79,7 @@ else if (_searchResults is not null && _searchResults.Count == 0 && !string.IsNu
     }
 
     private bool _isCreating;
-    private decimal? _creatingUserId;
+    private long? _creatingUserId;
     private List<UserSearchResult>? _searchResults;
     private CancellationTokenSource? _debounceCts;
 
@@ -93,11 +96,28 @@ else if (_searchResults is not null && _searchResults.Count == 0 && !string.IsNu
 
     private async Task OnSearchInputChanged()
     {
-        await _debounceCts?.CancelAsync()!;
+        // Safely cancel previous search
+        if (_debounceCts is { } oldCts)
+        {
+            try { await oldCts.CancelAsync(); }
+            catch
+            {
+                // ignored
+            }
+
+            try { oldCts.Dispose(); }
+            catch
+            {
+                // ignored
+            }
+        }
         _debounceCts = new CancellationTokenSource();
         var token = _debounceCts.Token;
 
-        if (string.IsNullOrWhiteSpace(_searchQuery) || _searchQuery.Length < 2)
+        // Strip @ prefix if present (Telegram-style search)
+        var searchQuery = (_searchQuery).TrimStart('@');
+
+        if (string.IsNullOrWhiteSpace(searchQuery) || searchQuery.Length < 2)
         {
             _searchResults = null;
             return;
@@ -115,7 +135,7 @@ else if (_searchResults is not null && _searchResults.Count == 0 && !string.IsNu
             StateHasChanged();
 
             var response = await Http.GetFromJsonAsync<UserSearchResponse>(
-                $"/api/users/search?q={Uri.EscapeDataString(_searchQuery)}", token);
+                $"/api/users/search?q={Uri.EscapeDataString(searchQuery)}", token);
 
             if (!token.IsCancellationRequested)
             {
@@ -130,7 +150,7 @@ else if (_searchResults is not null && _searchResults.Count == 0 && !string.IsNu
         {
             if (!token.IsCancellationRequested)
             {
-                _errorMessage = $"Search failed: {ex.Message}";
+                _errorMessage = string.Format(Loc["SearchFailed"], ex.Message);
             }
         }
         finally
@@ -156,7 +176,7 @@ else if (_searchResults is not null && _searchResults.Count == 0 && !string.IsNu
 
             if (!response.IsSuccessStatusCode)
             {
-                _errorMessage = "Failed to create conversation.";
+                _errorMessage = Loc["Failed to create conversation."];
                 return;
             }
 
@@ -168,12 +188,19 @@ else if (_searchResults is not null && _searchResults.Count == 0 && !string.IsNu
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Error: {ex.Message}";
+            _errorMessage = string.Format(Loc["Error: {0}"], ex.Message);
         }
         finally
         {
             _isCreating = false;
             _creatingUserId = null;
         }
+    }
+
+    public void Dispose()
+    {
+        // BUG-CR-009 FIX: Cancel and dispose the debounce CTS
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
     }
 }

@@ -9,8 +9,7 @@ public class DeviceConfiguration : IEntityTypeConfiguration<Device>
     public void Configure(EntityTypeBuilder<Device> builder)
     {
         builder.HasKey(static d => d.Id);
-        builder.Property(static d => d.Id).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
-        builder.Property(static d => d.UserId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
+        builder.Property(static d => d.Id).ValueGeneratedNever();
         builder.HasIndex(static d => d.UserId);
         builder.Property(static d => d.DeviceName).HasMaxLength(100).IsRequired();
         builder.Property(static d => d.IdentityPublicKeyClassical).IsRequired();

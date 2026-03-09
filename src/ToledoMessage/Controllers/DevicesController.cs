@@ -15,7 +15,7 @@ namespace ToledoMessage.Controllers;
 [ApiController]
 [Route("api/devices")]
 [Authorize]
-public class DevicesController(ApplicationDbContext db, PreKeyService preKeyService) : BaseApiController
+public class DevicesController(ApplicationDbContext db, PreKeyService preKeyService, MessageRelayService relayService) : BaseApiController
 {
     /// <summary>
     /// Register a new device for the current user.
@@ -32,6 +32,8 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
         {
             existingDevice.IsActive = false;
             await db.SaveChangesAsync();
+            // Clean up stale undelivered messages for the deactivated device
+            await relayService.CleanupDeactivatedDeviceMessages(existingDevice.Id);
         }
 
         var activeDeviceCount = await db.Devices.CountAsync(d => d.UserId == userId && d.IsActive);
@@ -72,44 +74,32 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
         if (kyberPreKeySig.Length != ProtocolConstants.HybridSignatureSize)
             return BadRequest("Invalid Kyber pre-key signature size.");
 
-        // Wrap device creation and pre-key storage in a transaction for atomicity
-        await using var transaction = await db.Database.BeginTransactionAsync();
-        try
+        var device = new Device
         {
-            var device = new Device
-            {
-                Id = DecimalTools.GetNewId(),
-                UserId = userId,
-                DeviceName = request.DeviceName,
-                IdentityPublicKeyClassical = classicalIdentityKey,
-                IdentityPublicKeyPostQuantum = pqIdentityKey,
-                SignedPreKeyPublic = signedPreKeyPublic,
-                SignedPreKeySignature = signedPreKeySig,
-                SignedPreKeyId = request.SignedPreKeyId,
-                KyberPreKeyPublic = kyberPreKeyPublic,
-                KyberPreKeySignature = kyberPreKeySig,
-                CreatedAt = DateTimeOffset.UtcNow,
-                LastSeenAt = DateTimeOffset.UtcNow,
-                IsActive = true
-            };
+            Id = IdGenerator.GetNewId(),
+            UserId = userId,
+            DeviceName = request.DeviceName,
+            IdentityPublicKeyClassical = classicalIdentityKey,
+            IdentityPublicKeyPostQuantum = pqIdentityKey,
+            SignedPreKeyPublic = signedPreKeyPublic,
+            SignedPreKeySignature = signedPreKeySig,
+            SignedPreKeyId = request.SignedPreKeyId,
+            KyberPreKeyPublic = kyberPreKeyPublic,
+            KyberPreKeySignature = kyberPreKeySig,
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastSeenAt = DateTimeOffset.UtcNow,
+            IsActive = true
+        };
 
-            db.Devices.Add(device);
-            await db.SaveChangesAsync();
+        db.Devices.Add(device);
+        await db.SaveChangesAsync();
 
-            if (request.OneTimePreKeys is { Count: > 0 and <= ProtocolConstants.OneTimePreKeyBatchSize })
-            {
-                await preKeyService.StoreOneTimePreKeys(device.Id, request.OneTimePreKeys);
-            }
-
-            await transaction.CommitAsync();
-
-            return Created(string.Empty, new { deviceId = device.Id });
-        }
-        catch
+        if (request.OneTimePreKeys is { Count: > 0 and <= ProtocolConstants.OneTimePreKeyBatchSize })
         {
-            await transaction.RollbackAsync();
-            throw;
+            await preKeyService.StoreOneTimePreKeys(device.Id, request.OneTimePreKeys);
         }
+
+        return Created(string.Empty, new { deviceId = device.Id });
     }
 
     /// <summary>
@@ -132,7 +122,7 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
     /// Revoke/deactivate a device belonging to the requesting user.
     /// </summary>
     [HttpDelete("{deviceId}")]
-    public async Task<IActionResult> RevokeDevice(decimal deviceId)
+    public async Task<IActionResult> RevokeDevice(long deviceId)
     {
         var userId = GetUserId();
 
@@ -145,6 +135,9 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
         device.IsActive = false;
         await db.SaveChangesAsync();
 
+        // Clean up stale undelivered messages for the deactivated device
+        await relayService.CleanupDeactivatedDeviceMessages(deviceId);
+
         return NoContent();
     }
 
@@ -152,7 +145,7 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
     /// Get remaining pre-key count for a device belonging to the requesting user.
     /// </summary>
     [HttpGet("{deviceId}/prekeys/count")]
-    public async Task<IActionResult> GetPreKeyCount(decimal deviceId)
+    public async Task<IActionResult> GetPreKeyCount(long deviceId)
     {
         var userId = GetUserId();
 
@@ -171,7 +164,7 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
     /// </summary>
     [HttpPost("{deviceId}/prekeys")]
     public async Task<IActionResult> ReplenishPreKeys(
-        decimal deviceId,
+        long deviceId,
         [FromBody] List<OneTimePreKeyDto> preKeys)
     {
         var userId = GetUserId();

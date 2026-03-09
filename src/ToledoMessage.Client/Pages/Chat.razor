@@ -1,9 +1,10 @@
-@page "/chat/{ConversationId:decimal}"
+@page "/chat/{ConversationId:long}"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @layout ChatLayout
 @using System.Globalization
 @using System.Text
 @using System.Text.Json
+@using ToledoMessage.Shared.Helpers
 @using ToledoMessage.Shared.Models
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -15,30 +16,32 @@
 @inject IJSRuntime Js
 @inject MessageStoreService MessageStore
 @inject ThemeService Theme
+@inject IStringLocalizer<SharedResource> Loc
 @implements IAsyncDisposable
 
 <div class="chat-container">
     <div class="chat-header">
         <button class="back-link back-link-desktop-hidden" @onclick="NavigateBack" aria-label="Back to conversations">&larr;</button>
         @{
+            var peer = _participants.FirstOrDefault(p => p.UserId != _localUserId);
             var headerName = _conversationDetail?.Type == ConversationType.Group
                 ? (_conversationDetail.GroupName ?? "Group")
-                : (_participants.FirstOrDefault(p => p.UserId != _localUserId)?.DisplayName ?? "Conversation");
+                : (peer is not null ? DisplayNameHelper.Resolve(peer.DisplayName, peer.DisplayNameSecondary) : "Conversation");
         }
         <AvatarInitials DisplayName="@headerName" Size="38" />
         <div>
             <h3 class="chat-header-title">@headerName</h3>
             @if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group)
             {
-                <span class="chat-header-subtitle">@string.Format(Theme.Labels.MembersFormat, _participants.Count)</span>
+                <span class="chat-header-subtitle">@string.Format(Loc["{0} members"], _participants.Count)</span>
             }
             else if (_peerIsOnline)
             {
-                <span class="chat-header-subtitle presence-online">@Theme.Labels.Online</span>
+                <span class="chat-header-subtitle presence-online">@Loc["online"]</span>
             }
             else if (_peerLastSeen.HasValue)
             {
-                <span class="chat-header-subtitle presence-text">@string.Format(Theme.Labels.LastSeen, _peerLastSeen.Value.ToLocalTime().ToString("MMM d, HH:mm"))</span>
+                <span class="chat-header-subtitle presence-text">@string.Format(Loc["last seen {0}"], _peerLastSeen.Value.ToLocalTime().ToString("MMM d, HH:mm"))</span>
             }
         </div>
         @if (!string.IsNullOrEmpty(_typingIndicator))
@@ -46,14 +49,14 @@
             <span class="chat-typing-indicator">@_typingIndicator</span>
         }
         <div style="margin-left:auto; display:flex; align-items:center; gap:4px;">
-            <button class="msg-action-btn" @onclick="ToggleSearch" title="@Theme.Labels.SearchMessages">&#128269;</button>
+            <button class="msg-action-btn" @onclick="ToggleSearch" title="@Loc["Search messages..."]">&#128269;</button>
             <button class="msg-action-btn" @onclick="() => _showChatMenu = !_showChatMenu" title="More options">&#8942;</button>
             @if (_showChatMenu)
             {
                 <div class="context-menu-backdrop" @onclick="() => _showChatMenu = false"></div>
                 <div class="context-menu chat-header-menu">
                     <button class="context-menu-item danger" @onclick="OpenClearChatDialog">
-                        <span class="context-menu-icon">&#128465;</span> @Theme.Labels.ClearChat
+                        <span class="context-menu-icon">&#128465;</span> @Loc["Clear chat"]
                     </button>
                 </div>
             }
@@ -63,7 +66,7 @@
     @if (_showSearch)
     {
         <div class="chat-search-bar">
-            <input type="text" class="chat-search-input" placeholder="@Theme.Labels.SearchMessages"
+            <input type="text" class="chat-search-input" placeholder="@Loc["Search messages..."]"
                    @bind="_searchQuery" @bind:event="oninput" @bind:after="UpdateSearchResults"
                    @onkeydown="HandleSearchKeyDown" />
             @if (_searchResults.Count > 0)
@@ -87,7 +90,7 @@
                 @foreach (var p in _participants)
                 {
                     <span class="participant-tag">
-                        @p.DisplayName
+                        @DisplayNameHelper.Resolve(p.DisplayName, p.DisplayNameSecondary)
                         @if (p.Role == ParticipantRole.Admin)
                         {
                             <span class="participant-admin">Admin</span>
@@ -113,7 +116,8 @@
         <div class="alert alert-error mx-chat" role="alert">@_errorMessage</div>
     }
 
-    <div class="chat-messages" @ref="_messageContainer" role="log" aria-live="polite">
+    <div class="chat-messages" @ref="_messageContainer" role="log" aria-live="polite"
+         style="@_wallpaperStyle">
         @if (_isLoading)
         {
             <SkeletonLoader Variant="SkeletonLoader.SkeletonVariant.ChatMessages" />
@@ -124,8 +128,8 @@
                 <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
                 </svg>
-                <h3>@Theme.Labels.NoMessages</h3>
-                <p>@Theme.Labels.SendFirstMessage</p>
+                <h3>@Loc["No messages yet"]</h3>
+                <p>@Loc["Send the first message to start the conversation."]</p>
             </div>
         }
         else
@@ -146,9 +150,9 @@
 
                 @if (_firstUnreadMessageId.HasValue && msg.MessageId == _firstUnreadMessageId.Value)
                 {
-                    var unreadCount = _messages.Count - i;
+                    var unreadCount = _serverUnreadCount;
                     <div class="unread-divider">
-                        <span>@string.Format(Theme.Labels.NewMessagesFormat, unreadCount)</span>
+                        <span>@string.Format(Loc["{0} new message(s)"], unreadCount)</span>
                     </div>
                 }
 
@@ -156,7 +160,7 @@
                 bool isLastInGroup = nextMsg is null || nextMsg.IsMine != msg.IsMine ||
                     nextMsg.Timestamp.LocalDateTime.Date != msg.Timestamp.LocalDateTime.Date;
 
-                <MessageBubble MessageId="msg.MessageId"
+                <MessageBubble @key="msg" MessageId="msg.MessageId"
                                Text="@msg.Text"
                                Timestamp="msg.Timestamp"
                                IsMine="msg.IsMine"
@@ -171,6 +175,8 @@
                                IsForwarded="msg.IsForwarded"
                                IsSearchHighlight="IsSearchHighlighted(msg.MessageId)"
                                OnImageClick="HandleImageClick"
+                               OnVideoClick="HandleVideoClick"
+                               OnPdfClick="HandlePdfClick"
                                OnReply="() => SetReplyTo(msg)"
                                OnContextMenu="(pos) => ShowContextMenu(pos.X, pos.Y, msg)"
                                ReplyToMessageId="msg.ReplyToMessageId"
@@ -197,26 +203,41 @@
                OnClose="CloseLightbox"
                OnIndexChanged="SetLightboxIndex" />
 
+@if (_videoLightboxVisible && _videoLightboxUrl is not null)
+{
+    <div class="video-lightbox-overlay" @onclick="CloseVideoLightbox">
+        <button class="lightbox-close" @onclick="CloseVideoLightbox" aria-label="Close">&times;</button>
+        <div class="video-lightbox-content" @onclick:stopPropagation="true">
+            <video controls autoplay playsinline
+                   src="@_videoLightboxUrl"
+                   class="video-lightbox-player"
+                   aria-label="Video player">
+                Your browser does not support video playback.
+            </video>
+        </div>
+    </div>
+}
+
 @if (_showContextMenu && _contextMenuMessage is not null)
 {
     <div class="context-menu-backdrop" @onclick="CloseContextMenu"></div>
     <div class="context-menu" style="left: @(_contextMenuX)px; top: @(_contextMenuY)px;">
         <button class="context-menu-item" @onclick="CopyMessageText">
-            <span class="context-menu-icon">&#128203;</span> @Theme.Labels.Copy
+            <span class="context-menu-icon">&#128203;</span> @Loc["Copy"]
         </button>
         <button class="context-menu-item" @onclick="ReplyFromContextMenu">
-            <span class="context-menu-icon">&#8617;</span> @Theme.Labels.Reply
+            <span class="context-menu-icon">&#8617;</span> @Loc["Reply"]
         </button>
         <button class="context-menu-item" @onclick="ForwardFromContextMenu">
-            <span class="context-menu-icon">&#10150;</span> @Theme.Labels.Forward
+            <span class="context-menu-icon">&#10150;</span> @Loc["Forward"]
         </button>
         <button class="context-menu-item danger" @onclick="DeleteForMe">
-            <span class="context-menu-icon">&#128465;</span> @Theme.Labels.DeleteForMe
+            <span class="context-menu-icon">&#128465;</span> @Loc["Delete for me"]
         </button>
         @if (_contextMenuMessage.IsMine)
         {
             <button class="context-menu-item danger" @onclick="DeleteForEveryone">
-                <span class="context-menu-icon">&#128465;</span> @Theme.Labels.DeleteForEveryone
+                <span class="context-menu-icon">&#128465;</span> @Loc["Delete for everyone"]
             </button>
         }
     </div>
@@ -226,16 +247,16 @@
 {
     <div class="context-menu-backdrop" @onclick="() => _showClearChatDialog = false"></div>
     <div class="clear-chat-dialog">
-        <h4>@Theme.Labels.ClearChatHeader</h4>
-        <p>@Theme.Labels.ChooseMessages</p>
+        <h4>@Loc["Clear chat messages"]</h4>
+        <p>@Loc["Choose which messages to delete:"]</p>
         <div class="clear-chat-options">
-            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromHours(1))">@Theme.Labels.LastHour</button>
-            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromHours(24))">@Theme.Labels.Last24Hours</button>
-            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromDays(7))">@Theme.Labels.Last7Days</button>
-            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromDays(30))">@Theme.Labels.Last30Days</button>
-            <button class="clear-chat-option danger" @onclick="() => ClearChat(TimeSpan.Zero)">@Theme.Labels.AllMessages</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromHours(1))">@Loc["Last hour"]</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromHours(24))">@Loc["Last 24 hours"]</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromDays(7))">@Loc["Last 7 days"]</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromDays(30))">@Loc["Last 30 days"]</button>
+            <button class="clear-chat-option danger" @onclick="() => ClearChat(TimeSpan.Zero)">@Loc["All messages"]</button>
         </div>
-        <button class="clear-chat-cancel" @onclick="() => _showClearChatDialog = false">@Theme.Labels.Cancel</button>
+        <button class="clear-chat-cancel" @onclick="() => _showClearChatDialog = false">@Loc["Cancel"]</button>
     </div>
 }
 
@@ -244,10 +265,10 @@
     <div class="forward-dialog-overlay" @onclick="CloseForwardDialog">
         <div class="forward-dialog" @onclick:stopPropagation="true">
             <div class="forward-dialog-header">
-                <h4>@Theme.Labels.ForwardMessage</h4>
+                <h4>@Loc["Forward message"]</h4>
                 <button class="msg-action-btn" @onclick="CloseForwardDialog">&#10005;</button>
             </div>
-            <input type="text" class="forward-search-input" placeholder="Search conversations..."
+            <input type="text" class="forward-search-input" placeholder="@Loc["Search conversations..."]"
                    @bind="_forwardSearchQuery" @bind:event="oninput" />
             <div class="forward-conversation-list">
                 @if (_forwardConversations is null)
@@ -280,40 +301,90 @@
 @* ReSharper disable NotAccessedField.Local *@
 @code {
     [Parameter]
-    public decimal ConversationId { get; set; }
+    public long ConversationId { get; set; }
 
     protected override void OnInitialized()
     {
         Theme.OnThemeChanged += OnThemeChanged;
     }
 
-    private void OnThemeChanged()
+    private bool _disposed;
+    private bool _needsScrollToUnread;
+    private bool _needsScrollToBottom;
+    private bool _initialScrollDone;
+    private DotNetObjectReference<Chat>? _dotNetRef;
+
+    // Read tracking (watermark — sequence number based)
+    private long _lastReadSequenceNumber;
+    private System.Timers.Timer? _readDebounceTimer;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        InvokeAsync(StateHasChanged);
+        // Set up scroll observer once
+        if (!_isLoading && _dotNetRef is null && _messages.Count > 0)
+        {
+            try
+            {
+                _dotNetRef = DotNetObjectReference.Create(this);
+                await Js.InvokeVoidAsync("mediaHelpers.observeScroll", ".chat-messages", _dotNetRef);
+            }
+            catch { /* ignored */ }
+        }
+
+        if (_needsScrollToUnread && _firstUnreadMessageId.HasValue)
+        {
+            _needsScrollToUnread = false;
+            _initialScrollDone = true;
+            try
+            {
+                await Js.InvokeVoidAsync("mediaHelpers.scrollToElement",
+                    $"[data-msg-id=\"{_firstUnreadMessageId.Value}\"]");
+            }
+            catch { /* ignored */ }
+        }
+        else if (_needsScrollToBottom)
+        {
+            _needsScrollToBottom = false;
+            var isFirstScroll = !_initialScrollDone;
+            _initialScrollDone = true;
+            try
+            {
+                await Js.InvokeVoidAsync("mediaHelpers.scrollToBottom", ".chat-messages", isFirstScroll);
+            }
+            catch { /* ignored */ }
+        }
     }
 
-    public void Dispose()
+    private void OnThemeChanged()
     {
-        Theme.OnThemeChanged -= OnThemeChanged;
+        InvokeAsync(async () =>
+        {
+            await LoadWallpaperStyle();
+            StateHasChanged();
+        });
     }
 
     private readonly List<ChatMessage> _messages = [];
     private ElementReference _messageContainer;
     private string? _errorMessage;
     private bool _isLoading = true;
+    private string _wallpaperStyle = "";
     private string? _typingIndicator;
-    private decimal _localDeviceId;
-    private decimal _localUserId;
+    private long _localDeviceId;
+    private long _localUserId;
     private string? _accessToken;
     private System.Timers.Timer? _typingTimer;
     private ConversationDetailResponse? _conversationDetail;
     private List<ParticipantResponse> _participants = [];
     private bool _showParticipants;
     private bool _showScrollButton;
-    private decimal? _firstUnreadMessageId;
+    private long? _firstUnreadMessageId;
+    private int _serverUnreadCount;
     private bool _lightboxVisible;
     private List<string> _lightboxImageUrls = [];
     private int _lightboxIndex;
+    private bool _videoLightboxVisible;
+    private string? _videoLightboxUrl;
     private ChatMessage? _replyingTo;
 
     // Context menu state
@@ -343,7 +414,7 @@
     private List<ConversationListItemResponse>? _forwardConversations;
 
     // Static pending forward — survives navigation between chat pages
-    internal static (string Text, ContentType ContentType, string? FileName, string? MimeType, string? MediaDataUrl, bool IsForwarded)? PendingForward;
+    internal static (string Text, ContentType ContentType, string? FileName, string? MimeType, string? MediaDataUrl, bool IsForwarded, byte[]? MediaBytes)? PendingForward;
 
     protected override async Task OnInitializedAsync()
     {
@@ -363,11 +434,14 @@
                 return;
             }
 
-            _localDeviceId = decimal.Parse(Encoding.UTF8.GetString(deviceIdBytes));
+            _localDeviceId = long.Parse(Encoding.UTF8.GetString(deviceIdBytes));
             _accessToken = Encoding.UTF8.GetString(tokenBytes);
 
             // Extract userId from JWT token
             _localUserId = ExtractUserIdFromJwt(_accessToken);
+
+            // Load wallpaper
+            await LoadWallpaperStyle();
 
             // Set auth header for HTTP requests
             Http.DefaultRequestHeaders.Authorization =
@@ -380,13 +454,7 @@
             await LoadConversationDetails();
             await LoadParticipants();
 
-            // Load cached messages from IndexedDB (instant display)
-            await LoadCachedMessages();
-
-            // Load new pending messages from the server
-            await LoadPendingMessages();
-
-            // Connect to SignalR hub
+            // Connect to SignalR hub first (reuses existing connection from sidebar)
             var hubUrl = Navigation.ToAbsoluteUri("/hubs/chat").ToString();
             await SignalR.ConnectAsync(hubUrl, _accessToken);
             try
@@ -395,13 +463,12 @@
             }
             catch (Exception ex) when (ex.Message.Contains("Device not found"))
             {
-                // Stale device ID — clear local data and redirect to log in to re-register
                 await Js.InvokeVoidAsync("toledoStorage.clearAuthData");
                 Navigation.NavigateTo("/login", forceLoad: true);
                 return;
             }
 
-            // Subscribe to real-time events
+            // Subscribe to real-time events BEFORE loading messages
             SignalR.OnMessageReceived += HandleMessageReceived;
             SignalR.OnMessageDelivered += HandleMessageDelivered;
             SignalR.OnMessageRead += HandleMessageRead;
@@ -413,6 +480,46 @@
             SignalR.OnReactionAdded += HandleReactionAdded;
             SignalR.OnReactionRemoved += HandleReactionRemoved;
             SignalR.OnMessageDeleted += HandleMessageDeleted;
+
+            // Load cached messages from IndexedDB (instant display)
+            await LoadCachedMessages();
+
+            // Load pending messages
+            await LoadPendingMessages();
+
+            // Bulk-acknowledge delivery FIRST, then get unread count
+            // (unread = delivered but not read; must deliver before counting)
+            try { await Http.PostAsync($"/api/messages/acknowledge-all?deviceId={_localDeviceId}", null); }
+            catch { /* best effort */ }
+
+            // NOW get unread count (after delivery ack, so newly delivered messages are counted)
+            try
+            {
+                var unreadResp = await Http.GetFromJsonAsync<JsonElement>(
+                    $"/api/messages/unread-count?deviceId={_localDeviceId}&conversationId={ConversationId}");
+                _serverUnreadCount = unreadResp.GetProperty("unreadCount").GetInt32();
+            }
+            catch { _serverUnreadCount = 0; }
+
+            // Place the unread divider based on server unread count
+            // (covers both fresh pending messages and returning to a chat with cached messages)
+            if (_serverUnreadCount > 0 && _messages.Count > 0)
+            {
+                // Count incoming messages from the end to find where the divider goes
+                var incomingCount = 0;
+                for (var i = _messages.Count - 1; i >= 0; i--)
+                {
+                    if (!_messages[i].IsMine)
+                    {
+                        incomingCount++;
+                        if (incomingCount == _serverUnreadCount)
+                        {
+                            _firstUnreadMessageId = _messages[i].MessageId;
+                            break;
+                        }
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -421,13 +528,23 @@
         finally
         {
             _isLoading = false;
+
+            // Determine scroll position
+            if (_firstUnreadMessageId.HasValue)
+            {
+                _needsScrollToUnread = true;
+            }
+            else if (_messages.Count > 0)
+            {
+                _needsScrollToBottom = true;
+            }
         }
 
         // Check for pending forwarded message (use captured value from start of method)
         if (pendingFwd is not null)
         {
             var fwd = pendingFwd.Value;
-            await SendForwardedMessage(fwd.Text, fwd.ContentType, fwd.FileName, fwd.MimeType, fwd.MediaDataUrl);
+            await SendForwardedMessage(fwd.Text, fwd.ContentType, fwd.FileName, fwd.MimeType, fwd.MediaDataUrl, fwd.MediaBytes);
         }
     }
 
@@ -472,7 +589,8 @@
 
                 _messages.Add(new ChatMessage
                 {
-                    MessageId = decimal.TryParse(stored.MessageId, out var mid) ? mid : 0,
+                    MessageId = long.TryParse(stored.MessageId, out var mid) ? mid : 0,
+                    SequenceNumber = stored.SequenceNumber,
                     Text = stored.Text,
                     Timestamp = DateTimeOffset.TryParse(stored.Timestamp, out var ts) ? ts : DateTimeOffset.UtcNow,
                     IsMine = stored.IsMine,
@@ -483,7 +601,7 @@
                         ? await CreateMediaBlobUrlFromBase64(stored.MediaDataBase64, stored.MimeType, stored.FileName)
                         : null,
                     Status = (Shared.Enums.DeliveryStatus)stored.Status,
-                    ReplyToMessageId = decimal.TryParse(stored.ReplyToMessageId, out var rid) ? rid : null,
+                    ReplyToMessageId = long.TryParse(stored.ReplyToMessageId, out var rid) ? rid : null,
                     ReplyToText = stored.ReplyToText,
                     ReplyToSenderName = stored.ReplyToSenderName
                 });
@@ -536,70 +654,67 @@
             var envelopes = await Http.GetFromJsonAsync<List<MessageEnvelope>>(
                 $"/api/messages/pending?deviceId={_localDeviceId}");
 
-            if (envelopes is null)
+            if (envelopes is null || envelopes.Count == 0)
                 return;
 
-            foreach (var envelope in envelopes.Where(e => e.ConversationId == ConversationId))
+            // Process ALL pending messages (not just current conversation)
+            foreach (var envelope in envelopes)
             {
-                // Skip if already loaded from cache
-                if (_messages.Any(m => m.MessageId == envelope.MessageId))
+                if (envelope.ConversationId == ConversationId)
                 {
-                    // Still acknowledge
-                    try { await Http.PostAsync($"/api/messages/{envelope.MessageId}/acknowledge", null); }
-                    catch
+                    // Current conversation — decrypt and display
+                    if (_messages.Any(m => m.MessageId == envelope.MessageId))
+                        continue;
+
+                    ChatMessage chatMsg;
+                    try
                     {
-                        // ignored
+                        chatMsg = await DecryptEnvelopeToChatMessage(envelope, isMine: false);
+                    }
+                    catch (Exception)
+                    {
+                        chatMsg = new ChatMessage
+                        {
+                            MessageId = envelope.MessageId,
+                            SequenceNumber = envelope.SequenceNumber,
+                            Text = "\ud83d\udd12 Waiting for encryption keys...",
+                            Timestamp = envelope.ServerTimestamp,
+                            IsMine = false,
+                            ContentType = ContentType.Text,
+                            Status = Shared.Enums.DeliveryStatus.Delivered
+                        };
                     }
 
-                    continue;
-                }
+                    _messages.Add(chatMsg);
 
-                ChatMessage chatMsg;
-                try
-                {
-                    chatMsg = await DecryptEnvelopeToChatMessage(envelope, isMine: false);
+                    await PersistMessageAsync(chatMsg);
+                    if (chatMsg.MediaBytes is not null)
+                        chatMsg.MediaBytes = null;
                 }
-                catch (Exception)
+                else
                 {
-                    chatMsg = new ChatMessage
+                    // Other conversation — decrypt to advance ratchet, persist to IndexedDB
+                    try
                     {
-                        MessageId = envelope.MessageId,
-                        Text = "\ud83d\udd12 Waiting for encryption keys...",
-                        Timestamp = envelope.ServerTimestamp,
-                        IsMine = false,
-                        ContentType = ContentType.Text,
-                        Status = Shared.Enums.DeliveryStatus.Delivered
-                    };
-                }
-
-                _messages.Add(chatMsg);
-
-                // Track the first new unread message for the divider
-                if (!chatMsg.IsMine && !_firstUnreadMessageId.HasValue)
-                {
-                    _firstUnreadMessageId = chatMsg.MessageId;
-                }
-
-                // Persist to IndexedDB
-                await PersistMessageAsync(chatMsg);
-
-                // Release media bytes after persistence to free memory
-                if (chatMsg.MediaBytes is not null)
-                {
-                    chatMsg.MediaBytes = null;
-                }
-
-                // Always acknowledge
-                try
-                {
-                    await Http.PostAsync(
-                        $"/api/messages/{envelope.MessageId}/acknowledge", null);
-                }
-                catch
-                {
-                    // Best-effort; will retry on next load
+                        var otherMsg = await DecryptEnvelopeToChatMessage(envelope, isMine: false);
+                        await MessageStore.StoreMessageAsync(new StoredMessage
+                        {
+                            MessageId = otherMsg.MessageId.ToString(CultureInfo.InvariantCulture),
+                            ConversationId = envelope.ConversationId.ToString(CultureInfo.InvariantCulture),
+                            Text = otherMsg.Text,
+                            Timestamp = otherMsg.Timestamp.ToString("O"),
+                            IsMine = false,
+                            ContentType = (int)otherMsg.ContentType,
+                            FileName = otherMsg.FileName,
+                            MediaDataBase64 = otherMsg.MediaBytes is not null ? Convert.ToBase64String(otherMsg.MediaBytes) : null,
+                            MimeType = otherMsg.MimeType,
+                            Status = (int)Shared.Enums.DeliveryStatus.Delivered
+                        });
+                    }
+                    catch { /* decryption failed — still acknowledge via bulk */ }
                 }
             }
+            // Individual acks removed — bulk acknowledge-all handles it
         }
         catch (Exception ex)
         {
@@ -614,6 +729,7 @@
             await MessageStore.StoreMessageAsync(new StoredMessage
             {
                 MessageId = chatMsg.MessageId.ToString(CultureInfo.InvariantCulture),
+                SequenceNumber = chatMsg.SequenceNumber,
                 ConversationId = ConversationId.ToString(CultureInfo.InvariantCulture),
                 Text = chatMsg.Text,
                 Timestamp = chatMsg.Timestamp.ToString("O"),
@@ -637,6 +753,7 @@
     // ReSharper disable once AsyncVoidMethod
     private async void HandleMessageReceived(MessageEnvelope envelope)
     {
+        if (_disposed) return;
         if (envelope.ConversationId != ConversationId)
             return;
 
@@ -675,11 +792,11 @@
                     chatMsg.MediaBytes = null;
                 }
 
+                _needsScrollToBottom = true;
                 StateHasChanged();
             });
 
-            // Always acknowledge — even if decryption failed.
-            // Lost ratchet keys can never be recovered.
+            // Always acknowledge delivery — even if decryption failed.
             await SignalR.AcknowledgeDeliveryAsync(envelope.MessageId);
         }
         catch
@@ -689,9 +806,10 @@
     }
 
     // ReSharper disable once AsyncVoidMethod
-    private async void HandleMessageDelivered(decimal messageId)
+    private async void HandleMessageDelivered(long messageId)
     {
-        await InvokeAsync(async () =>
+        if (_disposed) return;
+        try { await InvokeAsync(async () =>
         {
             var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
             if (msg is not null)
@@ -706,12 +824,14 @@
                 StateHasChanged();
             }
         });
+        } catch { /* prevent async void crash */ }
     }
 
     // ReSharper disable  AsyncVoidMethod
-    private async void HandleMessageRead(decimal messageId)
+    private async void HandleMessageRead(long messageId)
     {
-        await InvokeAsync(async () =>
+        if (_disposed) return;
+        try { await InvokeAsync(async () =>
         {
             var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
             if (msg is not null)
@@ -726,16 +846,19 @@
                 StateHasChanged();
             }
         });
+        } catch { /* prevent async void crash */ }
     }
 
-    private async void HandleTypingIndicator(decimal conversationId, string displayName)
+    private async void HandleTypingIndicator(long conversationId, string displayName)
     {
+        if (_disposed) return;
+        try {
         if (conversationId != ConversationId)
             return;
 
         await InvokeAsync(() =>
         {
-            _typingIndicator = string.Format(Theme.Labels.TypingFormat, displayName);
+            _typingIndicator = string.Format(Loc["{0} is typing..."], displayName);
             StateHasChanged();
         });
 
@@ -753,10 +876,13 @@
             });
         };
         _typingTimer.Start();
+        } catch { /* prevent async void crash */ }
     }
 
-    private async void HandleParticipantAdded(decimal conversationId, decimal userId, string displayName)
+    private async void HandleParticipantAdded(long conversationId, long userId, string displayName)
     {
+        if (_disposed) return;
+        try {
         if (conversationId != ConversationId)
             return;
 
@@ -769,10 +895,13 @@
             }
             StateHasChanged();
         });
+        } catch { /* prevent async void crash */ }
     }
 
-    private async void HandleParticipantRemoved(decimal conversationId, decimal userId)
+    private async void HandleParticipantRemoved(long conversationId, long userId)
     {
+        if (_disposed) return;
+        try {
         if (conversationId != ConversationId)
             return;
 
@@ -781,10 +910,13 @@
             _participants.RemoveAll(p => p.UserId == userId);
             StateHasChanged();
         });
+        } catch { /* prevent async void crash */ }
     }
 
-    private async void HandleUserOnline(decimal userId)
+    private async void HandleUserOnline(long userId)
     {
+        if (_disposed) return;
+        try {
         var peer = _participants.FirstOrDefault(p => p.UserId != _localUserId);
         if (peer is not null && peer.UserId == userId)
         {
@@ -794,10 +926,13 @@
                 StateHasChanged();
             });
         }
+        } catch { /* prevent async void crash */ }
     }
 
-    private async void HandleUserOffline(decimal userId, DateTimeOffset lastSeen)
+    private async void HandleUserOffline(long userId, DateTimeOffset lastSeen)
     {
+        if (_disposed) return;
+        try {
         var peer = _participants.FirstOrDefault(p => p.UserId != _localUserId);
         if (peer is not null && peer.UserId == userId)
         {
@@ -808,10 +943,13 @@
                 StateHasChanged();
             });
         }
+        } catch { /* prevent async void crash */ }
     }
 
-    private async void HandleReactionAdded(decimal messageId, decimal userId, string displayName, string emoji)
+    private async void HandleReactionAdded(long messageId, long userId, string displayName, string emoji)
     {
+        if (_disposed) return;
+        try {
         await InvokeAsync(() =>
         {
             if (!_messageReactions.TryGetValue(messageId, out var reactions))
@@ -827,10 +965,13 @@
 
             StateHasChanged();
         });
+        } catch { /* prevent async void crash */ }
     }
 
-    private async void HandleReactionRemoved(decimal messageId, decimal userId, string emoji)
+    private async void HandleReactionRemoved(long messageId, long userId, string emoji)
     {
+        if (_disposed) return;
+        try {
         await InvokeAsync(() =>
         {
             if (_messageReactions.TryGetValue(messageId, out var reactions))
@@ -840,31 +981,34 @@
 
             StateHasChanged();
         });
+        } catch { /* prevent async void crash */ }
     }
 
     private async Task HandleSend(MessageInput.ChatInputMessage input)
     {
         var hasMedia = input.HasMedia;
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] HandleSend: hasMedia={hasMedia}, ContentType={input.ContentType}, MimeType='{input.MimeType}', FileName='{input.FileName}', MediaBytes.Length={input.MediaBytes?.Length}");
 
-        // Handle "Send as document" - change ContentType to File
         var contentType = input.ContentType;
-        if (input.SendAsDocument && contentType == ContentType.Image)
-        {
-            contentType = ContentType.File;
-        }
 
         string? mediaDataUrl = null;
-        if (hasMedia)
+        if (hasMedia && input.MediaBytes is not null)
         {
             try
             {
-                mediaDataUrl = await CreateMediaBlobUrl(input.MimeType ?? "image/jpeg", input.MediaBytes!);
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] Blob URL created: {mediaDataUrl.Substring(0, Math.Min(50, mediaDataUrl.Length))}...");
+                var blobMime = input.MimeType ?? GetDefaultMimeType(contentType);
+                mediaDataUrl = await CreateMediaBlobUrl(blobMime, input.MediaBytes);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] Blob URL creation failed: {ex.Message}");
+                Console.WriteLine($@"Blob URL creation failed, using data URL fallback: {ex.Message}");
+            }
+
+            // Fallback to data URL if blob URL creation failed
+            if (mediaDataUrl is null)
+            {
+                var fallbackMime = input.MimeType ?? GetDefaultMimeType(contentType);
+                var base64 = Convert.ToBase64String(input.MediaBytes);
+                mediaDataUrl = $"data:{fallbackMime};base64,{base64}";
             }
         }
 
@@ -889,6 +1033,7 @@
         };
         CancelReply();
         _messages.Add(tempMessage);
+        _needsScrollToBottom = true;
         StateHasChanged();
 
         try
@@ -918,14 +1063,13 @@
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] Send failed: {ex.Message}");
             _errorMessage = $"Failed to send message: {ex.Message}";
         }
 
         StateHasChanged();
     }
 
-    private async Task SendTextToRecipients(string text, ChatMessage tempMessage, decimal? replyToMessageId = null)
+    private async Task SendTextToRecipients(string text, ChatMessage tempMessage, long? replyToMessageId = null)
     {
         if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group)
         {
@@ -940,6 +1084,7 @@
             if (lastResult is not null)
             {
                 tempMessage.MessageId = lastResult.MessageId;
+                tempMessage.SequenceNumber = lastResult.SequenceNumber;
                 tempMessage.Timestamp = lastResult.ServerTimestamp;
                 tempMessage.Status = Shared.Enums.DeliveryStatus.Sent;
             }
@@ -958,14 +1103,16 @@
             SendMessageResult? lastResult = null;
             foreach (var (deviceId, ciphertextBase64, messageType) in deviceCiphertexts)
             {
-                var request = new SendMessageRequest(
-                    ConversationId,
-                    _localDeviceId,
-                    deviceId,
-                    ciphertextBase64,
-                    messageType,
-                    ContentType.Text,
-                    ReplyToMessageId: replyToMessageId);
+                var request = new SendMessageRequest
+                {
+                    ConversationId = ConversationId,
+                    SenderDeviceId = _localDeviceId,
+                    RecipientDeviceId = deviceId,
+                    Ciphertext = ciphertextBase64,
+                    MessageType = messageType,
+                    ContentType = ContentType.Text,
+                    ReplyToMessageId = replyToMessageId
+                };
 
                 lastResult = await SignalR.SendMessageAsync(request);
             }
@@ -973,6 +1120,7 @@
             if (lastResult is not null)
             {
                 tempMessage.MessageId = lastResult.MessageId;
+                tempMessage.SequenceNumber = lastResult.SequenceNumber;
                 tempMessage.Timestamp = lastResult.ServerTimestamp;
                 tempMessage.Status = Shared.Enums.DeliveryStatus.Sent;
             }
@@ -997,7 +1145,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to generate thumbnail: {ex.Message}");
+                Console.WriteLine($@"Failed to generate thumbnail: {ex.Message}");
             }
         }
         else if (input.ContentType == ContentType.Video)
@@ -1005,7 +1153,7 @@
             try
             {
                 var thumbnailBase64Result = await Js.InvokeAsync<string>("mediaHelpers.captureVideoFrame",
-                    input.MediaBytes, input.MimeType);
+                    input.MediaBytes, input.MimeType ?? "video/mp4", 320, 0.75);
                 if (!string.IsNullOrEmpty(thumbnailBase64Result))
                 {
                     thumbnailBase64 = thumbnailBase64Result;
@@ -1013,7 +1161,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to capture video frame: {ex.Message}");
+                Console.WriteLine($@"Failed to capture video frame: {ex.Message}");
             }
         }
 
@@ -1027,7 +1175,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to create sender thumbnail URL: {ex.Message}");
+                Console.WriteLine($@"Failed to create sender thumbnail URL: {ex.Message}");
             }
         }
 
@@ -1059,6 +1207,7 @@
             if (lastResult is not null)
             {
                 tempMessage.MessageId = lastResult.MessageId;
+                tempMessage.SequenceNumber = lastResult.SequenceNumber;
                 tempMessage.Timestamp = lastResult.ServerTimestamp;
                 tempMessage.Status = Shared.Enums.DeliveryStatus.Sent;
             }
@@ -1077,16 +1226,18 @@
             SendMessageResult? lastResult = null;
             foreach (var (deviceId, ciphertextBase64, messageType) in deviceCiphertexts)
             {
-                var request = new SendMessageRequest(
-                    ConversationId,
-                    _localDeviceId,
-                    deviceId,
-                    ciphertextBase64,
-                    messageType,
-                    input.ContentType,
-                    null, // FileName now inside encrypted payload
-                    null, // MimeType now inside encrypted payload
-                    input.ReplyToMessageId);
+                var request = new SendMessageRequest
+                {
+                    ConversationId = ConversationId,
+                    SenderDeviceId = _localDeviceId,
+                    RecipientDeviceId = deviceId,
+                    Ciphertext = ciphertextBase64,
+                    MessageType = messageType,
+                    ContentType = input.ContentType,
+                    FileName = null, // FileName now inside encrypted payload
+                    MimeType = null, // MimeType now inside encrypted payload
+                    ReplyToMessageId = input.ReplyToMessageId
+                };
 
                 lastResult = await SignalR.SendMessageAsync(request);
             }
@@ -1094,6 +1245,7 @@
             if (lastResult is not null)
             {
                 tempMessage.MessageId = lastResult.MessageId;
+                tempMessage.SequenceNumber = lastResult.SequenceNumber;
                 tempMessage.Timestamp = lastResult.ServerTimestamp;
                 tempMessage.Status = Shared.Enums.DeliveryStatus.Sent;
             }
@@ -1155,13 +1307,14 @@
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Failed to create thumbnail URL: {ex.Message}");
+                    Console.WriteLine($@"Failed to create thumbnail URL: {ex.Message}");
                 }
             }
 
             return new ChatMessage
             {
                 MessageId = envelope.MessageId,
+                SequenceNumber = envelope.SequenceNumber,
                 Text = mediaPayload.Caption ?? "",
                 Timestamp = envelope.ServerTimestamp,
                 IsMine = isMine,
@@ -1196,9 +1349,6 @@
                     var possiblePayload = MediaPayload.Deserialize(decryptedBytes);
                     if (!string.IsNullOrEmpty(possiblePayload.Data) && !string.IsNullOrEmpty(possiblePayload.MimeType))
                     {
-                        System.Diagnostics.Debug.WriteLine(
-                            $"[DEBUG] Detected MediaPayload in text path (envelope.ContentType={envelope.ContentType}). Handling as media.");
-
                         var mediaData = Convert.FromBase64String(possiblePayload.Data);
                         var mimeType = possiblePayload.MimeType;
                         var blobUrl = await CreateMediaBlobUrl(mimeType, mediaData);
@@ -1248,10 +1398,11 @@
                 }
             }
 
-            var plaintext = System.Text.Encoding.UTF8.GetString(decryptedBytes);
+            var plaintext = Encoding.UTF8.GetString(decryptedBytes);
             return new ChatMessage
             {
                 MessageId = envelope.MessageId,
+                SequenceNumber = envelope.SequenceNumber,
                 Text = plaintext,
                 Timestamp = envelope.ServerTimestamp,
                 IsMine = isMine,
@@ -1317,6 +1468,96 @@
         InvokeAsync(StateHasChanged);
     }
 
+    [JSInvokable]
+    public void OnVisibleMessageChanged(string messageIdStr)
+    {
+        if (!long.TryParse(messageIdStr, out var messageId))
+            return;
+
+        var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
+        if (msg is null)
+            return;
+
+        // Use the sequence number of the visible message (works for both mine and incoming)
+        // All messages up to this sequence number have been "seen" by the user
+        var seqNum = msg.SequenceNumber;
+
+        // If the visible message is ours, also check earlier incoming messages
+        if (msg.IsMine)
+        {
+            var visibleIndex = _messages.IndexOf(msg);
+            for (var i = visibleIndex; i >= 0; i--)
+            {
+                if (!_messages[i].IsMine && _messages[i].SequenceNumber > 0)
+                {
+                    seqNum = Math.Max(seqNum, _messages[i].SequenceNumber);
+                    break;
+                }
+            }
+        }
+
+        if (seqNum <= 0 || seqNum <= _lastReadSequenceNumber)
+            return;
+
+        _lastReadSequenceNumber = seqNum;
+        ScheduleReadAck();
+    }
+
+    private void ScheduleReadAck()
+    {
+        // Debounce: send read ack 500ms after the last scroll stop
+        _readDebounceTimer?.Stop();
+        _readDebounceTimer?.Dispose();
+        _readDebounceTimer = new System.Timers.Timer(500);
+        _readDebounceTimer.AutoReset = false;
+        _readDebounceTimer.Elapsed += async (_, _) =>
+        {
+            await SendReadAck();
+        };
+        _readDebounceTimer.Start();
+    }
+
+    private async Task SendReadAck()
+    {
+        if (_lastReadSequenceNumber <= 0)
+            return;
+
+        var upToSeq = _lastReadSequenceNumber;
+        try
+        {
+            // Use HTTP endpoint with sequence number — O(1) pointer update on server
+            var url = $"/api/messages/read?conversationId={ConversationId}&upToSequenceNumber={upToSeq}";
+            var response = await Http.PostAsync(url, null);
+            if (!response.IsSuccessStatusCode)
+                return;
+
+            // Update local unread count based on sequence numbers
+            await InvokeAsync(() =>
+            {
+                _serverUnreadCount = _messages.Count(m => !m.IsMine && m.SequenceNumber > upToSeq);
+
+                if (_serverUnreadCount == 0)
+                {
+                    _firstUnreadMessageId = null;
+                }
+                else
+                {
+                    var firstUnread = _messages
+                        .Where(m => !m.IsMine && m.SequenceNumber > upToSeq)
+                        .OrderBy(static m => m.SequenceNumber)
+                        .FirstOrDefault();
+                    _firstUnreadMessageId = firstUnread?.MessageId;
+                }
+                // Notify sidebar to update the badge
+                SignalR.NotifyUnreadCountChanged(ConversationId, _serverUnreadCount);
+
+                StateHasChanged();
+            });
+
+        }
+        catch { /* best effort */ }
+    }
+
     private async Task HandleTyping()
     {
         try
@@ -1335,7 +1576,7 @@
     /// <summary>
     /// Extracts the user ID from a JWT token by decoding the payload.
     /// </summary>
-    private static decimal ExtractUserIdFromJwt(string token)
+    private static long ExtractUserIdFromJwt(string token)
     {
         var parts = token.Split('.');
         if (parts.Length != 3)
@@ -1348,6 +1589,8 @@
             case 2: payload += "=="; break;
             case 3: payload += "="; break;
         }
+        // Handle base64url encoding (JWT uses base64url per RFC 7515)
+        payload = payload.Replace('-', '+').Replace('_', '/');
 
         var jsonBytes = Convert.FromBase64String(payload);
         using var doc = JsonDocument.Parse(jsonBytes);
@@ -1355,21 +1598,53 @@
 
         // Try "sub" claim first, then "nameid"
         if (root.TryGetProperty("sub", out var subProp))
-            return decimal.Parse(subProp.GetString()!);
+            return long.Parse(subProp.GetString()!);
 
         if (root.TryGetProperty("nameid", out var nameidProp))
-            return decimal.Parse(nameidProp.GetString()!);
+            return long.Parse(nameidProp.GetString()!);
 
         if (root.TryGetProperty("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier", out var fullProp))
-            return decimal.Parse(fullProp.GetString()!);
+            return long.Parse(fullProp.GetString()!);
 
         throw new InvalidOperationException("JWT token does not contain a user ID claim.");
+    }
+
+    private async Task LoadWallpaperStyle()
+    {
+        var wallpaperId = await Theme.GetWallpaperAsync();
+        var themeId = await Theme.GetThemeAsync();
+        var isDark = ThemeService.IsDarkTheme(themeId);
+
+        if (wallpaperId == "none")
+        {
+            _wallpaperStyle = "--chat-bg-image: none;";
+            return;
+        }
+
+        if (wallpaperId == "default")
+        {
+            // Let the theme's CSS handle it
+            _wallpaperStyle = "";
+            return;
+        }
+
+        var wallpaper = ThemeService.GetAvailableWallpapers()
+            .FirstOrDefault(w => w.Id == wallpaperId);
+
+        if (wallpaper is null)
+        {
+            _wallpaperStyle = "";
+            return;
+        }
+
+        var pattern = isDark ? wallpaper.DarkPattern : wallpaper.LightPattern;
+        _wallpaperStyle = pattern is not null ? $"--chat-bg-image: {pattern};" : "";
     }
 
     private MessageInput.ReplyContextModel? _replyContext;
 
     // Reaction state: messageId -> list of (userId, emoji)
-    private readonly Dictionary<decimal, List<(decimal UserId, string Emoji, string DisplayName)>> _messageReactions = [];
+    private readonly Dictionary<long, List<(long UserId, string Emoji, string DisplayName)>> _messageReactions = [];
 
     private void SetReplyTo(ChatMessage msg)
     {
@@ -1383,14 +1658,14 @@
         _showContextMenu = false;
     }
 
-    private static string FormatReplyText(ChatMessage msg)
+    private string FormatReplyText(ChatMessage msg)
     {
         return msg.ContentType switch
         {
-            ContentType.Image => "[Image]",
-            ContentType.Audio => "[Voice message]",
-            ContentType.Video => "[Video]",
-            ContentType.File => $"[File: {msg.FileName ?? "file"}]",
+            ContentType.Image => Loc["[Image]"],
+            ContentType.Audio => Loc["[Voice message]"],
+            ContentType.Video => Loc["[Video]"],
+            ContentType.File => string.Format(Loc["[File: {0}]"], msg.FileName ?? "file"),
             _ => msg.Text.Length > 80 ? msg.Text[..80] + "..." : msg.Text
         };
     }
@@ -1498,8 +1773,10 @@
         CloseContextMenu();
     }
 
-    private async void HandleMessageDeleted(decimal messageId, decimal conversationId)
+    private async void HandleMessageDeleted(long messageId, long conversationId)
     {
+        if (_disposed) return;
+        try {
         if (conversationId != ConversationId)
             return;
 
@@ -1536,6 +1813,7 @@
             }
             StateHasChanged();
         });
+        } catch { /* prevent async void crash */ }
     }
 
     private void OpenClearChatDialog()
@@ -1598,7 +1876,7 @@
         StateHasChanged();
     }
 
-    private async Task ScrollToMessage(decimal messageId)
+    private async Task ScrollToMessage(long messageId)
     {
         try
         {
@@ -1610,7 +1888,7 @@
         }
     }
 
-    private List<MessageBubble.ReactionBadgeModel> GetReactionBadges(decimal messageId)
+    private List<MessageBubble.ReactionBadgeModel> GetReactionBadges(long messageId)
     {
         if (!_messageReactions.TryGetValue(messageId, out var reactions) || reactions.Count == 0)
             return [];
@@ -1626,7 +1904,7 @@
             .ToList();
     }
 
-    private async Task ToggleReaction(decimal messageId, string emoji)
+    private async Task ToggleReaction(long messageId, string emoji)
     {
         try
         {
@@ -1669,6 +1947,24 @@
     private void SetLightboxIndex(int index)
     {
         _lightboxIndex = index;
+    }
+
+    private void HandleVideoClick(string videoUrl)
+    {
+        _videoLightboxUrl = videoUrl;
+        _videoLightboxVisible = true;
+    }
+
+    private void CloseVideoLightbox()
+    {
+        _videoLightboxVisible = false;
+        _videoLightboxUrl = null;
+    }
+
+    private async Task HandlePdfClick(string pdfDataUrl)
+    {
+        // Open PDF in a new browser tab
+        await Js.InvokeVoidAsync("open", pdfDataUrl, "_blank");
     }
 
     // ─── Search methods ───
@@ -1740,7 +2036,7 @@
         await ScrollToMessage(_searchResults[_searchIndex].MessageId);
     }
 
-    private bool IsSearchHighlighted(decimal messageId)
+    private bool IsSearchHighlighted(long messageId)
     {
         return _searchResults.Count > 0 && _searchResults[_searchIndex].MessageId == messageId;
     }
@@ -1782,39 +2078,61 @@
         _forwardSearchQuery = "";
     }
 
-    private void ForwardToConversation(decimal targetConversationId)
+    private async void ForwardToConversation(long targetConversationId)
     {
         if (_forwardingMessage is null) return;
 
+        // BUG-CR-004 FIX: Convert blob URL to bytes before navigation
+        // otherwise the URL gets revoked when the old component disposes
+        string? mediaDataUrl = _forwardingMessage.MediaDataUrl;
+        byte[]? mediaBytes = null;
+        if (_forwardingMessage.ContentType != ContentType.Text && !string.IsNullOrEmpty(mediaDataUrl))
+        {
+            try
+            {
+                mediaBytes = await Js.InvokeAsync<byte[]>("mediaHelpers.fetchBlobAsBytes", mediaDataUrl);
+            }
+            catch
+            {
+                _errorMessage = "Could not forward media — the file is no longer available.";
+                return;
+            }
+        }
+
+        // Store bytes instead of blob URL (null means bytes are in MediaBytes)
         PendingForward = (
             _forwardingMessage.Text,
             _forwardingMessage.ContentType,
             _forwardingMessage.FileName,
             _forwardingMessage.MimeType,
-            _forwardingMessage.MediaDataUrl,
-            true
+            mediaBytes is not null ? null : mediaDataUrl, // if we have bytes, don't need URL
+            true,
+            mediaBytes
         );
 
         CloseForwardDialog();
         Navigation.NavigateTo($"/chat/{targetConversationId}", forceLoad: false);
     }
 
-    private async Task SendForwardedMessage(string text, ContentType contentType, string? fileName, string? mimeType, string? mediaDataUrl)
+    private async Task SendForwardedMessage(string text, ContentType contentType, string? fileName, string? mimeType, string? mediaDataUrl, byte[]? mediaBytesFromForward = null)
     {
         try
         {
-            if (contentType != ContentType.Text && !string.IsNullOrEmpty(mediaDataUrl))
+            if (contentType != ContentType.Text && (mediaBytesFromForward is not null || !string.IsNullOrEmpty(mediaDataUrl)))
             {
-                // For media: read bytes from blob URL via JS, then re-encrypt and send
-                byte[]? mediaBytes;
-                try
+                // For media: use pre-fetched bytes if available, otherwise fetch from blob URL
+                byte[]? mediaBytes = mediaBytesFromForward;
+                if (mediaBytes is null)
                 {
-                    mediaBytes = await Js.InvokeAsync<byte[]>("mediaHelpers.fetchBlobAsBytes", mediaDataUrl);
-                }
-                catch
-                {
-                    _errorMessage = "Could not forward media — the file is no longer available. Try re-sending.";
-                    return;
+                    try
+                    {
+                        mediaBytes = await Js.InvokeAsync<byte[]>("mediaHelpers.fetchBlobAsBytes", mediaDataUrl);
+                    }
+                    catch
+                    {
+                        _errorMessage = "Could not forward media — the file is no longer available. Try re-sending.";
+                        return;
+                    }
                 }
 
                 if (mediaBytes.Length == 0)
@@ -1883,6 +2201,10 @@
 
     public async ValueTask DisposeAsync()
     {
+        _disposed = true;
+        // Unsubscribe from theme changes (BUG-CR-001 fix: must be in DisposeAsync, not Dispose)
+        Theme.OnThemeChanged -= OnThemeChanged;
+
         // Unsubscribe from events
         SignalR.OnMessageReceived -= HandleMessageReceived;
         SignalR.OnMessageDelivered -= HandleMessageDelivered;
@@ -1898,11 +2220,18 @@
 
         _typingTimer?.Stop();
         _typingTimer?.Dispose();
+        _readDebounceTimer?.Stop();
+        _readDebounceTimer?.Dispose();
+
+        // Send final read ack for messages the user has scrolled past BEFORE disposing dotNetRef
+        try { await SendReadAck(); }
+        catch { /* best effort */ }
+
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
 
         // Revoke blob URLs to free browser memory
         await RevokeBlobUrls();
-
-        await SignalR.DisposeAsync();
     }
 
     /// <summary>
@@ -1910,7 +2239,8 @@
     /// </summary>
     private sealed class ChatMessage
     {
-        public decimal MessageId { get; set; }
+        public long MessageId { get; set; }
+        public long SequenceNumber { get; set; }
         // ReSharper disable once PropertyCanBeMadeInitOnly.Local
         public string Text { get; set; } = "";
         public DateTimeOffset Timestamp { get; set; }
@@ -1922,7 +2252,7 @@
         public byte[]? MediaBytes { get; set; }
         public string? MimeType { get; init; }
         public string? FileName { get; init; }
-        public decimal? ReplyToMessageId { get; init; }
+        public long? ReplyToMessageId { get; init; }
         public string? ReplyToText { get; init; }
         public string? ReplyToSenderName { get; init; }
         public string? ReplyToMediaDataUrl { get; init; }

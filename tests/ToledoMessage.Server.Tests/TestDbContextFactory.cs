@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -14,7 +15,7 @@ public static class TestDbContextFactory
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
+            .ConfigureWarnings(static w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
             .Options;
 
         var context = new ApplicationDbContext(options);
@@ -22,16 +23,16 @@ public static class TestDbContextFactory
         return context;
     }
 
-    public static ClaimsPrincipal CreateUserPrincipal(decimal userId, string displayName = "testuser")
+    public static ClaimsPrincipal CreateUserPrincipal(long userId, string displayName = "testuser")
     {
         return new ClaimsPrincipal(new ClaimsIdentity(
         [
-            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString(CultureInfo.InvariantCulture)),
             new Claim(ClaimTypes.Name, displayName)
         ], "TestScheme"));
     }
 
-    public static void SetUser(ControllerBase controller, decimal userId, string displayName = "testuser")
+    public static void SetUser(ControllerBase controller, long userId, string displayName = "testuser")
     {
         controller.ControllerContext = new ControllerContext
         {
@@ -42,11 +43,12 @@ public static class TestDbContextFactory
         };
     }
 
-    public static async Task<User> SeedUser(ApplicationDbContext db, decimal id, string displayName = "testuser", bool isActive = true)
+    public static async Task<User> SeedUser(ApplicationDbContext db, long id, string displayName = "testuser", bool isActive = true)
     {
         var user = new User
         {
             Id = id,
+            Username = displayName,
             DisplayName = displayName,
             PasswordHash = "hashed",
             CreatedAt = DateTimeOffset.UtcNow,
@@ -57,7 +59,7 @@ public static class TestDbContextFactory
         return user;
     }
 
-    public static async Task<Device> SeedDevice(ApplicationDbContext db, decimal id, decimal userId, string name = "TestDevice")
+    public static async Task<Device> SeedDevice(ApplicationDbContext db, long id, long userId, string name = "TestDevice")
     {
         var device = new Device
         {
@@ -80,7 +82,7 @@ public static class TestDbContextFactory
         return device;
     }
 
-    public static async Task<Conversation> SeedConversation(ApplicationDbContext db, decimal id, ConversationType type = ConversationType.OneToOne, string? groupName = null)
+    public static async Task<Conversation> SeedConversation(ApplicationDbContext db, long id, ConversationType type = ConversationType.OneToOne, string? groupName = null)
     {
         var conversation = new Conversation
         {
@@ -94,7 +96,7 @@ public static class TestDbContextFactory
         return conversation;
     }
 
-    public static async Task SeedParticipant(ApplicationDbContext db, decimal conversationId, decimal userId, ParticipantRole role = ParticipantRole.Member)
+    public static async Task SeedParticipant(ApplicationDbContext db, long conversationId, long userId, ParticipantRole role = ParticipantRole.Member)
     {
         db.ConversationParticipants.Add(new ConversationParticipant
         {

@@ -15,6 +15,7 @@ namespace ToledoMessage.Client.Services;
 public class MessageEncryptionService
 {
     private const byte ProtocolVersion = 0x01;
+
     /// <summary>
     /// Encrypts a plaintext message as a NormalMessage (subsequent messages in an established session).
     /// </summary>
@@ -112,7 +113,7 @@ public class MessageEncryptionService
 
         var preKeyHeaderJson = new ReadOnlySpan<byte>(ciphertextWithHeader, headerStart, preKeyHeaderLength);
         var preKeyHeaderDto = JsonSerializer.Deserialize<PreKeyHeaderDto>(preKeyHeaderJson)
-            ?? throw new InvalidOperationException("Failed to deserialize PreKeyHeader.");
+                              ?? throw new InvalidOperationException("Failed to deserialize PreKeyHeader.");
 
         return new PreKeyHeaderInfo
         {
@@ -197,11 +198,16 @@ public class MessageEncryptionService
         var result = new byte[totalLength];
         var offset = 0;
 
-        result[offset] = ProtocolVersion; offset += 1;
-        Buffer.BlockCopy(preKeyHeaderLength, 0, result, offset, 4); offset += 4;
-        Buffer.BlockCopy(preKeyHeaderJson, 0, result, offset, preKeyHeaderJson.Length); offset += preKeyHeaderJson.Length;
-        Buffer.BlockCopy(ratchetHeaderLength, 0, result, offset, 4); offset += 4;
-        Buffer.BlockCopy(ratchetHeaderJson, 0, result, offset, ratchetHeaderJson.Length); offset += ratchetHeaderJson.Length;
+        result[offset] = ProtocolVersion;
+        offset += 1;
+        Buffer.BlockCopy(preKeyHeaderLength, 0, result, offset, 4);
+        offset += 4;
+        Buffer.BlockCopy(preKeyHeaderJson, 0, result, offset, preKeyHeaderJson.Length);
+        offset += preKeyHeaderJson.Length;
+        Buffer.BlockCopy(ratchetHeaderLength, 0, result, offset, 4);
+        offset += 4;
+        Buffer.BlockCopy(ratchetHeaderJson, 0, result, offset, ratchetHeaderJson.Length);
+        offset += ratchetHeaderJson.Length;
         Buffer.BlockCopy(ciphertext, 0, result, offset, ciphertext.Length);
 
         return result;
@@ -212,9 +218,12 @@ public class MessageEncryptionService
     /// Legacy v0 blobs start with a 4-byte int32 header length (JSON headers are typically 50+ bytes,
     /// so the first byte will be >= 0x10). Version bytes are small (0x01-0x0F).
     /// </summary>
+    // ReSharper disable once UnusedTupleComponentInReturnValue
     private static (byte version, int dataOffset) DetectVersion(byte[] blob)
     {
         if (blob.Length < 5) return (0, 0); // Too short for v1, try as v0
+
+        // ReSharper disable  InvertIf
         if (blob[0] >= 0x01 && blob[0] <= 0x0F)
         {
             // Validate: the next 4 bytes should be a reasonable header length
@@ -222,6 +231,7 @@ public class MessageEncryptionService
             if (headerLen > 0 && headerLen < blob.Length)
                 return (blob[0], 1); // v1: skip version byte
         }
+
         return (0, 0); // Legacy v0: no version prefix
     }
 
@@ -244,7 +254,7 @@ public class MessageEncryptionService
 
         var headerJson = new ReadOnlySpan<byte>(blob, headerStart, headerLength);
         var headerDto = JsonSerializer.Deserialize<MessageHeaderDto>(headerJson)
-            ?? throw new InvalidOperationException("Failed to deserialize message header.");
+                        ?? throw new InvalidOperationException("Failed to deserialize message header.");
 
         var ciphertextStart = headerStart + headerLength;
         var ciphertextLength = blob.Length - ciphertextStart;
@@ -274,25 +284,29 @@ public class MessageEncryptionService
         var offset = dataOffset;
 
         // Read PreKeyHeader
-        var preKeyHeaderLength = BitConverter.ToInt32(blob, offset); offset += 4;
+        var preKeyHeaderLength = BitConverter.ToInt32(blob, offset);
+        offset += 4;
         if (blob.Length < offset + preKeyHeaderLength)
             throw new InvalidOperationException("Invalid PreKeyMessage blob: too short for PreKeyHeader.");
 
-        var preKeyHeaderJson = new ReadOnlySpan<byte>(blob, offset, preKeyHeaderLength); offset += preKeyHeaderLength;
+        var preKeyHeaderJson = new ReadOnlySpan<byte>(blob, offset, preKeyHeaderLength);
+        offset += preKeyHeaderLength;
         var preKeyHeaderDto = JsonSerializer.Deserialize<PreKeyHeaderDto>(preKeyHeaderJson)
-            ?? throw new InvalidOperationException("Failed to deserialize PreKeyHeader.");
+                              ?? throw new InvalidOperationException("Failed to deserialize PreKeyHeader.");
 
         // Read RatchetHeader
         if (blob.Length < offset + 4)
             throw new InvalidOperationException("Invalid PreKeyMessage blob: too short for ratchet header length.");
 
-        var ratchetHeaderLength = BitConverter.ToInt32(blob, offset); offset += 4;
+        var ratchetHeaderLength = BitConverter.ToInt32(blob, offset);
+        offset += 4;
         if (blob.Length < offset + ratchetHeaderLength)
             throw new InvalidOperationException("Invalid PreKeyMessage blob: too short for ratchet header.");
 
-        var ratchetHeaderJson = new ReadOnlySpan<byte>(blob, offset, ratchetHeaderLength); offset += ratchetHeaderLength;
+        var ratchetHeaderJson = new ReadOnlySpan<byte>(blob, offset, ratchetHeaderLength);
+        offset += ratchetHeaderLength;
         var ratchetHeaderDto = JsonSerializer.Deserialize<MessageHeaderDto>(ratchetHeaderJson)
-            ?? throw new InvalidOperationException("Failed to deserialize ratchet header.");
+                               ?? throw new InvalidOperationException("Failed to deserialize ratchet header.");
 
         // Read ciphertext
         var ciphertextLength = blob.Length - offset;
@@ -321,9 +335,9 @@ public class MessageEncryptionService
     /// </summary>
     private sealed class MessageHeaderDto
     {
-        public string RatchetPublicKey { get; set; } = "";
-        public int PreviousChainLength { get; set; }
-        public int MessageIndex { get; set; }
+        public string RatchetPublicKey { get; init; } = string.Empty;
+        public int PreviousChainLength { get; init; }
+        public int MessageIndex { get; init; }
     }
 
     /// <summary>
@@ -331,9 +345,9 @@ public class MessageEncryptionService
     /// </summary>
     private sealed class PreKeyHeaderDto
     {
-        public string EphemeralPublicKey { get; set; } = "";
-        public string KemCiphertext { get; set; } = "";
-        public int? UsedOneTimePreKeyId { get; set; }
+        public string EphemeralPublicKey { get; init; } = string.Empty;
+        public string KemCiphertext { get; init; } = string.Empty;
+        public int? UsedOneTimePreKeyId { get; init; }
     }
 }
 

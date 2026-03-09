@@ -10,56 +10,227 @@
 @inject ThemeService Theme
 @inject PreferencesService Preferences
 @inject KeyBackupService KeyBackup
+@inject IStringLocalizer<SharedResource> Loc
 
-<div class="auth-page fade-in">
-    <h2>Sign In</h2>
-
-    <div class="card">
-        <div class="auth-status-area" style="min-height:48px;">
-            <div class="alert alert-error @(string.IsNullOrEmpty(_errorMessage) ? "alert-hidden" : "")" role="alert">
-                @(_errorMessage ?? "\u00A0")
-            </div>
-            <div class="alert alert-info @(string.IsNullOrEmpty(_statusMessage) ? "alert-hidden" : "")" role="status">
-                @(_statusMessage ?? "\u00A0")
-            </div>
-        </div>
-
-        <form @onsubmit="HandleLogin">
-            <div class="form-group">
-                <label for="displayName">Display Name</label>
-                <input id="displayName" @bind="_displayName" placeholder="Enter your display name"
-                       autocomplete="username" required aria-required="true" />
-            </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input id="password" type="password" @bind="_password" placeholder="Enter your password"
-                       autocomplete="current-password" required aria-required="true" />
-            </div>
-            <button type="submit" class="btn-primary btn-full" disabled="@_isLoading"
-                    aria-busy="@_isLoading">
-                @if (_isLoading)
-                {
-                    <span class="spinner spinner-sm"></span>
-                    <text> Signing in...</text>
-                }
-                else
-                {
-                    <text>Sign In</text>
-                }
-            </button>
-        </form>
+<div class="auth-page-container fade-in">
+    <div class="auth-header">
+        <a href="/" class="brand-link">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                <path d="M8 10h8M8 14h4" />
+            </svg>
+            <span>ToledoMessage</span>
+        </a>
     </div>
 
-    <p class="auth-footer">Don't have an account? <a href="/register">Create one</a></p>
+    <div class="auth-page">
+        <div class="auth-title-area">
+            <h2>@Loc["Welcome Back"]</h2>
+            <p>@Loc["Sign in to continue your secure conversations"]</p>
+        </div>
 
-    <div class="app-version-footer">Toledo Message v@(AppVersion.Current)</div>
+        <div class="card auth-card">
+            <div class="auth-status-area" style="min-height:48px;">
+                <div class="alert alert-error @(string.IsNullOrEmpty(_errorMessage) ? "alert-hidden" : "")" role="alert">
+                    @(_errorMessage ?? "\u00A0")
+                </div>
+                <div class="alert alert-info @(string.IsNullOrEmpty(_statusMessage) ? "alert-hidden" : "")" role="status">
+                    @(_statusMessage ?? "\u00A0")
+                </div>
+            </div>
+
+            <form @onsubmit="HandleLogin">
+                <div class="form-group floating-group">
+                    <input id="username" @bind="_username" class="floating-input" placeholder=" "
+                           autocomplete="username" required aria-required="true" />
+                    <label for="username" class="floating-label">@Loc["Username"]</label>
+                </div>
+                <div class="form-group floating-group">
+                    <input id="password" type="password" @bind="_password" class="floating-input" placeholder=" "
+                           autocomplete="current-password" required aria-required="true" />
+                    <label for="password" class="floating-label">@Loc["Password"]</label>
+                </div>
+                <button type="submit" class="btn-primary btn-full auth-btn" disabled="@_isLoading"
+                        aria-busy="@_isLoading">
+                    @if (_isLoading)
+                    {
+                        <span class="spinner spinner-sm"></span>
+                        <text> @Loc["Signing in..."]</text>
+                    }
+                    else
+                    {
+                        <text>@Loc["Sign In"]</text>
+                    }
+                </button>
+            </form>
+        </div>
+
+        <p class="auth-footer">@Loc["Don't have an account?"] <a href="/register" class="auth-link">@Loc["Create one"]</a></p>
+        <div class="app-version-footer">Toledo Message v@(AppVersion.Current)</div>
+    </div>
 </div>
 
+<style>
+    .auth-page-container {
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-primary);
+        background-image: radial-gradient(circle at 50% 0%, var(--accent-light, rgba(56, 189, 248, 0.05)) 0%, transparent 60%);
+        color: var(--text-primary);
+    }
+
+    .auth-header {
+        padding: 24px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .brand-link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        text-decoration: none;
+        letter-spacing: -0.5px;
+    }
+
+    .brand-link svg {
+        color: var(--accent);
+    }
+
+    .auth-page {
+        max-width: 440px;
+        margin: 4vh auto 40px;
+        padding: 0 20px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .auth-title-area {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+
+    .auth-title-area h2 {
+        font-size: 2rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+        color: var(--text-primary);
+        letter-spacing: -0.5px;
+    }
+
+    .auth-title-area p {
+        color: var(--text-secondary);
+        font-size: 1.05rem;
+    }
+
+    .auth-card {
+        padding: 32px 28px;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-md);
+        background: var(--card-bg);
+        margin-bottom: 24px;
+    }
+
+    .floating-group {
+        position: relative;
+        margin-bottom: 20px;
+    }
+
+    .floating-input {
+        width: 100%;
+        padding: 18px 16px 8px;
+        font-size: 1rem;
+        border: 2px solid var(--input-border);
+        border-radius: 12px;
+        background: var(--input-bg);
+        color: var(--text-primary);
+        transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+    }
+
+    .floating-input:focus {
+        border-color: var(--accent);
+        background: var(--bg-secondary);
+        outline: none;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+    }
+
+    .floating-label {
+        position: absolute;
+        inset-inline-start: 16px;
+        top: 14px;
+        font-size: 1rem;
+        color: var(--text-secondary);
+        transition: all 0.2s ease-out;
+        pointer-events: none;
+        margin: 0;
+        transform-origin: left top;
+    }
+
+    :global([dir="rtl"]) .floating-label {
+        transform-origin: right top;
+    }
+
+    .floating-input:focus ~ .floating-label,
+    .floating-input:not(:placeholder-shown) ~ .floating-label {
+        transform: translateY(-8px) scale(0.8);
+        color: var(--accent);
+        font-weight: 600;
+    }
+
+    .floating-input {
+        text-align: start;
+    }
+
+    .auth-btn {
+        margin-top: 12px;
+        padding: 14px;
+        font-size: 1rem;
+        font-weight: 600;
+        border-radius: 12px;
+        border: none;
+        background: var(--accent);
+        color: var(--accent-text);
+        transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent);
+    }
+
+    .auth-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        background: var(--accent-hover);
+        box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 40%, transparent);
+    }
+
+    .auth-footer {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+    }
+
+    .auth-link {
+        color: var(--accent);
+        font-weight: 600;
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+
+    .auth-link:hover {
+        color: var(--accent-hover);
+        text-decoration: underline;
+    }
+</style>
+
 @code {
-    private string _displayName = "";
+    private string _username = "";
     private string _password = "";
     private string? _errorMessage;
     private string? _statusMessage;
+    private string? _backupWarning;
     private bool _isLoading;
 
     protected override async Task OnInitializedAsync()
@@ -82,12 +253,12 @@
         try
         {
             // 1. Authenticate
-            var request = new LoginRequest(_displayName, _password);
+            var request = new LoginRequest(_username, _password);
             var response = await Http.PostAsJsonAsync("/api/auth/login", request);
 
             if (!response.IsSuccessStatusCode)
             {
-                _errorMessage = "Invalid credentials.";
+                _errorMessage = Loc["Invalid credentials."];
                 return;
             }
 
@@ -95,15 +266,23 @@
             Http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authResponse!.Token);
 
-            // 2. Store auth token
+            // 2. Store auth tokens
             await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse.Token));
+            if (authResponse.RefreshToken is not null)
+                await Storage.StoreAsync("auth.refreshToken", Encoding.UTF8.GetBytes(authResponse.RefreshToken));
 
             // 3. Sync user preferences from server
             try
             {
                 var prefs = await Preferences.GetPreferencesAsync();
                 await Theme.SetThemeAsync(prefs.Theme);
-                await Theme.SetFontSizeAsync(prefs.FontSize);
+                await Theme.SetFontSizeAsync(int.TryParse(prefs.FontSize, out var fsPx) ? fsPx : 15);
+                // Sync language from server — if different, apply and reload
+                var localLang = await Js.InvokeAsync<string?>("localStorage.getItem", "app.culture") ?? "en";
+                if (!string.Equals(localLang, prefs.Language, StringComparison.OrdinalIgnoreCase))
+                {
+                    await Js.InvokeVoidAsync("localStorage.setItem", "app.culture", prefs.Language);
+                }
             }
             catch
             {
@@ -139,13 +318,18 @@
                 // Device no longer exists on server — clear stale data and re-register below
                 await Js.InvokeVoidAsync("toledoStorage.clearAuthData");
                 await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse.Token));
+                if (authResponse.RefreshToken is not null)
+                    await Storage.StoreAsync("auth.refreshToken", Encoding.UTF8.GetBytes(authResponse.RefreshToken));
                 Http.DefaultRequestHeaders.Authorization =
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authResponse.Token);
             }
 
             // 5. New device: check shared keys preference and try restore
-            _statusMessage = "Setting up encryption keys...";
+            _statusMessage = Loc["Setting up encryption keys..."];
             StateHasChanged();
+
+            // Yield to let Blazor render the status message before CPU-intensive key generation
+            await Task.Delay(50);
 
             DeviceRegistrationRequest deviceRequest;
             var prefs2 = await Preferences.GetPreferencesAsync();
@@ -159,40 +343,47 @@
                     if (restored is not null)
                     {
                         // Keys restored from backup — generate fresh pre-keys with shared identity
-                        _statusMessage = "Restoring encryption keys...";
+                        _statusMessage = Loc["Restoring encryption keys..."];
                         StateHasChanged();
+                        await Task.Delay(50);
                         deviceRequest = await KeyGenService.RestoreKeysAndBuildRequest(restored, "Web Browser");
                     }
                     else
                     {
                         // No backup exists (first device) — generate new keys and upload backup
-                        _statusMessage = "Generating encryption keys...";
+                        _statusMessage = Loc["Generating encryption keys..."];
                         StateHasChanged();
+                        await Task.Delay(50);
                         deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
                     }
                 }
                 catch
                 {
                     // Backup restore failed — fall back to fresh keys
-                    _statusMessage = "Generating encryption keys...";
+                    _statusMessage = Loc["Generating encryption keys..."];
                     StateHasChanged();
+                    await Task.Delay(50);
                     deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
                 }
             }
             else
             {
                 // Shared keys disabled — generate fresh keys (original behavior)
-                _statusMessage = "Generating encryption keys...";
+                _statusMessage = Loc["Generating encryption keys..."];
                 StateHasChanged();
+                await Task.Delay(50);
                 deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
             }
+
+            _statusMessage = Loc["Registering device..."];
+            StateHasChanged();
 
             var deviceResponse = await Http.PostAsJsonAsync("/api/devices", deviceRequest);
 
             if (!deviceResponse.IsSuccessStatusCode)
             {
                 var errorBody = await deviceResponse.Content.ReadAsStringAsync();
-                _errorMessage = $"Device registration failed: {errorBody}";
+                _errorMessage = string.Format(Loc["DeviceRegistrationFailed"], errorBody);
                 return;
             }
 
@@ -211,11 +402,18 @@
                 }
                 catch
                 {
-                    // Non-critical: backup upload failure doesn't block login
+                    _backupWarning = Loc["Key backup failed. You can retry from Settings."];
                 }
             }
 
-            // 7. Navigate to chat
+            // 7. Navigate to chat (with optional warning)
+            if (_backupWarning is not null)
+            {
+                _statusMessage = _backupWarning;
+                StateHasChanged();
+                await Task.Delay(2500);
+            }
+
             Navigation.NavigateTo("/chat");
         }
         catch (Exception ex)
@@ -228,5 +426,5 @@
         }
     }
 
-    private sealed record DeviceRegistrationResult(decimal DeviceId);
+    private sealed record DeviceRegistrationResult(long DeviceId);
 }

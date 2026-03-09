@@ -1,7 +1,7 @@
 namespace ToledoMessage.Shared.DTOs;
 
 public sealed record ReactionDto(
-    decimal MessageId,
-    decimal UserId,
+    long MessageId,
+    long UserId,
     string DisplayName,
     string Emoji);

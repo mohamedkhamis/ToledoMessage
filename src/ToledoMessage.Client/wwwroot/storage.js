@@ -27,30 +27,60 @@ window.toledoStorage = {
     getTheme: function () {
         return localStorage.getItem('app.theme');
     },
+    toggleDarkMode: function () {
+        var current = localStorage.getItem('app.theme') || 'default';
+        var next = current.endsWith('-dark') ? current.replace('-dark', '') : current + '-dark';
+        this.setTheme(next);
+        return next;
+    },
+    isDarkTheme: function () {
+        var t = localStorage.getItem('app.theme') || '';
+        if (t.endsWith('-dark')) return true;
+        if (!t || t === 'default') return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        return false;
+    },
     prefersDarkMode: function () {
         return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     },
     setFontSize: function (size) {
-        if (size && size !== 'medium') {
-            localStorage.setItem('app.fontSize', size);
-            document.documentElement.setAttribute('data-font-size', size);
-        } else {
-            localStorage.removeItem('app.fontSize');
-            document.documentElement.removeAttribute('data-font-size');
+        // Accept numeric px value (12–20) or legacy string ('small'/'medium'/'large')
+        var px = parseInt(size, 10);
+        if (isNaN(px)) {
+            // Legacy migration: convert old string values to px
+            px = size === 'small' ? 13 : size === 'large' ? 17 : 15;
         }
+        localStorage.setItem('app.fontSize', String(px));
+        document.documentElement.style.setProperty('--app-font-size', px + 'px');
     },
     getFontSize: function () {
-        return localStorage.getItem('app.fontSize') || 'medium';
+        var stored = localStorage.getItem('app.fontSize');
+        if (!stored) return '15';
+        // Legacy migration
+        if (stored === 'small') return '13';
+        if (stored === 'medium') return '15';
+        if (stored === 'large') return '17';
+        return stored;
+    },
+    setWallpaper: function (id) {
+        if (id && id !== 'default') {
+            localStorage.setItem('app.wallpaper', id);
+        } else {
+            localStorage.removeItem('app.wallpaper');
+        }
+    },
+    getWallpaper: function () {
+        return localStorage.getItem('app.wallpaper') || 'default';
     },
     clearAuthData: function () {
-        // Only clear the auth token — preserve device identity, crypto keys, sessions,
+        // Only clear auth tokens — preserve device identity, crypto keys, sessions,
         // and preferences so the same device is reused on re-login and old messages
         // remain decryptable (Signal Protocol sessions are forward-secret).
         localStorage.removeItem('auth.token');
+        localStorage.removeItem('auth.refreshToken');
     },
     clearAllData: function () {
         // Full wipe for account deletion — clear everything except UI preferences
-        var preserve = ['app.theme', 'app.fontSize'];
+        var preserve = ['app.theme', 'app.fontSize', 'app.wallpaper'];
         var saved = {};
         for (var i = 0; i < preserve.length; i++) {
             var v = localStorage.getItem(preserve[i]);

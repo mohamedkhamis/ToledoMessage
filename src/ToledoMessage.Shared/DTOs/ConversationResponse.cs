@@ -1,3 +1,3 @@
 namespace ToledoMessage.Shared.DTOs;
 
-public sealed record ConversationResponse(decimal ConversationId, bool IsNew);
+public sealed record ConversationResponse(long ConversationId, bool IsNew);

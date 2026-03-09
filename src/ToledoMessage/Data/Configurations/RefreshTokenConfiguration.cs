@@ -9,9 +9,7 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
     public void Configure(EntityTypeBuilder<RefreshToken> builder)
     {
         builder.HasKey(static rt => rt.Id);
-        builder.Property(static rt => rt.Id).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
-        builder.Property(static rt => rt.UserId).HasColumnType("decimal(28,8)").HasPrecision(28, 8);
-        builder.Property(static rt => rt.DeviceId).HasColumnType("decimal(28,8)").HasPrecision(28, 8).IsRequired(false);
+        builder.Property(static rt => rt.Id).ValueGeneratedNever();
         builder.Property(static rt => rt.Token).HasMaxLength(512).IsRequired();
         builder.HasIndex(static rt => rt.Token).IsUnique();
         builder.Property(static rt => rt.ExpiresAt).IsRequired();

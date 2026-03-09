@@ -1,4 +1,3 @@
-using System.Text;
 using ToledoMessage.Crypto.PostQuantum;
 
 namespace ToledoMessage.Crypto.Tests.PostQuantum;

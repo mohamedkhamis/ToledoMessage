@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.Extensions.DependencyInjection;
+using ToledoMessage.Shared.Converters;
 using ToledoMessage.Shared.DTOs;
+
+// ReSharper disable RemoveRedundantBraces
 
 namespace ToledoMessage.Client.Services;
 
@@ -13,45 +15,51 @@ namespace ToledoMessage.Client.Services;
 public class SignalRService : IAsyncDisposable
 {
     private HubConnection? _hubConnection;
+    private string? _currentHubUrl;
+    private long _registeredDeviceId;
+    private Func<string?, Task>? _reconnectedHandler;
 
     /// <summary>Raised when a new encrypted message is received from the server.</summary>
     public event Action<MessageEnvelope>? OnMessageReceived;
 
     /// <summary>Raised when a sent message has been delivered to the recipient's device.</summary>
-    public event Action<decimal>? OnMessageDelivered;
+    public event Action<long>? OnMessageDelivered;
 
     /// <summary>Raised when a sent message has been read by the recipient.</summary>
-    public event Action<decimal>? OnMessageRead;
+    public event Action<long>? OnMessageRead;
 
     /// <summary>Raised when a user is typing in a conversation. Parameters: conversationId, displayName.</summary>
-    public event Action<decimal, string>? OnTypingIndicator;
+    public event Action<long, string>? OnTypingIndicator;
 
     /// <summary>Raised when a remote device's identity key has changed. Parameters: deviceId, displayName.</summary>
-    public event Action<decimal, string>? OnIdentityKeyChanged;
+    public event Action<long, string>? OnIdentityKeyChanged;
 
     /// <summary>Raised when the server detects that a device's pre-key count is low. Parameters: deviceId, remainingCount.</summary>
-    public event Action<decimal, int>? OnPreKeyCountLow;
+    public event Action<long, int>? OnPreKeyCountLow;
 
     /// <summary>Raised when a participant is added to a group conversation. Parameters: conversationId, userId, displayName.</summary>
-    public event Action<decimal, decimal, string>? OnParticipantAdded;
+    public event Action<long, long, string>? OnParticipantAdded;
 
     /// <summary>Raised when a participant is removed from a group conversation. Parameters: conversationId, userId.</summary>
-    public event Action<decimal, decimal>? OnParticipantRemoved;
+    public event Action<long, long>? OnParticipantRemoved;
 
     /// <summary>Raised when a user is online. Parameter: userId.</summary>
-    public event Action<decimal>? OnUserOnline;
+    public event Action<long>? OnUserOnline;
 
     /// <summary>Raised when a user goes offline. Parameters: userId, lastSeenAt.</summary>
-    public event Action<decimal, DateTimeOffset>? OnUserOffline;
+    public event Action<long, DateTimeOffset>? OnUserOffline;
 
     /// <summary>Raised when a reaction is added. Parameters: messageId, userId, displayName, emoji.</summary>
-    public event Action<decimal, decimal, string, string>? OnReactionAdded;
+    public event Action<long, long, string, string>? OnReactionAdded;
 
     /// <summary>Raised when a reaction is removed. Parameters: messageId, userId, emoji.</summary>
-    public event Action<decimal, decimal, string>? OnReactionRemoved;
+    public event Action<long, long, string>? OnReactionRemoved;
 
     /// <summary>Raised when a message is deleted for everyone. Parameters: messageId, conversationId.</summary>
-    public event Action<decimal, decimal>? OnMessageDeleted;
+    public event Action<long, long>? OnMessageDeleted;
+
+    /// <summary>Raised locally when the Chat page marks messages as read. Parameters: conversationId, newUnreadCount.</summary>
+    public event Action<long, int>? OnUnreadCountChanged;
 
     /// <summary>
     /// Whether the hub connection is currently active.
@@ -61,23 +69,34 @@ public class SignalRService : IAsyncDisposable
 
     /// <summary>
     /// Builds and starts the SignalR hub connection with automatic reconnection.
+    /// Reuses the existing connection if already connected to the same hub.
     /// </summary>
     /// <param name="hubUrl">The full URL to the chat hub (e.g., "https://host/hubs/chat").</param>
     /// <param name="accessToken">The JWT access token for authentication.</param>
     public async Task ConnectAsync(string hubUrl, string accessToken)
     {
+        // Reuse existing connection if already connected to the same hub
+        if (_hubConnection?.State is HubConnectionState.Connected or HubConnectionState.Connecting or HubConnectionState.Reconnecting
+            && _currentHubUrl == hubUrl)
+        {
+            return;
+        }
+
         if (_hubConnection is not null) await _hubConnection.DisposeAsync();
+        // BUG-CR-010 FIX: Reset registered device ID on new connection
+        _registeredDeviceId = 0;
+        _currentHubUrl = hubUrl;
 
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(hubUrl, options =>
             {
                 options.AccessTokenProvider = () => Task.FromResult<string?>(accessToken);
             })
-            .AddJsonProtocol(options =>
+            .AddJsonProtocol(static options =>
             {
-                // Match server: ensure enum values in positional records (ContentType, MessageType)
-                // deserialize correctly regardless of JSON property name casing.
                 options.PayloadSerializerOptions.PropertyNameCaseInsensitive = true;
+                options.PayloadSerializerOptions.Converters.Add(new LongToStringConverter());
+                options.PayloadSerializerOptions.Converters.Add(new LongNullableToStringConverter());
             })
             .WithAutomaticReconnect()
             .Build();
@@ -91,62 +110,62 @@ public class SignalRService : IAsyncDisposable
             OnMessageReceived?.Invoke(envelope);
         });
 
-        _hubConnection.On<decimal>("MessageDelivered", messageId =>
+        _hubConnection.On<long>("MessageDelivered", messageId =>
         {
             OnMessageDelivered?.Invoke(messageId);
         });
 
-        _hubConnection.On<decimal>("MessageRead", messageId =>
+        _hubConnection.On<long>("MessageRead", messageId =>
         {
             OnMessageRead?.Invoke(messageId);
         });
 
-        _hubConnection.On<decimal, string>("UserTyping", (conversationId, displayName) =>
+        _hubConnection.On<long, string>("UserTyping", (conversationId, displayName) =>
         {
             OnTypingIndicator?.Invoke(conversationId, displayName);
         });
 
-        _hubConnection.On<decimal, string>("IdentityKeyChanged", (deviceId, displayName) =>
+        _hubConnection.On<long, string>("IdentityKeyChanged", (deviceId, displayName) =>
         {
             OnIdentityKeyChanged?.Invoke(deviceId, displayName);
         });
 
-        _hubConnection.On<decimal, int>("PreKeyCountLow", (deviceId, remainingCount) =>
+        _hubConnection.On<long, int>("PreKeyCountLow", (deviceId, remainingCount) =>
         {
             OnPreKeyCountLow?.Invoke(deviceId, remainingCount);
         });
 
-        _hubConnection.On<decimal, decimal, string>("ParticipantAdded", (conversationId, userId, displayName) =>
+        _hubConnection.On<long, long, string>("ParticipantAdded", (conversationId, userId, displayName) =>
         {
             OnParticipantAdded?.Invoke(conversationId, userId, displayName);
         });
 
-        _hubConnection.On<decimal, decimal>("ParticipantRemoved", (conversationId, userId) =>
+        _hubConnection.On<long, long>("ParticipantRemoved", (conversationId, userId) =>
         {
             OnParticipantRemoved?.Invoke(conversationId, userId);
         });
 
-        _hubConnection.On<decimal>("UserOnline", userId =>
+        _hubConnection.On<long>("UserOnline", userId =>
         {
             OnUserOnline?.Invoke(userId);
         });
 
-        _hubConnection.On<decimal, DateTimeOffset>("UserOffline", (userId, lastSeenAt) =>
+        _hubConnection.On<long, DateTimeOffset>("UserOffline", (userId, lastSeenAt) =>
         {
             OnUserOffline?.Invoke(userId, lastSeenAt);
         });
 
-        _hubConnection.On<decimal, decimal, string, string>("ReactionAdded", (messageId, userId, displayName, emoji) =>
+        _hubConnection.On<long, long, string, string>("ReactionAdded", (messageId, userId, displayName, emoji) =>
         {
             OnReactionAdded?.Invoke(messageId, userId, displayName, emoji);
         });
 
-        _hubConnection.On<decimal, decimal, string>("ReactionRemoved", (messageId, userId, emoji) =>
+        _hubConnection.On<long, long, string>("ReactionRemoved", (messageId, userId, emoji) =>
         {
             OnReactionRemoved?.Invoke(messageId, userId, emoji);
         });
 
-        _hubConnection.On<decimal, decimal>("MessageDeleted", (messageId, conversationId) =>
+        _hubConnection.On<long, long>("MessageDeleted", (messageId, conversationId) =>
         {
             OnMessageDeleted?.Invoke(messageId, conversationId);
         });
@@ -157,14 +176,25 @@ public class SignalRService : IAsyncDisposable
     /// <summary>
     /// Registers this device with the hub so that messages can be routed to it.
     /// Also sets up automatic re-registration on reconnect.
+    /// Skips if the same device is already registered on this connection.
     /// </summary>
     /// <param name="deviceId">The local device ID.</param>
-    public async Task RegisterDeviceAsync(decimal deviceId)
+    public async Task RegisterDeviceAsync(long deviceId)
     {
         if (_hubConnection is null)
             throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
 
-        _hubConnection.Reconnected += async _ =>
+        // Skip if already registered on this connection
+        if (_registeredDeviceId == deviceId)
+            return;
+
+        // Remove previous reconnect handler before adding a new one
+        if (_reconnectedHandler is not null)
+        {
+            _hubConnection.Reconnected -= _reconnectedHandler;
+        }
+
+        _reconnectedHandler = async _ =>
         {
             try
             {
@@ -175,8 +205,10 @@ public class SignalRService : IAsyncDisposable
                 // ignored
             }
         };
+        _hubConnection.Reconnected += _reconnectedHandler;
 
         await _hubConnection.InvokeAsync("RegisterDevice", deviceId);
+        _registeredDeviceId = deviceId;
     }
 
     /// <summary>
@@ -196,7 +228,7 @@ public class SignalRService : IAsyncDisposable
     /// Acknowledges that a message has been delivered to this device.
     /// </summary>
     /// <param name="messageId">The ID of the delivered message.</param>
-    public async Task AcknowledgeDeliveryAsync(decimal messageId)
+    public async Task AcknowledgeDeliveryAsync(long messageId)
     {
         if (_hubConnection is null)
             throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
@@ -205,23 +237,10 @@ public class SignalRService : IAsyncDisposable
     }
 
     /// <summary>
-    /// Acknowledges that a message has been read by the user.
-    /// </summary>
-    /// <param name="messageId">The ID of the read message.</param>
-    // ReSharper disable once UnusedMember.Global
-    public async Task AcknowledgeReadAsync(decimal messageId)
-    {
-        if (_hubConnection is null)
-            throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
-
-        await _hubConnection.InvokeAsync("AcknowledgeRead", messageId);
-    }
-
-    /// <summary>
     /// Sends a typing indicator to the conversation.
     /// </summary>
     /// <param name="conversationId">The conversation in which the user is typing.</param>
-    public async Task SendTypingIndicatorAsync(decimal conversationId)
+    public async Task SendTypingIndicatorAsync(long conversationId)
     {
         if (_hubConnection is null)
             throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
@@ -232,7 +251,7 @@ public class SignalRService : IAsyncDisposable
     /// <summary>
     /// Adds a reaction to a message.
     /// </summary>
-    public async Task AddReactionAsync(decimal messageId, string emoji)
+    public async Task AddReactionAsync(long messageId, string emoji)
     {
         if (_hubConnection is null)
             throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
@@ -243,7 +262,7 @@ public class SignalRService : IAsyncDisposable
     /// <summary>
     /// Removes a reaction from a message.
     /// </summary>
-    public async Task RemoveReactionAsync(decimal messageId, string emoji)
+    public async Task RemoveReactionAsync(long messageId, string emoji)
     {
         if (_hubConnection is null)
             throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
@@ -251,7 +270,7 @@ public class SignalRService : IAsyncDisposable
         await _hubConnection.InvokeAsync("RemoveReaction", messageId, emoji);
     }
 
-    public async Task DeleteForEveryoneAsync(decimal messageId)
+    public async Task DeleteForEveryoneAsync(long messageId)
     {
         if (_hubConnection is null)
             throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
@@ -259,7 +278,15 @@ public class SignalRService : IAsyncDisposable
         await _hubConnection.InvokeAsync("DeleteForEveryone", messageId);
     }
 
-    public async Task ClearMessagesAsync(decimal conversationId, DateTimeOffset from, DateTimeOffset to)
+    /// <summary>
+    /// Notifies subscribers (e.g. sidebar) that the unread count for a conversation changed.
+    /// </summary>
+    public void NotifyUnreadCountChanged(long conversationId, int newUnreadCount)
+    {
+        OnUnreadCountChanged?.Invoke(conversationId, newUnreadCount);
+    }
+
+    public async Task ClearMessagesAsync(long conversationId, DateTimeOffset from, DateTimeOffset to)
     {
         if (_hubConnection is null)
             throw new InvalidOperationException("SignalR connection has not been started. Call ConnectAsync first.");
@@ -279,6 +306,8 @@ public class SignalRService : IAsyncDisposable
             _hubConnection = null;
         }
 
+        _currentHubUrl = null;
+        _registeredDeviceId = 0;
         GC.SuppressFinalize(this);
     }
 }

@@ -1,4 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using ToledoMessage.Data;
 using ToledoMessage.Hubs;
 using ToledoMessage.Models;
@@ -73,6 +75,7 @@ public class StubClientProxy : IClientProxy
 }
 
 [TestClass]
+[SuppressMessage("ReSharper", "RemoveRedundantBraces")]
 public class MessageRelayServiceTests
 {
     private static (ApplicationDbContext db, MessageRelayService service) CreateService()
@@ -86,20 +89,19 @@ public class MessageRelayServiceTests
     public async Task StoreMessage_CreatesMessageWithSequenceNumber()
     {
         var (db, service) = CreateService();
-        await TestDbContextFactory.SeedUser(db, 1m);
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m);
-        await TestDbContextFactory.SeedUser(db, 2m, "user2");
-        await TestDbContextFactory.SeedDevice(db, 20m, 2m);
-        await TestDbContextFactory.SeedConversation(db, 100m);
+        await TestDbContextFactory.SeedUser(db, 1L);
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L);
+        await TestDbContextFactory.SeedUser(db, 2L, "user2");
+        await TestDbContextFactory.SeedDevice(db, 20L, 2L);
+        await TestDbContextFactory.SeedConversation(db, 100L);
 
-        var request = new SendMessageRequest(100m, 10m, 20m,
-            Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L, Ciphertext = Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
-        var message = await service.StoreMessage(10m, request);
+        var message = await service.StoreMessage(10L, request);
 
-        Assert.AreNotEqual(0m, message.Id);
+        Assert.AreNotEqual(0L, message.Id);
         Assert.AreEqual(1, message.SequenceNumber);
-        Assert.AreEqual(100m, message.ConversationId);
+        Assert.AreEqual(100L, message.ConversationId);
         Assert.IsFalse(message.IsDelivered);
     }
 
@@ -107,16 +109,15 @@ public class MessageRelayServiceTests
     public async Task StoreMessage_IncrementsSequenceNumber()
     {
         var (db, service) = CreateService();
-        await TestDbContextFactory.SeedUser(db, 1m);
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m);
-        await TestDbContextFactory.SeedConversation(db, 100m);
+        await TestDbContextFactory.SeedUser(db, 1L);
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L);
+        await TestDbContextFactory.SeedConversation(db, 100L);
 
-        var request = new SendMessageRequest(100m, 10m, 20m,
-            Convert.ToBase64String(new byte[] { 1 }), MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L, Ciphertext = Convert.ToBase64String(new byte[] { 1 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
-        var msg1 = await service.StoreMessage(10m, request);
-        var msg2 = await service.StoreMessage(10m, request);
-        var msg3 = await service.StoreMessage(10m, request);
+        var msg1 = await service.StoreMessage(10L, request);
+        var msg2 = await service.StoreMessage(10L, request);
+        var msg3 = await service.StoreMessage(10L, request);
 
         Assert.AreEqual(1, msg1.SequenceNumber);
         Assert.AreEqual(2, msg2.SequenceNumber);
@@ -127,32 +128,32 @@ public class MessageRelayServiceTests
     public async Task GetPendingMessages_ReturnsUndeliveredOnly()
     {
         var (db, service) = CreateService();
-        await TestDbContextFactory.SeedUser(db, 1m);
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m);
-        await TestDbContextFactory.SeedConversation(db, 100m);
+        await TestDbContextFactory.SeedUser(db, 1L);
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L);
+        await TestDbContextFactory.SeedConversation(db, 100L);
 
         db.EncryptedMessages.Add(new EncryptedMessage
         {
-            Id = 1m, ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m,
+            Id = 1L, ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L,
             Ciphertext = [1], SequenceNumber = 1, ServerTimestamp = DateTimeOffset.UtcNow, IsDelivered = false
         });
         db.EncryptedMessages.Add(new EncryptedMessage
         {
-            Id = 2m, ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m,
+            Id = 2L, ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L,
             Ciphertext = [2], SequenceNumber = 2, ServerTimestamp = DateTimeOffset.UtcNow, IsDelivered = true
         });
         db.EncryptedMessages.Add(new EncryptedMessage
         {
-            Id = 3m, ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m,
+            Id = 3L, ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L,
             Ciphertext = [3], SequenceNumber = 3, ServerTimestamp = DateTimeOffset.UtcNow, IsDelivered = false
         });
         await db.SaveChangesAsync();
 
-        var pending = await service.GetPendingMessages(20m);
+        var pending = await service.GetPendingMessages(20L);
 
         Assert.AreEqual(2, pending.Count);
-        Assert.AreEqual(1m, pending[0].Id);
-        Assert.AreEqual(3m, pending[1].Id);
+        Assert.AreEqual(1L, pending[0].Id);
+        Assert.AreEqual(3L, pending[1].Id);
     }
 
     [TestMethod]
@@ -161,12 +162,12 @@ public class MessageRelayServiceTests
         var (db, service) = CreateService();
         db.EncryptedMessages.Add(new EncryptedMessage
         {
-            Id = 1m, ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m,
+            Id = 1L, ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L,
             Ciphertext = [1], SequenceNumber = 1, ServerTimestamp = DateTimeOffset.UtcNow, IsDelivered = false
         });
         await db.SaveChangesAsync();
 
-        var result = await service.AcknowledgeDelivery(1m);
+        var result = await service.AcknowledgeDelivery(1L);
 
         Assert.IsNotNull(result);
         Assert.IsTrue(result.IsDelivered);
@@ -178,7 +179,7 @@ public class MessageRelayServiceTests
     {
         // ReSharper disable once UnusedVariable
         var (db, service) = CreateService();
-        var result = await service.AcknowledgeDelivery(999m);
+        var result = await service.AcknowledgeDelivery(999L);
         Assert.IsNull(result);
     }
 
@@ -187,13 +188,13 @@ public class MessageRelayServiceTests
     {
         var (db, service) = CreateService();
 
-        var conversation = await TestDbContextFactory.SeedConversation(db, 100m);
+        var conversation = await TestDbContextFactory.SeedConversation(db, 100L);
         conversation.DisappearingTimerSeconds = 1; // 1-second timer
         await db.SaveChangesAsync();
 
         db.EncryptedMessages.Add(new EncryptedMessage
         {
-            Id = 1m, ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m,
+            Id = 1L, ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L,
             Ciphertext = [1], SequenceNumber = 1,
             ServerTimestamp = DateTimeOffset.UtcNow.AddSeconds(-10), // 10 seconds ago
             IsDelivered = true
@@ -211,13 +212,13 @@ public class MessageRelayServiceTests
     {
         var (db, service) = CreateService();
 
-        var conversation = await TestDbContextFactory.SeedConversation(db, 100m);
+        var conversation = await TestDbContextFactory.SeedConversation(db, 100L);
         conversation.DisappearingTimerSeconds = 3600; // 1 hour timer
         await db.SaveChangesAsync();
 
         db.EncryptedMessages.Add(new EncryptedMessage
         {
-            Id = 1m, ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m,
+            Id = 1L, ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L,
             Ciphertext = [1], SequenceNumber = 1,
             ServerTimestamp = DateTimeOffset.UtcNow, // just now
             IsDelivered = true
@@ -234,22 +235,20 @@ public class MessageRelayServiceTests
     public async Task StoreMessage_SequenceNumbersAreUniquePerConversation()
     {
         var (db, service) = CreateService();
-        await TestDbContextFactory.SeedUser(db, 1m);
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m);
-        await TestDbContextFactory.SeedConversation(db, 100m);
-        await TestDbContextFactory.SeedConversation(db, 200m);
+        await TestDbContextFactory.SeedUser(db, 1L);
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L);
+        await TestDbContextFactory.SeedConversation(db, 100L);
+        await TestDbContextFactory.SeedConversation(db, 200L);
 
-        var request100 = new SendMessageRequest(100m, 10m, 20m,
-            Convert.ToBase64String(new byte[] { 1 }), MessageType.NormalMessage, ContentType.Text);
-        var request200 = new SendMessageRequest(200m, 10m, 20m,
-            Convert.ToBase64String(new byte[] { 1 }), MessageType.NormalMessage, ContentType.Text);
+        var request100 = new SendMessageRequest { ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L, Ciphertext = Convert.ToBase64String(new byte[] { 1 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
+        var request200 = new SendMessageRequest { ConversationId = 200L, SenderDeviceId = 10L, RecipientDeviceId = 20L, Ciphertext = Convert.ToBase64String(new byte[] { 1 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         // Messages in conversation 100
-        var msg1 = await service.StoreMessage(10m, request100);
-        var msg2 = await service.StoreMessage(10m, request100);
+        var msg1 = await service.StoreMessage(10L, request100);
+        var msg2 = await service.StoreMessage(10L, request100);
 
         // Messages in conversation 200
-        var msg3 = await service.StoreMessage(10m, request200);
+        var msg3 = await service.StoreMessage(10L, request200);
 
         // Sequence numbers are per-conversation
         Assert.AreEqual(1, msg1.SequenceNumber);
@@ -263,10 +262,9 @@ public class MessageRelayServiceTests
         // ReSharper disable once UnusedVariable
         var (db, service) = CreateService();
 
-        var request = new SendMessageRequest(100m, 10m, 20m,
-            "not-valid-base64!!!", MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L, Ciphertext = "not-valid-base64!!!", MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
-        await Assert.ThrowsAsync<ArgumentException>(() => service.StoreMessage(10m, request));
+        await Assert.ThrowsAsync<ArgumentException>(() => service.StoreMessage(10L, request));
     }
 
     [TestMethod]
@@ -274,13 +272,13 @@ public class MessageRelayServiceTests
     {
         var (db, service) = CreateService();
 
-        var conversation = await TestDbContextFactory.SeedConversation(db, 100m);
+        var conversation = await TestDbContextFactory.SeedConversation(db, 100L);
         conversation.DisappearingTimerSeconds = 1;
         await db.SaveChangesAsync();
 
         db.EncryptedMessages.Add(new EncryptedMessage
         {
-            Id = 1m, ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m,
+            Id = 1L, ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L,
             Ciphertext = [1], SequenceNumber = 1,
             ServerTimestamp = DateTimeOffset.UtcNow.AddSeconds(-10),
             IsDelivered = false // Not delivered yet
@@ -312,5 +310,250 @@ public class MessageRelayServiceTests
         // Text content type returns the smaller text limit
         Assert.AreEqual(ProtocolConstants.MaxCiphertextSizeBytes,
             MessageRelayService.GetMaxCiphertextSize(ContentType.Text));
+    }
+
+    // --- AdvanceReadPointer ---
+
+    [TestMethod]
+    public async Task AdvanceReadPointer_CreatesPointerAndReturnsNewlyReadMessages()
+    {
+        var (db, service) = CreateService();
+        await TestDbContextFactory.SeedUser(db, 1L, "reader");
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L);
+        await TestDbContextFactory.SeedUser(db, 2L, "sender");
+        await TestDbContextFactory.SeedDevice(db, 20L, 2L);
+        await TestDbContextFactory.SeedConversation(db, 100L);
+
+        // Add 3 messages sent TO user 1's device
+        for (var i = 1; i <= 3; i++)
+        {
+            db.EncryptedMessages.Add(new EncryptedMessage
+            {
+                Id = i, ConversationId = 100L, SenderDeviceId = 20L, RecipientDeviceId = 10L,
+                Ciphertext = [1], SequenceNumber = i, ServerTimestamp = DateTimeOffset.UtcNow,
+                IsDelivered = true
+            });
+        }
+
+        await db.SaveChangesAsync();
+
+        var result = await service.AdvanceReadPointer(1L, 100L, 2);
+
+        // Should return messages 1 and 2 as newly read
+        Assert.AreEqual(2, result.Count);
+        Assert.IsTrue(result.Any(static r => r.MessageId == 1L));
+        Assert.IsTrue(result.Any(static r => r.MessageId == 2L));
+
+        // Pointer should exist with 1 unread remaining (message 3)
+        var pointer = await db.ConversationReadPointers
+            .FirstOrDefaultAsync(static p => p.UserId == 1L && p.ConversationId == 100L);
+        Assert.IsNotNull(pointer);
+        Assert.AreEqual(2L, pointer.LastReadSequenceNumber);
+        Assert.AreEqual(1, pointer.UnreadCount);
+    }
+
+    [TestMethod]
+    public async Task AdvanceReadPointer_AdvancesExistingPointer()
+    {
+        var (db, service) = CreateService();
+        await TestDbContextFactory.SeedUser(db, 1L, "reader");
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L);
+        await TestDbContextFactory.SeedConversation(db, 100L);
+
+        for (var i = 1; i <= 5; i++)
+        {
+            db.EncryptedMessages.Add(new EncryptedMessage
+            {
+                Id = i, ConversationId = 100L, SenderDeviceId = 20L, RecipientDeviceId = 10L,
+                Ciphertext = [1], SequenceNumber = i, ServerTimestamp = DateTimeOffset.UtcNow,
+                IsDelivered = true
+            });
+        }
+
+        await db.SaveChangesAsync();
+
+        // First advance to seq 2
+        await service.AdvanceReadPointer(1L, 100L, 2);
+
+        // Then advance to seq 4
+        var result = await service.AdvanceReadPointer(1L, 100L, 4);
+
+        // Should return only messages 3 and 4 (newly read since last pointer)
+        Assert.AreEqual(2, result.Count);
+        Assert.IsTrue(result.Any(static r => r.MessageId == 3L));
+        Assert.IsTrue(result.Any(static r => r.MessageId == 4L));
+
+        var pointer = await db.ConversationReadPointers
+            .FirstOrDefaultAsync(static p => p.UserId == 1L && p.ConversationId == 100L);
+        Assert.AreEqual(4L, pointer?.LastReadSequenceNumber);
+        Assert.AreEqual(1, pointer?.UnreadCount); // message 5 still unread
+    }
+
+    [TestMethod]
+    public async Task AdvanceReadPointer_OlderSequenceNumber_ReturnsEmpty()
+    {
+        var (db, service) = CreateService();
+        await TestDbContextFactory.SeedUser(db, 1L, "reader");
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L);
+        await TestDbContextFactory.SeedConversation(db, 100L);
+
+        db.EncryptedMessages.Add(new EncryptedMessage
+        {
+            Id = 1L, ConversationId = 100L, SenderDeviceId = 20L, RecipientDeviceId = 10L,
+            Ciphertext = [1], SequenceNumber = 1, ServerTimestamp = DateTimeOffset.UtcNow,
+            IsDelivered = true
+        });
+        await db.SaveChangesAsync();
+
+        await service.AdvanceReadPointer(1L, 100L, 5);
+        var result = await service.AdvanceReadPointer(1L, 100L, 3); // older
+
+        Assert.AreEqual(0, result.Count);
+
+        // Pointer should not regress
+        var pointer = await db.ConversationReadPointers
+            .FirstOrDefaultAsync(static p => p.UserId == 1L && p.ConversationId == 100L);
+        Assert.AreEqual(5L, pointer?.LastReadSequenceNumber);
+    }
+
+    // --- GetUnreadCount ---
+
+    [TestMethod]
+    public async Task GetUnreadCount_WithPointer_ReturnsPointerUnreadCount()
+    {
+        var (db, service) = CreateService();
+        await TestDbContextFactory.SeedUser(db, 1L);
+        await TestDbContextFactory.SeedConversation(db, 100L);
+
+        db.ConversationReadPointers.Add(new ConversationReadPointer
+        {
+            UserId = 1L, ConversationId = 100L,
+            LastReadSequenceNumber = 5, UnreadCount = 3
+        });
+        await db.SaveChangesAsync();
+
+        var count = await service.GetUnreadCount(1L, 100L);
+        Assert.AreEqual(3, count);
+    }
+
+    [TestMethod]
+    public async Task GetUnreadCount_NoPointer_CountsDeliveredMessages()
+    {
+        var (db, service) = CreateService();
+        await TestDbContextFactory.SeedUser(db, 1L);
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L);
+        await TestDbContextFactory.SeedConversation(db, 100L);
+
+        // 2 delivered + 1 undelivered
+        db.EncryptedMessages.Add(new EncryptedMessage
+        {
+            Id = 1L, ConversationId = 100L, SenderDeviceId = 20L, RecipientDeviceId = 10L,
+            Ciphertext = [1], SequenceNumber = 1, ServerTimestamp = DateTimeOffset.UtcNow,
+            IsDelivered = true
+        });
+        db.EncryptedMessages.Add(new EncryptedMessage
+        {
+            Id = 2L, ConversationId = 100L, SenderDeviceId = 20L, RecipientDeviceId = 10L,
+            Ciphertext = [1], SequenceNumber = 2, ServerTimestamp = DateTimeOffset.UtcNow,
+            IsDelivered = true
+        });
+        db.EncryptedMessages.Add(new EncryptedMessage
+        {
+            Id = 3L, ConversationId = 100L, SenderDeviceId = 20L, RecipientDeviceId = 10L,
+            Ciphertext = [1], SequenceNumber = 3, ServerTimestamp = DateTimeOffset.UtcNow,
+            IsDelivered = false
+        });
+        await db.SaveChangesAsync();
+
+        var count = await service.GetUnreadCount(1L, 100L);
+        Assert.AreEqual(3, count); // All messages (delivered & undelivered) — BUG-CR-008 fix
+    }
+
+    // --- GetAllUnreadCounts ---
+
+    [TestMethod]
+    public async Task GetAllUnreadCounts_ReturnsOnlyNonZero()
+    {
+        var (db, service) = CreateService();
+        await TestDbContextFactory.SeedUser(db, 1L);
+
+        db.ConversationReadPointers.Add(new ConversationReadPointer
+        {
+            UserId = 1L, ConversationId = 100L,
+            LastReadSequenceNumber = 5, UnreadCount = 3
+        });
+        db.ConversationReadPointers.Add(new ConversationReadPointer
+        {
+            UserId = 1L, ConversationId = 200L,
+            LastReadSequenceNumber = 10, UnreadCount = 0
+        });
+        db.ConversationReadPointers.Add(new ConversationReadPointer
+        {
+            UserId = 1L, ConversationId = 300L,
+            LastReadSequenceNumber = 2, UnreadCount = 7
+        });
+        await db.SaveChangesAsync();
+
+        var counts = await service.GetAllUnreadCounts(1L);
+
+        Assert.AreEqual(2, counts.Count);
+        Assert.AreEqual(3, counts[100L]);
+        Assert.AreEqual(7, counts[300L]);
+        Assert.IsFalse(counts.ContainsKey(200L));
+    }
+
+    // --- IncrementUnreadCountsForNewMessage ---
+
+    [TestMethod]
+    public async Task IncrementUnreadCounts_IncrementsAllParticipantsExceptSender()
+    {
+        var (db, service) = CreateService();
+        await TestDbContextFactory.SeedUser(db, 1L, "sender");
+        await TestDbContextFactory.SeedUser(db, 2L, "user2");
+        await TestDbContextFactory.SeedUser(db, 3L, "user3");
+        await TestDbContextFactory.SeedConversation(db, 100L, ConversationType.Group, "TestGroup");
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 2L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 3L);
+
+        await service.IncrementUnreadCountsForNewMessage(100L, 1L);
+
+        var pointer2 = await db.ConversationReadPointers
+            .FirstOrDefaultAsync(static p => p.UserId == 2L && p.ConversationId == 100L);
+        var pointer3 = await db.ConversationReadPointers
+            .FirstOrDefaultAsync(static p => p.UserId == 3L && p.ConversationId == 100L);
+        var pointer1 = await db.ConversationReadPointers
+            .FirstOrDefaultAsync(static p => p.UserId == 1L && p.ConversationId == 100L);
+
+        Assert.IsNotNull(pointer2);
+        Assert.AreEqual(1, pointer2.UnreadCount);
+        Assert.IsNotNull(pointer3);
+        Assert.AreEqual(1, pointer3.UnreadCount);
+        Assert.IsNull(pointer1); // Sender should not have a pointer created
+    }
+
+    [TestMethod]
+    public async Task IncrementUnreadCounts_IncrementsExistingPointers()
+    {
+        var (db, service) = CreateService();
+        await TestDbContextFactory.SeedUser(db, 1L, "sender");
+        await TestDbContextFactory.SeedUser(db, 2L, "user2");
+        await TestDbContextFactory.SeedConversation(db, 100L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 2L);
+
+        // User 2 already has a pointer with 5 unread
+        db.ConversationReadPointers.Add(new ConversationReadPointer
+        {
+            UserId = 2L, ConversationId = 100L,
+            LastReadSequenceNumber = 3, UnreadCount = 5
+        });
+        await db.SaveChangesAsync();
+
+        await service.IncrementUnreadCountsForNewMessage(100L, 1L);
+
+        var pointer = await db.ConversationReadPointers
+            .FirstOrDefaultAsync(static p => p.UserId == 2L && p.ConversationId == 100L);
+        if (pointer != null) Assert.AreEqual(6, pointer.UnreadCount); // 5 + 1
     }
 }

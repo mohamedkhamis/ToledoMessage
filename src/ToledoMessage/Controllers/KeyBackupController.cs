@@ -58,7 +58,7 @@ public class KeyBackupController(ApplicationDbContext db) : BaseApiController
         {
             db.EncryptedKeyBackups.Add(new EncryptedKeyBackup
             {
-                Id = DecimalTools.GetNewId(),
+                Id = IdGenerator.GetNewId(),
                 UserId = userId,
                 EncryptedBlob = blob,
                 Salt = salt,
@@ -88,7 +88,8 @@ public class KeyBackupController(ApplicationDbContext db) : BaseApiController
             Convert.ToBase64String(backup.EncryptedBlob),
             Convert.ToBase64String(backup.Salt),
             Convert.ToBase64String(backup.Nonce),
-            backup.Version));
+            backup.Version,
+            backup.UpdatedAt));
     }
 
     [HttpDelete]

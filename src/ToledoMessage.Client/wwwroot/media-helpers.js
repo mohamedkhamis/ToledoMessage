@@ -145,7 +145,7 @@ window.mediaHelpers = {
         try {
             await navigator.clipboard.writeText(text);
             return true;
-        } catch {
+        } catch (e) {
             return false;
         }
     },
@@ -164,10 +164,82 @@ window.mediaHelpers = {
         textarea.dispatchEvent(new Event('input', { bubbles: true }));
     },
 
-    // Scroll chat container to bottom
-    scrollToBottom: function (selector) {
+    // Scroll chat container to bottom (instant on load, smooth for user actions)
+    scrollToBottom: function (selector, instant) {
         var el = document.querySelector(selector);
-        if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+        if (!el) return;
+        if (instant) {
+            el.scrollTop = el.scrollHeight;
+            // Retry after media may have loaded (images/videos change height)
+            setTimeout(function () { el.scrollTop = el.scrollHeight; }, 100);
+            setTimeout(function () { el.scrollTop = el.scrollHeight; }, 400);
+        } else {
+            el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+        }
+    },
+
+    // Observe scroll position: notify Blazor when scrolled, debounced for read tracking
+    observeScroll: function (selector, dotNetRef) {
+        var el = document.querySelector(selector);
+        if (!el) return;
+
+        // Remove old listener if re-binding with a new dotNetRef (component was recreated)
+        if (el._scrollHandler) {
+            el.removeEventListener('scroll', el._scrollHandler);
+        }
+
+        var scrollTimeout = null;
+
+        var notifyVisible = function () {
+            var lastVisibleId = mediaHelpers.getLastVisibleMessageId(selector);
+            if (lastVisibleId) {
+                try { dotNetRef.invokeMethodAsync('OnVisibleMessageChanged', lastVisibleId); } catch (e) { /* disposed */ }
+            }
+        };
+
+        el._scrollHandler = function () {
+            var nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+            try { dotNetRef.invokeMethodAsync('OnScrollPositionChanged', nearBottom); } catch (e) { /* disposed */ }
+
+            // Debounced: notify about visible messages for read tracking (after 300ms pause)
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(notifyVisible, 300);
+        };
+        el.addEventListener('scroll', el._scrollHandler);
+
+        // Fire an initial check after a short delay (messages may be visible without scrolling)
+        setTimeout(notifyVisible, 500);
+    },
+
+    // Get the data-msg-id of the last message bubble visible in the scroll container
+    getLastVisibleMessageId: function (containerSelector) {
+        var container = document.querySelector(containerSelector);
+        if (!container) return null;
+        var messages = container.querySelectorAll('[data-msg-id]');
+        var containerRect = container.getBoundingClientRect();
+        var lastVisibleId = null;
+        for (var i = 0; i < messages.length; i++) {
+            var rect = messages[i].getBoundingClientRect();
+            // Message is visible if its top is within the container viewport
+            if (rect.top < containerRect.bottom && rect.bottom > containerRect.top) {
+                lastVisibleId = messages[i].getAttribute('data-msg-id');
+            }
+        }
+        return lastVisibleId;
+    },
+
+    // Get current scrollHeight (used to maintain scroll position after prepending messages)
+    getScrollHeight: function (selector) {
+        var el = document.querySelector(selector);
+        return el ? el.scrollHeight : 0;
+    },
+
+    // Adjust scrollTop after prepending content to maintain visual position
+    adjustScrollAfterPrepend: function (selector, previousScrollHeight) {
+        var el = document.querySelector(selector);
+        if (el) {
+            el.scrollTop = el.scrollHeight - previousScrollHeight;
+        }
     },
 
     // Scroll to a specific element by data attribute
@@ -194,6 +266,7 @@ window.mediaHelpers = {
     playAudio: function (messageId) {
         var audio = document.querySelector('[data-msg-id="' + messageId + '"] audio');
         if (audio) return audio.play();
+        return false;
     },
     pauseAudio: function (messageId) {
         var audio = document.querySelector('[data-msg-id="' + messageId + '"] audio');
@@ -336,29 +409,60 @@ window.mediaHelpers = {
         });
     },
 
-    // Generate thumbnail from video (capture frame at 1 second)
-    captureVideoFrame: async function (byteArray, mimeType) {
+    // Generate thumbnail from video (capture frame at 1 second, resize to maxDim)
+    captureVideoFrame: async function (byteArray, mimeType, maxDimension, quality) {
+        maxDimension = maxDimension || 320;
+        quality = quality || 0.7;
         return new Promise(function (resolve, reject) {
+            var blobUrl = null;
+            var timeout = null;
             try {
                 var blob = new Blob([new Uint8Array(byteArray)], { type: mimeType });
+                blobUrl = URL.createObjectURL(blob);
                 var video = document.createElement('video');
-                video.preload = 'metadata';
+                video.preload = 'auto';
                 video.muted = true;
                 video.playsInline = true;
 
-                video.onloadedmetadata = function () {
-                    // Seek to 1 second or middle of video
-                    var seekTime = Math.min(1, video.duration / 2);
-                    if (isNaN(seekTime)) seekTime = 0;
+                // Timeout after 10s in case video never loads
+                timeout = setTimeout(function () {
+                    if (blobUrl) URL.revokeObjectURL(blobUrl);
+                    reject(new Error('Video frame capture timed out'));
+                }, 10000);
+
+                video.onloadeddata = function () {
+                    // Seek to 1 second or 10% into the video
+                    var seekTime = Math.min(1, video.duration * 0.1);
+                    if (isNaN(seekTime) || seekTime < 0) seekTime = 0;
                     video.currentTime = seekTime;
                 };
 
                 video.onseeked = function () {
+                    clearTimeout(timeout);
+                    var w = video.videoWidth;
+                    var h = video.videoHeight;
+
+                    // Resize to maxDimension maintaining aspect ratio
+                    if (w > h) {
+                        if (w > maxDimension) {
+                            h = Math.round((h * maxDimension) / w);
+                            w = maxDimension;
+                        }
+                    } else {
+                        if (h > maxDimension) {
+                            w = Math.round((w * maxDimension) / h);
+                            h = maxDimension;
+                        }
+                    }
+
                     var canvas = document.createElement('canvas');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
+                    canvas.width = w;
+                    canvas.height = h;
                     var ctx = canvas.getContext('2d');
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(video, 0, 0, w, h);
+
+                    // Clean up video blob URL
+                    if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; }
 
                     canvas.toBlob(function (resultBlob) {
                         if (!resultBlob) {
@@ -367,7 +471,6 @@ window.mediaHelpers = {
                         }
                         var reader = new FileReader();
                         reader.onloadend = function () {
-                            // Remove "data:image/jpeg;base64," prefix
                             var base64 = reader.result;
                             var commaIndex = base64.indexOf(',');
                             if (commaIndex > -1) {
@@ -377,13 +480,45 @@ window.mediaHelpers = {
                         };
                         reader.onerror = function () { reject(new Error('Failed to read video frame')); };
                         reader.readAsDataURL(resultBlob);
-                    }, 'image/jpeg', 0.6);
+                    }, 'image/jpeg', quality);
                 };
 
-                video.onerror = function () { reject(new Error('Failed to load video for frame capture')); };
-                video.src = URL.createObjectURL(blob);
+                video.onerror = function () {
+                    clearTimeout(timeout);
+                    if (blobUrl) URL.revokeObjectURL(blobUrl);
+                    reject(new Error('Failed to load video for frame capture'));
+                };
+                video.src = blobUrl;
                 video.load();
-            } catch (e) { reject(e); }
+            } catch (e) {
+                clearTimeout(timeout);
+                if (blobUrl) URL.revokeObjectURL(blobUrl);
+                reject(e);
+            }
+        });
+    },
+
+    // Get video duration in seconds from byte array
+    getVideoDuration: async function (byteArray, mimeType) {
+        return new Promise(function (resolve) {
+            try {
+                var blob = new Blob([new Uint8Array(byteArray)], { type: mimeType });
+                var blobUrl = URL.createObjectURL(blob);
+                var video = document.createElement('video');
+                video.preload = 'metadata';
+                video.muted = true;
+                video.onloadedmetadata = function () {
+                    var dur = isFinite(video.duration) ? video.duration : 0;
+                    URL.revokeObjectURL(blobUrl);
+                    resolve(dur);
+                };
+                video.onerror = function () {
+                    URL.revokeObjectURL(blobUrl);
+                    resolve(0);
+                };
+                setTimeout(function () { URL.revokeObjectURL(blobUrl); resolve(0); }, 5000);
+                video.src = blobUrl;
+            } catch (e) { resolve(0); }
         });
     },
 

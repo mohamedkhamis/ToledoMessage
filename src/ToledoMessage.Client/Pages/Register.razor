@@ -6,61 +6,302 @@
 @inject NavigationManager Navigation
 @inject KeyGenerationService KeyGenService
 @inject LocalStorageService Storage
+@inject PreferencesService Preferences
+@inject KeyBackupService KeyBackup
+@inject IStringLocalizer<SharedResource> Loc
 
-<div class="auth-page fade-in">
-    <h2>Create Account</h2>
-
-    <div class="card">
-        <div class="auth-status-area" style="min-height:48px;">
-            <div class="alert alert-error @(string.IsNullOrEmpty(_errorMessage) ? "alert-hidden" : "")" role="alert">
-                @(_errorMessage ?? "\u00A0")
-            </div>
-        </div>
-
-        <form @onsubmit="HandleRegister">
-            <div class="form-group">
-                <label for="displayName">Display Name</label>
-                <input id="displayName" @bind="_displayName" placeholder="Choose a display name"
-                       autocomplete="username" required aria-required="true" />
-            </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <div class="password-wrapper">
-                    <input id="password" type="password" @bind="_password" @bind:event="oninput"
-                           @bind:after="OnPasswordChanged"
-                           placeholder="Minimum 8 characters"
-                           autocomplete="new-password" required aria-required="true" />
-                </div>
-                <div class="strength-bar">
-                    <div class="strength-bar-fill @_passwordStrengthClass"></div>
-                </div>
-                @if (!string.IsNullOrEmpty(_passwordStrengthText))
-                {
-                    <div class="strength-text" style="color: @_passwordStrengthColor">@_passwordStrengthText</div>
-                }
-            </div>
-            <button type="submit" class="btn-primary btn-full" disabled="@_isLoading"
-                    aria-busy="@_isLoading">
-                @if (_isLoading)
-                {
-                    <span class="spinner spinner-sm"></span>
-                    <text> Creating account...</text>
-                }
-                else
-                {
-                    <text>Create Account</text>
-                }
-            </button>
-        </form>
+<div class="auth-page-container fade-in">
+    <div class="auth-header">
+        <a href="/" class="brand-link">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                <path d="M8 10h8M8 14h4" />
+            </svg>
+            <span>ToledoMessage</span>
+        </a>
     </div>
 
-    <p class="auth-footer">Already have an account? <a href="/login">Sign in</a></p>
+    <div class="auth-page">
+        <div class="auth-title-area">
+            <h2>@Loc["Create Account"]</h2>
+            <p>@Loc["Start your private messaging journey"]</p>
+        </div>
 
-    <div class="app-version-footer">Toledo Message v@(AppVersion.Current)</div>
+        <div class="card auth-card">
+            <div class="auth-status-area" style="min-height:48px;">
+                <div class="alert alert-error @(string.IsNullOrEmpty(_errorMessage) ? "alert-hidden" : "")" role="alert">
+                    @(_errorMessage ?? "\u00A0")
+                </div>
+            </div>
+
+            <form @onsubmit="HandleRegister">
+                <div class="form-group floating-group">
+                    <input id="username" @bind="_username" class="floating-input" placeholder=" "
+                           autocomplete="username" required aria-required="true" />
+                    <label for="username" class="floating-label">@Loc["Username"]</label>
+                    <span class="auth-hint">@Loc["Letters, digits, hyphens, underscores only"]</span>
+                </div>
+                <div class="form-group floating-group">
+                    <input id="displayName" @bind="_displayName" class="floating-input" placeholder=" "
+                           required aria-required="true" />
+                    <label for="displayName" class="floating-label">@Loc["Display Name"]</label>
+                </div>
+                <div class="form-group floating-group">
+                    <input id="displayNameSecondary" @bind="_displayNameSecondary" class="floating-input" placeholder=" " />
+                    <label for="displayNameSecondary" class="floating-label">@Loc["Display Name (Secondary Language)"]</label>
+                    <span class="auth-hint">@Loc["Optional - shown when app language changes"]</span>
+                </div>
+                <div class="form-group floating-group" style="margin-bottom: 28px;">
+                    <input id="password" type="password" @bind="_password" @bind:event="oninput"
+                           @bind:after="OnPasswordChanged" class="floating-input" placeholder=" "
+                           autocomplete="new-password" required aria-required="true" />
+                    <label for="password" class="floating-label">@Loc["Password"]</label>
+                    <span class="auth-hint">@Loc["Minimum 8 characters"]</span>
+
+                    <div class="strength-bar-container">
+                        <div class="strength-bar">
+                            <div class="strength-bar-fill @_passwordStrengthClass"></div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(_passwordStrengthText))
+                        {
+                            <div class="strength-text" style="color: @_passwordStrengthColor">@_passwordStrengthText</div>
+                        }
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary btn-full auth-btn" disabled="@_isLoading"
+                        aria-busy="@_isLoading">
+                    @if (_isLoading)
+                    {
+                        <span class="spinner spinner-sm"></span>
+                        <text> @Loc["Creating account..."]</text>
+                    }
+                    else
+                    {
+                        <text>@Loc["Create Account"]</text>
+                    }
+                </button>
+            </form>
+        </div>
+
+        <p class="auth-footer">@Loc["Already have an account?"] <a href="/login" class="auth-link">@Loc["Sign In"]</a></p>
+        <div class="app-version-footer">Toledo Message v@(AppVersion.Current)</div>
+    </div>
 </div>
 
+<style>
+    .auth-page-container {
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-primary);
+        background-image: radial-gradient(circle at 50% 0%, var(--accent-light, rgba(56, 189, 248, 0.05)) 0%, transparent 60%);
+        color: var(--text-primary);
+    }
+
+    .auth-header {
+        padding: 24px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .brand-link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        text-decoration: none;
+        letter-spacing: -0.5px;
+    }
+
+    .brand-link svg {
+        color: var(--accent);
+    }
+
+    .auth-page {
+        max-width: 440px;
+        margin: 4vh auto 40px;
+        padding: 0 20px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .auth-title-area {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+
+    .auth-title-area h2 {
+        font-size: 2rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+        color: var(--text-primary);
+        letter-spacing: -0.5px;
+    }
+
+    .auth-title-area p {
+        color: var(--text-secondary);
+        font-size: 1.05rem;
+    }
+
+    .auth-card {
+        padding: 32px 28px;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-md);
+        background: var(--card-bg);
+        margin-bottom: 24px;
+    }
+
+    .floating-group {
+        position: relative;
+        margin-bottom: 28px;
+    }
+
+    .floating-input {
+        width: 100%;
+        padding: 18px 16px 8px;
+        font-size: 1rem;
+        border: 2px solid var(--input-border);
+        border-radius: 12px;
+        background: var(--input-bg);
+        color: var(--text-primary);
+        transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+    }
+
+    .floating-input:focus {
+        border-color: var(--accent);
+        background: var(--bg-secondary);
+        outline: none;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+    }
+
+    .floating-label {
+        position: absolute;
+        inset-inline-start: 16px;
+        top: 14px;
+        font-size: 1rem;
+        color: var(--text-secondary);
+        transition: all 0.2s ease-out;
+        pointer-events: none;
+        margin: 0;
+        transform-origin: left top;
+    }
+
+    :global([dir="rtl"]) .floating-label {
+        transform-origin: right top;
+    }
+
+    .floating-input:focus ~ .floating-label,
+    .floating-input:not(:placeholder-shown) ~ .floating-label {
+        transform: translateY(-8px) scale(0.8);
+        color: var(--accent);
+        font-weight: 600;
+    }
+
+    .floating-input {
+        text-align: start;
+    }
+
+    .auth-hint {
+        display: block;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 6px;
+        margin-inline-start: 4px;
+    }
+
+    .strength-bar-container {
+        position: absolute;
+        bottom: -20px;
+        left: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .strength-bar {
+        flex: 1;
+        height: 6px;
+        background: var(--input-border);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .strength-bar-fill {
+        height: 100%;
+        width: 0%;
+        transition: width 0.3s ease-out, background-color 0.3s ease-out;
+    }
+
+    .strength-bar-fill.weak {
+        width: 33%;
+        background-color: var(--danger);
+    }
+
+    .strength-bar-fill.medium {
+        width: 66%;
+        background-color: var(--warning);
+    }
+
+    .strength-bar-fill.strong {
+        width: 100%;
+        background-color: var(--success);
+    }
+
+    .strength-text {
+        font-size: 0.75rem;
+        font-weight: 600;
+        min-width: 45px;
+        text-align: end;
+    }
+
+    .auth-btn {
+        margin-top: 16px;
+        padding: 14px;
+        font-size: 1rem;
+        font-weight: 600;
+        border-radius: 12px;
+        border: none;
+        background: var(--accent);
+        color: var(--accent-text);
+        transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent);
+    }
+
+    .auth-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        background: var(--accent-hover);
+        box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 40%, transparent);
+    }
+
+    .auth-footer {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+        text-align: center;
+    }
+
+    .auth-link {
+        color: var(--accent);
+        font-weight: 600;
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+
+    .auth-link:hover {
+        color: var(--accent-hover);
+        text-decoration: underline;
+    }
+</style>
+
 @code {
+    private string _username = "";
     private string _displayName = "";
+    private string _displayNameSecondary = "";
     private string _password = "";
     private string? _errorMessage;
     private bool _isLoading;
@@ -88,19 +329,19 @@
         if (score <= 2)
         {
             _passwordStrengthClass = "weak";
-            _passwordStrengthText = "Weak";
+            _passwordStrengthText = Loc["Weak"];
             _passwordStrengthColor = "var(--danger)";
         }
         else if (score <= 3)
         {
             _passwordStrengthClass = "medium";
-            _passwordStrengthText = "Fair";
+            _passwordStrengthText = Loc["Fair"];
             _passwordStrengthColor = "var(--warning)";
         }
         else
         {
             _passwordStrengthClass = "strong";
-            _passwordStrengthText = "Strong";
+            _passwordStrengthText = Loc["Strong"];
             _passwordStrengthColor = "var(--success)";
         }
     }
@@ -112,46 +353,48 @@
 
         try
         {
-            // 1. Register account
-            var registerRequest = new RegisterRequest(_displayName, _password);
-            var response = await Http.PostAsJsonAsync("/api/auth/register", registerRequest);
+            // 1. Generate crypto keys first (before any server calls)
+            var deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+
+            // 2. Combined register + device in a single atomic request
+            var secondaryName = string.IsNullOrWhiteSpace(_displayNameSecondary) ? null : _displayNameSecondary;
+            var request = new RegisterWithDeviceRequest(_username, _displayName, _password, deviceRequest, secondaryName);
+            var response = await Http.PostAsJsonAsync("/api/auth/register-with-device", request);
 
             if (!response.IsSuccessStatusCode)
             {
                 var body = await response.Content.ReadAsStringAsync();
                 _errorMessage = response.StatusCode == System.Net.HttpStatusCode.Conflict
-                    ? "Display name already taken."
-                    : $"Registration failed: {body}";
+                    ? Loc["Username already taken."]
+                    : string.Format(Loc["RegistrationFailed"], body);
                 return;
             }
 
-            var authResponse = await response.Content.ReadFromJsonAsync<AuthResponse>();
+            var result = await response.Content.ReadFromJsonAsync<RegisterWithDeviceResponse>();
 
-            // 2. Generate crypto keys
-            var deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+            // 3. Store auth tokens and deviceId locally
+            await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(result!.Token));
+            if (result.RefreshToken is not null)
+                await Storage.StoreAsync("auth.refreshToken", Encoding.UTF8.GetBytes(result.RefreshToken));
+            await Storage.StoreAsync("local.deviceId", Encoding.UTF8.GetBytes(result.DeviceId.ToString(CultureInfo.InvariantCulture)));
 
-            // 3. Register device with pre-key bundle
+            // 4. Upload key backup if shared keys enabled (default: true)
             Http.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authResponse!.Token);
-            var deviceResponse = await Http.PostAsJsonAsync("/api/devices", deviceRequest);
-
-            if (!deviceResponse.IsSuccessStatusCode)
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", result.Token);
+            try
             {
-                _errorMessage = "Device registration failed.";
-                return;
+                var prefs = await Preferences.GetPreferencesAsync();
+                if (prefs.SharedKeysEnabled)
+                {
+                    await KeyBackup.UploadBackupAsync(_password);
+                }
+            }
+            catch
+            {
+                // Non-critical: backup upload failure doesn't block registration
             }
 
-            // 4. Extract deviceId from response
-            var deviceResult = await deviceResponse.Content.ReadFromJsonAsync<DeviceRegistrationResult>();
-
-            // 5. Store auth token and deviceId for later use
-            await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse.Token));
-            if (deviceResult is not null)
-            {
-                await Storage.StoreAsync("local.deviceId", Encoding.UTF8.GetBytes(deviceResult.DeviceId.ToString(CultureInfo.InvariantCulture)));
-            }
-
-            // 6. Navigate to chat
+            // 5. Navigate to chat
             Navigation.NavigateTo("/chat");
         }
         catch (Exception ex)
@@ -163,6 +406,4 @@
             _isLoading = false;
         }
     }
-
-    private sealed record DeviceRegistrationResult(decimal DeviceId);
 }

@@ -82,6 +82,7 @@ else if (_phase == Phase.Preview)
     private int _elapsedSeconds;
     private System.Timers.Timer? _timer;
     private DotNetObjectReference<VoiceRecorder>? _objRef;
+    private bool _disposed;
 
     // Preview state
     private bool _isPlaying;
@@ -99,7 +100,7 @@ else if (_phase == Phase.Preview)
     }
 
     [Parameter]
-    public EventCallback<byte[]> OnRecorded { get; set; }
+    public EventCallback<VoiceRecordingResult> OnRecorded { get; set; }
 
     [Parameter]
     public EventCallback OnCancelled { get; set; }
@@ -112,8 +113,10 @@ else if (_phase == Phase.Preview)
         _timer = new System.Timers.Timer(1000);
         _timer.Elapsed += (_, _) =>
         {
+            if (_disposed) return;
             _elapsedSeconds++;
-            InvokeAsync(StateHasChanged);
+            try { InvokeAsync(StateHasChanged); }
+            catch { /* component disposed */ }
         };
 
         try
@@ -234,11 +237,14 @@ else if (_phase == Phase.Preview)
         var bytes = await Js.InvokeAsync<byte[]>("voiceRecorder.getRecordedBytes");
         if (bytes is { Length: > 0 })
         {
+            var mimeType = await Js.InvokeAsync<string>("voiceRecorder.getRecordedMimeType");
             try { await Js.InvokeVoidAsync("voiceRecorder.revokePreview"); }
             catch { /* cleanup best-effort */ }
-            await OnRecorded.InvokeAsync(bytes);
+            await OnRecorded.InvokeAsync(new VoiceRecordingResult(bytes, mimeType));
         }
     }
+
+    public sealed record VoiceRecordingResult(byte[] AudioData, string MimeType);
 
     private async Task Delete()
     {
@@ -272,6 +278,7 @@ else if (_phase == Phase.Preview)
 
     public async ValueTask DisposeAsync()
     {
+        _disposed = true;
         _timer?.Stop();
         _timer?.Dispose();
         try { await Js.InvokeVoidAsync("voiceRecorder.cancel"); }

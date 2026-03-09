@@ -31,15 +31,21 @@ public class UsersController(ApplicationDbContext db, PreKeyService preKeyServic
 
         var userId = GetUserId();
 
+        var qLower = q.ToLower();
         var users = await db.Users
-            .Where(u => u.IsActive && u.Id != userId && u.DisplayName.Contains(q))
-            .OrderBy(static u => u.DisplayName)
+            .Where(u => u.IsActive && u.Id != userId &&
+                        (u.Username.ToLower().Contains(qLower) ||
+                         u.DisplayName.ToLower().Contains(qLower) ||
+                         (u.DisplayNameSecondary != null && u.DisplayNameSecondary.ToLower().Contains(qLower))))
+            .OrderBy(static u => u.Username)
             .Skip(skip)
             .Take(take)
             .Select(static u => new UserSearchResult(
                 u.Id,
+                u.Username,
                 u.DisplayName,
-                u.Devices.Count(static d => d.IsActive)))
+                u.Devices.Count(static d => d.IsActive),
+                u.DisplayNameSecondary))
             .ToListAsync();
 
         return Ok(new UserSearchResponse(users));
@@ -49,7 +55,7 @@ public class UsersController(ApplicationDbContext db, PreKeyService preKeyServic
     /// Fetch pre-key bundle for a specific device of a user, consuming one one-time pre-key.
     /// </summary>
     [HttpGet("{userId}/prekey-bundle")]
-    public async Task<IActionResult> GetPreKeyBundle(decimal userId, [FromQuery] decimal deviceId)
+    public async Task<IActionResult> GetPreKeyBundle(long userId, [FromQuery] long deviceId)
     {
         var device = await db.Devices
             .FirstOrDefaultAsync(d => d.Id == deviceId && d.UserId == userId && d.IsActive);
@@ -81,7 +87,7 @@ public class UsersController(ApplicationDbContext db, PreKeyService preKeyServic
     /// List all active devices for a specific user (used for fan-out encryption).
     /// </summary>
     [HttpGet("{userId}/devices")]
-    public async Task<IActionResult> GetUserDevices(decimal userId)
+    public async Task<IActionResult> GetUserDevices(long userId)
     {
         var devices = await db.Devices
             .Where(d => d.UserId == userId && d.IsActive)
@@ -90,5 +96,4 @@ public class UsersController(ApplicationDbContext db, PreKeyService preKeyServic
 
         return Ok(devices);
     }
-
 }

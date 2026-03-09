@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using ToledoMessage.Controllers;
-using ToledoMessage.Hubs;
 using ToledoMessage.Models;
 using ToledoMessage.Services;
 using ToledoMessage.Shared.DTOs;
@@ -13,25 +11,25 @@ namespace ToledoMessage.Server.Tests.Controllers;
 [TestClass]
 public class MessagesControllerTests
 {
-    private static (MessagesController controller, Data.ApplicationDbContext db) CreateController(decimal userId = 1m)
+    private static (MessagesController controller, Data.ApplicationDbContext db) CreateController(long userId = 1L)
     {
         var db = TestDbContextFactory.Create();
         var hubContext = new StubHubContext();
         var relayService = new MessageRelayService(db, hubContext);
-        var controller = new MessagesController(db, relayService);
+        var controller = new MessagesController(db, relayService, hubContext);
         TestDbContextFactory.SetUser(controller, userId);
         return (controller, db);
     }
 
     private static async Task SeedMessagingContext(Data.ApplicationDbContext db)
     {
-        await TestDbContextFactory.SeedUser(db, 1m, "sender");
-        await TestDbContextFactory.SeedUser(db, 2m, "recipient");
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m, "SenderDevice");
-        await TestDbContextFactory.SeedDevice(db, 20m, 2m, "RecipientDevice");
-        await TestDbContextFactory.SeedConversation(db, 100m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 1m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 2m);
+        await TestDbContextFactory.SeedUser(db, 1L, "sender");
+        await TestDbContextFactory.SeedUser(db, 2L, "recipient");
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L, "SenderDevice");
+        await TestDbContextFactory.SeedDevice(db, 20L, 2L, "RecipientDevice");
+        await TestDbContextFactory.SeedConversation(db, 100L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 1L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 2L);
     }
 
     [TestMethod]
@@ -40,29 +38,27 @@ public class MessagesControllerTests
         var (controller, db) = CreateController();
         await SeedMessagingContext(db);
 
-        var request = new SendMessageRequest(100m, 10m, 20m,
-            Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L, Ciphertext = Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var result = await controller.SendMessage(request);
 
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<SendMessageResult>(ok.Value);
-        var response = (SendMessageResult)ok.Value!;
-        Assert.AreNotEqual(0m, response.MessageId);
+        var response = (SendMessageResult)ok.Value;
+        Assert.AreNotEqual(0L, response.MessageId);
         Assert.AreEqual(1, response.SequenceNumber);
     }
 
     [TestMethod]
     public async Task SendMessage_NotParticipant_ReturnsForbid()
     {
-        var (controller, db) = CreateController(3m); // user 3 is not a participant
+        var (controller, db) = CreateController(3L); // user 3 is not a participant
         await SeedMessagingContext(db);
-        await TestDbContextFactory.SeedUser(db, 3m, "outsider");
-        await TestDbContextFactory.SeedDevice(db, 30m, 3m);
+        await TestDbContextFactory.SeedUser(db, 3L, "outsider");
+        await TestDbContextFactory.SeedDevice(db, 30L, 3L);
 
-        var request = new SendMessageRequest(100m, 30m, 20m,
-            Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100L, SenderDeviceId = 30L, RecipientDeviceId = 20L, Ciphertext = Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var result = await controller.SendMessage(request);
         Assert.IsInstanceOfType<ForbidResult>(result);
@@ -71,13 +67,12 @@ public class MessagesControllerTests
     [TestMethod]
     public async Task SendMessage_NoActiveDevice_ReturnsBadRequest()
     {
-        var (controller, db) = CreateController(3m);
-        await TestDbContextFactory.SeedUser(db, 3m, "nodevice");
-        await TestDbContextFactory.SeedConversation(db, 100m);
-        await TestDbContextFactory.SeedParticipant(db, 100m, 3m);
+        var (controller, db) = CreateController(3L);
+        await TestDbContextFactory.SeedUser(db, 3L, "nodevice");
+        await TestDbContextFactory.SeedConversation(db, 100L);
+        await TestDbContextFactory.SeedParticipant(db, 100L, 3L);
 
-        var request = new SendMessageRequest(100m, 0m, 20m,
-            Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100L, SenderDeviceId = 0L, RecipientDeviceId = 20L, Ciphertext = Convert.ToBase64String(new byte[] { 1, 2, 3 }), MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var result = await controller.SendMessage(request);
         Assert.IsInstanceOfType<BadRequestObjectResult>(result);
@@ -92,18 +87,18 @@ public class MessagesControllerTests
         // Add a pending message for device 10
         db.EncryptedMessages.Add(new EncryptedMessage
         {
-            Id = 500m, ConversationId = 100m, SenderDeviceId = 20m, RecipientDeviceId = 10m,
+            Id = 500L, ConversationId = 100L, SenderDeviceId = 20L, RecipientDeviceId = 10L,
             Ciphertext = [1, 2], SequenceNumber = 1, ServerTimestamp = DateTimeOffset.UtcNow,
             IsDelivered = false
         });
         await db.SaveChangesAsync();
 
-        var result = await controller.GetPendingMessages(10m);
+        var result = await controller.GetPendingMessages(10L);
 
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<List<MessageEnvelope>>(ok.Value);
-        var envelopes = (List<MessageEnvelope>)ok.Value!;
+        var envelopes = (List<MessageEnvelope>)ok.Value;
         Assert.AreEqual(1, envelopes.Count);
     }
 
@@ -113,7 +108,7 @@ public class MessagesControllerTests
         var (controller, db) = CreateController();
         await SeedMessagingContext(db);
 
-        var result = await controller.GetPendingMessages(20m); // device 20 belongs to user 2
+        var result = await controller.GetPendingMessages(20L); // device 20 belongs to user 2
         Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 
@@ -125,17 +120,17 @@ public class MessagesControllerTests
 
         db.EncryptedMessages.Add(new EncryptedMessage
         {
-            Id = 500m, ConversationId = 100m, SenderDeviceId = 20m, RecipientDeviceId = 10m,
+            Id = 500L, ConversationId = 100L, SenderDeviceId = 20L, RecipientDeviceId = 10L,
             Ciphertext = [1, 2], SequenceNumber = 1, ServerTimestamp = DateTimeOffset.UtcNow,
             IsDelivered = false
         });
         await db.SaveChangesAsync();
 
-        var result = await controller.AcknowledgeDelivery(500m);
+        var result = await controller.AcknowledgeDelivery(500L);
 
         Assert.IsInstanceOfType<OkObjectResult>(result);
-        var msg = await db.EncryptedMessages.FindAsync(500m);
-        Assert.IsTrue(msg!.IsDelivered);
+        var msg = await db.EncryptedMessages.FindAsync(500L);
+        Assert.IsTrue(msg?.IsDelivered);
     }
 
     [TestMethod]
@@ -147,13 +142,13 @@ public class MessagesControllerTests
         // Message recipient is device 20 (user 2), but controller user is 1
         db.EncryptedMessages.Add(new EncryptedMessage
         {
-            Id = 500m, ConversationId = 100m, SenderDeviceId = 10m, RecipientDeviceId = 20m,
+            Id = 500L, ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L,
             Ciphertext = [1, 2], SequenceNumber = 1, ServerTimestamp = DateTimeOffset.UtcNow,
             IsDelivered = false
         });
         await db.SaveChangesAsync();
 
-        var result = await controller.AcknowledgeDelivery(500m);
+        var result = await controller.AcknowledgeDelivery(500L);
         Assert.IsInstanceOfType<ForbidResult>(result);
     }
 
@@ -161,7 +156,7 @@ public class MessagesControllerTests
     public async Task AcknowledgeDelivery_MessageNotFound_ReturnsNotFound()
     {
         var (controller, _) = CreateController();
-        var result = await controller.AcknowledgeDelivery(999m);
+        var result = await controller.AcknowledgeDelivery(999L);
         Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 
@@ -173,8 +168,7 @@ public class MessagesControllerTests
         var (controller, db) = CreateController();
         await SeedMessagingContext(db);
 
-        var request = new SendMessageRequest(100m, 10m, 20m,
-            "not-valid-base64!!!", MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L, Ciphertext = "not-valid-base64!!!", MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var result = await controller.SendMessage(request);
         Assert.IsInstanceOfType<BadRequestObjectResult>(result);
@@ -186,8 +180,7 @@ public class MessagesControllerTests
         var (controller, db) = CreateController();
         await SeedMessagingContext(db);
 
-        var request = new SendMessageRequest(100m, 10m, 20m,
-            "", MessageType.NormalMessage, ContentType.Text);
+        var request = new SendMessageRequest { ConversationId = 100L, SenderDeviceId = 10L, RecipientDeviceId = 20L, Ciphertext = "", MessageType = MessageType.NormalMessage, ContentType = ContentType.Text };
 
         var result = await controller.SendMessage(request);
         Assert.IsInstanceOfType<BadRequestObjectResult>(result);

@@ -4,6 +4,9 @@ using ToledoMessage.Controllers;
 using ToledoMessage.Services;
 using ToledoMessage.Shared.Constants;
 using ToledoMessage.Shared.DTOs;
+using ToledoMessage.Server.Tests.Services;
+
+#pragma warning disable MSTEST0049
 
 namespace ToledoMessage.Server.Tests.Controllers;
 
@@ -11,11 +14,13 @@ namespace ToledoMessage.Server.Tests.Controllers;
 [SuppressMessage("ReSharper", "UnusedVariable")]
 public class DevicesControllerTests
 {
-    private static (DevicesController controller, Data.ApplicationDbContext db) CreateController(decimal userId = 1m)
+    private static (DevicesController controller, Data.ApplicationDbContext db) CreateController(long userId = 1L)
     {
         var db = TestDbContextFactory.Create();
         var preKeyService = new PreKeyService(db);
-        var controller = new DevicesController(db, preKeyService);
+        var hubContext = new StubHubContext();
+        var relayService = new MessageRelayService(db, hubContext);
+        var controller = new DevicesController(db, preKeyService, relayService);
         TestDbContextFactory.SetUser(controller, userId);
         return (controller, db);
     }
@@ -24,7 +29,7 @@ public class DevicesControllerTests
     public async Task RegisterDevice_ValidRequest_ReturnsCreated()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m);
+        await TestDbContextFactory.SeedUser(db, 1L);
 
         var request = new DeviceRegistrationRequest(
             "MyPhone",
@@ -45,10 +50,10 @@ public class DevicesControllerTests
     public async Task RegisterDevice_MaxDevicesReached_ReturnsForbidden()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m);
+        await TestDbContextFactory.SeedUser(db, 1L);
 
         // Seed 10 devices
-        for (var i = 0; i < 10; i++) await TestDbContextFactory.SeedDevice(db, 100m + i, 1m, $"Device{i}");
+        for (var i = 0; i < 10; i++) await TestDbContextFactory.SeedDevice(db, 100L + i, 1L, $"Device{i}");
 
         var request = new DeviceRegistrationRequest(
             "Device11",
@@ -71,9 +76,9 @@ public class DevicesControllerTests
     public async Task ListDevices_ReturnsActiveDevicesOnly()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m);
-        var active = await TestDbContextFactory.SeedDevice(db, 10m, 1m, "Active");
-        var inactive = await TestDbContextFactory.SeedDevice(db, 20m, 1m, "Inactive");
+        await TestDbContextFactory.SeedUser(db, 1L);
+        var active = await TestDbContextFactory.SeedDevice(db, 10L, 1L, "Active");
+        var inactive = await TestDbContextFactory.SeedDevice(db, 20L, 1L, "Inactive");
         inactive.IsActive = false;
         await db.SaveChangesAsync();
 
@@ -91,10 +96,10 @@ public class DevicesControllerTests
     public async Task ListDevices_OtherUsersDevices_NotReturned()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m);
-        await TestDbContextFactory.SeedUser(db, 2m, "other");
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m, "MyDevice");
-        await TestDbContextFactory.SeedDevice(db, 20m, 2m, "OtherDevice");
+        await TestDbContextFactory.SeedUser(db, 1L);
+        await TestDbContextFactory.SeedUser(db, 2L, "other");
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L, "MyDevice");
+        await TestDbContextFactory.SeedDevice(db, 20L, 2L, "OtherDevice");
 
         var result = await controller.ListDevices();
 
@@ -110,13 +115,13 @@ public class DevicesControllerTests
     public async Task RevokeDevice_OwnDevice_ReturnsNoContent()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m);
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m);
+        await TestDbContextFactory.SeedUser(db, 1L);
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L);
 
-        var result = await controller.RevokeDevice(10m);
+        var result = await controller.RevokeDevice(10L);
 
         Assert.IsInstanceOfType<NoContentResult>(result);
-        var device = await db.Devices.FindAsync(10m);
+        var device = await db.Devices.FindAsync(10L);
         Assert.IsFalse(device?.IsActive ?? true);
     }
 
@@ -124,11 +129,11 @@ public class DevicesControllerTests
     public async Task RevokeDevice_OtherUsersDevice_ReturnsNotFound()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m);
-        await TestDbContextFactory.SeedUser(db, 2m, "other");
-        await TestDbContextFactory.SeedDevice(db, 20m, 2m);
+        await TestDbContextFactory.SeedUser(db, 1L);
+        await TestDbContextFactory.SeedUser(db, 2L, "other");
+        await TestDbContextFactory.SeedDevice(db, 20L, 2L);
 
-        var result = await controller.RevokeDevice(20m);
+        var result = await controller.RevokeDevice(20L);
         Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 
@@ -136,7 +141,7 @@ public class DevicesControllerTests
     public async Task RevokeDevice_NonExistent_ReturnsNotFound()
     {
         var (controller, _) = CreateController();
-        var result = await controller.RevokeDevice(999m);
+        var result = await controller.RevokeDevice(999L);
         Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 
@@ -144,16 +149,16 @@ public class DevicesControllerTests
     public async Task GetPreKeyCount_OwnDevice_ReturnsCount()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m);
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m);
+        await TestDbContextFactory.SeedUser(db, 1L);
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L);
         var preKeyService = new PreKeyService(db);
-        await preKeyService.StoreOneTimePreKeys(10m,
+        await preKeyService.StoreOneTimePreKeys(10L,
         [
             new OneTimePreKeyDto(1, Convert.ToBase64String(new byte[32])),
             new OneTimePreKeyDto(2, Convert.ToBase64String(new byte[32]))
         ]);
 
-        var result = await controller.GetPreKeyCount(10m);
+        var result = await controller.GetPreKeyCount(10L);
 
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
@@ -166,11 +171,11 @@ public class DevicesControllerTests
     public async Task GetPreKeyCount_OtherUsersDevice_ReturnsNotFound()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m);
-        await TestDbContextFactory.SeedUser(db, 2m, "other");
-        await TestDbContextFactory.SeedDevice(db, 20m, 2m);
+        await TestDbContextFactory.SeedUser(db, 1L);
+        await TestDbContextFactory.SeedUser(db, 2L, "other");
+        await TestDbContextFactory.SeedDevice(db, 20L, 2L);
 
-        var result = await controller.GetPreKeyCount(20m);
+        var result = await controller.GetPreKeyCount(20L);
         Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 
@@ -178,8 +183,8 @@ public class DevicesControllerTests
     public async Task ReplenishPreKeys_ValidRequest_ReturnsNoContent()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m);
-        await TestDbContextFactory.SeedDevice(db, 10m, 1m);
+        await TestDbContextFactory.SeedUser(db, 1L);
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L);
 
         var preKeys = new List<OneTimePreKeyDto>
         {
@@ -187,7 +192,7 @@ public class DevicesControllerTests
             new(101, Convert.ToBase64String(new byte[32]))
         };
 
-        var result = await controller.ReplenishPreKeys(10m, preKeys);
+        var result = await controller.ReplenishPreKeys(10L, preKeys);
 
         Assert.IsInstanceOfType<NoContentResult>(result);
         Assert.AreEqual(2, db.OneTimePreKeys.Count());
@@ -197,11 +202,11 @@ public class DevicesControllerTests
     public async Task ReplenishPreKeys_OtherUsersDevice_ReturnsNotFound()
     {
         var (controller, db) = CreateController();
-        await TestDbContextFactory.SeedUser(db, 1m);
-        await TestDbContextFactory.SeedUser(db, 2m, "other");
-        await TestDbContextFactory.SeedDevice(db, 20m, 2m);
+        await TestDbContextFactory.SeedUser(db, 1L);
+        await TestDbContextFactory.SeedUser(db, 2L, "other");
+        await TestDbContextFactory.SeedDevice(db, 20L, 2L);
 
-        var result = await controller.ReplenishPreKeys(20m, [new OneTimePreKeyDto(1, Convert.ToBase64String(new byte[32]))]);
+        var result = await controller.ReplenishPreKeys(20L, [new OneTimePreKeyDto(1, Convert.ToBase64String(new byte[32]))]);
         Assert.IsInstanceOfType<NotFoundObjectResult>(result);
     }
 }

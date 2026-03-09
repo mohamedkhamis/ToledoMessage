@@ -38,8 +38,16 @@ public class AesGcmCipherTests
 
         ciphertext[0] ^= 0xFF;
 
-        bool threw = false;
-        try { AesGcmCipher.Decrypt(key, nonce, ciphertext); } catch { threw = true; }
+        var threw = false;
+        try
+        {
+            AesGcmCipher.Decrypt(key, nonce, ciphertext);
+        }
+        catch
+        {
+            threw = true;
+        }
+
         Assert.IsTrue(threw);
     }
 
@@ -68,8 +76,16 @@ public class AesGcmCipherTests
 
         var ciphertext = AesGcmCipher.Encrypt(key, nonce, plaintext, aad);
 
-        bool threw = false;
-        try { AesGcmCipher.Decrypt(key, nonce, ciphertext, wrongAad); } catch { threw = true; }
+        var threw = false;
+        try
+        {
+            AesGcmCipher.Decrypt(key, nonce, ciphertext, wrongAad);
+        }
+        catch
+        {
+            threw = true;
+        }
+
         Assert.IsTrue(threw);
     }
 

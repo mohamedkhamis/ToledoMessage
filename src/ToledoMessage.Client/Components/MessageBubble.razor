@@ -4,7 +4,7 @@
     <div class="message-bubble @(IsMine ? "mine" : "theirs")">
         @if (IsForwarded)
         {
-            <div class="forwarded-label">@Theme.Labels.Forwarded</div>
+            <div class="forwarded-label">@Loc["Forwarded"]</div>
         }
         @if (!string.IsNullOrEmpty(ReplyToSenderName))
         {
@@ -56,40 +56,36 @@
             }
             else
             {
-                <div class="message-media-placeholder">&#128247; @(FileName ?? Theme.Labels.ImageUnavailable)</div>
+                <div class="message-media-placeholder">&#128247; @(FileName ?? Loc["Image unavailable"])</div>
             }
         }
         else if (ContentType == ContentType.Video)
         {
             if (!string.IsNullOrEmpty(MediaDataUrl))
             {
-                <div class="message-media message-video-container">
-                    @if (!_isVideoPlaying && !string.IsNullOrEmpty(ThumbnailDataUrl))
+                <div class="message-media message-video-container" @onclick="() => OnVideoClick.InvokeAsync(MediaDataUrl)">
+                    @if (!string.IsNullOrEmpty(ThumbnailDataUrl))
                     {
-                        <div class="message-video-thumbnail" @onclick="PlayVideo">
-                            <img src="@ThumbnailDataUrl" alt="Video thumbnail" class="message-video-thumb-img" />
-                            <div class="message-video-play-btn">&#9658;</div>
-                        </div>
+                        <img src="@ThumbnailDataUrl" alt="Video thumbnail" class="message-video-thumb-img" />
                     }
-                    <video controls src="@MediaDataUrl" class="message-video"
-                           preload="metadata" aria-label="@(FileName ?? "Video")"
-                           @onplay="() => _isVideoPlaying = true"
-                           @onpause="() => _isVideoPlaying = false">
-                        Your browser does not support video playback.
-                    </video>
+                    else
+                    {
+                        <video src="@(MediaDataUrl + "#t=0.5")" class="message-video-thumb-img"
+                               preload="auto" muted playsinline aria-hidden="true"></video>
+                    }
+                    <div class="message-video-play-btn"></div>
                 </div>
             }
             else if (!string.IsNullOrEmpty(ThumbnailDataUrl))
             {
                 <div class="message-media message-video-container">
-                    <div class="message-video-thumbnail">
-                        <img src="@ThumbnailDataUrl" alt="@(FileName ?? "Video")" class="message-video-thumb-img" />
-                    </div>
+                    <img src="@ThumbnailDataUrl" alt="@(FileName ?? "Video")" class="message-video-thumb-img" />
+                    <div class="message-video-play-btn"></div>
                 </div>
             }
             else
             {
-                <div class="message-media-placeholder">&#127909; @(FileName ?? Theme.Labels.VideoUnavailable)</div>
+                <div class="message-media-placeholder">&#127909; @(FileName ?? Loc["Video unavailable"])</div>
             }
         }
         else if (ContentType == ContentType.Audio)
@@ -135,27 +131,54 @@
             }
             else
             {
-                <div class="message-media-placeholder">&#127911; @(FileName ?? Theme.Labels.AudioUnavailable)</div>
+                <div class="message-media-placeholder">&#127911; @(FileName ?? Loc["Audio unavailable"])</div>
             }
         }
         else if (ContentType == ContentType.File)
         {
             if (!string.IsNullOrEmpty(MediaDataUrl))
             {
-                <div class="message-file-card">
-                    <div class="message-file-icon">@GetFileIconForMimeType(MimeType)</div>
-                    <div class="message-file-info">
-                        <span class="message-file-name">@(FileName ?? "File")</span>
-                        <a href="@MediaDataUrl" download="@(FileName ?? "file")"
-                           class="message-file-download" aria-label="Download @(FileName ?? "file")">
-                            &#8595; @Theme.Labels.Download
-                        </a>
+                @if (IsPdf)
+                {
+                    <div class="message-pdf-preview">
+                        <div class="pdf-preview-frame-wrapper">
+                            <iframe src="@(MediaDataUrl + "#toolbar=0&navpanes=0&scrollbar=0&view=FitH")"
+                                    class="pdf-preview-frame"
+                                    title="@(FileName ?? "PDF preview")"
+                                    loading="lazy">
+                            </iframe>
+                            <div class="pdf-preview-overlay" @onclick="() => OnPdfClick.InvokeAsync(MediaDataUrl)"></div>
+                        </div>
+                        <div class="message-file-card pdf-card">
+                            <div class="message-file-icon">📄</div>
+                            <div class="message-file-info">
+                                <span class="message-file-name">@(FileName ?? "Document.pdf")</span>
+                            </div>
+                            <a href="@MediaDataUrl" download="@(FileName ?? "document.pdf")"
+                               class="message-file-download-btn" aria-label="Download @(FileName ?? "file")"
+                               @onclick:stopPropagation="true">
+                                &#8595;
+                            </a>
+                        </div>
                     </div>
-                </div>
+                }
+                else
+                {
+                    <div class="message-file-card">
+                        <div class="message-file-icon">@GetFileIconForMimeType(MimeType)</div>
+                        <div class="message-file-info">
+                            <span class="message-file-name">@(FileName ?? "File")</span>
+                            <a href="@MediaDataUrl" download="@(FileName ?? "file")"
+                               class="message-file-download" aria-label="Download @(FileName ?? "file")">
+                                &#8595; @Loc["Download"]
+                            </a>
+                        </div>
+                    </div>
+                }
             }
             else
             {
-                <div class="message-media-placeholder">@GetFileIconForMimeType(MimeType) @(FileName ?? Theme.Labels.FileUnavailable)</div>
+                <div class="message-media-placeholder">@GetFileIconForMimeType(MimeType) @(FileName ?? Loc["File unavailable"])</div>
             }
         }
         @if (!string.IsNullOrEmpty(Text))
@@ -197,25 +220,10 @@
 </div>
 
 @inject IJSRuntime Js
-@inject ThemeService Theme
+@inject IStringLocalizer<SharedResource> Loc
 
 @* ReSharper disable once NotAccessedField.Local *@
 @code {
-    protected override void OnInitialized()
-    {
-        Theme.OnThemeChanged += OnThemeChanged;
-    }
-
-    private void OnThemeChanged()
-    {
-        InvokeAsync(StateHasChanged);
-    }
-
-    public void Dispose()
-    {
-        Theme.OnThemeChanged -= OnThemeChanged;
-    }
-
     // Check if text contains only 1-3 emoji (for big emoji rendering)
     private static bool IsEmojiOnly(string? text)
     {
@@ -239,14 +247,6 @@
     private double _audioDuration;
     private ElementReference _audioElementRef;
     private static readonly int[] AudioWaveHeights = [4, 8, 14, 10, 18, 6, 12, 20, 8, 16, 10, 22, 6, 14, 18, 8, 12, 20, 10, 16, 6, 14, 22, 8, 18, 12];
-
-    // Video playback state
-    private bool _isVideoPlaying;
-
-    private void PlayVideo()
-    {
-        _isVideoPlaying = true;
-    }
 
     private async Task ToggleAudioPlayback()
     {
@@ -331,7 +331,7 @@
     }
 
     [Parameter]
-    public decimal MessageId { get; set; }
+    public long MessageId { get; set; }
 
     [Parameter, EditorRequired]
     public string Text { get; set; } = "";
@@ -370,13 +370,16 @@
     public EventCallback<string> OnImageClick { get; set; }
 
     [Parameter]
+    public EventCallback<string> OnVideoClick { get; set; }
+
+    [Parameter]
     public EventCallback OnReply { get; set; }
 
     [Parameter]
     public EventCallback<(double X, double Y)> OnContextMenu { get; set; }
 
     [Parameter]
-    public decimal? ReplyToMessageId { get; set; }
+    public long? ReplyToMessageId { get; set; }
 
     [Parameter]
     public string? ReplyToSenderName { get; set; }
@@ -394,7 +397,7 @@
     public ContentType ReplyToContentType { get; set; } = ContentType.Text;
 
     [Parameter]
-    public EventCallback<decimal> OnReplyQuoteClick { get; set; }
+    public EventCallback<long> OnReplyQuoteClick { get; set; }
 
     [Parameter]
     public List<ReactionBadgeModel> ReactionBadges { get; set; } = [];
@@ -407,6 +410,12 @@
 
     [Parameter]
     public bool IsSearchHighlight { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnPdfClick { get; set; }
+
+    private bool IsPdf => MimeType?.StartsWith("application/pdf", StringComparison.OrdinalIgnoreCase) == true
+                          || FileName?.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) == true;
 
     private async Task HandleContextMenu(MouseEventArgs e)
     {

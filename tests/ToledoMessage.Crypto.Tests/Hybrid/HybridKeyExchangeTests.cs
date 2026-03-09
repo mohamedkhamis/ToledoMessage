@@ -19,6 +19,7 @@ public class HybridKeyExchangeTests
     [TestMethod]
     public void Encapsulate_Decapsulate_ProduceSameSharedSecret()
     {
+        // ReSharper disable  UnusedVariable
         var (aliceClassicalPublic, aliceClassicalPrivate, alicePqPublic, alicePqPrivate) =
             HybridKeyExchange.GenerateKeyPair();
         var (bobClassicalPublic, bobClassicalPrivate, bobPqPublic, bobPqPrivate) =
@@ -31,6 +32,7 @@ public class HybridKeyExchangeTests
             bobPqPublic);
 
         // Bob decapsulates
+        // ReSharper disable ArgumentsStyleNamedExpression
         var bobSharedSecret = HybridKeyExchange.Decapsulate(
             classicalPrivateKey: bobClassicalPrivate,
             peerClassicalPublicKey: aliceClassicalPublic,

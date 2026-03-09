@@ -4,8 +4,9 @@ using ToledoMessage.Shared.DTOs;
 
 namespace ToledoMessage.Client.Services;
 
+/// <inheritdoc />
 /// <summary>
-/// Monitors the <see cref="SignalRService.OnPreKeyCountLow"/> event and automatically
+/// Monitors the <see cref="E:ToledoMessage.Client.Services.SignalRService.OnPreKeyCountLow">SignalRService.OnPreKeyCountLow</see> event and automatically
 /// generates and uploads fresh one-time pre-keys when the server signals that the
 /// device's pre-key supply is running low.
 /// </summary>
@@ -37,7 +38,8 @@ public class PreKeyReplenishmentService : IDisposable
         _signalR.OnPreKeyCountLow += HandlePreKeyCountLow;
     }
 
-    private async void HandlePreKeyCountLow(decimal deviceId, int remainingCount)
+    // ReSharper disable once AsyncVoidMethod
+    private async void HandlePreKeyCountLow(long deviceId, int remainingCount)
     {
         if (remainingCount >= LowThreshold)
             return;
@@ -47,7 +49,7 @@ public class PreKeyReplenishmentService : IDisposable
             // Determine the starting key ID for the new batch.
             // Use a counter stored in local storage to avoid key ID collisions.
             var counterBytes = await _storage.GetAsync("otpk.nextKeyId");
-            int nextKeyId = counterBytes is not null
+            var nextKeyId = counterBytes is not null
                 ? BitConverter.ToInt32(counterBytes)
                 : 100; // Start after the initial 100 keys (0-99)
 
@@ -63,7 +65,7 @@ public class PreKeyReplenishmentService : IDisposable
 
             // Upload public keys to the server
             var dtos = newKeys
-                .Select(k => new OneTimePreKeyDto(k.KeyId, Convert.ToBase64String(k.PublicKey)))
+                .Select(static k => new OneTimePreKeyDto(k.KeyId, Convert.ToBase64String(k.PublicKey)))
                 .ToList();
 
             await _http.PostAsJsonAsync($"/api/devices/{deviceId}/prekeys", dtos);

@@ -20,10 +20,10 @@ public sealed class MessageStoreService(IJSRuntime js)
         await js.InvokeVoidAsync("toledoMessageStore.storeMessages", msgs);
     }
 
-    public async Task<List<StoredMessage>> GetMessagesAsync(string conversationId, int limit = 200)
+    public async Task<List<StoredMessage>> GetMessagesAsync(string conversationId, int limit = 200, string? beforeTimestamp = null)
     {
         return await js.InvokeAsync<List<StoredMessage>>(
-            "toledoMessageStore.getMessages", conversationId, limit, null);
+            "toledoMessageStore.getMessages", conversationId, limit, beforeTimestamp);
     }
 
     public async Task UpdateMessageStatusAsync(string messageId, int status)
@@ -59,6 +59,7 @@ public sealed class MessageStoreService(IJSRuntime js)
 public sealed class StoredMessage
 {
     public string MessageId { get; set; } = "";
+    public long SequenceNumber { get; set; }
     public string ConversationId { get; set; } = "";
     public string Text { get; set; } = "";
     public string Timestamp { get; set; } = "";

@@ -6,6 +6,7 @@ window.voiceRecorder = {
     _blobUrl: null,
     _blob: null,
     _audioEl: null,
+    _mimeType: 'audio/webm',
 
     start: async function (dotNetRef) {
         this._dotNetRef = dotNetRef;
@@ -14,13 +15,15 @@ window.voiceRecorder = {
 
         this._stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         var mimeType = 'audio/webm;codecs=opus';
-        if (typeof MediaRecorder.isTypeSupported === 'function') {
-            if (!MediaRecorder.isTypeSupported(mimeType)) {
-                if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) mimeType = 'audio/ogg;codecs=opus';
-                else if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+        if (typeof window.MediaRecorder.isTypeSupported === 'function') {
+            if (!window.MediaRecorder.isTypeSupported(mimeType)) {
+                if (window.MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) mimeType = 'audio/ogg;codecs=opus';
+                else if (window.MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
                 else mimeType = '';
             }
         }
+        // Store the actual mime type used for recording
+        this._mimeType = mimeType || 'audio/webm';
         this._mediaRecorder = mimeType
             ? new window.MediaRecorder(this._stream, { mimeType: mimeType })
             : new window.MediaRecorder(this._stream);
@@ -43,8 +46,9 @@ window.voiceRecorder = {
                 return;
             }
 
-            // Create blob + URL for preview (don't send to .NET yet)
-            this._blob = new Blob(this._chunks, { type: 'audio/webm' });
+            // Create blob using the actual recording mime type
+            var blobType = this._mimeType.split(';')[0]; // strip codecs param
+            this._blob = new Blob(this._chunks, { type: blobType });
             this._blobUrl = URL.createObjectURL(this._blob);
 
             if (this._dotNetRef) {
@@ -56,7 +60,8 @@ window.voiceRecorder = {
             }
         };
 
-        this._mediaRecorder.start();
+        // Use timeslice to get periodic data chunks (every 1s)
+        this._mediaRecorder.start(1000);
     },
 
     stop: function () {
@@ -82,6 +87,10 @@ window.voiceRecorder = {
         if (!this._blob) return null;
         const arrayBuffer = await this._blob.arrayBuffer();
         return new Uint8Array(arrayBuffer);
+    },
+
+    getRecordedMimeType: function () {
+        return this._mimeType ? this._mimeType.split(';')[0] : 'audio/webm';
     },
 
     initPreviewAudio: function (audioElement) {

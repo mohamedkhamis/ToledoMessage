@@ -49,29 +49,58 @@
                     document.documentElement.removeAttribute('data-theme');
                 }
             }
+            function applyFontSize() {
+                var fs = localStorage.getItem('app.fontSize');
+                // Legacy migration: convert old string values to px
+                if (fs === 'small') fs = '13';
+                else if (fs === 'large') fs = '17';
+                else if (fs === 'medium' || !fs) fs = '15';
+                document.documentElement.style.setProperty('--app-font-size', fs + 'px');
+            }
+            function applyCulture() {
+                var c = localStorage.getItem('app.culture') || 'en';
+                var desiredDir = c.startsWith('ar') ? 'rtl' : 'ltr';
+                if (document.documentElement.lang !== c) document.documentElement.lang = c;
+                if (document.documentElement.dir !== desiredDir) document.documentElement.dir = desiredDir;
+            }
             applyTheme();
+            applyFontSize();
+            applyCulture();
             // Re-apply after Blazor enhanced navigation
 // ReSharper disable  Html.EventNotResolved
             document.addEventListener('blazor:enhancedload', function () {
                 applyTheme();
+                applyFontSize();
+                applyCulture();
                 // Also re-apply after a frame in case Blazor patches DOM after the event
-                requestAnimationFrame(applyTheme);
+                requestAnimationFrame(function () { applyTheme(); applyFontSize(); applyCulture(); });
             });
-            // MutationObserver: catch Blazor stripping data-theme during DOM patching
+            // MutationObserver: catch Blazor stripping data-theme/data-font-size/lang/dir during DOM patching
             var applying = false;
             new MutationObserver(function () {
                 if (applying) return;
+                applying = true;
                 var theme = getDesiredTheme();
                 var current = document.documentElement.getAttribute('data-theme');
                 if (theme && current !== theme) {
-                    applying = true;
                     document.documentElement.setAttribute('data-theme', theme);
-                    applying = false;
                 }
-            }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'lang'] });
+                applyFontSize();
+                applyCulture();
+                applying = false;
+            }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'lang', 'dir', 'style'] });
 
             // Loading spinner: handled by inline script right after the spinner div.
             // See comment there for the full strategy.
+
+            // Global language toggle (used by NavMenu and Home page switchers)
+            window.__toggleLang = function() {
+                var current = localStorage.getItem('app.culture') || 'en';
+                var next = current.startsWith('ar') ? 'en' : 'ar';
+                localStorage.setItem('app.culture', next);
+                document.cookie = '.AspNetCore.Culture=c=' + next + '|uic=' + next + ';path=/;max-age=31536000;samesite=lax';
+                location.reload();
+            };
         })();
     </script>
     <ResourcePreloader />
@@ -104,11 +133,11 @@
     </style>
     <Routes />
     @* ReSharper disable  Html.PathError *@
-    <script src="storage.js"></script>
-    <script src="tab-leader.js"></script>
-    <script src="notifications.js"></script>
-    <script src="media-helpers.js"></script>
-    <script src="voice-recorder.js"></script>
+    <script src="@Assets["storage.js"]"></script>
+    <script src="@Assets["tab-leader.js"]"></script>
+    <script src="@Assets["notifications.js"]"></script>
+    <script src="@Assets["media-helpers.js"]"></script>
+    <script src="@Assets["voice-recorder.js"]"></script>
     <script src="@Assets["_framework/blazor.web.js"]"></script>
     <script>
         // Hide spinner after blazor.web.js loads and set flag.

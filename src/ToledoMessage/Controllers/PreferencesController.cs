@@ -18,10 +18,12 @@ public class PreferencesController(ApplicationDbContext db) : BaseApiController
     private static readonly HashSet<string> ValidThemes =
     [
         "default", "default-dark", "whatsapp", "whatsapp-dark",
-        "telegram", "signal", "signal-dark"
+        "telegram", "telegram-dark", "signal", "signal-dark"
     ];
 
-    private static readonly HashSet<string> ValidFontSizes = ["small", "medium", "large"];
+    private static readonly HashSet<string> ValidFontSizes = ["small", "medium", "large",
+        "12", "13", "14", "15", "16", "17", "18", "19", "20"];
+    private static readonly HashSet<string> ValidLanguages = ["en", "ar"];
 
     [HttpGet]
     public async Task<IActionResult> GetPreferences()
@@ -32,7 +34,7 @@ public class PreferencesController(ApplicationDbContext db) : BaseApiController
             .FirstOrDefaultAsync(p => p.UserId == userId);
 
         if (prefs is null)
-            return Ok(new UserPreferencesResponse("default", "medium", "en", true, true, true, true));
+            return Ok(new UserPreferencesResponse("default", "15", "en", true, true, true, true));
 
         return Ok(new UserPreferencesResponse(
             prefs.Theme, prefs.FontSize, prefs.Language,
@@ -47,7 +49,10 @@ public class PreferencesController(ApplicationDbContext db) : BaseApiController
             return BadRequest("Invalid theme.");
 
         if (request.FontSize is not null && !ValidFontSizes.Contains(request.FontSize))
-            return BadRequest("Invalid font size. Must be small, medium, or large.");
+            return BadRequest("Invalid font size.");
+
+        if (request.Language is not null && !ValidLanguages.Contains(request.Language))
+            return BadRequest("Invalid language.");
 
         var userId = GetUserId();
         var prefs = await db.UserPreferences.FirstOrDefaultAsync(p => p.UserId == userId);
@@ -56,7 +61,7 @@ public class PreferencesController(ApplicationDbContext db) : BaseApiController
         {
             prefs = new UserPreferences
             {
-                Id = DecimalTools.GetNewId(),
+                Id = IdGenerator.GetNewId(),
                 UserId = userId,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow

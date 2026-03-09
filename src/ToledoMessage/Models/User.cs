@@ -4,8 +4,10 @@ public class User
 {
     // ReSharper disable  NullableWarningSuppressionIsUsed
 
-    public decimal Id { get; set; }
+    public long Id { get; set; }
+    public string Username { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
+    public string? DisplayNameSecondary { get; set; }
     public string PasswordHash { get; set; } = string.Empty;
     public DateTimeOffset CreatedAt { get; set; }
     public bool IsActive { get; set; } = true;

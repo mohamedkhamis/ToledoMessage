@@ -3,6 +3,8 @@ using ToledoMessage.Crypto.Protocol;
 using ToledoMessage.Shared.DTOs;
 using ToledoMessage.Shared.Enums;
 
+// ReSharper disable RemoveRedundantBraces
+
 namespace ToledoMessage.Client.Services;
 
 /// <summary>
@@ -20,14 +22,14 @@ public class CryptoService(
     /// Caches X3DH InitiationResults per device for embedding in PreKeyMessages.
     /// Consumed on first encrypt, then removed (subsequent messages are NormalMessages).
     /// </summary>
-    private readonly Dictionary<decimal, X3dhInitiator.InitiationResult> _pendingInitiationResults = new();
+    private readonly Dictionary<long, X3dhInitiator.InitiationResult> _pendingInitiationResults = new();
 
     /// <summary>
     /// Ensures an encrypted session exists with the specified remote device.
     /// If no session exists, establishes one via the X3DH protocol and caches
     /// the InitiationResult for embedding in the first (PreKey) message.
     /// </summary>
-    public async Task EstablishSessionAsync(decimal userId, decimal deviceId)
+    public async Task EstablishSessionAsync(long userId, long deviceId)
     {
         var hasSession = await sessionService.HasSessionAsync(deviceId);
         if (!hasSession)
@@ -38,27 +40,17 @@ public class CryptoService(
     }
 
     /// <summary>
-    /// Encrypts a plaintext message for the specified remote device.
+    /// Encrypts raw bytes for the specified remote device.
     /// If an X3DH InitiationResult is cached (first message), packs as PreKeyMessage;
     /// otherwise packs as NormalMessage.
     /// </summary>
     /// <returns>Tuple of (base64 ciphertext, MessageType).</returns>
-    public async Task<(string ciphertextBase64, MessageType messageType)> EncryptMessageAsync(
-        decimal recipientDeviceId, string plaintext)
-    {
-        var data = System.Text.Encoding.UTF8.GetBytes(plaintext);
-        return await EncryptBytesAsync(recipientDeviceId, data);
-    }
-
-    /// <summary>
-    /// Encrypts raw bytes (media) for the specified remote device.
-    /// </summary>
     public async Task<(string ciphertextBase64, MessageType messageType)> EncryptBytesAsync(
-        decimal recipientDeviceId, byte[] data)
+        long recipientDeviceId, byte[] data)
     {
         var session = await sessionService.LoadSessionAsync(recipientDeviceId)
-            ?? throw new InvalidOperationException(
-                $"No session exists for device {recipientDeviceId}. Call EstablishSessionAsync first.");
+                      ?? throw new InvalidOperationException(
+                          $"No session exists for device {recipientDeviceId}. Call EstablishSessionAsync first.");
 
         byte[] ciphertextWithHeader;
         RatchetState updatedState;
@@ -90,22 +82,12 @@ public class CryptoService(
     }
 
     /// <summary>
-    /// Decrypts a received ciphertext from the specified sender device.
+    /// Decrypts a received ciphertext to raw bytes from the specified sender device.
     /// If messageType is PreKeyMessage and no session exists, establishes a responder
     /// session using the embedded X3DH handshake data, then decrypts.
     /// </summary>
-    public async Task<string> DecryptMessageAsync(
-        decimal senderDeviceId, string ciphertextBase64, MessageType messageType)
-    {
-        var bytes = await DecryptToBytesAsync(senderDeviceId, ciphertextBase64, messageType);
-        return System.Text.Encoding.UTF8.GetString(bytes);
-    }
-
-    /// <summary>
-    /// Decrypts a received ciphertext to raw bytes (for media payloads).
-    /// </summary>
     public async Task<byte[]> DecryptToBytesAsync(
-        decimal senderDeviceId, string ciphertextBase64, MessageType messageType)
+        long senderDeviceId, string ciphertextBase64, MessageType messageType)
     {
         var ciphertextWithHeader = Convert.FromBase64String(ciphertextBase64);
 
@@ -113,13 +95,11 @@ public class CryptoService(
         {
             var preKeyHeader = MessageEncryptionService.ExtractPreKeyHeader(ciphertextWithHeader);
 
-            var session = await sessionService.LoadSessionAsync(senderDeviceId);
-            if (session is null)
-                session = await sessionService.EstablishSessionAsResponderAsync(
-                    preKeyHeader.EphemeralPublicKey,
-                    preKeyHeader.KemCiphertext,
-                    preKeyHeader.UsedOneTimePreKeyId,
-                    senderDeviceId);
+            var session = await sessionService.LoadSessionAsync(senderDeviceId) ?? await sessionService.EstablishSessionAsResponderAsync(
+                preKeyHeader.EphemeralPublicKey,
+                preKeyHeader.KemCiphertext,
+                preKeyHeader.UsedOneTimePreKeyId,
+                senderDeviceId);
 
             var ratchetBlob = MessageEncryptionService.StripPreKeyHeader(ciphertextWithHeader);
             var (data, updatedState) =
@@ -131,8 +111,8 @@ public class CryptoService(
         else
         {
             var session = await sessionService.LoadSessionAsync(senderDeviceId)
-                ?? throw new InvalidOperationException(
-                    $"No session exists for device {senderDeviceId}.");
+                          ?? throw new InvalidOperationException(
+                              $"No session exists for device {senderDeviceId}.");
 
             var (data, updatedState) =
                 messageEncryptionService.DecryptToBytes(session, ciphertextWithHeader);
@@ -146,8 +126,8 @@ public class CryptoService(
     /// Encrypts a plaintext message for all active devices of a recipient user.
     /// Returns a list of (deviceId, ciphertextBase64, messageType) tuples.
     /// </summary>
-    public async Task<List<(decimal deviceId, string ciphertextBase64, MessageType messageType)>> EncryptMessageForAllDevicesAsync(
-        decimal recipientUserId, string plaintext)
+    public async Task<List<(long deviceId, string ciphertextBase64, MessageType messageType)>> EncryptMessageForAllDevicesAsync(
+        long recipientUserId, string plaintext)
     {
         var data = System.Text.Encoding.UTF8.GetBytes(plaintext);
         return await EncryptBytesForAllDevicesAsync(recipientUserId, data);
@@ -155,23 +135,37 @@ public class CryptoService(
 
     /// <summary>
     /// Encrypts raw bytes for all active devices of a recipient user (for media).
+    /// Continues to remaining devices if one device's session establishment fails.
     /// </summary>
-    public async Task<List<(decimal deviceId, string ciphertextBase64, MessageType messageType)>> EncryptBytesForAllDevicesAsync(
-        decimal recipientUserId, byte[] data)
+    public async Task<List<(long deviceId, string ciphertextBase64, MessageType messageType)>> EncryptBytesForAllDevicesAsync(
+        long recipientUserId, byte[] data)
     {
         var devices = await http.GetFromJsonAsync<List<DeviceInfoResponse>>(
-            $"/api/users/{recipientUserId}/devices")
-            ?? throw new InvalidOperationException(
-                $"Failed to fetch devices for user {recipientUserId}.");
+                          $"/api/users/{recipientUserId}/devices")
+                      ?? throw new InvalidOperationException(
+                          $"Failed to fetch devices for user {recipientUserId}.");
 
-        var results = new List<(decimal deviceId, string ciphertextBase64, MessageType messageType)>();
+        var results = new List<(long deviceId, string ciphertextBase64, MessageType messageType)>();
 
         foreach (var device in devices)
         {
-            await EstablishSessionAsync(recipientUserId, device.DeviceId);
-            var (ciphertextBase64, messageType) = await EncryptBytesAsync(device.DeviceId, data);
-            results.Add((device.DeviceId, ciphertextBase64, messageType));
+            try
+            {
+                await EstablishSessionAsync(recipientUserId, device.DeviceId);
+                var (ciphertextBase64, messageType) = await EncryptBytesAsync(device.DeviceId, data);
+                results.Add((device.DeviceId, ciphertextBase64, messageType));
+            }
+            catch (Exception ex)
+            {
+                // Skip this device but continue sending to others.
+                // Common cause: PreKey bundle fetch failed for an inactive/stale device.
+                Console.WriteLine($@"Failed to encrypt for device {device.DeviceId}: {ex.Message}");
+            }
         }
+
+        if (results.Count == 0)
+            throw new InvalidOperationException(
+                $"Failed to encrypt message for any device of user {recipientUserId}.");
 
         return results;
     }
@@ -180,7 +174,7 @@ public class CryptoService(
     /// Encrypts a plaintext message for all participants in a group conversation.
     /// </summary>
     public async Task<List<SendMessageRequest>> EncryptGroupMessageAsync(
-        decimal conversationId, decimal selfUserId, decimal senderDeviceId, string plaintext)
+        long conversationId, long selfUserId, long senderDeviceId, string plaintext)
     {
         return await EncryptGroupBytesAsync(
             conversationId, selfUserId, senderDeviceId,
@@ -191,13 +185,13 @@ public class CryptoService(
     /// Encrypts raw bytes (media) for all participants in a group conversation.
     /// </summary>
     public async Task<List<SendMessageRequest>> EncryptGroupBytesAsync(
-        decimal conversationId, decimal selfUserId, decimal senderDeviceId,
+        long conversationId, long selfUserId, long senderDeviceId,
         byte[] data, ContentType contentType, string? fileName, string? mimeType)
     {
         var participants = await http.GetFromJsonAsync<List<ParticipantResponse>>(
-            $"/api/conversations/{conversationId}/participants")
-            ?? throw new InvalidOperationException(
-                $"Failed to fetch participants for conversation {conversationId}.");
+                               $"/api/conversations/{conversationId}/participants")
+                           ?? throw new InvalidOperationException(
+                               $"Failed to fetch participants for conversation {conversationId}.");
 
         var requests = new List<SendMessageRequest>();
 
@@ -206,15 +200,17 @@ public class CryptoService(
             var deviceCiphertexts = await EncryptBytesForAllDevicesAsync(participant.UserId, data);
 
             foreach (var (deviceId, ciphertextBase64, messageType) in deviceCiphertexts)
-                requests.Add(new SendMessageRequest(
-                    conversationId,
-                    senderDeviceId,
-                    deviceId,
-                    ciphertextBase64,
-                    messageType,
-                    contentType,
-                    fileName,
-                    mimeType));
+                requests.Add(new SendMessageRequest
+                {
+                    ConversationId = conversationId,
+                    SenderDeviceId = senderDeviceId,
+                    RecipientDeviceId = deviceId,
+                    Ciphertext = ciphertextBase64,
+                    MessageType = messageType,
+                    ContentType = contentType,
+                    FileName = fileName,
+                    MimeType = mimeType
+                });
         }
 
         return requests;

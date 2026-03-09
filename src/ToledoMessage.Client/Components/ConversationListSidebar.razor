@@ -1,28 +1,34 @@
 @using System.Text
 @using System.Text.Json
+@using ToledoMessage.Shared.Helpers
 @inject NavigationManager Navigation
 @inject LocalStorageService Storage
 @inject HttpClient Http
 @inject SignalRService SignalR
 @inject IJSRuntime Js
-@inject ThemeService Theme
+@inject IStringLocalizer<SharedResource> Loc
 @implements IAsyncDisposable
 
 <div class="sidebar-header">
     <AvatarInitials DisplayName="@_userName" Size="40" />
     <div class="sidebar-user-info">
-        <span class="sidebar-user-name">@(string.IsNullOrEmpty(_userName) ? "You" : _userName)</span>
-        <span class="sidebar-version">v@(AppVersion.Current)</span>
+        <span class="sidebar-user-name" title="@(string.IsNullOrEmpty(_userName) ? "You" : _userName)">@(string.IsNullOrEmpty(_userName) ? "You" : _userName)</span>
     </div>
     <div class="sidebar-header-actions">
-        <button class="sidebar-icon-btn" @onclick="NavigateToSettings" title="@Theme.Labels.SettingsLabel">⚙</button>
-        <button class="sidebar-icon-btn" @onclick="NavigateToNewConversation" title="@Theme.Labels.NewChat">✏</button>
-        <button class="sidebar-icon-btn" @onclick="HandleLogout" title="@Theme.Labels.LogoutLabel">⏻</button>
+        <button class="sidebar-icon-btn" @onclick="NavigateToSettings" title="@Loc["Settings"]">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        </button>
+        <button class="sidebar-icon-btn" @onclick="NavigateToNewConversation" title="@Loc["New conversation"]">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </button>
+        <button class="sidebar-icon-btn" @onclick="HandleLogout" title="@Loc["Logout"]">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
     </div>
 </div>
 
 <div class="sidebar-search">
-    <input placeholder="@Theme.Labels.SearchPlaceholder"
+    <input placeholder="@Loc["Search conversations..."]"
            value="@_searchQuery"
            @oninput="OnSearchInput"
            aria-label="Search conversations" />
@@ -36,30 +42,31 @@
     else if (FilteredConversations.Count == 0 && string.IsNullOrEmpty(_searchQuery))
     {
         <div style="text-align:center;padding:32px 16px;">
-            <p class="centered-text" style="padding:0 0 16px;">@Theme.Labels.NoConversations</p>
+            <p class="centered-text" style="padding:0 0 16px;">@Loc["No conversations yet"]</p>
             <button class="btn-outline btn-sm" @onclick="NavigateToNewConversation">
-                @Theme.Labels.StartConversation
+                @Loc["Start a conversation"]
             </button>
         </div>
     }
     else if (FilteredConversations.Count == 0)
     {
-        <p class="centered-text" style="padding:24px 16px;">No results for "@_searchQuery"</p>
+        <p class="centered-text" style="padding:24px 16px;">@string.Format(Loc["NoResultsFor"], _searchQuery)</p>
     }
     else
     {
         @foreach (var conv in FilteredConversations)
         {
             var convId = conv.ConversationId;
+            var resolvedName = DisplayNameHelper.Resolve(conv.DisplayName, conv.DisplayNameSecondary);
             <div class="sidebar-item @(IsActiveConversation(conv.ConversationId) ? "active" : "")"
                  role="button" tabindex="0"
                  @onclick="() => SelectConversation(convId)"
                  @onkeydown="(e) => HandleKeyDown(e, convId)"
-                 aria-label="@($"Conversation with {conv.DisplayName}")">
-                <AvatarInitials DisplayName="@conv.DisplayName" Size="46" />
+                 aria-label="@($"Conversation with {resolvedName}")">
+                <AvatarInitials DisplayName="@resolvedName" Size="46" />
                 <div class="sidebar-item-body">
                     <div class="sidebar-item-top">
-                        <span class="sidebar-item-name">@conv.DisplayName</span>
+                        <span class="sidebar-item-name" title="@resolvedName">@resolvedName</span>
                         @if (conv.LastMessageTime.HasValue)
                         {
                             <span class="sidebar-item-time">@FormatTime(conv.LastMessageTime.Value)</span>
@@ -70,7 +77,7 @@
                         {
                             <span class="conversation-item-badge" style="margin-right:4px;font-size:0.75em;">@conv.UnreadCount</span>
                         }
-                        @(conv.LastMessage ?? Theme.Labels.NoMessages)
+                        @(conv.LastMessage ?? Loc["No messages yet"])
                     </div>
                 </div>
             </div>
@@ -78,36 +85,29 @@
     }
 </div>
 
+<div class="sidebar-footer">
+    <span class="sidebar-footer-name">Toledo Message</span>
+    <span class="sidebar-footer-version">v@(AppVersion.Current)</span>
+</div>
+
+@* ReSharper disable once NotAccessedField.Local *@
 @code {
     private List<ConversationListItemResponse> _conversations = [];
     private string _searchQuery = "";
     private bool _isLoading = true;
     private string? _accessToken;
-    private decimal _localDeviceId;
+    private long _localDeviceId;
     private string _userName = "";
+    private string? _userNameSecondary;
     private string _currentPath = "";
 
     private List<ConversationListItemResponse> FilteredConversations =>
         string.IsNullOrWhiteSpace(_searchQuery)
             ? _conversations
             : _conversations
-                .Where(c => c.DisplayName.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
+                .Where(c => c.DisplayName.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                             (c.DisplayNameSecondary is not null && c.DisplayNameSecondary.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)))
                 .ToList();
-
-    protected override void OnInitialized()
-    {
-        Theme.OnThemeChanged += OnThemeChanged;
-    }
-
-    private void OnThemeChanged()
-    {
-        InvokeAsync(StateHasChanged);
-    }
-
-    public void Dispose()
-    {
-        Theme.OnThemeChanged -= OnThemeChanged;
-    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -124,11 +124,13 @@
             }
 
             _accessToken = Encoding.UTF8.GetString(tokenBytes);
-            _userName = ExtractDisplayNameFromJwt(_accessToken);
+            var (name, name2) = ExtractDisplayNamesFromJwt(_accessToken);
+            _userName = DisplayNameHelper.Resolve(name, name2);
+            _userNameSecondary = name2;
 
             var deviceIdBytes = await Storage.GetAsync("local.deviceId");
             if (deviceIdBytes is not null)
-                _localDeviceId = decimal.Parse(Encoding.UTF8.GetString(deviceIdBytes));
+                _localDeviceId = long.Parse(Encoding.UTF8.GetString(deviceIdBytes));
 
             Http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
@@ -142,12 +144,12 @@
                 if (_localDeviceId != 0)
                     await SignalR.RegisterDeviceAsync(_localDeviceId);
                 SignalR.OnMessageReceived += HandleMessageReceived;
+                SignalR.OnUnreadCountChanged += HandleUnreadCountChanged;
             }
             catch (Exception ex) when (ex.Message.Contains("Device not found"))
             {
                 await Js.InvokeVoidAsync("toledoStorage.clearAuthData");
                 Navigation.NavigateTo("/login", forceLoad: true);
-                return;
             }
             catch
             {
@@ -182,7 +184,7 @@
         }
     }
 
-    private bool IsActiveConversation(decimal conversationId)
+    private bool IsActiveConversation(long conversationId)
     {
         return _currentPath.Equals($"/chat/{conversationId}", StringComparison.OrdinalIgnoreCase);
     }
@@ -190,8 +192,12 @@
     // ReSharper disable  AsyncVoidEventHandlerMethod
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        _currentPath = new Uri(e.Location).AbsolutePath;
-        await InvokeAsync(StateHasChanged);
+        try
+        {
+            _currentPath = new Uri(e.Location).AbsolutePath;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch { /* prevent async void crash */ }
     }
 
     private void OnSearchInput(ChangeEventArgs e)
@@ -199,7 +205,7 @@
         _searchQuery = e.Value?.ToString() ?? "";
     }
 
-    private void SelectConversation(decimal conversationId)
+    private void SelectConversation(long conversationId)
     {
         var index = _conversations.FindIndex(c => c.ConversationId == conversationId);
         if (index >= 0 && IsActiveConversation(conversationId))
@@ -207,7 +213,7 @@
         Navigation.NavigateTo($"/chat/{conversationId}");
     }
 
-    private void HandleKeyDown(KeyboardEventArgs e, decimal conversationId)
+    private void HandleKeyDown(KeyboardEventArgs e, long conversationId)
     {
         if (e.Key is "Enter" or " ")
             SelectConversation(conversationId);
@@ -229,8 +235,28 @@
     }
 
     // ReSharper disable once AsyncVoidMethod
+    private async void HandleUnreadCountChanged(long conversationId, int newUnreadCount)
+    {
+        try
+        {
+            await InvokeAsync(() =>
+            {
+                var index = _conversations.FindIndex(c => c.ConversationId == conversationId);
+                if (index >= 0)
+                {
+                    _conversations[index] = _conversations[index] with { UnreadCount = newUnreadCount };
+                    StateHasChanged();
+                }
+            });
+        }
+        catch { /* prevent async void crash */ }
+    }
+
+    // ReSharper disable once AsyncVoidMethod
     private async void HandleMessageReceived(MessageEnvelope envelope)
     {
+        try
+        {
         await InvokeAsync(() =>
         {
             var index = _conversations.FindIndex(c => c.ConversationId == envelope.ConversationId);
@@ -261,6 +287,8 @@
 
             StateHasChanged();
         });
+        }
+        catch { /* prevent async void crash */ }
     }
 
     private static string FormatTime(DateTimeOffset time)
@@ -269,24 +297,27 @@
         if (diff.TotalMinutes < 1) return "now";
         if (diff.TotalHours < 24) return time.ToLocalTime().ToString("HH:mm");
         if (diff.TotalDays < 7) return time.ToLocalTime().ToString("ddd");
-        return time.ToString("MMM d");
+        return time.ToLocalTime().ToString("MMM d");
     }
 
-    private static string ExtractDisplayNameFromJwt(string token)
+    private static (string Name, string? NameSecondary) ExtractDisplayNamesFromJwt(string token)
     {
         try
         {
             var parts = token.Split('.');
-            if (parts.Length != 3) return "?";
+            if (parts.Length != 3) return ("?", null);
             var payload = parts[1];
             switch (payload.Length % 4)
             {
                 case 2: payload += "=="; break;
                 case 3: payload += "="; break;
             }
+            // BUG-CR-003 FIX: Handle base64url encoding
+            payload = payload.Replace('-', '+').Replace('_', '/');
             var json = Encoding.UTF8.GetString(Convert.FromBase64String(payload));
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
+            string displayName = "?";
             foreach (var claim in new[]
             {
                 "name",
@@ -297,18 +328,22 @@
                 if (root.TryGetProperty(claim, out var prop))
                 {
                     var val = prop.GetString();
-                    if (!string.IsNullOrEmpty(val)) return val;
+                    if (!string.IsNullOrEmpty(val)) { displayName = val; break; }
                 }
             }
-            return "?";
+            string? name2 = null;
+            if (root.TryGetProperty("name2", out var name2Prop))
+                name2 = name2Prop.GetString();
+            return (displayName, name2);
         }
-        catch { return "?"; }
+        catch { return ("?", null); }
     }
 
     public async ValueTask DisposeAsync()
     {
         Navigation.LocationChanged -= OnLocationChanged;
         SignalR.OnMessageReceived -= HandleMessageReceived;
+        SignalR.OnUnreadCountChanged -= HandleUnreadCountChanged;
         await Task.CompletedTask;
     }
 

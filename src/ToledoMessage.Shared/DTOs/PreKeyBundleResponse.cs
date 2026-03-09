@@ -1,7 +1,7 @@
 namespace ToledoMessage.Shared.DTOs;
 
 public sealed record PreKeyBundleResponse(
-    decimal DeviceId,
+    long DeviceId,
     string IdentityPublicKeyClassical,
     string IdentityPublicKeyPostQuantum,
     string SignedPreKeyPublic,

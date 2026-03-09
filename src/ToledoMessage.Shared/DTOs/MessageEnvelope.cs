@@ -3,9 +3,9 @@ using ToledoMessage.Shared.Enums;
 namespace ToledoMessage.Shared.DTOs;
 
 public sealed record MessageEnvelope(
-    decimal MessageId,
-    decimal ConversationId,
-    decimal SenderDeviceId,
+    long MessageId,
+    long ConversationId,
+    long SenderDeviceId,
     string Ciphertext,
     MessageType MessageType,
     ContentType ContentType,
@@ -13,4 +13,4 @@ public sealed record MessageEnvelope(
     DateTimeOffset ServerTimestamp,
     string? FileName = null,
     string? MimeType = null,
-    decimal? ReplyToMessageId = null);
+    long? ReplyToMessageId = null);

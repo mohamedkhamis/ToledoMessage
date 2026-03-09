@@ -15,6 +15,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<UserPreferences> UserPreferences => Set<UserPreferences>();
     public DbSet<MessageReaction> MessageReactions => Set<MessageReaction>();
     public DbSet<EncryptedKeyBackup> EncryptedKeyBackups => Set<EncryptedKeyBackup>();
+    public DbSet<ConversationReadPointer> ConversationReadPointers => Set<ConversationReadPointer>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

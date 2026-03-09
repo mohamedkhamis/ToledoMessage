@@ -3,7 +3,7 @@ using ToledoMessage.Shared.Enums;
 namespace ToledoMessage.Shared.DTOs;
 
 public sealed record ConversationDetailResponse(
-    decimal ConversationId,
+    long ConversationId,
     ConversationType Type,
     string? GroupName,
     int ParticipantCount,

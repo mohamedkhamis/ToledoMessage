@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -5,17 +6,20 @@ using Microsoft.EntityFrameworkCore;
 using ToledoMessage.Data;
 using ToledoMessage.Models;
 using ToledoMessage.Services;
+using ToledoMessage.Shared.Constants;
 using ToledoMessage.Shared.DTOs;
+using ToledoMessage.Shared.Enums;
 
 namespace ToledoMessage.Hubs;
 
 [Authorize]
+[SuppressMessage("ReSharper", "RemoveRedundantBraces")]
 public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, PresenceService presence) : Hub
 {
     /// <summary>
     /// Register the current connection with a specific device, adding it to device and user groups.
     /// </summary>
-    public async Task RegisterDevice(decimal deviceId)
+    public async Task RegisterDevice(long deviceId)
     {
         var userId = GetUserId();
 
@@ -26,6 +30,9 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
 
         await Groups.AddToGroupAsync(Context.ConnectionId, $"device_{deviceId}");
         await Groups.AddToGroupAsync(Context.ConnectionId, $"user_{userId}");
+
+        // Track connection → device mapping for read acknowledgment
+        ConnectionDeviceMap[Context.ConnectionId] = deviceId;
 
         // Track presence
         presence.AddConnection(userId, Context.ConnectionId);
@@ -47,9 +54,18 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
         if (!MessageRelayService.IsValidBase64(request.Ciphertext, out var ciphertextBytes))
             throw new HubException("Invalid Base64 ciphertext.");
 
-        var maxSize = MessageRelayService.GetMaxCiphertextSize(request.ContentType);
+        // Defensive fallback: if ContentType deserialized as Text but ciphertext exceeds text limit,
+        // treat as media (enum serialization can fail across SignalR JSON protocol boundaries)
+        var effectiveContentType = request.ContentType;
+        if (effectiveContentType == ContentType.Text
+            && ciphertextBytes.Length > ProtocolConstants.MaxCiphertextSizeBytes)
+        {
+            effectiveContentType = ContentType.File;
+        }
+
+        var maxSize = MessageRelayService.GetMaxCiphertextSize(effectiveContentType);
         if (ciphertextBytes.Length > maxSize)
-            throw new HubException("Message exceeds the maximum allowed size.");
+            throw new HubException($"Message exceeds the maximum allowed size ({maxSize / 1_048_576} MB).");
 
         // Validate sender is a participant in the conversation
         var isParticipant = await db.ConversationParticipants
@@ -73,6 +89,9 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
         // Store the message
         var message = await relayService.StoreMessage(request.SenderDeviceId, request);
 
+        // Increment unread counts for all other participants
+        await relayService.IncrementUnreadCountsForNewMessage(request.ConversationId, userId);
+
         // Try to relay to online recipient
         await relayService.TryRelayToOnlineRecipient(message);
 
@@ -82,7 +101,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// <summary>
     /// Acknowledge that a message has been delivered to the recipient device.
     /// </summary>
-    public async Task AcknowledgeDelivery(decimal messageId)
+    public async Task AcknowledgeDelivery(long messageId)
     {
         var userId = GetUserId();
 
@@ -102,28 +121,36 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     }
 
     /// <summary>
-    /// Acknowledge that a message has been read by the recipient.
+    /// Advance the read pointer for the current user in a conversation.
+    /// Notifies senders that their messages were read.
     /// </summary>
-    public async Task AcknowledgeRead(decimal messageId)
+    public async Task AdvanceReadPointer(long conversationId, long upToSequenceNumber)
     {
         var userId = GetUserId();
 
-        var message = await db.EncryptedMessages
-                          .Include(static m => m.RecipientDevice)
-                          .FirstOrDefaultAsync(m => m.Id == messageId)
-                      ?? throw new HubException("Message not found.");
-        if (message.RecipientDevice.UserId != userId)
-            throw new HubException("Message does not belong to the current user.");
+        // BUG-CR-006 FIX: Verify user is a participant
+        var isParticipant = await db.ConversationParticipants
+            .AnyAsync(p => p.ConversationId == conversationId && p.UserId == userId);
+        if (!isParticipant)
+            throw new HubException("User is not a participant in this conversation");
 
-        // Notify the sender's device that the message was read
-        await Clients.Group($"device_{message.SenderDeviceId}")
-            .SendAsync("MessageRead", messageId);
+        var readMessages = await relayService.AdvanceReadPointer(userId, conversationId, upToSequenceNumber);
+
+        // Notify each sender's device that their messages were read
+        foreach (var (messageId, senderDeviceId) in readMessages)
+        {
+            await Clients.Group($"device_{senderDeviceId}")
+                .SendAsync("MessageRead", messageId);
+        }
     }
+
+    // Track connection → device mapping for delivery acknowledgment
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> ConnectionDeviceMap = new();
 
     /// <summary>
     /// Broadcast a typing indicator to other participants in the conversation.
     /// </summary>
-    public async Task TypingIndicator(decimal conversationId)
+    public async Task TypingIndicator(long conversationId)
     {
         var userId = GetUserId();
 
@@ -148,7 +175,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// Add a reaction to a message.
     /// </summary>
     // ReSharper disable once UnusedMember.Global
-    public async Task AddReaction(decimal messageId, string emoji)
+    public async Task AddReaction(long messageId, string emoji)
     {
         if (string.IsNullOrWhiteSpace(emoji) || emoji.Length > 32)
             throw new HubException("Invalid emoji.");
@@ -172,7 +199,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
 
         var reaction = new MessageReaction
         {
-            Id = Toledo.SharedKernel.Helpers.DecimalTools.GetNewId(),
+            Id = Toledo.SharedKernel.Helpers.IdGenerator.GetNewId(),
             MessageId = messageId,
             UserId = userId,
             Emoji = emoji,
@@ -201,7 +228,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// Remove a reaction from a message.
     /// </summary>
     // ReSharper disable once UnusedMember.Global
-    public async Task RemoveReaction(decimal messageId, string emoji)
+    public async Task RemoveReaction(long messageId, string emoji)
     {
         if (string.IsNullOrWhiteSpace(emoji) || emoji.Length > 32)
             throw new HubException("Invalid emoji.");
@@ -235,7 +262,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// Delete a message for everyone in the conversation.
     /// </summary>
     // ReSharper disable once UnusedMember.Global
-    public async Task DeleteForEveryone(decimal messageId)
+    public async Task DeleteForEveryone(long messageId)
     {
         var userId = GetUserId();
 
@@ -272,7 +299,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// Clear messages in a conversation up to a given cutoff time. Server-side deletion for the requesting user.
     /// </summary>
     // ReSharper disable once UnusedMember.Global
-    public async Task ClearMessages(decimal conversationId, DateTimeOffset from, DateTimeOffset to)
+    public async Task ClearMessages(long conversationId, DateTimeOffset from, DateTimeOffset to)
     {
         var userId = GetUserId();
 
@@ -307,9 +334,24 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     /// Check if a specific user is online.
     /// </summary>
     // ReSharper disable once UnusedMember.Global
-    public Task<bool> IsUserOnline(decimal userId)
+    public async Task<bool> IsUserOnline(long targetUserId)
     {
-        return Task.FromResult(presence.IsOnline(userId));
+        // BUG-CR-007 FIX: Verify caller shares a conversation with the target user
+        var callerId = GetUserId();
+
+        // Get all conversation IDs the caller participates in
+        var callerConvos = await db.ConversationParticipants
+            .Where(p => p.UserId == callerId)
+            .Select(static p => p.ConversationId)
+            .ToListAsync();
+
+        // Check if target user participates in any of those conversations
+        var sharedConversation = await db.ConversationParticipants
+            .AnyAsync(p => p.UserId == targetUserId && callerConvos.Contains(p.ConversationId));
+
+        return sharedConversation &&
+               // Privacy: don't reveal online status to non-contacts
+               presence.IsOnline(targetUserId);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
@@ -334,10 +376,11 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
                     .SendAsync("UserOffline", userId, user?.LastSeenAt ?? DateTimeOffset.UtcNow);
         }
 
+        ConnectionDeviceMap.TryRemove(Context.ConnectionId, out _);
         await base.OnDisconnectedAsync(exception);
     }
 
-    private async Task<List<decimal>> GetContactUserIds(decimal userId)
+    private async Task<List<long>> GetContactUserIds(long userId)
     {
         // Get all users that share at least one conversation with this user
         var conversationIds = await db.ConversationParticipants
@@ -352,11 +395,11 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
             .ToListAsync();
     }
 
-    private decimal GetUserId()
+    private long GetUserId()
     {
         var sub = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier)
                   ?? Context.User?.FindFirstValue("sub");
-        if (string.IsNullOrEmpty(sub) || !decimal.TryParse(sub, out var userId))
+        if (string.IsNullOrEmpty(sub) || !long.TryParse(sub, out var userId))
             throw new HubException("Authentication required.");
 
         return userId;

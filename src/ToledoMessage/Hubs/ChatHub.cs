@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -14,8 +15,12 @@ namespace ToledoMessage.Hubs;
 
 [Authorize]
 [SuppressMessage("ReSharper", "RemoveRedundantBraces")]
-public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, PresenceService presence) : Hub
+public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, PresenceService presence, RateLimitService rateLimitService) : Hub
 {
+    // FR-013: Cache display names and participant lists to avoid DB queries per typing indicator
+    private static readonly ConcurrentDictionary<string, string> ConnectionDisplayNameMap = new();
+    private static readonly ConcurrentDictionary<long, (List<long> UserIds, DateTimeOffset CachedAt)> ParticipantCache = new();
+
     /// <summary>
     /// Register the current connection with a specific device, adding it to device and user groups.
     /// </summary>
@@ -37,6 +42,13 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
         // Track presence
         presence.AddConnection(userId, Context.ConnectionId);
 
+        // FR-013: Cache display name for typing indicator
+        var displayName = await db.Users.Where(u => u.Id == userId).Select(static u => u.DisplayName).FirstOrDefaultAsync();
+        if (displayName is not null)
+        {
+            ConnectionDisplayNameMap[Context.ConnectionId] = displayName;
+        }
+
         // Broadcast online status to contacts
         var contactUserIds = await GetContactUserIds(userId);
         foreach (var contactId in contactUserIds)
@@ -49,6 +61,10 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     public async Task<SendMessageResult> SendMessage(SendMessageRequest request)
     {
         var userId = GetUserId();
+
+        // FR-001: Rate limit SendMessage to 60 per minute
+        if (rateLimitService.IsRateLimited($"signalr:send:{userId}", 60, TimeSpan.FromMinutes(1)))
+            throw new HubException("RATE_LIMIT_EXCEEDED");
 
         // Validate ciphertext size (content-type-aware)
         if (!MessageRelayService.IsValidBase64(request.Ciphertext, out var ciphertextBytes))
@@ -145,7 +161,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     }
 
     // Track connection → device mapping for delivery acknowledgment
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> ConnectionDeviceMap = new();
+    private static readonly ConcurrentDictionary<string, long> ConnectionDeviceMap = new();
 
     /// <summary>
     /// Broadcast a typing indicator to other participants in the conversation.
@@ -154,16 +170,31 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
     {
         var userId = GetUserId();
 
-        var displayName = await db.Users
-            .Where(u => u.Id == userId)
-            .Select(static u => u.DisplayName)
-            .FirstOrDefaultAsync() ?? string.Empty;
+        // FR-002: Rate limit TypingIndicator to 10 per minute (silent drop if exceeded)
+        if (rateLimitService.IsRateLimited($"signalr:typing:{userId}", 10, TimeSpan.FromMinutes(1)))
+            return; // Silently drop
 
-        // Get all other participants in the conversation
-        var otherParticipantUserIds = await db.ConversationParticipants
-            .Where(cp => cp.ConversationId == conversationId && cp.UserId != userId)
-            .Select(static cp => cp.UserId)
-            .ToListAsync();
+        // FR-013: Use cached display name if available
+        var displayName = ConnectionDisplayNameMap.TryGetValue(Context.ConnectionId, out var cachedName)
+            ? cachedName
+            : await db.Users.Where(u => u.Id == userId).Select(static u => u.DisplayName).FirstOrDefaultAsync() ?? string.Empty;
+
+        // FR-013: Use cached participant list (60s TTL)
+        List<long> otherParticipantUserIds;
+        if (ParticipantCache.TryGetValue(conversationId, out var cached) && (DateTimeOffset.UtcNow - cached.CachedAt).TotalSeconds < 60)
+        {
+            otherParticipantUserIds = cached.UserIds.Where(id => id != userId).ToList();
+        }
+        else
+        {
+            otherParticipantUserIds = await db.ConversationParticipants
+                .Where(cp => cp.ConversationId == conversationId && cp.UserId != userId)
+                .Select(static cp => cp.UserId)
+                .ToListAsync();
+
+            // Update cache
+            ParticipantCache[conversationId] = (otherParticipantUserIds, DateTimeOffset.UtcNow);
+        }
 
         // Send typing indicator to each participant's user group
         foreach (var participantUserId in otherParticipantUserIds)
@@ -275,7 +306,12 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
         if (message.SenderDevice.UserId != userId)
             throw new HubException("You can only delete your own messages for everyone.");
 
+        // FR-005: Verify conversation participation before allowing delete
         var conversationId = message.ConversationId;
+        var isParticipant = await db.ConversationParticipants
+            .AnyAsync(p => p.ConversationId == conversationId && p.UserId == userId);
+        if (!isParticipant)
+            throw new HubException("You are not a participant in this conversation.");
 
         // Remove reactions for this message
         var reactions = await db.MessageReactions.Where(r => r.MessageId == messageId).ToListAsync();
@@ -377,6 +413,7 @@ public class ChatHub(MessageRelayService relayService, ApplicationDbContext db, 
         }
 
         ConnectionDeviceMap.TryRemove(Context.ConnectionId, out _);
+        ConnectionDisplayNameMap.TryRemove(Context.ConnectionId, out _); // FR-013: Clear cached display name
         await base.OnDisconnectedAsync(exception);
     }
 

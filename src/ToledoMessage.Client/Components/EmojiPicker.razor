@@ -1,9 +1,10 @@
 @inject IJSRuntime Js
+@inject IStringLocalizer<SharedResource> Loc
 
 <div class="emoji-picker-popup">
     <button class="emoji-picker-close" @onclick="ClosePicker" title="Close">&#10005;</button>
     <div class="emoji-picker-search">
-        <input type="text" value="@_searchText" @oninput="OnSearchInput" placeholder="Search emoji..." />
+        <input type="text" value="@_searchText" @oninput="OnSearchInput" placeholder="@Loc["Search emoji..."]" />
     </div>
 
     <div class="emoji-category-tabs">
@@ -30,12 +31,12 @@
             </div>
             @if (_searchResults.Count == 0)
             {
-                <div class="centered-text" style="padding:16px; font-size:0.85em;">No matches</div>
+                <div class="centered-text" style="padding:16px; font-size:0.85em;">@Loc["No matches"]</div>
             }
         }
         else if (_activeCategory == "Recent" && _recentEmojis.Count > 0)
         {
-            <div class="emoji-category-label">Recently Used</div>
+            <div class="emoji-category-label">@Loc["Recently Used"]</div>
             <div class="emoji-grid">
                 @foreach (var emoji in _recentEmojis)
                 {
@@ -71,6 +72,8 @@
     private string _activeCategory = "Smileys";
     private List<string> _recentEmojis = [];
     private List<(string Emoji, string Name)> _searchResults = [];
+    private Timer? _searchDebounceTimer; // FR-016: Debounce emoji search (300ms)
+    private const int SearchDebounceMs = 300;
 
     protected override async Task OnInitializedAsync()
     {
@@ -90,7 +93,14 @@
     private void OnSearchInput(ChangeEventArgs e)
     {
         _searchText = e.Value?.ToString() ?? "";
-        UpdateSearch();
+
+        // FR-016: Debounce search input (300ms)
+        _searchDebounceTimer?.Dispose();
+        _searchDebounceTimer = new Timer(_ =>
+        {
+            InvokeAsync(UpdateSearch);
+            _searchDebounceTimer?.Dispose();
+        }, null, SearchDebounceMs, Timeout.Infinite);
     }
 
     private void UpdateSearch()

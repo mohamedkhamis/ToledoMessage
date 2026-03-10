@@ -13,6 +13,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(static u => u.Username).HasMaxLength(32).IsRequired();
         builder.HasIndex(static u => u.Username).IsUnique();
         builder.Property(static u => u.DisplayName).HasMaxLength(50).IsRequired();
+        // FR-015: Index for efficient user search queries
+        builder.HasIndex(static u => u.DisplayName).HasDatabaseName("IX_User_DisplayName");
         builder.Property(static u => u.DisplayNameSecondary).HasMaxLength(50);
         builder.Property(static u => u.PasswordHash).HasMaxLength(256).IsRequired();
         builder.Property(static u => u.CreatedAt).IsRequired();

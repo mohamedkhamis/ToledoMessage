@@ -236,6 +236,12 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
             db.ConversationReadPointers.Add(pointer);
         }
 
+        // FR-006: Clamp read pointer to actual max sequence in conversation
+        var maxSeq = await db.EncryptedMessages
+            .Where(m => m.ConversationId == conversationId)
+            .MaxAsync(static m => (long?)m.SequenceNumber) ?? 0;
+        upToSequenceNumber = Math.Min(upToSequenceNumber, maxSeq);
+
         if (upToSequenceNumber <= pointer.LastReadSequenceNumber)
             return [];
 

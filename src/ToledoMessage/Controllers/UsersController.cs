@@ -31,12 +31,13 @@ public class UsersController(ApplicationDbContext db, PreKeyService preKeyServic
 
         var userId = GetUserId();
 
-        var qLower = q.ToLower();
+        // FR-015: Use EF.Functions.Like for efficient case-insensitive search
+        var pattern = $"%{q}%";
         var users = await db.Users
             .Where(u => u.IsActive && u.Id != userId &&
-                        (u.Username.ToLower().Contains(qLower) ||
-                         u.DisplayName.ToLower().Contains(qLower) ||
-                         (u.DisplayNameSecondary != null && u.DisplayNameSecondary.ToLower().Contains(qLower))))
+                        (EF.Functions.Like(u.Username, pattern) ||
+                         EF.Functions.Like(u.DisplayName, pattern) ||
+                         (u.DisplayNameSecondary != null && EF.Functions.Like(u.DisplayNameSecondary, pattern))))
             .OrderBy(static u => u.Username)
             .Skip(skip)
             .Take(take)

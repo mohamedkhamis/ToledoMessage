@@ -16,15 +16,6 @@ public class MessageEncryptionService
 {
     private const byte ProtocolVersion = 0x01;
 
-    /// <summary>
-    /// Encrypts a plaintext message as a NormalMessage (subsequent messages in an established session).
-    /// </summary>
-    public (byte[] ciphertextWithHeader, RatchetState updatedState) EncryptMessage(
-        DoubleRatchet session, string plaintext)
-    {
-        var plaintextBytes = Encoding.UTF8.GetBytes(plaintext);
-        return EncryptBytes(session, plaintextBytes);
-    }
 
     /// <summary>
     /// Encrypts raw bytes as a NormalMessage (for media payloads).
@@ -38,15 +29,6 @@ public class MessageEncryptionService
         return (ciphertextWithHeader, session.GetState());
     }
 
-    /// <summary>
-    /// Encrypts a plaintext message as a PreKeyMessage (first message to a device, embeds X3DH handshake data).
-    /// </summary>
-    public (byte[] ciphertextWithHeader, RatchetState updatedState) EncryptPreKeyMessage(
-        DoubleRatchet session, string plaintext, PreKeyHeaderInfo preKeyHeader)
-    {
-        var plaintextBytes = Encoding.UTF8.GetBytes(plaintext);
-        return EncryptPreKeyMessageBytes(session, plaintextBytes, preKeyHeader);
-    }
 
     /// <summary>
     /// Encrypts raw bytes as a PreKeyMessage (for media payloads on first message to a device).
@@ -82,18 +64,6 @@ public class MessageEncryptionService
         return (plaintextBytes, session.GetState());
     }
 
-    /// <summary>
-    /// Unpacks a PreKeyMessage blob, extracting the PreKeyHeader and returning it along with the
-    /// ratchet-encrypted portion (which can be decrypted after session establishment).
-    /// </summary>
-    public (PreKeyHeaderInfo preKeyHeader, string plaintext, RatchetState updatedState) DecryptPreKeyMessage(
-        DoubleRatchet session, byte[] ciphertextWithHeader)
-    {
-        var (preKeyHeader, ratchetHeader, ciphertext) = UnpackPreKeyMessage(ciphertextWithHeader);
-        var plaintextBytes = session.Decrypt(ciphertext, ratchetHeader);
-
-        return (preKeyHeader, Encoding.UTF8.GetString(plaintextBytes), session.GetState());
-    }
 
     /// <summary>
     /// Extracts the PreKeyHeader from a PreKeyMessage blob without decrypting the message.
@@ -269,65 +239,6 @@ public class MessageEncryptionService
         };
 
         return (header, ciphertext);
-    }
-
-    /// <summary>
-    /// Unpacks PreKeyMessage format into PreKeyHeader, RatchetHeader, and ciphertext.
-    /// Supports both v0 (legacy) and v1 (versioned) wire formats.
-    /// </summary>
-    private static (PreKeyHeaderInfo preKeyHeader, MessageHeader ratchetHeader, byte[] ciphertext) UnpackPreKeyMessage(byte[] blob)
-    {
-        if (blob.Length < 4)
-            throw new InvalidOperationException("Invalid PreKeyMessage blob: too short.");
-
-        var (_, dataOffset) = DetectVersion(blob);
-        var offset = dataOffset;
-
-        // Read PreKeyHeader
-        var preKeyHeaderLength = BitConverter.ToInt32(blob, offset);
-        offset += 4;
-        if (blob.Length < offset + preKeyHeaderLength)
-            throw new InvalidOperationException("Invalid PreKeyMessage blob: too short for PreKeyHeader.");
-
-        var preKeyHeaderJson = new ReadOnlySpan<byte>(blob, offset, preKeyHeaderLength);
-        offset += preKeyHeaderLength;
-        var preKeyHeaderDto = JsonSerializer.Deserialize<PreKeyHeaderDto>(preKeyHeaderJson)
-                              ?? throw new InvalidOperationException("Failed to deserialize PreKeyHeader.");
-
-        // Read RatchetHeader
-        if (blob.Length < offset + 4)
-            throw new InvalidOperationException("Invalid PreKeyMessage blob: too short for ratchet header length.");
-
-        var ratchetHeaderLength = BitConverter.ToInt32(blob, offset);
-        offset += 4;
-        if (blob.Length < offset + ratchetHeaderLength)
-            throw new InvalidOperationException("Invalid PreKeyMessage blob: too short for ratchet header.");
-
-        var ratchetHeaderJson = new ReadOnlySpan<byte>(blob, offset, ratchetHeaderLength);
-        offset += ratchetHeaderLength;
-        var ratchetHeaderDto = JsonSerializer.Deserialize<MessageHeaderDto>(ratchetHeaderJson)
-                               ?? throw new InvalidOperationException("Failed to deserialize ratchet header.");
-
-        // Read ciphertext
-        var ciphertextLength = blob.Length - offset;
-        var ciphertext = new byte[ciphertextLength];
-        Buffer.BlockCopy(blob, offset, ciphertext, 0, ciphertextLength);
-
-        var preKeyHeader = new PreKeyHeaderInfo
-        {
-            EphemeralPublicKey = Convert.FromBase64String(preKeyHeaderDto.EphemeralPublicKey),
-            KemCiphertext = Convert.FromBase64String(preKeyHeaderDto.KemCiphertext),
-            UsedOneTimePreKeyId = preKeyHeaderDto.UsedOneTimePreKeyId
-        };
-
-        var ratchetHeader = new MessageHeader
-        {
-            RatchetPublicKey = Convert.FromBase64String(ratchetHeaderDto.RatchetPublicKey),
-            PreviousChainLength = ratchetHeaderDto.PreviousChainLength,
-            MessageIndex = ratchetHeaderDto.MessageIndex
-        };
-
-        return (preKeyHeader, ratchetHeader, ciphertext);
     }
 
     /// <summary>

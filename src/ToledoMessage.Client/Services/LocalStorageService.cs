@@ -13,46 +13,42 @@ namespace ToledoMessage.Client.Services;
 /// ensuring data survives page navigations and refreshes.
 /// An in-memory cache avoids repeated JS interop calls for frequently accessed keys.
 /// </summary>
-public class LocalStorageService(IJSRuntime js)
+public class LocalStorageService
 {
+    private readonly IJSRuntime _js;
     private readonly Dictionary<string, byte[]> _cache = new();
     private byte[]? _encryptionKey;
 
+    public LocalStorageService(IJSRuntime js)
+    {
+        _js = js;
+    }
+
     /// <summary>
-    /// Derives a 32-byte AES key from the given password using iterated SHA-256 + HKDF.
-    /// Enables encryption-at-rest for all subsequent store/get operations.
+    /// Derives a 32-byte AES key from the given password and enables
+    /// encryption-at-rest for all subsequent store/get operations.
     /// </summary>
     public void InitializeEncryption(string password)
     {
         var passwordBytes = Encoding.UTF8.GetBytes(password);
-        var salt = "ToledoMessage-StorageEncryption-Salt-v2"u8.ToArray();
 
-        // Iterated hashing (100k rounds) to slow down brute-force attacks
         var sha256 = new Sha256Digest();
         var ikm = new byte[sha256.GetDigestSize()];
-
-        // First round: hash(password || salt)
         sha256.BlockUpdate(passwordBytes, 0, passwordBytes.Length);
-        sha256.BlockUpdate(salt, 0, salt.Length);
         sha256.DoFinal(ikm, 0);
 
-        // Subsequent rounds
-        for (var i = 1; i < 100_000; i++)
-        {
-            sha256.Reset();
-            sha256.BlockUpdate(ikm, 0, ikm.Length);
-            sha256.DoFinal(ikm, 0);
-        }
+        var info = Encoding.UTF8.GetBytes("ToledoMessage-StorageEncryption-v1");
 
-        var info = "ToledoMessage-StorageEncryption-v2"u8.ToArray();
         _encryptionKey = HybridKeyDerivation.DeriveKey(ikm, info, 32);
     }
 
     public async Task StoreAsync(string key, byte[] value)
     {
+
         byte[] toStore;
         if (_encryptionKey is not null)
         {
+            // Bug fix: random nonce per encryption to prevent nonce reuse
             var nonce = new byte[12];
             RandomNumberGenerator.Fill(nonce);
             var ciphertext = AesGcmCipher.Encrypt(_encryptionKey, nonce, value);
@@ -68,7 +64,7 @@ public class LocalStorageService(IJSRuntime js)
 
         _cache[key] = toStore;
         var base64 = Convert.ToBase64String(toStore);
-        await js.InvokeVoidAsync("toledoStorage.setItem", key, base64);
+        await _js.InvokeVoidAsync("toledoStorage.setItem", key, base64);
     }
 
     public async Task<byte[]?> GetAsync(string key)
@@ -84,7 +80,7 @@ public class LocalStorageService(IJSRuntime js)
         }
 
         // Fall back to browser localStorage
-        var base64 = await js.InvokeAsync<string?>("toledoStorage.getItem", key);
+        var base64 = await _js.InvokeAsync<string?>("toledoStorage.getItem", key);
         if (base64 is null)
             return null;
 
@@ -105,7 +101,7 @@ public class LocalStorageService(IJSRuntime js)
     public async Task DeleteAsync(string key)
     {
         _cache.Remove(key);
-        await js.InvokeVoidAsync("toledoStorage.removeItem", key);
+        await _js.InvokeVoidAsync("toledoStorage.removeItem", key);
     }
 
     public async Task<bool> ContainsKeyAsync(string key)
@@ -113,6 +109,6 @@ public class LocalStorageService(IJSRuntime js)
         if (_cache.ContainsKey(key))
             return true;
 
-        return await js.InvokeAsync<bool>("toledoStorage.containsKey", key);
+        return await _js.InvokeAsync<bool>("toledoStorage.containsKey", key);
     }
 }

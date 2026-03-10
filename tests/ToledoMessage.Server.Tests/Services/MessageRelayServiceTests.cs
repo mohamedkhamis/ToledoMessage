@@ -397,12 +397,17 @@ public class MessageRelayServiceTests
         await TestDbContextFactory.SeedDevice(db, 10L, 1L);
         await TestDbContextFactory.SeedConversation(db, 100L);
 
-        db.EncryptedMessages.Add(new EncryptedMessage
+        // Seed messages with sequence numbers 1 through 5 so clamping allows the full range
+        for (var seq = 1; seq <= 5; seq++)
         {
-            Id = 1L, ConversationId = 100L, SenderDeviceId = 20L, RecipientDeviceId = 10L,
-            Ciphertext = [1], SequenceNumber = 1, ServerTimestamp = DateTimeOffset.UtcNow,
-            IsDelivered = true
-        });
+            db.EncryptedMessages.Add(new EncryptedMessage
+            {
+                Id = seq, ConversationId = 100L, SenderDeviceId = 20L, RecipientDeviceId = 10L,
+                Ciphertext = [1], SequenceNumber = seq, ServerTimestamp = DateTimeOffset.UtcNow,
+                IsDelivered = true
+            });
+        }
+
         await db.SaveChangesAsync();
 
         await service.AdvanceReadPointer(1L, 100L, 5);

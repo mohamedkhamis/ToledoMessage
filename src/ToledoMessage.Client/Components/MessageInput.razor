@@ -1,11 +1,22 @@
 @inject IJSRuntime Js
 @inject IStringLocalizer<SharedResource> Loc
+@inject SignalRService SignalR
 @implements IAsyncDisposable
 
 <div class="chat-input-area">
     @if (!string.IsNullOrEmpty(_errorMessage))
     {
         <div class="input-error">@_errorMessage</div>
+    }
+    @if (RateLimitCooldownEnd.HasValue)
+    {
+        var remaining = (int)(RateLimitCooldownEnd.Value - DateTime.UtcNow).TotalSeconds;
+        if (remaining > 0)
+        {
+            <div class="rate-limit-warning">
+                Wait @remaining seconds before sending more messages
+            </div>
+        }
     }
     @if (ReplyContext is not null)
     {
@@ -231,6 +242,22 @@
     [Parameter]
     public EventCallback OnCancelReply { get; set; }
 
+    // FR-002a: Rate limit cooldown parameter
+    [Parameter]
+    public DateTime? RateLimitCooldownEnd { get; set; }
+
+    // FR-032: Conversation ID for offline queue
+    [Parameter]
+    public long? ConversationId { get; set; }
+
+    // FR-032: Callback when message is queued for offline sending
+    [Parameter]
+    public EventCallback OnQueuedOffline { get; set; }
+
+    // FR-046: Callback when message send completes (success or failure)
+    [Parameter]
+    public EventCallback<bool> OnSendCompleted { get; set; }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -327,11 +354,40 @@
         };
 
         _messageText = "";
-        ClearSelectedFile();
+        // FR-046: Don't clear file - preserve selection on failure. Parent calls ClearInputAfterSend() on success.
         try { await Js.InvokeVoidAsync("mediaHelpers.resetHeight", _textareaRef); }
         catch
         {
             // ignored
+        }
+
+        // FR-032: Check if connected, queue offline if not
+        if (!SignalR.IsConnected && ConversationId.HasValue)
+        {
+            try
+            {
+                var entry = new
+                {
+                    conversationId = ConversationId.Value,
+                    text = msg.Text,
+                    mediaBase64 = msg.MediaBytes is not null ? Convert.ToBase64String(msg.MediaBytes) : null,
+                    fileName = msg.FileName,
+                    mimeType = msg.MimeType,
+                    contentType = msg.ContentType.ToString(),
+                    sendAsHd = msg.SendAsHd,
+                    replyToMessageId = msg.ReplyToMessageId
+                };
+                await Js.InvokeVoidAsync("storage.addToOfflineQueue", entry);
+                // Notify parent that message was queued
+                await OnQueuedOffline.InvokeAsync();
+            }
+            catch (Exception ex)
+            {
+                _errorMessage = ex.Message.Contains("OFFLINE_QUEUE_FULL")
+                    ? "Message queue is full. Please try again when online."
+                    : "Failed to queue message for offline sending.";
+            }
+            return;
         }
 
         await OnSend.InvokeAsync(msg);
@@ -651,6 +707,12 @@
             try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _videoPreviewBlobUrl); }
             catch { /* ignored */ }
         }
+    }
+
+    // FR-046: Clear input after successful send (preserves file on failure)
+    public void ClearInputAfterSend()
+    {
+        ClearSelectedFile();
     }
 
     public sealed class ReplyContextModel

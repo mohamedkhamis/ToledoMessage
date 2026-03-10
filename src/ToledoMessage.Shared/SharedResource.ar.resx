@@ -576,4 +576,64 @@
     <value>فشل النسخ الاحتياطي للمفاتيح. يمكنك المحاولة من الإعدادات.</value>
   </data>
 
+  <!-- ==================== Offline / Connectivity ==================== -->
+  <data name="Offline - messages will be sent when connected" xml:space="preserve">
+    <value>غير متّصل - سيتم إرسال الرسائل عند الاتّصال</value>
+  </data>
+  <data name="Retry" xml:space="preserve">
+    <value>إعادة المحاولة</value>
+  </data>
+  <data name="Load earlier messages" xml:space="preserve">
+    <value>تحميل الرسائل السابقة</value>
+  </data>
+  <data name="Registering device..." xml:space="preserve">
+    <value>جارٍ تسجيل الجهاز...</value>
+  </data>
+
+  <!-- ==================== Emoji Picker ==================== -->
+  <data name="Search emoji..." xml:space="preserve">
+    <value>ابحث عن إيموجي...</value>
+  </data>
+  <data name="No matches" xml:space="preserve">
+    <value>لا توجد نتائج</value>
+  </data>
+  <data name="Recently Used" xml:space="preserve">
+    <value>المستخدمة مؤخرًا</value>
+  </data>
+
+  <!-- ==================== Disappearing Timer ==================== -->
+  <data name="Disappearing Messages" xml:space="preserve">
+    <value>الرسائل المختفية</value>
+  </data>
+  <data name="Off" xml:space="preserve">
+    <value>إيقاف</value>
+  </data>
+  <data name="5 minutes" xml:space="preserve">
+    <value>5 دقائق</value>
+  </data>
+  <data name="1 hour" xml:space="preserve">
+    <value>ساعة واحدة</value>
+  </data>
+  <data name="24 hours" xml:space="preserve">
+    <value>24 ساعة</value>
+  </data>
+  <data name="7 days" xml:space="preserve">
+    <value>7 أيام</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>حفظ</value>
+  </data>
+  <data name="Saving..." xml:space="preserve">
+    <value>جارٍ الحفظ...</value>
+  </data>
+  <data name="Disappearing timer set." xml:space="preserve">
+    <value>تم ضبط مؤقّت الاختفاء.</value>
+  </data>
+  <data name="Disappearing messages disabled." xml:space="preserve">
+    <value>تم تعطيل الرسائل المختفية.</value>
+  </data>
+  <data name="Failed to update timer." xml:space="preserve">
+    <value>فشل تحديث المؤقّت.</value>
+  </data>
+
 </root>

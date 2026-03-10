@@ -143,21 +143,26 @@ public class MessagesController(ApplicationDbContext db, MessageRelayService rel
             return NotFound("Device not found or does not belong to the current user.");
 
         var acknowledged = await relayService.BulkAcknowledgeDelivery(deviceId);
-        
-        // Notify each sender that their messages were delivered
-        foreach (var (messageId, senderDeviceId) in acknowledged)
+
+        // FR-014: Batch delivery acknowledgments per sender device
+        var grouped = acknowledged.GroupBy(static a => a.SenderDeviceId);
+        foreach (var group in grouped)
         {
+            var senderDeviceId = group.Key;
+            var messageIds = group.Select(static g => g.MessageId).ToList();
+
             try
             {
+                // Send batched notification
                 await hubContext.Clients.Group($"device_{senderDeviceId}")
-                    .SendAsync("MessageDelivered", messageId);
+                    .SendAsync("MessagesDelivered", messageIds);
             }
             catch
             {
                 // Best effort - device might be offline
             }
         }
-        
+
         return Ok(new { acknowledged = acknowledged.Count });
     }
 
@@ -197,6 +202,12 @@ public class MessagesController(ApplicationDbContext db, MessageRelayService rel
     public async Task<IActionResult> GetUnreadCount([FromQuery] long conversationId)
     {
         var userId = GetUserId();
+
+        // FR-004: Verify conversation participation
+        var isParticipant = await db.ConversationParticipants
+            .AnyAsync(p => p.ConversationId == conversationId && p.UserId == userId);
+        if (!isParticipant)
+            return Forbid();
 
         var count = await relayService.GetUnreadCount(userId, conversationId);
         return Ok(new { unreadCount = count });

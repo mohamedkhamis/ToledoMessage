@@ -37,8 +37,6 @@ builder.Services.AddScoped<ThemeService>();
 builder.Services.AddScoped<PreferencesService>();
 builder.Services.AddScoped<MessageStoreService>();
 builder.Services.AddScoped<ToastService>();
-builder.Services.AddScoped<TabLeaderService>();
-builder.Services.AddScoped<NotificationService>();
 //builder.Services.AddSignalR(options =>
 //{
 //    options.EnableDetailedErrors = true;
@@ -46,13 +44,13 @@ builder.Services.AddScoped<NotificationService>();
 var host = builder.Build();
 
 var js = host.Services.GetRequiredService<IJSRuntime>();
-var cultureName = await js.InvokeAsync<string>("localStorage.getItem", "app.culture");
+var cultureName = await js.InvokeAsync<string?>("localStorage.getItem", "app.culture") ?? "en";
 var culture = new System.Globalization.CultureInfo(cultureName);
 System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
 System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = culture;
 
-// Sync cookie so server-side rendering matches the selected culture
-await js.InvokeVoidAsync("eval",
-    $"document.cookie='.AspNetCore.Culture=c={cultureName}|uic={cultureName};path=/;max-age=31536000;samesite=lax'");
+// Sync cookie so server-side rendering matches the selected culture (SEC-007: no eval)
+await js.InvokeVoidAsync("toledoStorage.setCookie",
+    ".AspNetCore.Culture", $"c={cultureName}|uic={cultureName}", 365);
 
 await host.RunAsync();

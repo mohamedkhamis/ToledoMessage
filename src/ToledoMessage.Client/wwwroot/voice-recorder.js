@@ -7,6 +7,9 @@ window.voiceRecorder = {
     _blob: null,
     _audioEl: null,
     _mimeType: 'audio/webm',
+    _maxDurationMs: 5 * 60 * 1000, // 5 minutes
+    _recordingStartTime: null,
+    _durationTimer: null,
 
     start: async function (dotNetRef) {
         this._dotNetRef = dotNetRef;
@@ -35,6 +38,11 @@ window.voiceRecorder = {
         };
 
         this._mediaRecorder.onstop = () => {
+            // Clear duration timer
+            if (this._durationTimer) {
+                clearInterval(this._durationTimer);
+                this._durationTimer = null;
+            }
             // Stop mic tracks immediately
             if (this._stream) {
                 this._stream.getTracks().forEach(track => track.stop());
@@ -60,17 +68,35 @@ window.voiceRecorder = {
             }
         };
 
+        // FR-028: Start duration timer for 5-minute max limit
+        this._recordingStartTime = Date.now();
+        this._durationTimer = setInterval(() => {
+            if (Date.now() - this._recordingStartTime >= this._maxDurationMs) {
+                this.stop();
+            }
+        }, 1000);
+
         // Use timeslice to get periodic data chunks (every 1s)
         this._mediaRecorder.start(1000);
     },
 
     stop: function () {
+        // Clear duration timer
+        if (this._durationTimer) {
+            clearInterval(this._durationTimer);
+            this._durationTimer = null;
+        }
         if (this._mediaRecorder && this._mediaRecorder.state === 'recording') {
             this._mediaRecorder.stop();
         }
     },
 
     cancel: function () {
+        // Clear duration timer
+        if (this._durationTimer) {
+            clearInterval(this._durationTimer);
+            this._durationTimer = null;
+        }
         this._chunks = [];
         if (this._mediaRecorder && this._mediaRecorder.state === 'recording') {
             this._mediaRecorder.stop();

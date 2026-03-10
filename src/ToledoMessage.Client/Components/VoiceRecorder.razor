@@ -14,6 +14,11 @@
             <span class="vr-rec-dot"></span>
         </div>
         <span class="vr-time">@FormatDuration(_elapsedSeconds)</span>
+        @* FR-028: Show remaining time when under 30 seconds *@
+        @if (RemainingSeconds is <= 30 and > 0)
+        {
+            <span class="vr-time-warning">(@RemainingSeconds}s left)</span>
+        }
         <div class="vr-wave-live">
             @for (var i = 0; i < 24; i++)
             {
@@ -84,6 +89,10 @@ else if (_phase == Phase.Preview)
     private DotNetObjectReference<VoiceRecorder>? _objRef;
     private bool _disposed;
 
+    // FR-028: 5-minute maximum recording limit
+    private const int MaxRecordingSeconds = 300; // 5 minutes
+    private int RemainingSeconds => Math.Max(0, MaxRecordingSeconds - _elapsedSeconds);
+
     // Preview state
     private bool _isPlaying;
     private double _previewCurrentTime;
@@ -111,11 +120,21 @@ else if (_phase == Phase.Preview)
         _elapsedSeconds = 0;
 
         _timer = new System.Timers.Timer(1000);
-        _timer.Elapsed += (_, _) =>
+        _timer.Elapsed += async (_, _) =>
         {
             if (_disposed) return;
             _elapsedSeconds++;
-            try { InvokeAsync(StateHasChanged); }
+
+            // FR-028: Auto-stop at 5-minute limit
+            if (_elapsedSeconds >= MaxRecordingSeconds)
+            {
+                _timer?.Stop();
+                try { await StopRecording(); }
+                catch { /* ignored */ }
+                return;
+            }
+
+            try { await InvokeAsync(StateHasChanged); }
             catch { /* component disposed */ }
         };
 

@@ -16,11 +16,20 @@
 @inject IJSRuntime Js
 @inject MessageStoreService MessageStore
 @inject ThemeService Theme
+@inject MessageExpiryService MessageExpiry
 @inject IStringLocalizer<SharedResource> Loc
 @implements IAsyncDisposable
 
 <div class="chat-container">
     <div class="chat-header">
+        @* FR-026: Offline indicator *@
+        @if (!SignalR.IsConnected)
+        {
+            <div class="offline-indicator" role="alert">
+                @Loc["Offline - messages will be sent when connected"]
+            </div>
+        }
+
         <button class="back-link back-link-desktop-hidden" @onclick="NavigateBack" aria-label="Back to conversations">&larr;</button>
         @{
             var peer = _participants.FirstOrDefault(p => p.UserId != _localUserId);
@@ -113,7 +122,16 @@
 
     @if (!string.IsNullOrEmpty(_errorMessage))
     {
-        <div class="alert alert-error mx-chat" role="alert">@_errorMessage</div>
+        <div class="alert alert-error mx-chat" role="alert">
+            @_errorMessage
+            <button class="btn-link" @onclick="RetryLoadMessages">@Loc["Retry"]</button>
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(_infoMessage))
+    {
+        <div class="alert alert-info mx-chat" role="status">
+            @_infoMessage
+        </div>
     }
 
     <div class="chat-messages" @ref="_messageContainer" role="log" aria-live="polite"
@@ -134,6 +152,21 @@
         }
         else
         {
+            @if (_hasMoreMessages)
+            {
+                <div class="load-earlier-messages">
+                    <button class="btn-link" @onclick="LoadEarlierMessages" disabled="@_isLoadingMore">
+                        @if (_isLoadingMore)
+                        {
+                            <span>@Loc["Loading..."]</span>
+                        }
+                        else
+                        {
+                            <span>&#8593; @Loc["Load earlier messages"]</span>
+                        }
+                    </button>
+                </div>
+            }
             @for (int i = 0; i < _messages.Count; i++)
             {
                 var msg = _messages[i];
@@ -193,8 +226,11 @@
     </div>
 
     <ScrollToBottom Visible="_showScrollButton" OnClick="ScrollToBottom" />
-    <MessageInput OnSend="HandleSend" OnTyping="HandleTyping"
-                  ReplyContext="@_replyContext" OnCancelReply="CancelReply" />
+    <MessageInput @ref="_messageInput" OnSend="HandleSend" OnTyping="HandleTyping"
+                  ReplyContext="@_replyContext" OnCancelReply="CancelReply"
+                  RateLimitCooldownEnd="@_rateLimitCooldownEnd"
+                  ConversationId="@ConversationId"
+                  OnQueuedOffline="HandleMessageQueuedOffline" />
 </div>
 
 <ImageLightbox IsVisible="_lightboxVisible"
@@ -312,6 +348,9 @@
     private bool _needsScrollToUnread;
     private bool _needsScrollToBottom;
     private bool _initialScrollDone;
+    private bool _hasMoreMessages;
+    private bool _isLoadingMore;
+    private const int PageSize = 50;
     private DotNetObjectReference<Chat>? _dotNetRef;
 
     // Read tracking (watermark — sequence number based)
@@ -366,7 +405,10 @@
 
     private readonly List<ChatMessage> _messages = [];
     private ElementReference _messageContainer;
+    private MessageInput? _messageInput;
     private string? _errorMessage;
+    private string? _infoMessage; // FR-032: Info messages (e.g., offline queue)
+    private DateTime? _rateLimitCooldownEnd; // FR-002a: Rate limit cooldown tracking
     private bool _isLoading = true;
     private string _wallpaperStyle = "";
     private string? _typingIndicator;
@@ -480,6 +522,8 @@
             SignalR.OnReactionAdded += HandleReactionAdded;
             SignalR.OnReactionRemoved += HandleReactionRemoved;
             SignalR.OnMessageDeleted += HandleMessageDeleted;
+            SignalR.OnReconnected += HandleReconnected;
+            MessageExpiry.OnMessageExpired += HandleMessageExpired;
 
             // Load cached messages from IndexedDB (instant display)
             await LoadCachedMessages();
@@ -519,6 +563,21 @@
                         }
                     }
                 }
+            }
+
+            // FR-030: Flush messages already expired before app started
+            var expiredOnStartup = MessageExpiry.FlushExpired();
+            foreach (var expiredId in expiredOnStartup)
+            {
+                var msg = _messages.FirstOrDefault(m => m.MessageId == expiredId);
+                if (msg is null) continue;
+                _messages.Remove(msg);
+                try
+                {
+                    await MessageStore.DeleteMessageAsync(
+                        expiredId.ToString(CultureInfo.InvariantCulture));
+                }
+                catch { /* best effort */ }
             }
         }
         catch (Exception ex)
@@ -579,7 +638,12 @@
         try
         {
             var conversationKey = ConversationId.ToString(CultureInfo.InvariantCulture);
-            var cached = await MessageStore.GetMessagesAsync(conversationKey);
+
+            // FR-012: Load only the most recent page initially for performance
+            var totalCount = await MessageStore.GetMessageCountAsync(conversationKey);
+            var offset = Math.Max(0, totalCount - PageSize);
+            var cached = await MessageStore.GetMessagesPagedAsync(conversationKey, offset, PageSize);
+            _hasMoreMessages = offset > 0;
 
             foreach (var stored in cached)
             {
@@ -606,10 +670,77 @@
                     ReplyToSenderName = stored.ReplyToSenderName
                 });
             }
+
+            // FR-030: Track loaded messages for disappearing timer expiry
+            foreach (var msg in _messages)
+                TrackForExpiry(msg);
         }
         catch
         {
             // Non-critical: will still load from server
+        }
+    }
+
+    /// <summary>
+    /// FR-012: Load the previous page of older messages when user scrolls to top.
+    /// </summary>
+    private async Task LoadEarlierMessages()
+    {
+        if (_isLoadingMore || !_hasMoreMessages) return;
+        _isLoadingMore = true;
+
+        try
+        {
+            var conversationKey = ConversationId.ToString(CultureInfo.InvariantCulture);
+            var totalCount = await MessageStore.GetMessageCountAsync(conversationKey);
+            var alreadyLoaded = _messages.Count;
+            var offset = Math.Max(0, totalCount - alreadyLoaded - PageSize);
+            var count = Math.Min(PageSize, totalCount - alreadyLoaded);
+
+            if (count <= 0) { _hasMoreMessages = false; return; }
+
+            var older = await MessageStore.GetMessagesPagedAsync(conversationKey, offset, count);
+            _hasMoreMessages = offset > 0;
+
+            var newMessages = new List<ChatMessage>();
+            foreach (var stored in older)
+            {
+                if (_messages.Any(m => m.MessageId.ToString(CultureInfo.InvariantCulture) == stored.MessageId))
+                    continue;
+
+                var chatMsg = new ChatMessage
+                {
+                    MessageId = long.TryParse(stored.MessageId, out var mid) ? mid : 0,
+                    SequenceNumber = stored.SequenceNumber,
+                    Text = stored.Text,
+                    Timestamp = DateTimeOffset.TryParse(stored.Timestamp, out var ts) ? ts : DateTimeOffset.UtcNow,
+                    IsMine = stored.IsMine,
+                    ContentType = (ContentType)stored.ContentType,
+                    FileName = stored.FileName,
+                    MimeType = stored.MimeType,
+                    MediaDataUrl = stored.MediaDataBase64 is not null
+                        ? await CreateMediaBlobUrlFromBase64(stored.MediaDataBase64, stored.MimeType, stored.FileName)
+                        : null,
+                    Status = (Shared.Enums.DeliveryStatus)stored.Status,
+                    ReplyToMessageId = long.TryParse(stored.ReplyToMessageId, out var rid) ? rid : null,
+                    ReplyToText = stored.ReplyToText,
+                    ReplyToSenderName = stored.ReplyToSenderName
+                };
+                TrackForExpiry(chatMsg);
+                newMessages.Add(chatMsg);
+            }
+
+            // Insert older messages at the beginning
+            _messages.InsertRange(0, newMessages);
+            StateHasChanged();
+        }
+        catch
+        {
+            // Non-critical
+        }
+        finally
+        {
+            _isLoadingMore = false;
         }
     }
 
@@ -722,6 +853,13 @@
         }
     }
 
+    // FR-025: Retry button for message loading failure
+    private async Task RetryLoadMessages()
+    {
+        _errorMessage = null;
+        await LoadCachedMessages();
+    }
+
     private async Task PersistMessageAsync(ChatMessage chatMsg)
     {
         try
@@ -784,6 +922,7 @@
                 }
 
                 _messages.Add(chatMsg);
+                TrackForExpiry(chatMsg);
                 await PersistMessageAsync(chatMsg);
 
                 // Release media bytes after persistence to free memory
@@ -1036,6 +1175,39 @@
         _needsScrollToBottom = true;
         StateHasChanged();
 
+        // FR-032: If disconnected, queue the message for later delivery
+        if (!SignalR.IsConnected)
+        {
+            try
+            {
+                await Js.InvokeVoidAsync("toledoMessageStore.addToOfflineQueue", new
+                {
+                    conversationId = ConversationId.ToString(CultureInfo.InvariantCulture),
+                    text = input.Text,
+                    contentType = contentType.ToString(),
+                    fileName = input.FileName,
+                    mimeType = input.MimeType,
+                    mediaBase64 = input.MediaBytes is not null ? Convert.ToBase64String(input.MediaBytes) : null,
+                    sendAsHd = input.SendAsHd,
+                    replyToMessageId = input.ReplyToMessageId
+                });
+                tempMessage.Status = Shared.Enums.DeliveryStatus.Sending; // Show as pending
+                await PersistMessageAsync(tempMessage);
+                _messageInput?.ClearInputAfterSend();
+                await HandleMessageQueuedOffline();
+            }
+            catch (Exception ex) when (ex.Message.Contains("OFFLINE_QUEUE_FULL"))
+            {
+                _errorMessage = "Offline queue is full. Please wait until you are back online.";
+            }
+            catch
+            {
+                _errorMessage = "Failed to queue message for offline delivery.";
+            }
+            StateHasChanged();
+            return;
+        }
+
         try
         {
             // When there's media, we send the media as the encrypted payload.
@@ -1060,16 +1232,28 @@
             {
                 tempMessage.MediaBytes = null;
             }
+
+            // FR-046: Clear input after successful send (preserves file on failure)
+            _messageInput?.ClearInputAfterSend();
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Failed to send message: {ex.Message}";
+            // FR-002a: Handle rate limit errors with countdown
+            if (ex.Message.Contains("RATE_LIMIT_EXCEEDED"))
+            {
+                _rateLimitCooldownEnd = DateTime.UtcNow.AddSeconds(60);
+                _errorMessage = "You are sending messages too quickly. Please wait before sending more.";
+            }
+            else
+            {
+                _errorMessage = $"Failed to send message: {ex.Message}";
+            }
         }
 
         StateHasChanged();
     }
 
-    private async Task SendTextToRecipients(string text, ChatMessage tempMessage, long? replyToMessageId = null)
+    private async Task SendTextToRecipients(string text, ChatMessage? tempMessage, long? replyToMessageId = null)
     {
         if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group)
         {
@@ -1083,10 +1267,10 @@
 
             if (lastResult is not null)
             {
-                tempMessage.MessageId = lastResult.MessageId;
-                tempMessage.SequenceNumber = lastResult.SequenceNumber;
-                tempMessage.Timestamp = lastResult.ServerTimestamp;
-                tempMessage.Status = Shared.Enums.DeliveryStatus.Sent;
+                tempMessage?.MessageId = lastResult.MessageId;
+                tempMessage?.SequenceNumber = lastResult.SequenceNumber;
+                tempMessage?.Timestamp = lastResult.ServerTimestamp;
+                tempMessage?.Status = Shared.Enums.DeliveryStatus.Sent;
             }
         }
         else
@@ -1119,10 +1303,10 @@
 
             if (lastResult is not null)
             {
-                tempMessage.MessageId = lastResult.MessageId;
-                tempMessage.SequenceNumber = lastResult.SequenceNumber;
-                tempMessage.Timestamp = lastResult.ServerTimestamp;
-                tempMessage.Status = Shared.Enums.DeliveryStatus.Sent;
+                tempMessage?.MessageId = lastResult.MessageId;
+                tempMessage?.SequenceNumber = lastResult.SequenceNumber;
+                tempMessage?.Timestamp = lastResult.ServerTimestamp;
+                tempMessage?.Status = Shared.Enums.DeliveryStatus.Sent;
             }
         }
     }
@@ -1816,6 +2000,93 @@
         } catch { /* prevent async void crash */ }
     }
 
+    // FR-032: Handle SignalR reconnection - flush offline queue
+    private async void HandleReconnected()
+    {
+        if (_disposed) return;
+        try
+        {
+            await InvokeAsync(async () =>
+            {
+                await FlushOfflineQueueAsync();
+                StateHasChanged();
+            });
+        }
+        catch { /* prevent async void crash */ }
+    }
+
+    // FR-032: Flush offline queue - send queued messages
+    private async Task FlushOfflineQueueAsync()
+    {
+        if (!SignalR.IsConnected || ConversationId <= 0)
+            return;
+
+        try
+        {
+            var queue = await Js.InvokeAsync<List<JsonElement>>("toledoMessageStore.getOfflineQueue", ConversationId, "pending");
+            if (queue.Count == 0)
+                return;
+
+            foreach (var entry in queue)
+            {
+                try
+                {
+                    var text = entry.TryGetProperty("text", out var t) ? t.GetString() ?? "" : "";
+                    byte[]? mediaBytes = null;
+                    if (entry.TryGetProperty("mediaBase64", out var mb) && mb.ValueKind == JsonValueKind.String)
+                    {
+                        mediaBytes = Convert.FromBase64String(mb.GetString()!);
+                    }
+                    var fileName = entry.TryGetProperty("fileName", out var fn) ? fn.GetString() : null;
+                    var mimeType = entry.TryGetProperty("mimeType", out var mt) ? mt.GetString() : null;
+                    var contentTypeStr = entry.TryGetProperty("contentType", out var ct) ? ct.GetString() : "Text";
+                    var sendAsHd = entry.TryGetProperty("sendAsHd", out var hd) && hd.GetBoolean();
+                    var replyToMsgId = entry.TryGetProperty("replyToMessageId", out var rid) && rid.ValueKind == JsonValueKind.Number
+                        ? rid.GetInt64() : (long?)null;
+
+                    var id = entry.TryGetProperty("id", out var idProp) ? idProp.GetInt64() : 0;
+
+                    var msg = new MessageInput.ChatInputMessage
+                    {
+                        Text = text,
+                        MediaBytes = mediaBytes,
+                        FileName = fileName,
+                        MimeType = mimeType,
+                        ContentType = Enum.Parse<ContentType>(contentTypeStr ?? "Text"),
+                        SendAsHd = sendAsHd,
+                        ReplyToMessageId = replyToMsgId
+                    };
+
+                    // Send the message
+                    await SendTextToRecipients(msg.Text, null, msg.ReplyToMessageId);
+
+                    // Remove from queue after successful send
+                    if (id > 0)
+                    {
+                        await Js.InvokeVoidAsync("toledoMessageStore.removeFromOfflineQueue", id);
+                    }
+                }
+                catch
+                {
+                    // Continue with next message if one fails
+                }
+            }
+        }
+        catch
+        {
+            // Queue flush failed - will retry on next reconnect
+        }
+    }
+
+    // FR-032: Handle notification when message is queued offline
+    private async Task HandleMessageQueuedOffline()
+    {
+        _infoMessage = "Message queued. Will be sent when online.";
+        await Task.Delay(3000);
+        _infoMessage = null;
+        await InvokeAsync(StateHasChanged);
+    }
+
     private void OpenClearChatDialog()
     {
         _showChatMenu = false;
@@ -2217,6 +2488,7 @@
         SignalR.OnReactionAdded -= HandleReactionAdded;
         SignalR.OnReactionRemoved -= HandleReactionRemoved;
         SignalR.OnMessageDeleted -= HandleMessageDeleted;
+        MessageExpiry.OnMessageExpired -= HandleMessageExpired;
 
         _typingTimer?.Stop();
         _typingTimer?.Dispose();
@@ -2232,6 +2504,48 @@
 
         // Revoke blob URLs to free browser memory
         await RevokeBlobUrls();
+    }
+
+    // ─── Disappearing Messages (FR-030) ───
+
+    /// <summary>
+    /// Track a message for automatic expiry if the conversation has a disappearing timer.
+    /// </summary>
+    private void TrackForExpiry(ChatMessage msg)
+    {
+        if (_conversationDetail?.DisappearingTimerSeconds is not > 0) return;
+        var expiresAt = msg.Timestamp.AddSeconds(_conversationDetail.DisappearingTimerSeconds.Value);
+        MessageExpiry.TrackMessage(msg.MessageId, expiresAt);
+    }
+
+    private void HandleMessageExpired(long messageId)
+    {
+        InvokeAsync(async () =>
+        {
+            if (_disposed) return;
+
+            var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
+            if (msg is null) return;
+
+            // Revoke blob URL if present
+            if (!string.IsNullOrEmpty(msg.MediaDataUrl))
+            {
+                try { await Js.InvokeVoidAsync("URL.revokeObjectURL", msg.MediaDataUrl); }
+                catch { /* ignored */ }
+            }
+
+            _messages.Remove(msg);
+
+            // Remove from IndexedDB
+            try
+            {
+                await MessageStore.DeleteMessageAsync(
+                    messageId.ToString(CultureInfo.InvariantCulture));
+            }
+            catch { /* best effort */ }
+
+            StateHasChanged();
+        });
     }
 
     /// <summary>

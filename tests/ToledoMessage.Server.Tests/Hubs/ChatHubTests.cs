@@ -160,7 +160,8 @@ public class ChatHubTests
         var hubContext = new StubHubContext();
         var relayService = new MessageRelayService(db, hubContext);
         var presence = new PresenceService();
-        var hub = new ChatHub(relayService, db, presence);
+        var rateLimitService = new RateLimitService();
+        var hub = new ChatHub(relayService, db, presence, rateLimitService);
 
         var groups = new StubGroupManager();
         var clients = new StubHubCallerClients();

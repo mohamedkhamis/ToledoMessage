@@ -100,6 +100,8 @@
     private string _userName = "";
     private string? _userNameSecondary;
     private string _currentPath = "";
+    private Timer? _filterDebounceTimer; // FR-016: Debounce filter (200ms)
+    private const int FilterDebounceMs = 200;
 
     private List<ConversationListItemResponse> FilteredConversations =>
         string.IsNullOrWhiteSpace(_searchQuery)
@@ -203,6 +205,14 @@
     private void OnSearchInput(ChangeEventArgs e)
     {
         _searchQuery = e.Value?.ToString() ?? "";
+
+        // FR-016: Debounce filter input (200ms)
+        _filterDebounceTimer?.Dispose();
+        _filterDebounceTimer = new Timer(_ =>
+        {
+            InvokeAsync(StateHasChanged);
+            _filterDebounceTimer?.Dispose();
+        }, null, FilterDebounceMs, Timeout.Infinite);
     }
 
     private void SelectConversation(long conversationId)

@@ -921,6 +921,34 @@ label {
     padding: 4px 4px 0;
 }
 
+/* FR-002a: Rate limit warning */
+.rate-limit-warning {
+    font-size: 0.83em;
+    color: var(--warning, #f59e0b);
+    padding: 4px 4px 0;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* FR-026: Offline indicator */
+.offline-indicator {
+    background: var(--warning, #f59e0b);
+    color: #000;
+    padding: 6px 12px;
+    font-size: 0.85em;
+    text-align: center;
+}
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
 /* Textarea */
 .msg-textarea {
     flex: 1;
@@ -1021,6 +1049,7 @@ label {
     cursor: pointer;
     background: #000;
     min-height: 120px;
+    max-width: 100%; /* FR-022: Responsive on mobile */
 }
 
 .message-video-thumb-img {
@@ -3310,6 +3339,21 @@ body { font-size: var(--app-font-size); }
     font-size: 0.8rem;
     font-weight: 500;
     white-space: nowrap;
+}
+
+/* ─── Load Earlier Messages ─── */
+.load-earlier-messages {
+    text-align: center;
+    padding: 8px 0 4px;
+}
+.load-earlier-messages .btn-link {
+    font-size: 0.82rem;
+    color: var(--accent);
+    opacity: 0.8;
+    transition: opacity 0.15s;
+}
+.load-earlier-messages .btn-link:hover {
+    opacity: 1;
 }
 
 /* ============ Image Lightbox ============ */

@@ -416,9 +416,12 @@
 
             Navigation.NavigateTo("/chat");
         }
+#pragma warning disable CS0168 // Variable is declared but never used
         catch (Exception ex)
+#pragma warning restore CS0168 // Variable is declared but never used
         {
-            _errorMessage = $"Error: {ex.Message}";
+            // FR-007: Sanitize error messages - don't expose internal details
+            _errorMessage = Loc["Invalid credentials."];
         }
         finally
         {

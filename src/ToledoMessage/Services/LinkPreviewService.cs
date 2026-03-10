@@ -18,6 +18,10 @@ public partial class LinkPreviewService(IHttpClientFactory httpClientFactory, IM
         if (string.IsNullOrWhiteSpace(url))
             return null;
 
+        // FR-009: Validate URL length (max 2048 characters)
+        if (url.Length > 2048)
+            return null;
+
         if (cache.TryGetValue($"linkpreview:{url}", out LinkPreviewResponse? cached))
             return cached;
 
@@ -122,7 +126,9 @@ public partial class LinkPreviewService(IHttpClientFactory httpClientFactory, IM
 
         // Map IPv6-mapped IPv4 (::ffff:x.x.x.x) to IPv4 for consistent checks
         if (ip.IsIPv4MappedToIPv6)
+        {
             ip = ip.MapToIPv4();
+        }
 
         // Block IPv6 loopback (::1) and link-local (fe80::/10) and unique-local (fc00::/7)
         if (IPAddress.IsLoopback(ip))

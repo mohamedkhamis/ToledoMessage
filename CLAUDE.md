@@ -1,6 +1,6 @@
 ﻿# ToledoMessage Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-02-25
+Auto-generated from all feature plans. Last updated: 2026-03-09
 
 ## Active Technologies
 - SQL Server 2022 (server-side via EF Core Code First) + Browser IndexedDB (client-side) (001-secure-messaging)
@@ -18,6 +18,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-25
 - C# / .NET 10 (LTS), JavaScript (browser interop) + Blazor WebAssembly, ASP.NET Core, SignalR, BouncyCastle.Cryptography 2.6.2, EF Core 10 (006-fix-media-sharing)
 - SQL Server 2022 (server-side encrypted ciphertext), Browser IndexedDB (client-side cached media as base64) (006-fix-media-sharing)
 - C# / .NET 10 (LTS), CSS3, JavaScript (Blazor WASM interop) + Blazor WebAssembly, ASP.NET Core, SignalR (no new dependencies) (007-ui-polish)
+- C# / .NET 10 (LTS) + Blazor WebAssembly, ASP.NET Core, SignalR, EF Core 10, IndexedDB, Response Compression (008-saas-enhancements)
+- C# / .NET 10 (LTS), JavaScript (browser interop) + ASP.NET Core, Blazor WebAssembly, SignalR, EF Core 10, BouncyCastle.Cryptography 2.6.2, Serilog (008-saas-enhancements)
 
 - C# / .NET 10 (LTS) + BouncyCastle.Cryptography 2.6.2, ASP.NET Core Identity, SignalR, EF Core 10 (001-secure-messaging)
 
@@ -38,9 +40,9 @@ tests/
 C# / .NET 10 (LTS): Follow standard conventions
 
 ## Recent Changes
+- 008-saas-enhancements: Added C# / .NET 10 (LTS), JavaScript (browser interop) + ASP.NET Core, Blazor WebAssembly, SignalR, EF Core 10, BouncyCastle.Cryptography 2.6.2, Serilog
 - 007-ui-polish: Added C# / .NET 10 (LTS), CSS3, JavaScript (Blazor WASM interop) + Blazor WebAssembly, ASP.NET Core, SignalR (no new dependencies)
 - 006-fix-media-sharing: Added C# / .NET 10 (LTS), JavaScript (browser interop) + Blazor WebAssembly, ASP.NET Core, SignalR, BouncyCastle.Cryptography 2.6.2, EF Core 10
-- 005-fix-chat-functions: Added C# / .NET 10 (LTS) + Blazor WebAssembly, ASP.NET Core, SignalR, BouncyCastle.Cryptography 2.6.2, EF Core 10
 
 
 <!-- MANUAL ADDITIONS START -->

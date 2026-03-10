@@ -576,4 +576,64 @@
     <value>Key backup failed. You can retry from Settings.</value>
   </data>
 
+  <!-- ==================== Offline / Connectivity ==================== -->
+  <data name="Offline - messages will be sent when connected" xml:space="preserve">
+    <value>Offline - messages will be sent when connected</value>
+  </data>
+  <data name="Retry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="Load earlier messages" xml:space="preserve">
+    <value>Load earlier messages</value>
+  </data>
+  <data name="Registering device..." xml:space="preserve">
+    <value>Registering device...</value>
+  </data>
+
+  <!-- ==================== Emoji Picker ==================== -->
+  <data name="Search emoji..." xml:space="preserve">
+    <value>Search emoji...</value>
+  </data>
+  <data name="No matches" xml:space="preserve">
+    <value>No matches</value>
+  </data>
+  <data name="Recently Used" xml:space="preserve">
+    <value>Recently Used</value>
+  </data>
+
+  <!-- ==================== Disappearing Timer ==================== -->
+  <data name="Disappearing Messages" xml:space="preserve">
+    <value>Disappearing Messages</value>
+  </data>
+  <data name="Off" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="5 minutes" xml:space="preserve">
+    <value>5 minutes</value>
+  </data>
+  <data name="1 hour" xml:space="preserve">
+    <value>1 hour</value>
+  </data>
+  <data name="24 hours" xml:space="preserve">
+    <value>24 hours</value>
+  </data>
+  <data name="7 days" xml:space="preserve">
+    <value>7 days</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Saving..." xml:space="preserve">
+    <value>Saving...</value>
+  </data>
+  <data name="Disappearing timer set." xml:space="preserve">
+    <value>Disappearing timer set.</value>
+  </data>
+  <data name="Disappearing messages disabled." xml:space="preserve">
+    <value>Disappearing messages disabled.</value>
+  </data>
+  <data name="Failed to update timer." xml:space="preserve">
+    <value>Failed to update timer.</value>
+  </data>
+
 </root>

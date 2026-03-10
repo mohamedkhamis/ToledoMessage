@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -52,6 +53,21 @@ builder.Services.AddHttpClient("LinkPreview", static client =>
 builder.Services.AddScoped<LinkPreviewService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();
+
+// Response compression for performance (FR-011) — Brotli priority, then Gzip
+builder.Services.AddResponseCompression(static options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat([
+        "application/wasm",
+        "application/json",
+        "text/json",
+        "application/javascript",
+        "text/javascript"
+    ]);
+});
 
 // Client services needed during SSR (static server-side rendering)
 builder.Services.AddScoped<ToastService>();
@@ -109,9 +125,12 @@ builder.Services.AddAuthentication(static options =>
 builder.Services.AddAuthorization();
 
 // SignalR — increase max message size to support encrypted media (up to 16 MB file + Base64 overhead ≈ 30 MB)
+// Configure KeepAliveInterval (30s) and ClientTimeoutInterval (90s) for presence accuracy (FR-034)
 builder.Services.AddSignalR(static options =>
 {
     options.MaximumReceiveMessageSize = 35 * 1024 * 1024; // 35 MB (16 MB file → ~22 MB ciphertext as Base64 + JSON overhead)
+    options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(90);
 }).AddJsonProtocol(static options =>
 {
     options.PayloadSerializerOptions.PropertyNameCaseInsensitive = true;
@@ -182,9 +201,9 @@ app.Use(static async (context, next) =>
     context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
     context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(self), geolocation=(), payment=()";
     context.Response.Headers["X-Permitted-Cross-Domain-Policies"] = "none";
-    // CSP: Blazor WASM requires unsafe-eval for .NET IL interpreter; unsafe-inline for component styles
+    // CSP: Blazor WASM requires unsafe-eval for IL interpreter + unsafe-inline for inline scripts/styles
     context.Response.Headers["Content-Security-Policy"] =
-        "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; " +
+        "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
         "connect-src 'self' ws: wss:; img-src 'self' data: blob:; media-src 'self' blob:; " +
         "frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
     await next();
@@ -229,6 +248,7 @@ app.UseSerilogRequestLogging(static options =>
 });
 
 app.UseCors();
+app.UseResponseCompression(); // FR-011: Compress responses
 app.UseAuthentication();
 app.UseMiddleware<RateLimitMiddleware>();
 app.UseAuthorization();

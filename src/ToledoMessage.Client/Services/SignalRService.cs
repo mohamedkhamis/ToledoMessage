@@ -61,6 +61,9 @@ public class SignalRService : IAsyncDisposable
     /// <summary>Raised locally when the Chat page marks messages as read. Parameters: conversationId, newUnreadCount.</summary>
     public event Action<long, int>? OnUnreadCountChanged;
 
+    /// <summary>Raised when the SignalR connection reconnects. Used for flushing offline queue.</summary>
+    public event Action? OnReconnected;
+
     /// <summary>
     /// Whether the hub connection is currently active.
     /// </summary>
@@ -113,6 +116,13 @@ public class SignalRService : IAsyncDisposable
         _hubConnection.On<long>("MessageDelivered", messageId =>
         {
             OnMessageDelivered?.Invoke(messageId);
+        });
+
+        // FR-014: Handle batched delivery acknowledgments
+        _hubConnection.On<List<long>>("MessagesDelivered", messageIds =>
+        {
+            foreach (var messageId in messageIds)
+                OnMessageDelivered?.Invoke(messageId);
         });
 
         _hubConnection.On<long>("MessageRead", messageId =>
@@ -199,6 +209,8 @@ public class SignalRService : IAsyncDisposable
             try
             {
                 await _hubConnection.InvokeAsync("RegisterDevice", deviceId);
+                // FR-032: Notify listeners that reconnection occurred (for offline queue flush)
+                OnReconnected?.Invoke();
             }
             catch
             {

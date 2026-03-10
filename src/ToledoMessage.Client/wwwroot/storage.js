@@ -1,4 +1,25 @@
 window.toledoStorage = {
+    // FR-008: Cookie management without eval()
+    setCookie: function (name, value, days, path = '/', sameSite = 'Lax') {
+        var expires = '';
+        if (days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = '; expires=' + date.toUTCString();
+        }
+        document.cookie = name + '=' + (value || '') + expires + '; path=' + path + '; sameSite=' + sameSite + (location.protocol === 'https:' ? '; secure' : '');
+    },
+    getCookie: function (name) {
+        var nameEq = name + '=';
+        var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+            var c = ca[i];
+            while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEq) === 0) return c.substring(nameEq.length, c.length);
+        }
+        return null;
+    },
+
     setItem: function (key, value) {
         localStorage.setItem(key, value);
     },
@@ -99,7 +120,7 @@ window.toledoStorage = {
 window.toledoMessageStore = {
     _db: null,
     _dbName: 'ToledoMessages',
-    _version: 1,
+    _version: 2, // Bumped for offlineQueue store
 
     open: async function () {
         if (this._db) return this._db;
@@ -114,6 +135,13 @@ window.toledoMessageStore = {
                 }
                 if (!db.objectStoreNames.contains('meta')) {
                     db.createObjectStore('meta', { keyPath: 'key' });
+                }
+                // FR-032: Offline queue for messages sent while disconnected
+                if (!db.objectStoreNames.contains('offlineQueue')) {
+                    const queueStore = db.createObjectStore('offlineQueue', { keyPath: 'id', autoIncrement: true });
+                    queueStore.createIndex('conversationId', 'conversationId', { unique: false });
+                    queueStore.createIndex('status', 'status', { unique: false });
+                    queueStore.createIndex('createdAt', 'createdAt', { unique: false });
                 }
             };
             request.onsuccess = (e) => { this._db = e.target.result; resolve(this._db); };
@@ -167,6 +195,46 @@ window.toledoMessageStore = {
         });
     },
 
+    getMessageCount: async function (conversationId) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('messages', 'readonly');
+            const index = tx.objectStore('messages').index('conversationId');
+            const countReq = index.count(conversationId);
+            countReq.onsuccess = () => resolve(countReq.result);
+            countReq.onerror = (e) => reject(e.target.error);
+        });
+    },
+
+    getMessagesPaged: async function (conversationId, offset, count) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('messages', 'readonly');
+            const store = tx.objectStore('messages');
+            const index = store.index('conversationTimestamp');
+            const range = IDBKeyRange.bound([conversationId], [conversationId, []]);
+            const results = [];
+            let skipped = 0;
+            const request = index.openCursor(range, 'next');
+            request.onsuccess = function (e) {
+                const cursor = e.target.result;
+                if (!cursor) { resolve(results); return; }
+                if (skipped < offset) {
+                    skipped++;
+                    cursor.continue();
+                    return;
+                }
+                if (results.length < count) {
+                    results.push(cursor.value);
+                    cursor.continue();
+                } else {
+                    resolve(results);
+                }
+            };
+            request.onerror = (e) => reject(e.target.error);
+        });
+    },
+
     getLastMessageTimestamp: async function (conversationId) {
         const db = await this.open();
         return new Promise((resolve, reject) => {
@@ -201,6 +269,17 @@ window.toledoMessageStore = {
                     cursor.continue();
                 }
             };
+            tx.oncomplete = () => resolve();
+            tx.onerror = (e) => reject(e.target.error);
+        });
+    },
+
+    deleteMessage: async function (messageId) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('messages', 'readwrite');
+            const store = tx.objectStore('messages');
+            store.delete(messageId);
             tx.oncomplete = () => resolve();
             tx.onerror = (e) => reject(e.target.error);
         });
@@ -246,9 +325,100 @@ window.toledoMessageStore = {
     clearAll: async function () {
         const db = await this.open();
         return new Promise((resolve, reject) => {
-            const tx = db.transaction(['messages', 'meta'], 'readwrite');
+            const tx = db.transaction(['messages', 'meta', 'offlineQueue'], 'readwrite');
             tx.objectStore('messages').clear();
             tx.objectStore('meta').clear();
+            tx.objectStore('offlineQueue').clear();
+            tx.oncomplete = () => resolve();
+            tx.onerror = (e) => reject(e.target.error);
+        });
+    },
+
+    // FR-032: Offline queue functions
+    _maxOfflineQueueSize: 50,
+
+    getOfflineQueueCount: async function () {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('offlineQueue', 'readonly');
+            const store = tx.objectStore('offlineQueue');
+            const countReq = store.count();
+            countReq.onsuccess = () => resolve(countReq.result);
+            countReq.onerror = (e) => reject(e.target.error);
+        });
+    },
+
+    addToOfflineQueue: async function (entry) {
+        // FR-032: Check queue capacity (max 50 messages)
+        const count = await this.getOfflineQueueCount();
+        if (count >= this._maxOfflineQueueSize) {
+            throw new Error('OFFLINE_QUEUE_FULL');
+        }
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('offlineQueue', 'readwrite');
+            const store = tx.objectStore('offlineQueue');
+            entry.createdAt = entry.createdAt || new Date().toISOString();
+            entry.status = entry.status || 'pending';
+            entry.retryCount = entry.retryCount || 0;
+            const req = store.add(entry);
+            req.onsuccess = () => resolve(req.result); // returns the auto-generated id
+            req.onerror = (e) => reject(e.target.error);
+        });
+    },
+
+    getOfflineQueue: async function (conversationId, status) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('offlineQueue', 'readonly');
+            const store = tx.objectStore('offlineQueue');
+            let results = [];
+            let request;
+            if (conversationId) {
+                const index = store.index('conversationId');
+                request = index.getAll(conversationId);
+            } else {
+                request = store.getAll();
+            }
+            request.onsuccess = () => {
+                results = request.result || [];
+                if (status) {
+                    results = results.filter(r => r.status === status);
+                }
+                // Sort by createdAt
+                results.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                resolve(results);
+            };
+            request.onerror = (e) => reject(e.target.error);
+        });
+    },
+
+    updateOfflineQueueStatus: async function (id, status) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('offlineQueue', 'readwrite');
+            const store = tx.objectStore('offlineQueue');
+            const getReq = store.get(id);
+            getReq.onsuccess = () => {
+                const entry = getReq.result;
+                if (entry) {
+                    entry.status = status;
+                    if (status === 'pending') entry.retryCount = (entry.retryCount || 0) + 1;
+                    store.put(entry);
+                }
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error);
+            };
+            getReq.onerror = (e) => reject(e.target.error);
+        });
+    },
+
+    removeFromOfflineQueue: async function (id) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('offlineQueue', 'readwrite');
+            const store = tx.objectStore('offlineQueue');
+            store.delete(id);
             tx.oncomplete = () => resolve();
             tx.onerror = (e) => reject(e.target.error);
         });

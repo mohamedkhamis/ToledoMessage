@@ -20,10 +20,21 @@ public sealed class MessageStoreService(IJSRuntime js)
         await js.InvokeVoidAsync("toledoMessageStore.storeMessages", msgs);
     }
 
-    public async Task<List<StoredMessage>> GetMessagesAsync(string conversationId, int limit = 200, string? beforeTimestamp = null)
+    public async Task<int> GetMessageCountAsync(string conversationId)
+    {
+        return await js.InvokeAsync<int>("toledoMessageStore.getMessageCount", conversationId);
+    }
+
+    public async Task<List<StoredMessage>> GetMessagesPagedAsync(string conversationId, int offset, int count)
     {
         return await js.InvokeAsync<List<StoredMessage>>(
-            "toledoMessageStore.getMessages", conversationId, limit, beforeTimestamp);
+            "toledoMessageStore.getMessagesPaged", conversationId, offset, count);
+    }
+
+
+    public async Task DeleteMessageAsync(string messageId)
+    {
+        await js.InvokeVoidAsync("toledoMessageStore.deleteMessage", messageId);
     }
 
     public async Task UpdateMessageStatusAsync(string messageId, int status)

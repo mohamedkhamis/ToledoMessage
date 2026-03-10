@@ -1,28 +1,16 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ToledoMessage.Client.Services;
 
+[SuppressMessage("ReSharper", "InvertIf")]
 public sealed class ToastService
 {
+    // ReSharper disable once CollectionNeverUpdated.Local
     private readonly List<ToastItem> _toasts = [];
-    private int _nextId;
 
     public event Action? OnChange;
 
     public IReadOnlyList<ToastItem> Toasts => _toasts;
-
-    public void ShowSuccess(string message)
-    {
-        Show(message, "success");
-    }
-
-    public void ShowError(string message)
-    {
-        Show(message, "error");
-    }
-
-    public void ShowInfo(string message)
-    {
-        Show(message, "info");
-    }
 
     public void Dismiss(int id)
     {
@@ -33,19 +21,6 @@ public sealed class ToastService
             OnChange?.Invoke();
             _ = RemoveAfterDelay(id, 300);
         }
-    }
-
-    private void Show(string message, string type, int durationMs = 4000)
-    {
-        var toast = new ToastItem
-        {
-            Id = ++_nextId,
-            Message = message,
-            Type = type
-        };
-        _toasts.Add(toast);
-        OnChange?.Invoke();
-        _ = RemoveAfterDelay(toast.Id, durationMs);
     }
 
     private async Task RemoveAfterDelay(int id, int delayMs)

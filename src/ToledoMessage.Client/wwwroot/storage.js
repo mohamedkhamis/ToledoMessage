@@ -1,4 +1,45 @@
 window.toledoStorage = {
+    // Storage mode: 'local' (persistent/remember me) or 'session' (cleared on browser close)
+    _authStorageMode: 'local',
+    _authKeys: ['auth.token', 'auth.refreshToken'],
+
+    _getStore: function (key) {
+        // Auth keys use the configured mode; everything else always uses localStorage
+        if (this._authKeys.indexOf(key) >= 0) {
+            return this._authStorageMode === 'session' ? sessionStorage : localStorage;
+        }
+        return localStorage;
+    },
+    setStorageMode: function (mode) {
+        // mode: 'local' or 'session'
+        var oldMode = this._authStorageMode;
+        this._authStorageMode = mode;
+        localStorage.setItem('auth.storageMode', mode);
+
+        // Migrate auth tokens between stores when mode changes
+        if (oldMode !== mode) {
+            var fromStore = mode === 'session' ? localStorage : sessionStorage;
+            var toStore = mode === 'session' ? sessionStorage : localStorage;
+            for (var i = 0; i < this._authKeys.length; i++) {
+                var k = this._authKeys[i];
+                var v = fromStore.getItem(k);
+                if (v !== null) {
+                    toStore.setItem(k, v);
+                    fromStore.removeItem(k);
+                }
+            }
+        }
+    },
+    getStorageMode: function () {
+        return this._authStorageMode;
+    },
+    _initStorageMode: function () {
+        var saved = localStorage.getItem('auth.storageMode');
+        if (saved === 'session' || saved === 'local') {
+            this._authStorageMode = saved;
+        }
+    },
+
     // FR-008: Cookie management without eval()
     setCookie: function (name, value, days, path = '/', sameSite = 'Lax') {
         var expires = '';
@@ -10,16 +51,16 @@ window.toledoStorage = {
         document.cookie = name + '=' + (value || '') + expires + '; path=' + path + '; sameSite=' + sameSite + (location.protocol === 'https:' ? '; secure' : '');
     },
     setItem: function (key, value) {
-        localStorage.setItem(key, value);
+        this._getStore(key).setItem(key, value);
     },
     getItem: function (key) {
-        return localStorage.getItem(key);
+        return this._getStore(key).getItem(key);
     },
     removeItem: function (key) {
-        localStorage.removeItem(key);
+        this._getStore(key).removeItem(key);
     },
     containsKey: function (key) {
-        return localStorage.getItem(key) !== null;
+        return this._getStore(key).getItem(key) !== null;
     },
     setTheme: function (name) {
         if (name) {
@@ -72,6 +113,10 @@ window.toledoStorage = {
         // remain decryptable (Signal Protocol sessions are forward-secret).
         localStorage.removeItem('auth.token');
         localStorage.removeItem('auth.refreshToken');
+        sessionStorage.removeItem('auth.token');
+        sessionStorage.removeItem('auth.refreshToken');
+        localStorage.removeItem('auth.storageMode');
+        this._authStorageMode = 'local';
     },
     clearAllData: function () {
         // Full wipe for account deletion — clear everything except UI preferences
@@ -89,6 +134,9 @@ window.toledoStorage = {
         }
     }
 };
+
+// Initialize storage mode from saved preference on script load
+toledoStorage._initStorageMode();
 
 // ─── IndexedDB Message Store ───
 window.toledoMessageStore = {

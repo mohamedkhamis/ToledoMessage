@@ -3,7 +3,16 @@
 @if (IsVisible)
 {
     <div class="lightbox-overlay" @onclick="HandleBackdropClick">
-        <button class="lightbox-close" @onclick="Close" aria-label="Close">&times;</button>
+        <div class="lightbox-toolbar">
+            <button class="lightbox-toolbar-btn" @onclick="DownloadImage" @onclick:stopPropagation="true" aria-label="Download" title="Download">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+            </button>
+            <button class="lightbox-close" @onclick="Close" aria-label="Close">&times;</button>
+        </div>
 
         @if (ImageUrls.Count > 1)
         {
@@ -112,6 +121,19 @@
             }
 
             await OnIndexChanged.InvokeAsync(CurrentIndex + 1);
+        }
+    }
+
+    private async Task DownloadImage()
+    {
+        try
+        {
+            var url = ImageUrls[CurrentIndex];
+            await Js.InvokeVoidAsync("mediaHelpers.downloadDataUrl", url, "image.png");
+        }
+        catch
+        {
+            // ignored
         }
     }
 }

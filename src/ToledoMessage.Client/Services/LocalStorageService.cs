@@ -105,4 +105,16 @@ public class LocalStorageService(IJSRuntime js)
 
         return await js.InvokeAsync<bool>("toledoStorage.containsKey", key);
     }
+
+    /// <summary>
+    /// Sets the storage mode for auth tokens: "local" (persistent) or "session" (cleared on browser close).
+    /// </summary>
+    public async Task SetStorageModeAsync(bool persistent)
+    {
+        var mode = persistent ? "local" : "session";
+        await js.InvokeVoidAsync("toledoStorage.setStorageMode", mode);
+        // Invalidate cached auth keys since they may have moved between stores
+        _cache.Remove("auth.token");
+        _cache.Remove("auth.refreshToken");
+    }
 }

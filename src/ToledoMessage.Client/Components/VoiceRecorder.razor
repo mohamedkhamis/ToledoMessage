@@ -20,7 +20,7 @@
             <span class="vr-time-warning">(@(RemainingSeconds)s left)</span>
         }
         <div class="vr-wave-live">
-            @for (var i = 0; i < _liveBarCount; i++)
+            @for (var i = 0; i < LiveBarCount; i++)
             {
                 var height = GetLiveBarHeight(i);
                 <span class="vr-bar-live" style="height: @(height)px"></span>
@@ -106,7 +106,7 @@ else if (_phase == Phase.Preview)
 
     // Real waveform data
     private int[]? _waveformSamples; // From JS analyzeBlob after recording stops
-    private const int _liveBarCount = 24;
+    private const int LiveBarCount = 24;
     private int _currentAmplitude = 2; // Current live amplitude from analyser
     private int _tickCount;
     private bool _timerBusy; // Prevent reentrant timer callbacks

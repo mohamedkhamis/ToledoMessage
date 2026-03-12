@@ -218,6 +218,7 @@
                                ReplyToThumbnailDataUrl="@msg.ReplyToThumbnailDataUrl"
                                ReplyToContentType="msg.ReplyToContentType"
                                AudioWaveform="msg.Waveform"
+                               FileSizeBytes="msg.MediaBytes?.Length ?? 0"
                                OnReplyQuoteClick="ScrollToMessage"
                                ReactionBadges="GetReactionBadges(msg.MessageId)"
                                OnReactionToggle="(emoji) => ToggleReaction(msg.MessageId, emoji)" />
@@ -257,13 +258,19 @@
 @if (_showContextMenu && _contextMenuMessage is not null)
 {
     <div class="context-menu-backdrop" @onclick="CloseContextMenu"></div>
-    <div class="context-menu" style="left: @(_contextMenuX)px; top: @(_contextMenuY)px;">
+    <div class="context-menu @(_contextMenuFlipUp ? "flip-up" : "")" style="left: @(_contextMenuX)px; @(_contextMenuFlipUp ? $"bottom: {_contextMenuBottomY}px" : $"top: {_contextMenuY}px");">
         <button class="context-menu-item" @onclick="CopyMessageText">
             <span class="context-menu-icon">&#128203;</span> @Loc["Copy"]
         </button>
         <button class="context-menu-item" @onclick="ReplyFromContextMenu">
             <span class="context-menu-icon">&#8617;</span> @Loc["Reply"]
         </button>
+        @if (!string.IsNullOrEmpty(_contextMenuMessage.MediaDataUrl))
+        {
+            <button class="context-menu-item" @onclick="DownloadMediaFromContextMenu">
+                <span class="context-menu-icon">&#8595;</span> @Loc["Download"]
+            </button>
+        }
         <button class="context-menu-item" @onclick="ForwardFromContextMenu">
             <span class="context-menu-icon">&#10150;</span> @Loc["Forward"]
         </button>
@@ -433,6 +440,8 @@
     private bool _showContextMenu;
     private double _contextMenuX;
     private double _contextMenuY;
+    private double _contextMenuBottomY;
+    private bool _contextMenuFlipUp;
     private ChatMessage? _contextMenuMessage;
 
     // Presence state
@@ -536,12 +545,15 @@
             try { await Http.PostAsync($"/api/messages/acknowledge-all?deviceId={_localDeviceId}", null); }
             catch { /* best effort */ }
 
-            // NOW get unread count (after delivery ack, so newly delivered messages are counted)
+            // NOW get unread count + read pointer (after delivery ack, so newly delivered messages are counted)
             try
             {
                 var unreadResp = await Http.GetFromJsonAsync<JsonElement>(
                     $"/api/messages/unread-count?deviceId={_localDeviceId}&conversationId={ConversationId}");
                 _serverUnreadCount = unreadResp.GetProperty("unreadCount").GetInt32();
+                // Initialize read pointer from server so we don't re-mark already-read messages
+                if (unreadResp.TryGetProperty("lastReadSequenceNumber", out var lrsn))
+                    _lastReadSequenceNumber = lrsn.GetInt64();
             }
             catch { _serverUnreadCount = 0; }
 
@@ -1888,11 +1900,33 @@
         return _participants.FirstOrDefault(p => p.UserId != _localUserId)?.DisplayName ?? "User";
     }
 
-    private void ShowContextMenu(double x, double y, ChatMessage msg)
+    private async Task ShowContextMenu(double x, double y, ChatMessage msg)
     {
-        _contextMenuX = x;
-        _contextMenuY = y;
         _contextMenuMessage = msg;
+        _contextMenuX = x;
+
+        // Get viewport height to determine if we need to flip the menu upward
+        double viewportHeight;
+        try { viewportHeight = await Js.InvokeAsync<double>("eval", "window.innerHeight"); }
+        catch { viewportHeight = 800; }
+
+        // Estimate menu height: ~40px per item, 5-6 items + padding
+        var itemCount = 4 + (msg.IsMine ? 1 : 0) + (!string.IsNullOrEmpty(msg.MediaDataUrl) ? 1 : 0);
+        var estimatedMenuHeight = itemCount * 40 + 16;
+
+        if (y + estimatedMenuHeight > viewportHeight - 20)
+        {
+            _contextMenuFlipUp = true;
+            _contextMenuBottomY = viewportHeight - y;
+            _contextMenuY = 0; // unused when flipped
+        }
+        else
+        {
+            _contextMenuFlipUp = false;
+            _contextMenuY = y;
+            _contextMenuBottomY = 0;
+        }
+
         _showContextMenu = true;
     }
 
@@ -1911,6 +1945,17 @@
             {
                 // ignored
             }
+        }
+        CloseContextMenu();
+    }
+
+    private async Task DownloadMediaFromContextMenu()
+    {
+        if (_contextMenuMessage is not null && !string.IsNullOrEmpty(_contextMenuMessage.MediaDataUrl))
+        {
+            var fileName = _contextMenuMessage.FileName ?? "download";
+            try { await Js.InvokeVoidAsync("mediaHelpers.downloadDataUrl", _contextMenuMessage.MediaDataUrl, fileName); }
+            catch { /* ignored */ }
         }
         CloseContextMenu();
     }
@@ -2585,6 +2630,6 @@
         public string? ReplyToThumbnailDataUrl { get; init; }
         public ContentType ReplyToContentType { get; init; } = ContentType.Text;
         public bool IsForwarded { get; init; }
-        public int[]? Waveform { get; set; }
+        public int[]? Waveform { get; init; }
     }
 }

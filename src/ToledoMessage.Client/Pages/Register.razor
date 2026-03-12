@@ -68,6 +68,10 @@
                         }
                     </div>
                 </div>
+                <label class="remember-me-row">
+                    <input type="checkbox" @bind="_rememberMe" class="remember-me-checkbox" />
+                    <span>@Loc["Remember me"]</span>
+                </label>
                 <button type="submit" class="btn-primary btn-full auth-btn" disabled="@_isLoading"
                         aria-busy="@_isLoading">
                     @if (_isLoading)
@@ -296,6 +300,26 @@
         color: var(--accent-hover);
         text-decoration: underline;
     }
+
+    .remember-me-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        font-size: 0.92rem;
+        color: var(--text-secondary);
+        margin-bottom: 4px;
+        user-select: none;
+    }
+
+    .remember-me-checkbox {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--accent);
+        cursor: pointer;
+        border-radius: 4px;
+        flex-shrink: 0;
+    }
 </style>
 
 @code {
@@ -308,6 +332,7 @@
     private string _passwordStrengthClass = "";
     private string _passwordStrengthText = "";
     private string _passwordStrengthColor = "";
+    private bool _rememberMe = true;
 
     private void OnPasswordChanged()
     {
@@ -353,12 +378,15 @@
 
         try
         {
-            // 1. Generate crypto keys first (before any server calls)
+            // 1. Set storage mode based on remember me choice
+            await Storage.SetStorageModeAsync(_rememberMe);
+
+            // 2. Generate crypto keys first (before any server calls)
             var deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
 
-            // 2. Combined register + device in a single atomic request
+            // 3. Combined register + device in a single atomic request
             var secondaryName = string.IsNullOrWhiteSpace(_displayNameSecondary) ? null : _displayNameSecondary;
-            var request = new RegisterWithDeviceRequest(_username, _displayName, _password, deviceRequest, secondaryName);
+            var request = new RegisterWithDeviceRequest(_username, _displayName, _password, deviceRequest, secondaryName, _rememberMe);
             var response = await Http.PostAsJsonAsync("/api/auth/register-with-device", request);
 
             if (!response.IsSuccessStatusCode)

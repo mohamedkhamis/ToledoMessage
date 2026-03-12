@@ -143,16 +143,35 @@
             if (!string.IsNullOrEmpty(MediaDataUrl))
             {
                 <div class="message-file-card @(IsPdf ? "pdf-card" : "")">
-                    <div class="message-file-icon @(IsPdf ? "pdf-icon" : "")">@GetFileIconForMimeType(MimeType)</div>
-                    <div class="message-file-info">
-                        <span class="message-file-name">@(FileName ?? "File")</span>
-                        <span class="message-file-type">@GetFileTypeLabel(MimeType, FileName)</span>
+                    @if (IsPdf && !string.IsNullOrEmpty(_pdfThumbnailUrl))
+                    {
+                        <div class="message-file-preview">
+                            <img src="@_pdfThumbnailUrl" alt="PDF preview" class="message-file-preview-img" />
+                        </div>
+                    }
+                    <div class="message-file-header">
+                        <div class="message-file-icon @(IsPdf ? "pdf-icon" : "")">@GetFileIconForMimeType(MimeType)</div>
+                        <div class="message-file-info">
+                            <span class="message-file-name">@(FileName ?? "File")</span>
+                            <span class="message-file-meta">
+                                @if (_pdfPageCount > 0)
+                                {
+                                    @($"{_pdfPageCount} {(_pdfPageCount == 1 ? "page" : "pages")} · ")
+                                }
+                                @GetFileTypeLabel(MimeType, FileName)@(FileSizeBytes > 0 ? $" · {FormatFileSize(FileSizeBytes)}" : "")
+                            </span>
+                        </div>
                     </div>
-                    <a href="@MediaDataUrl" download="@(FileName ?? "file")"
-                       class="message-file-download-btn" aria-label="Download @(FileName ?? "file")"
-                       @onclick:stopPropagation="true">
-                        &#8595;
-                    </a>
+                    <div class="message-file-actions">
+                        <a href="@MediaDataUrl" target="_blank" rel="noopener"
+                           class="message-file-action-btn" @onclick:stopPropagation="true">
+                            @Loc["Open"]
+                        </a>
+                        <a href="@MediaDataUrl" download="@(FileName ?? "file")"
+                           class="message-file-action-btn" @onclick:stopPropagation="true">
+                            @Loc["Save as..."]
+                        </a>
+                    </div>
                 </div>
             }
             else
@@ -203,6 +222,38 @@
 
 @* ReSharper disable once NotAccessedField.Local *@
 @code {
+    // PDF thumbnail state
+    private string? _pdfThumbnailUrl;
+    private int _pdfPageCount;
+    private bool _pdfThumbnailAttempted;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsPdf && !string.IsNullOrEmpty(MediaDataUrl) && !_pdfThumbnailAttempted)
+        {
+            _pdfThumbnailAttempted = true;
+            try
+            {
+                var result = await Js.InvokeAsync<PdfThumbnailResult?>("mediaHelpers.generatePdfThumbnail", MediaDataUrl, 320);
+                if (result is not null)
+                {
+                    _pdfThumbnailUrl = result.Thumbnail;
+                    _pdfPageCount = result.PageCount;
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+            catch { /* pdf.js unavailable or failed */ }
+        }
+    }
+
+    // ReSharper disable once ClassNeverInstantiated.Local
+    private sealed class PdfThumbnailResult
+    {
+        // ReSharper disable  UnusedAutoPropertyAccessor.Local
+        public string? Thumbnail { get; set; }
+        public int PageCount { get; set; }
+    }
+
     // Check if text contains only 1-3 emoji (for big emoji rendering)
     private static bool IsEmojiOnly(string? text)
     {
@@ -420,8 +471,19 @@
     [Parameter]
     public int[]? AudioWaveform { get; set; }
 
+    [Parameter]
+    public long FileSizeBytes { get; set; }
+
     private bool IsPdf => MimeType?.StartsWith("application/pdf", StringComparison.OrdinalIgnoreCase) == true
                           || FileName?.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) == true;
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes <= 0) return "";
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1_048_576) return $"{bytes / 1024.0:F0} kB";
+        return $"{bytes / 1_048_576.0:F1} MB";
+    }
 
     private async Task HandleContextMenu(MouseEventArgs e)
     {

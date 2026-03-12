@@ -209,7 +209,7 @@ public class MessagesController(ApplicationDbContext db, MessageRelayService rel
         if (!isParticipant)
             return Forbid();
 
-        var count = await relayService.GetUnreadCount(userId, conversationId);
-        return Ok(new { unreadCount = count });
+        var (count, lastReadSeq) = await relayService.GetUnreadCountWithPointer(userId, conversationId);
+        return Ok(new { unreadCount = count, lastReadSequenceNumber = lastReadSeq });
     }
 }

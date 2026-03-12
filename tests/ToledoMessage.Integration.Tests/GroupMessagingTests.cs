@@ -235,7 +235,7 @@ public class GroupMessagingTests
         var charlieFromAlice = DoubleRatchet.InitializeAsResponder(charlieRk, charlieSpk.PrivateKey, charlieSpk.PublicKey);
 
         // Send 5 group messages from Alice, verify all decrypt correctly
-        for (int i = 0; i < 5; i++)
+        for (var i = 0; i < 5; i++)
         {
             var msg = $"Alice group message #{i + 1}";
             var plaintext = Encoding.UTF8.GetBytes(msg);
@@ -254,7 +254,7 @@ public class GroupMessagingTests
         }
 
         // Bob replies to Alice (via existing session)
-        for (int i = 0; i < 3; i++)
+        for (var i = 0; i < 3; i++)
         {
             var reply = $"Bob reply #{i + 1}";
             var replyBytes = Encoding.UTF8.GetBytes(reply);

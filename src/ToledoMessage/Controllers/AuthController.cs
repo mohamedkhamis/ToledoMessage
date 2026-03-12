@@ -77,7 +77,7 @@ public class AuthController(
         await db.SaveChangesAsync();
 
         var accessToken = GenerateJwtToken(user);
-        var refreshToken = await CreateRefreshTokenAsync(user.Id);
+        var refreshToken = await CreateRefreshTokenAsync(user.Id, request.RememberMe);
 
         return Created(string.Empty, new AuthResponse(user.Id, user.Username, user.DisplayName, accessToken, refreshToken, user.DisplayNameSecondary));
     }
@@ -184,9 +184,9 @@ public class AuthController(
             await preKeyService.StoreOneTimePreKeys(device.Id, dev.OneTimePreKeys);
         }
 
-        // --- Generate tokens ---
+        // --- Generate tokens (bound to the new device) ---
         var accessToken = GenerateJwtToken(user);
-        var refreshToken = await CreateRefreshTokenAsync(user.Id);
+        var refreshToken = await CreateRefreshTokenAsync(user.Id, request.RememberMe, device.Id);
 
         return Created(string.Empty, new RegisterWithDeviceResponse(
             user.Id, user.Username, user.DisplayName, accessToken, refreshToken, device.Id, user.DisplayNameSecondary));
@@ -215,7 +215,7 @@ public class AuthController(
         }
 
         var accessToken = GenerateJwtToken(user);
-        var refreshToken = await CreateRefreshTokenAsync(user.Id);
+        var refreshToken = await CreateRefreshTokenAsync(user.Id, request.RememberMe);
 
         return Ok(new AuthResponse(user.Id, user.Username, user.DisplayName, accessToken, refreshToken, user.DisplayNameSecondary));
     }
@@ -239,6 +239,11 @@ public class AuthController(
         if (storedToken == null || storedToken.IsRevoked || storedToken.ExpiresAt <= DateTimeOffset.UtcNow)
             return Unauthorized("Invalid or expired refresh token.");
 
+        // Validate device binding: if the stored token is bound to a device, the request must match
+        if (storedToken.DeviceId is not null && request.DeviceId is not null
+            && storedToken.DeviceId != request.DeviceId)
+            return Unauthorized("Refresh token does not belong to this device.");
+
         // Revoke the old refresh token (rotation)
         storedToken.IsRevoked = true;
 
@@ -256,7 +261,7 @@ public class AuthController(
             return Unauthorized("User account not found or deactivated.");
 
         var newAccessToken = GenerateJwtToken(user);
-        var newRefreshToken = await CreateRefreshTokenAsync(user.Id);
+        var newRefreshToken = await CreateRefreshTokenAsync(user.Id, storedToken.IsPersistent, storedToken.DeviceId);
 
         return Ok(new RefreshTokenResponse(newAccessToken, newRefreshToken));
     }
@@ -352,17 +357,20 @@ public class AuthController(
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private async Task<string> CreateRefreshTokenAsync(long userId)
+    private async Task<string> CreateRefreshTokenAsync(long userId, bool isPersistent = true, long? deviceId = null)
     {
         var tokenValue = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+        var expiryDays = isPersistent ? 90 : 1; // 90 days for "remember me", 24 hours for session-only
 
         var refreshToken = new RefreshToken
         {
             Id = IdGenerator.GetNewId(),
             UserId = userId,
             Token = tokenValue,
-            ExpiresAt = DateTimeOffset.UtcNow.AddDays(30),
-            CreatedAt = DateTimeOffset.UtcNow
+            DeviceId = deviceId,
+            ExpiresAt = DateTimeOffset.UtcNow.AddDays(expiryDays),
+            CreatedAt = DateTimeOffset.UtcNow,
+            IsPersistent = isPersistent
         };
 
         db.RefreshTokens.Add(refreshToken);

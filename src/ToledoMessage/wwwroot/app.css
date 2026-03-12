@@ -621,11 +621,83 @@ label {
     color: var(--msg-sent-text);
     border-bottom-right-radius: 4px;
 }
+/* Ensure all child elements inside sent bubbles inherit the bubble's text color
+   instead of using global theme vars that assume a light page background. */
+.message-bubble.mine .message-meta,
+.message-bubble.mine .forwarded-label,
+.message-bubble.mine .audio-duration,
+.message-bubble.mine .message-media-placeholder,
+.message-bubble.mine .message-file-meta {
+    color: inherit;
+    opacity: 0.7;
+}
+.message-bubble.mine .delivery-sending,
+.message-bubble.mine .delivery-sent,
+.message-bubble.mine .delivery-delivered {
+    color: inherit;
+    opacity: 0.7;
+}
+.message-bubble.mine .delivery-read {
+    color: #53bded;
+}
+.message-bubble.mine .audio-play-btn {
+    color: inherit;
+}
+.message-bubble.mine .audio-avatar {
+    background: rgba(255,255,255,0.15);
+    color: inherit;
+}
+.message-bubble.mine .aw-bar {
+    background: rgba(255,255,255,0.3);
+}
+.message-bubble.mine .message-file-name {
+    color: inherit;
+}
+.message-bubble.mine .message-file-action-btn {
+    color: inherit;
+}
+.message-bubble.mine .reply-quote-text {
+    color: inherit;
+}
 .message-bubble.theirs {
     background: var(--msg-received-bg);
     color: var(--msg-received-text);
     border-bottom-left-radius: 4px;
     box-shadow: var(--shadow);
+}
+/* Ensure received bubble children also inherit for dark themes */
+.message-bubble.theirs .message-meta,
+.message-bubble.theirs .forwarded-label,
+.message-bubble.theirs .audio-duration,
+.message-bubble.theirs .message-media-placeholder,
+.message-bubble.theirs .message-file-meta {
+    color: inherit;
+    opacity: 0.7;
+}
+.message-bubble.theirs .delivery-sending,
+.message-bubble.theirs .delivery-sent,
+.message-bubble.theirs .delivery-delivered {
+    color: inherit;
+    opacity: 0.7;
+}
+.message-bubble.theirs .audio-play-btn {
+    color: inherit;
+}
+.message-bubble.theirs .audio-avatar {
+    background: rgba(128,128,128,0.15);
+    color: inherit;
+}
+.message-bubble.theirs .aw-bar {
+    background: rgba(128,128,128,0.3);
+}
+.message-bubble.theirs .message-file-name {
+    color: inherit;
+}
+.message-bubble.theirs .message-file-action-btn {
+    color: inherit;
+}
+.message-bubble.theirs .reply-quote-text {
+    color: inherit;
 }
 .message-text {
     word-wrap: break-word;
@@ -1007,6 +1079,10 @@ label {
     max-width: 80%;
     min-width: 280px;
 }
+/* Compact padding for file card bubble — file card handles its own layout */
+.message-bubble:has(.message-file-card) {
+    padding: 4px;
+}
 /* Clip media to bubble's rounded corners without hiding the reply button */
 .message-bubble:has(.message-image) > .message-media,
 .message-bubble:has(.message-video) > .message-media {
@@ -1195,14 +1271,42 @@ label {
 /* File / Document card (WhatsApp-style) */
 .message-file-card {
     display: flex;
+    flex-direction: column;
+    min-width: 240px;
+    max-width: 320px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 2px;
+}
+.message-file-preview {
+    background: #f8f8f8;
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+    max-height: 200px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+}
+.message-file-preview-img {
+    width: 100%;
+    object-fit: cover;
+    object-position: top;
+    max-height: 200px;
+}
+/* When preview exists, header loses top border-radius */
+.message-file-card:has(.message-file-preview) .message-file-header {
+    border-radius: 0;
+}
+.message-file-header {
+    display: flex;
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
-    min-width: 220px;
-    max-width: 320px;
-    background: var(--bg-secondary, rgba(0,0,0,0.04));
-    border-radius: 8px;
-    margin-bottom: 4px;
+    background: rgba(0,0,0,0.06);
+    border-radius: 8px 8px 0 0;
+}
+.message-bubble.mine .message-file-header {
+    background: rgba(0,0,0,0.1);
 }
 .message-file-icon {
     display: flex;
@@ -1213,7 +1317,7 @@ label {
     font-size: 1.5em;
     flex-shrink: 0;
     border-radius: 8px;
-    background: var(--bg-primary, rgba(0,0,0,0.03));
+    background: rgba(128,128,128,0.1);
 }
 .message-file-icon.pdf-icon {
     background: #e74c3c18;
@@ -1227,33 +1331,39 @@ label {
 }
 .message-file-name {
     font-size: 0.85em;
-    font-weight: 500;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.message-file-type {
+.message-file-meta {
     font-size: 0.72em;
-    color: var(--text-secondary, #888);
+    opacity: 0.7;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
 }
-.message-file-download-btn {
+.message-file-actions {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: var(--accent);
-    color: var(--accent-text);
-    text-decoration: none;
-    font-size: 1.1em;
-    font-weight: bold;
-    flex-shrink: 0;
+    border-top: 1px solid rgba(128,128,128,0.15);
 }
-.message-file-download-btn:hover {
+.message-file-action-btn {
+    flex: 1;
+    text-align: center;
+    padding: 8px 0;
+    font-size: 0.82em;
+    font-weight: 500;
+    color: inherit;
     opacity: 0.85;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+.message-file-action-btn:hover {
+    background: rgba(128,128,128,0.1);
+    opacity: 1;
+}
+.message-file-action-btn + .message-file-action-btn {
+    border-left: 1px solid rgba(128,128,128,0.15);
 }
 
 /* ============ Enhanced Component Styles (WhatsApp/Telegram/Signal style) ============ */
@@ -3348,11 +3458,33 @@ body { font-size: var(--app-font-size); }
     justify-content: center;
     animation: fadeIn 0.2s ease-out;
 }
-.lightbox-close {
+.lightbox-toolbar {
     position: absolute;
-    top: 16px;
-    right: 16px;
+    top: 12px;
+    right: 12px;
     z-index: 1002;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.lightbox-toolbar-btn {
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: white;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    padding: 0;
+}
+.lightbox-toolbar-btn:hover {
+    background: rgba(255,255,255,0.3);
+}
+.lightbox-close {
     background: rgba(255,255,255,0.15);
     border: none;
     color: white;
@@ -3596,8 +3728,10 @@ body { font-size: var(--app-font-size); }
     align-items: center;
 }
 .message-bubble.mine .reply-quote-block {
-    background: rgba(255,255,255,0.12);
-    border-left-color: rgba(255,255,255,0.5);
+    background: rgba(128,128,128,0.15);
+    border-left-color: currentColor;
+    border-left-width: 3px;
+    border-left-style: solid;
 }
 .reply-media-thumb {
     width: 40px;
@@ -3609,7 +3743,8 @@ body { font-size: var(--app-font-size); }
 .reply-sender-name {
     font-size: 0.78em;
     font-weight: 600;
-    color: var(--accent);
+    color: inherit;
+    opacity: 0.85;
     margin-bottom: 2px;
     white-space: nowrap;
     overflow: hidden;
@@ -3617,7 +3752,8 @@ body { font-size: var(--app-font-size); }
     max-width: 150px;
 }
 .message-bubble.mine .reply-sender-name {
-    color: rgba(255,255,255,0.9);
+    color: inherit;
+    opacity: 0.9;
 }
 .reply-quote-text {
     font-size: 0.83em;
@@ -3723,6 +3859,11 @@ body { font-size: var(--app-font-size); }
     overflow: hidden;
     animation: fadeIn 0.12s ease-out;
     padding: 4px 0;
+    transform-origin: top left;
+}
+/* Flip context menu upward when near bottom of viewport */
+.context-menu.flip-up {
+    transform-origin: bottom left;
 }
 .context-menu-item {
     display: flex;

@@ -526,6 +526,71 @@ window.mediaHelpers = {
                 reject(e);
             }
         });
+    },
+
+    // Download a data URL (base64 or blob) as a file
+    downloadDataUrl: function (dataUrl, fileName) {
+        var a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = fileName || 'download';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    },
+
+    // PDF thumbnail: lazy-load pdf.js, render page 1 to canvas, return { thumbnail, pageCount }
+    _pdfJsLoaded: false,
+    _pdfJsLoading: null,
+
+    _loadPdfJs: function () {
+        if (this._pdfJsLoaded) return Promise.resolve();
+        if (this._pdfJsLoading) return this._pdfJsLoading;
+        var self = this;
+        this._pdfJsLoading = new Promise(function (resolve, reject) {
+            var script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+            script.onload = function () {
+                if (window.pdfjsLib) {
+                    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+                        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                }
+                self._pdfJsLoaded = true;
+                resolve();
+            };
+            script.onerror = function () { reject(new Error('Failed to load pdf.js')); };
+            document.head.appendChild(script);
+        });
+        return this._pdfJsLoading;
+    },
+
+    generatePdfThumbnail: async function (dataUrl, maxWidth) {
+        maxWidth = maxWidth || 320;
+        await this._loadPdfJs();
+        if (!window.pdfjsLib) return null;
+
+        try {
+            var pdf = await window.pdfjsLib.getDocument(dataUrl).promise;
+            var page = await pdf.getPage(1);
+            var unscaledViewport = page.getViewport({ scale: 1 });
+            var scale = maxWidth / unscaledViewport.width;
+            var viewport = page.getViewport({ scale: scale });
+
+            var canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            var ctx = canvas.getContext('2d');
+
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+            var thumbnail = canvas.toDataURL('image/jpeg', 0.85);
+            var pageCount = pdf.numPages;
+            pdf.destroy();
+
+            return { thumbnail: thumbnail, pageCount: pageCount };
+        } catch (e) {
+            return null;
+        }
     }
 
 };

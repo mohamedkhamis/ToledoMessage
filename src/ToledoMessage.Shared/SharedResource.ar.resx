@@ -103,6 +103,9 @@
   <data name="Sign In" xml:space="preserve">
     <value>تسجيل الدخول</value>
   </data>
+  <data name="Remember me" xml:space="preserve">
+    <value>تذكرني</value>
+  </data>
   <data name="Don't have an account?" xml:space="preserve">
     <value>ليس لديك حساب؟</value>
   </data>
@@ -623,6 +626,12 @@
   <data name="Save" xml:space="preserve">
     <value>حفظ</value>
   </data>
+  <data name="Open" xml:space="preserve">
+    <value>فتح</value>
+  </data>
+  <data name="Save as..." xml:space="preserve">
+    <value>حفظ باسم...</value>
+  </data>
   <data name="Saving..." xml:space="preserve">
     <value>جارٍ الحفظ...</value>
   </data>
@@ -634,6 +643,9 @@
   </data>
   <data name="Failed to update timer." xml:space="preserve">
     <value>فشل تحديث المؤقّت.</value>
+  </data>
+  <data name="Wait {0} seconds before sending more messages" xml:space="preserve">
+    <value>انتظر {0} ثانية قبل إرسال المزيد من الرسائل</value>
   </data>
 
 </root>

@@ -30,7 +30,7 @@ public class ConversationsControllerTests
         Assert.IsInstanceOfType<CreatedResult>(result);
         var created = (CreatedResult)result;
         Assert.IsInstanceOfType<ConversationResponse>(created.Value);
-        var response = (ConversationResponse)created.Value!;
+        var response = (ConversationResponse)created.Value;
         Assert.IsTrue(response.IsNew);
     }
 
@@ -50,7 +50,7 @@ public class ConversationsControllerTests
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<ConversationResponse>(ok.Value);
-        var response = (ConversationResponse)ok.Value!;
+        var response = (ConversationResponse)ok.Value;
         Assert.IsFalse(response.IsNew);
     }
 
@@ -90,7 +90,7 @@ public class ConversationsControllerTests
         Assert.IsInstanceOfType<CreatedResult>(result);
         var created = (CreatedResult)result;
         Assert.IsInstanceOfType<ConversationResponse>(created.Value);
-        var response = (ConversationResponse)created.Value!;
+        var response = (ConversationResponse)created.Value;
         Assert.IsTrue(response.IsNew);
     }
 
@@ -114,7 +114,7 @@ public class ConversationsControllerTests
     public async Task CreateGroup_TooManyParticipants_ReturnsBadRequest()
     {
         var (controller, _) = CreateController();
-        var ids = Enumerable.Range(2, 101).Select(i => (long)i).ToList();
+        var ids = Enumerable.Range(2, 101).Select(static i => (long)i).ToList();
         var result = await controller.CreateGroup(new CreateGroupConversationRequest("Group", ids));
         Assert.IsInstanceOfType<BadRequestObjectResult>(result);
     }
@@ -125,7 +125,7 @@ public class ConversationsControllerTests
         var (controller, db) = CreateController();
         await TestDbContextFactory.SeedUser(db, 1L, "creator");
         await TestDbContextFactory.SeedUser(db, 2L, "active");
-        await TestDbContextFactory.SeedUser(db, 3L, "inactive", isActive: false);
+        await TestDbContextFactory.SeedUser(db, 3L, "inactive", false);
 
         var result = await controller.CreateGroup(new CreateGroupConversationRequest("Group", [2L, 3L]));
         Assert.IsInstanceOfType<BadRequestObjectResult>(result);
@@ -238,7 +238,7 @@ public class ConversationsControllerTests
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<ConversationDetailResponse>(ok.Value);
-        var detail = (ConversationDetailResponse)ok.Value!;
+        var detail = (ConversationDetailResponse)ok.Value;
         Assert.AreEqual(100L, detail.ConversationId);
         Assert.AreEqual(ConversationType.Group, detail.Type);
         Assert.AreEqual("TestGroup", detail.GroupName);
@@ -273,7 +273,7 @@ public class ConversationsControllerTests
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<List<ParticipantResponse>>(ok.Value);
-        var participants = (List<ParticipantResponse>)ok.Value!;
+        var participants = (List<ParticipantResponse>)ok.Value;
         Assert.AreEqual(2, participants.Count);
     }
 
@@ -302,7 +302,7 @@ public class ConversationsControllerTests
 
         Assert.IsInstanceOfType<NoContentResult>(result);
         var conv = await db.Conversations.FindAsync(100L);
-        Assert.AreEqual(3600, conv!.DisappearingTimerSeconds);
+        Assert.AreEqual(3600, conv?.DisappearingTimerSeconds);
     }
 
     [TestMethod]
@@ -319,7 +319,7 @@ public class ConversationsControllerTests
 
         Assert.IsInstanceOfType<NoContentResult>(result);
         var refreshed = await db.Conversations.FindAsync(100L);
-        Assert.IsNull(refreshed!.DisappearingTimerSeconds);
+        Assert.IsNull(refreshed?.DisappearingTimerSeconds);
     }
 
     [TestMethod]
@@ -362,7 +362,7 @@ public class ConversationsControllerTests
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
         Assert.IsInstanceOfType<List<ConversationListItemResponse>>(ok.Value);
-        var list = (List<ConversationListItemResponse>)ok.Value!;
+        var list = (List<ConversationListItemResponse>)ok.Value;
         Assert.AreEqual(1, list.Count);
     }
 
@@ -376,6 +376,7 @@ public class ConversationsControllerTests
 
         Assert.IsInstanceOfType<OkObjectResult>(result);
         var ok = (OkObjectResult)result;
+        // ReSharper disable once NullableWarningSuppressionIsUsed
         Assert.AreEqual(0, ((System.Collections.IEnumerable)ok.Value!).Cast<object>().Count());
     }
 
@@ -396,12 +397,12 @@ public class ConversationsControllerTests
         Assert.IsInstanceOfType<CreatedResult>(result1);
         var created = (CreatedResult)result1;
         Assert.IsInstanceOfType<ConversationResponse>(created.Value);
-        var response1 = (ConversationResponse)created.Value!;
+        var response1 = (ConversationResponse)created.Value;
 
         Assert.IsInstanceOfType<OkObjectResult>(result2);
         var ok = (OkObjectResult)result2;
         Assert.IsInstanceOfType<ConversationResponse>(ok.Value);
-        var response2 = (ConversationResponse)ok.Value!;
+        var response2 = (ConversationResponse)ok.Value;
 
         // Same conversation ID
         Assert.AreEqual(response1.ConversationId, response2.ConversationId);

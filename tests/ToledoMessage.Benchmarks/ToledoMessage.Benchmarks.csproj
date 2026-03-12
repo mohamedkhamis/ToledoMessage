@@ -10,8 +10,8 @@
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageReference Include="MessagePack" Version="3.1.4" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="11.0.0-preview.1.26104.118" />
-    <PackageReference Include="NBomber" Version="6.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="11.0.0-preview.2.26159.112" />
+    <PackageReference Include="NBomber" Version="6.3.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -8,15 +8,11 @@
     {
         <div class="input-error">@_errorMessage</div>
     }
-    @if (RateLimitCooldownEnd.HasValue)
+    @if (_rateLimitRemaining > 0)
     {
-        var remaining = (int)(RateLimitCooldownEnd.Value - DateTime.UtcNow).TotalSeconds;
-        if (remaining > 0)
-        {
-            <div class="rate-limit-warning">
-                Wait @remaining seconds before sending more messages
-            </div>
-        }
+        <div class="rate-limit-warning">
+            @string.Format(Loc["Wait {0} seconds before sending more messages"], _rateLimitRemaining)
+        </div>
     }
     @if (ReplyContext is not null)
     {
@@ -227,6 +223,9 @@
     private bool _sendAsHd;
     private string? _videoPreviewBlobUrl;
     private ElementReference _textareaRef;
+    private int _rateLimitRemaining;
+    private Timer? _rateLimitTimer;
+    private DateTime? _prevCooldownEnd;
 
     private bool CanSend => !string.IsNullOrWhiteSpace(_messageText) || _selectedFile is not null;
 
@@ -245,6 +244,41 @@
     // FR-002a: Rate limit cooldown parameter
     [Parameter]
     public DateTime? RateLimitCooldownEnd { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // Start countdown timer when a new cooldown is set
+        if (RateLimitCooldownEnd != _prevCooldownEnd && RateLimitCooldownEnd.HasValue)
+        {
+            _prevCooldownEnd = RateLimitCooldownEnd;
+            StartRateLimitCountdown();
+        }
+    }
+
+    private void StartRateLimitCountdown()
+    {
+        _rateLimitTimer?.Dispose();
+        _rateLimitRemaining = RateLimitCooldownEnd.HasValue
+            ? Math.Max(0, (int)(RateLimitCooldownEnd.Value - DateTime.UtcNow).TotalSeconds)
+            : 0;
+
+        if (_rateLimitRemaining <= 0) return;
+
+        _rateLimitTimer = new Timer(_ =>
+        {
+            _rateLimitRemaining = RateLimitCooldownEnd.HasValue
+                ? Math.Max(0, (int)(RateLimitCooldownEnd.Value - DateTime.UtcNow).TotalSeconds)
+                : 0;
+
+            InvokeAsync(StateHasChanged);
+
+            if (_rateLimitRemaining <= 0)
+            {
+                _rateLimitTimer?.Dispose();
+                _rateLimitTimer = null;
+            }
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
 
     // FR-032: Conversation ID for offline queue
     [Parameter]
@@ -396,6 +430,7 @@
     private async Task OnMediaSelected(InputFileChangeEventArgs e)
     {
         _showAttachMenu = false;
+        if (e.FileCount == 0) return;
         var file = e.File;
         // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
         var contentType = file.ContentType ?? "image/jpeg";
@@ -449,6 +484,7 @@
     private async Task OnAudioSelected(InputFileChangeEventArgs e)
     {
         _showAttachMenu = false;
+        if (e.FileCount == 0) return;
         _selectedContentType = ContentType.Audio;
         await SetSelectedFile(e.File, createPreview: false);
     }
@@ -456,6 +492,7 @@
     private async Task OnDocumentSelected(InputFileChangeEventArgs e)
     {
         _showAttachMenu = false;
+        if (e.FileCount == 0) return;
         _selectedContentType = ContentType.File;
         await SetSelectedFile(e.File, createPreview: false);
     }
@@ -699,6 +736,10 @@
 
     public async ValueTask DisposeAsync()
     {
+        if (_rateLimitTimer is not null)
+        {
+            await _rateLimitTimer.DisposeAsync();
+        }
         if (_previewDataUrl is not null)
         {
             try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _previewDataUrl); }

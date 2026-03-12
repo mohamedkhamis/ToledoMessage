@@ -107,7 +107,7 @@ window.voiceRecorder = {
             }
         }, 1000);
 
-        // Use timeslice to get periodic data chunks (every 1s)
+        // Use times lice to get periodic data chunks (every 1s)
         this._mediaRecorder.start(1000);
     },
 

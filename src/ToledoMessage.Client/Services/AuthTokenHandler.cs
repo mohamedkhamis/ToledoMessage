@@ -66,7 +66,13 @@ public class AuthTokenHandler(LocalStorageService storage) : DelegatingHandler
             var accessToken = Encoding.UTF8.GetString(accessTokenBytes);
             var refreshToken = Encoding.UTF8.GetString(refreshTokenBytes);
 
-            var refreshRequest = new RefreshTokenRequest(accessToken, refreshToken);
+            // Include device ID for device-bound token validation
+            long? deviceId = null;
+            var deviceIdBytes = await storage.GetAsync("local.deviceId");
+            if (deviceIdBytes is not null && long.TryParse(Encoding.UTF8.GetString(deviceIdBytes), out var parsed))
+                deviceId = parsed;
+
+            var refreshRequest = new RefreshTokenRequest(accessToken, refreshToken, deviceId);
 
             var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/refresh")
             {

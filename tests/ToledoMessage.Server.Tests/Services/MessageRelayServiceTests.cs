@@ -421,10 +421,10 @@ public class MessageRelayServiceTests
         Assert.AreEqual(5L, pointer?.LastReadSequenceNumber);
     }
 
-    // --- GetUnreadCount ---
+    // --- GetUnreadCountWithPointer ---
 
     [TestMethod]
-    public async Task GetUnreadCount_WithPointer_ReturnsPointerUnreadCount()
+    public async Task GetUnreadCountWithPointer_WithPointer_ReturnsPointerUnreadCountAndSeq()
     {
         var (db, service) = CreateService();
         await TestDbContextFactory.SeedUser(db, 1L);
@@ -437,12 +437,13 @@ public class MessageRelayServiceTests
         });
         await db.SaveChangesAsync();
 
-        var count = await service.GetUnreadCount(1L, 100L);
+        var (count, lastReadSeq) = await service.GetUnreadCountWithPointer(1L, 100L);
         Assert.AreEqual(3, count);
+        Assert.AreEqual(5L, lastReadSeq);
     }
 
     [TestMethod]
-    public async Task GetUnreadCount_NoPointer_CountsDeliveredMessages()
+    public async Task GetUnreadCountWithPointer_NoPointer_CountsAllMessagesAndReturnsZeroSeq()
     {
         var (db, service) = CreateService();
         await TestDbContextFactory.SeedUser(db, 1L);
@@ -470,8 +471,9 @@ public class MessageRelayServiceTests
         });
         await db.SaveChangesAsync();
 
-        var count = await service.GetUnreadCount(1L, 100L);
-        Assert.AreEqual(3, count); // All messages (delivered & undelivered) — BUG-CR-008 fix
+        var (count, lastReadSeq) = await service.GetUnreadCountWithPointer(1L, 100L);
+        Assert.AreEqual(3, count); // All messages (delivered & undelivered)
+        Assert.AreEqual(0L, lastReadSeq); // No pointer exists yet
     }
 
     // --- IncrementUnreadCountsForNewMessage ---

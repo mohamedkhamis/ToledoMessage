@@ -102,6 +102,7 @@
     private string _currentPath = "";
     private Timer? _filterDebounceTimer; // FR-016: Debounce filter (200ms)
     private const int FilterDebounceMs = 200;
+    private Timer? _tokenRefreshTimer;
 
     private List<ConversationListItemResponse> FilteredConversations =>
         string.IsNullOrWhiteSpace(_searchQuery)
@@ -121,11 +122,17 @@
             var tokenBytes = await Storage.GetAsync("auth.token");
             if (tokenBytes is null)
             {
-                Navigation.NavigateTo("/login", forceLoad: true);
-                return;
+                // No access token — try silent refresh before giving up
+                var refreshed = await TrySilentRefreshAsync();
+                if (!refreshed)
+                {
+                    Navigation.NavigateTo("/login", forceLoad: true);
+                    return;
+                }
+                tokenBytes = await Storage.GetAsync("auth.token");
             }
 
-            _accessToken = Encoding.UTF8.GetString(tokenBytes);
+            _accessToken = Encoding.UTF8.GetString(tokenBytes!);
             var (name, name2) = ExtractDisplayNamesFromJwt(_accessToken);
             _userName = DisplayNameHelper.Resolve(name, name2);
             _userNameSecondary = name2;
@@ -136,6 +143,9 @@
 
             Http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
+
+            // Start proactive token refresh timer (refresh 2 minutes before expiry)
+            ScheduleTokenRefresh(_accessToken);
 
             await LoadConversations();
 
@@ -349,11 +359,122 @@
         catch { return ("?", null); }
     }
 
+    private void ScheduleTokenRefresh(string jwt)
+    {
+        _tokenRefreshTimer?.Dispose();
+        try
+        {
+            // Parse JWT exp claim to schedule refresh 2 minutes before expiry
+            var parts = jwt.Split('.');
+            if (parts.Length != 3) return;
+            var payload = parts[1];
+            // Add padding for Base64
+            payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
+            var json = Encoding.UTF8.GetString(Convert.FromBase64String(payload));
+            var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("exp", out var expProp)) return;
+            var expUnix = expProp.GetInt64();
+            var expiresAt = DateTimeOffset.FromUnixTimeSeconds(expUnix);
+            var refreshAt = expiresAt.AddMinutes(-2); // Refresh 2 minutes before expiry
+            var delay = refreshAt - DateTimeOffset.UtcNow;
+            if (delay <= TimeSpan.Zero) delay = TimeSpan.FromSeconds(5); // Already near expiry
+
+            // ReSharper disable  AsyncVoidLambda
+            _tokenRefreshTimer = new Timer(async _ => await ProactiveRefreshAsync(), null, delay, Timeout.InfiniteTimeSpan);
+        }
+        catch
+        {
+            // If parsing fails, fall back to 12-minute interval
+            _tokenRefreshTimer = new Timer(async _ => await ProactiveRefreshAsync(), null, TimeSpan.FromMinutes(12), Timeout.InfiniteTimeSpan);
+        }
+    }
+
+    private async Task ProactiveRefreshAsync()
+    {
+        try
+        {
+            var refreshed = await TrySilentRefreshAsync();
+            if (refreshed)
+            {
+                var newTokenBytes = await Storage.GetAsync("auth.token");
+                if (newTokenBytes is not null)
+                {
+                    _accessToken = Encoding.UTF8.GetString(newTokenBytes);
+                    Http.DefaultRequestHeaders.Authorization =
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
+
+                    // Reconnect SignalR with new token
+                    try
+                    {
+                        var hubUrl = Navigation.ToAbsoluteUri("/hubs/chat").ToString();
+                        await SignalR.ConnectAsync(hubUrl, _accessToken);
+                        if (_localDeviceId != 0)
+                            await SignalR.RegisterDeviceAsync(_localDeviceId);
+                    }
+                    catch { /* SignalR reconnect is best-effort */ }
+
+                    // Schedule next refresh
+                    ScheduleTokenRefresh(_accessToken);
+                }
+            }
+            else
+            {
+                // Refresh failed — session expired
+                await InvokeAsync(() =>
+                {
+                    Navigation.NavigateTo("/login", forceLoad: true);
+                });
+            }
+        }
+        catch { /* Swallow — will retry on next request via AuthTokenHandler */ }
+    }
+
+    private async Task<bool> TrySilentRefreshAsync()
+    {
+        var accessTokenBytes = await Storage.GetAsync("auth.token");
+        var refreshTokenBytes = await Storage.GetAsync("auth.refreshToken");
+        if (accessTokenBytes is null || refreshTokenBytes is null)
+            return false;
+
+        var accessToken = Encoding.UTF8.GetString(accessTokenBytes);
+        var refreshToken = Encoding.UTF8.GetString(refreshTokenBytes);
+
+        long? deviceId = null;
+        var deviceIdBytes = await Storage.GetAsync("local.deviceId");
+        if (deviceIdBytes is not null && long.TryParse(Encoding.UTF8.GetString(deviceIdBytes), out var parsed))
+            deviceId = parsed;
+
+        var refreshRequest = new RefreshTokenRequest(accessToken, refreshToken, deviceId);
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("/api/auth/refresh", refreshRequest);
+            if (!response.IsSuccessStatusCode)
+                return false;
+
+            var result = await response.Content.ReadFromJsonAsync<RefreshTokenResponse>();
+            if (result is null)
+                return false;
+
+            await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(result.Token));
+            await Storage.StoreAsync("auth.refreshToken", Encoding.UTF8.GetBytes(result.RefreshToken));
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         Navigation.LocationChanged -= OnLocationChanged;
         SignalR.OnMessageReceived -= HandleMessageReceived;
         SignalR.OnUnreadCountChanged -= HandleUnreadCountChanged;
+        if (_tokenRefreshTimer is not null)
+        {
+            await _tokenRefreshTimer.DisposeAsync();
+        }
         await Task.CompletedTask;
     }
 

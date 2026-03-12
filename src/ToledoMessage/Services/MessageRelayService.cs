@@ -281,13 +281,13 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
     /// Get the unread count for a user in a conversation from the read pointer.
     /// Falls back to computing from messages if no pointer exists yet.
     /// </summary>
-    public async Task<int> GetUnreadCount(long userId, long conversationId)
+    public async Task<(int UnreadCount, long LastReadSequenceNumber)> GetUnreadCountWithPointer(long userId, long conversationId)
     {
         var pointer = await db.ConversationReadPointers
             .FirstOrDefaultAsync(p => p.UserId == userId && p.ConversationId == conversationId);
 
         if (pointer is not null)
-            return pointer.UnreadCount;
+            return (pointer.UnreadCount, pointer.LastReadSequenceNumber);
 
         // No pointer yet — count all messages in conversation sent to this user's devices
         var userDeviceIds = await db.Devices
@@ -295,9 +295,10 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
             .Select(static d => d.Id)
             .ToListAsync();
 
-        return await db.EncryptedMessages
+        var count = await db.EncryptedMessages
             .CountAsync(m => m.ConversationId == conversationId
-                             && userDeviceIds.Contains(m.RecipientDeviceId)); // BUG-CR-008 FIX: count all messages (delivered & undelivered)
+                             && userDeviceIds.Contains(m.RecipientDeviceId));
+        return (count, 0);
     }
 
     /// <summary>

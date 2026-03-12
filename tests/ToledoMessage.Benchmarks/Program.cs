@@ -25,9 +25,9 @@ if (args[0] == "load")
 
     if (args.Contains("--signalr"))
     {
-        string url = GetArg(args, "--url") ?? "https://localhost:7256";
-        int connections = int.TryParse(GetArg(args, "--connections"), out var c) ? c : 10_000;
-        int duration = int.TryParse(GetArg(args, "--duration"), out var d) ? d : 60;
+        var url = GetArg(args, "--url") ?? "https://localhost:7256";
+        var connections = int.TryParse(GetArg(args, "--connections"), out var c) ? c : 10_000;
+        var duration = int.TryParse(GetArg(args, "--duration"), out var d) ? d : 60;
 
         return SignalRLoadTest.Run(url, connections, duration);
     }
@@ -41,6 +41,6 @@ return 1;
 
 static string? GetArg(string[] args, string flag)
 {
-    int idx = Array.IndexOf(args, flag);
+    var idx = Array.IndexOf(args, flag);
     return idx >= 0 && idx + 1 < args.Length ? args[idx + 1] : null;
 }

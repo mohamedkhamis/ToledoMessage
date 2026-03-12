@@ -1,6 +1,6 @@
 namespace ToledoMessage.Shared.DTOs;
 
-public sealed record RegisterRequest(string Username, string DisplayName, string Password, string? DisplayNameSecondary = null);
+public sealed record RegisterRequest(string Username, string DisplayName, string Password, string? DisplayNameSecondary = null, bool RememberMe = true);
 
 /// <summary>
 /// Combined registration request that creates user + device in a single atomic transaction.
@@ -10,4 +10,5 @@ public sealed record RegisterWithDeviceRequest(
     string DisplayName,
     string Password,
     DeviceRegistrationRequest Device,
-    string? DisplayNameSecondary = null);
+    string? DisplayNameSecondary = null,
+    bool RememberMe = true);

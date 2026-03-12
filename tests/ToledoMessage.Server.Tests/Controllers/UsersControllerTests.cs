@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using ToledoMessage.Controllers;
 using ToledoMessage.Services;
 using ToledoMessage.Shared.DTOs;
+
 #pragma warning disable CA1860
 
 namespace ToledoMessage.Server.Tests.Controllers;

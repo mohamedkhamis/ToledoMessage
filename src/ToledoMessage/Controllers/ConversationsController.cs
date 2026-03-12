@@ -321,6 +321,75 @@ public class ConversationsController(ApplicationDbContext db) : BaseApiControlle
     }
 
     /// <summary>
+    /// Promote a participant to Admin in a group conversation. Only Admins may promote.
+    /// </summary>
+    [HttpPut("{conversationId}/participants/{targetUserId}/promote")]
+    public async Task<IActionResult> PromoteToAdmin(long conversationId, long targetUserId)
+    {
+        var userId = GetUserId();
+
+        var conversation = await db.Conversations.FindAsync(conversationId);
+        if (conversation is null || conversation.Type != ConversationType.Group)
+            return NotFound("Group conversation not found.");
+
+        var requester = await db.ConversationParticipants
+            .FirstOrDefaultAsync(p => p.ConversationId == conversationId && p.UserId == userId);
+        if (requester is null)
+            return NotFound("Group conversation not found.");
+        if (requester.Role != ParticipantRole.Admin)
+            return Forbid();
+
+        var target = await db.ConversationParticipants
+            .FirstOrDefaultAsync(p => p.ConversationId == conversationId && p.UserId == targetUserId);
+        if (target is null)
+            return NotFound("Participant not found in this conversation.");
+        if (target.Role == ParticipantRole.Admin)
+            return BadRequest("User is already an admin.");
+
+        target.Role = ParticipantRole.Admin;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Demote an Admin to Member in a group conversation. Only Admins may demote.
+    /// Cannot demote yourself if you are the last admin.
+    /// </summary>
+    [HttpPut("{conversationId}/participants/{targetUserId}/demote")]
+    public async Task<IActionResult> DemoteToMember(long conversationId, long targetUserId)
+    {
+        var userId = GetUserId();
+
+        var conversation = await db.Conversations.FindAsync(conversationId);
+        if (conversation is null || conversation.Type != ConversationType.Group)
+            return NotFound("Group conversation not found.");
+
+        var requester = await db.ConversationParticipants
+            .FirstOrDefaultAsync(p => p.ConversationId == conversationId && p.UserId == userId);
+        if (requester is null)
+            return NotFound("Group conversation not found.");
+        if (requester.Role != ParticipantRole.Admin)
+            return Forbid();
+
+        var target = await db.ConversationParticipants
+            .FirstOrDefaultAsync(p => p.ConversationId == conversationId && p.UserId == targetUserId);
+        if (target is null)
+            return NotFound("Participant not found in this conversation.");
+        if (target.Role != ParticipantRole.Admin)
+            return BadRequest("User is not an admin.");
+
+        // Prevent demoting the last admin
+        var adminCount = await db.ConversationParticipants
+            .CountAsync(p => p.ConversationId == conversationId && p.Role == ParticipantRole.Admin);
+        if (adminCount <= 1)
+            return BadRequest("Cannot demote the last admin. Promote another member first.");
+
+        target.Role = ParticipantRole.Member;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    /// <summary>
     /// Get conversation details including type, group name, and participant count.
     /// </summary>
     [HttpGet("{conversationId}")]

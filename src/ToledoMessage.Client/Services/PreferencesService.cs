@@ -31,10 +31,4 @@ public sealed class PreferencesService(HttpClient http)
         var userPreferencesResponse = _cached;
         return userPreferencesResponse;
     }
-
-    // ReSharper disable once UnusedMember.Global
-    public void InvalidateCache()
-    {
-        _cached = null;
-    }
 }

@@ -474,39 +474,6 @@ public class MessageRelayServiceTests
         Assert.AreEqual(3, count); // All messages (delivered & undelivered) — BUG-CR-008 fix
     }
 
-    // --- GetAllUnreadCounts ---
-
-    [TestMethod]
-    public async Task GetAllUnreadCounts_ReturnsOnlyNonZero()
-    {
-        var (db, service) = CreateService();
-        await TestDbContextFactory.SeedUser(db, 1L);
-
-        db.ConversationReadPointers.Add(new ConversationReadPointer
-        {
-            UserId = 1L, ConversationId = 100L,
-            LastReadSequenceNumber = 5, UnreadCount = 3
-        });
-        db.ConversationReadPointers.Add(new ConversationReadPointer
-        {
-            UserId = 1L, ConversationId = 200L,
-            LastReadSequenceNumber = 10, UnreadCount = 0
-        });
-        db.ConversationReadPointers.Add(new ConversationReadPointer
-        {
-            UserId = 1L, ConversationId = 300L,
-            LastReadSequenceNumber = 2, UnreadCount = 7
-        });
-        await db.SaveChangesAsync();
-
-        var counts = await service.GetAllUnreadCounts(1L);
-
-        Assert.AreEqual(2, counts.Count);
-        Assert.AreEqual(3, counts[100L]);
-        Assert.AreEqual(7, counts[300L]);
-        Assert.IsFalse(counts.ContainsKey(200L));
-    }
-
     // --- IncrementUnreadCountsForNewMessage ---
 
     [TestMethod]

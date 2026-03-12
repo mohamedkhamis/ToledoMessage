@@ -14,12 +14,6 @@ public sealed class MessageStoreService(IJSRuntime js)
         await js.InvokeVoidAsync("toledoMessageStore.storeMessage", msg);
     }
 
-    // ReSharper disable once UnusedMember.Global
-    public async Task StoreMessagesAsync(List<StoredMessage> msgs)
-    {
-        await js.InvokeVoidAsync("toledoMessageStore.storeMessages", msgs);
-    }
-
     public async Task<int> GetMessageCountAsync(string conversationId)
     {
         return await js.InvokeAsync<int>("toledoMessageStore.getMessageCount", conversationId);
@@ -42,23 +36,12 @@ public sealed class MessageStoreService(IJSRuntime js)
         await js.InvokeVoidAsync("toledoMessageStore.updateMessageStatus", messageId, status);
     }
 
-    // ReSharper disable  UnusedMember.Global
     public async Task DeleteConversationMessagesAsync(string conversationId, DateTimeOffset? fromTimestamp = null)
     {
         if (fromTimestamp.HasValue)
             await js.InvokeVoidAsync("toledoMessageStore.deleteConversationMessages", conversationId, fromTimestamp.Value.ToString("O"));
         else
             await js.InvokeVoidAsync("toledoMessageStore.deleteConversationMessages", conversationId);
-    }
-
-    public async Task SetMetaAsync(string key, string value)
-    {
-        await js.InvokeVoidAsync("toledoMessageStore.setMeta", key, value);
-    }
-
-    public async Task<string?> GetMetaAsync(string key)
-    {
-        return await js.InvokeAsync<string?>("toledoMessageStore.getMeta", key);
     }
 
     public async Task ClearAllAsync()
@@ -80,6 +63,8 @@ public sealed class StoredMessage
     public string? MediaDataBase64 { get; set; }
     public string? MimeType { get; set; }
     public int Status { get; set; }
+
+    // ReSharper disable once UnusedMember.Global
     public string? SenderDisplayName { get; set; }
     public string? ReplyToMessageId { get; set; }
     public string? ReplyToText { get; set; }

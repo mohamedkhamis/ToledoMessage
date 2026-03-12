@@ -115,10 +115,14 @@
                         }
                     </button>
                     <div class="audio-wave-track">
-                        @for (var i = 0; i < 30; i++)
+                        @{
+                            var waveData = AudioWaveform is { Length: > 0 } ? AudioWaveform : FallbackWaveHeights;
+                            var totalBars = Math.Min(waveData.Length, 64);
+                        }
+                        @for (var i = 0; i < totalBars; i++)
                         {
-                            var h = AudioWaveHeights[i % AudioWaveHeights.Length];
-                            var pct = i / 30.0;
+                            var h = Math.Clamp(waveData[i], 2, 28);
+                            var pct = i / (double)totalBars;
                             var played = _audioDuration > 0 && pct <= (_audioCurrentTime / _audioDuration);
                             <span class="aw-bar @(played ? "played" : "")" style="height:@(h)px"></span>
                         }
@@ -138,43 +142,18 @@
         {
             if (!string.IsNullOrEmpty(MediaDataUrl))
             {
-                @if (IsPdf)
-                {
-                    <div class="message-pdf-preview">
-                        <div class="pdf-preview-frame-wrapper">
-                            <iframe src="@(MediaDataUrl + "#toolbar=0&navpanes=0&scrollbar=0&view=FitH")"
-                                    class="pdf-preview-frame"
-                                    title="@(FileName ?? "PDF preview")"
-                                    loading="lazy">
-                            </iframe>
-                            <div class="pdf-preview-overlay" @onclick="() => OnPdfClick.InvokeAsync(MediaDataUrl)"></div>
-                        </div>
-                        <div class="message-file-card pdf-card">
-                            <div class="message-file-icon">📄</div>
-                            <div class="message-file-info">
-                                <span class="message-file-name">@(FileName ?? "Document.pdf")</span>
-                            </div>
-                            <a href="@MediaDataUrl" download="@(FileName ?? "document.pdf")"
-                               class="message-file-download-btn" aria-label="Download @(FileName ?? "file")"
-                               @onclick:stopPropagation="true">
-                                &#8595;
-                            </a>
-                        </div>
+                <div class="message-file-card @(IsPdf ? "pdf-card" : "")">
+                    <div class="message-file-icon @(IsPdf ? "pdf-icon" : "")">@GetFileIconForMimeType(MimeType)</div>
+                    <div class="message-file-info">
+                        <span class="message-file-name">@(FileName ?? "File")</span>
+                        <span class="message-file-type">@GetFileTypeLabel(MimeType, FileName)</span>
                     </div>
-                }
-                else
-                {
-                    <div class="message-file-card">
-                        <div class="message-file-icon">@GetFileIconForMimeType(MimeType)</div>
-                        <div class="message-file-info">
-                            <span class="message-file-name">@(FileName ?? "File")</span>
-                            <a href="@MediaDataUrl" download="@(FileName ?? "file")"
-                               class="message-file-download" aria-label="Download @(FileName ?? "file")">
-                                &#8595; @Loc["Download"]
-                            </a>
-                        </div>
-                    </div>
-                }
+                    <a href="@MediaDataUrl" download="@(FileName ?? "file")"
+                       class="message-file-download-btn" aria-label="Download @(FileName ?? "file")"
+                       @onclick:stopPropagation="true">
+                        &#8595;
+                    </a>
+                </div>
             }
             else
             {
@@ -246,7 +225,7 @@
     private double _audioCurrentTime;
     private double _audioDuration;
     private ElementReference _audioElementRef;
-    private static readonly int[] AudioWaveHeights = [4, 8, 14, 10, 18, 6, 12, 20, 8, 16, 10, 22, 6, 14, 18, 8, 12, 20, 10, 16, 6, 14, 22, 8, 18, 12];
+    private static readonly int[] FallbackWaveHeights = [4, 8, 14, 10, 18, 6, 12, 20, 8, 16, 10, 22, 6, 14, 18, 8, 12, 20, 10, 16, 6, 14, 22, 8, 18, 12, 4, 8, 14, 10];
 
     private async Task ToggleAudioPlayback()
     {
@@ -327,6 +306,33 @@
                         m.StartsWith("application/gzip") => "📦",
             var m when m.StartsWith("text/") => "📃",
             _ => "📎"
+        };
+    }
+
+    private static string GetFileTypeLabel(string? mimeType, string? fileName)
+    {
+        var ext = "";
+        if (!string.IsNullOrEmpty(fileName))
+        {
+            var dotIndex = fileName.LastIndexOf('.');
+            if (dotIndex >= 0) ext = fileName[(dotIndex + 1)..].ToUpperInvariant();
+        }
+
+        if (!string.IsNullOrEmpty(ext))
+            return ext;
+
+        if (string.IsNullOrEmpty(mimeType))
+            return "FILE";
+
+        return mimeType.ToLowerInvariant() switch
+        {
+            var m when m.Contains("pdf") => "PDF",
+            var m when m.Contains("word") => "DOC",
+            var m when m.Contains("excel") || m.Contains("spreadsheet") => "XLS",
+            var m when m.Contains("powerpoint") || m.Contains("presentation") => "PPT",
+            var m when m.Contains("zip") || m.Contains("rar") || m.Contains("7z") || m.Contains("tar") || m.Contains("gzip") => "ZIP",
+            var m when m.StartsWith("text/") => "TXT",
+            _ => "FILE"
         };
     }
 
@@ -412,7 +418,7 @@
     public bool IsSearchHighlight { get; set; }
 
     [Parameter]
-    public EventCallback<string> OnPdfClick { get; set; }
+    public int[]? AudioWaveform { get; set; }
 
     private bool IsPdf => MimeType?.StartsWith("application/pdf", StringComparison.OrdinalIgnoreCase) == true
                           || FileName?.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) == true;

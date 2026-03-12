@@ -13,21 +13,16 @@ namespace ToledoMessage.Client.Services;
 /// ensuring data survives page navigations and refreshes.
 /// An in-memory cache avoids repeated JS interop calls for frequently accessed keys.
 /// </summary>
-public class LocalStorageService
+public class LocalStorageService(IJSRuntime js)
 {
-    private readonly IJSRuntime _js;
     private readonly Dictionary<string, byte[]> _cache = new();
     private byte[]? _encryptionKey;
-
-    public LocalStorageService(IJSRuntime js)
-    {
-        _js = js;
-    }
 
     /// <summary>
     /// Derives a 32-byte AES key from the given password and enables
     /// encryption-at-rest for all subsequent store/get operations.
     /// </summary>
+    // ReSharper disable once UnusedMember.Global
     public void InitializeEncryption(string password)
     {
         var passwordBytes = Encoding.UTF8.GetBytes(password);
@@ -37,14 +32,13 @@ public class LocalStorageService
         sha256.BlockUpdate(passwordBytes, 0, passwordBytes.Length);
         sha256.DoFinal(ikm, 0);
 
-        var info = Encoding.UTF8.GetBytes("ToledoMessage-StorageEncryption-v1");
+        var info = "ToledoMessage-StorageEncryption-v1"u8.ToArray();
 
         _encryptionKey = HybridKeyDerivation.DeriveKey(ikm, info, 32);
     }
 
     public async Task StoreAsync(string key, byte[] value)
     {
-
         byte[] toStore;
         if (_encryptionKey is not null)
         {
@@ -64,7 +58,7 @@ public class LocalStorageService
 
         _cache[key] = toStore;
         var base64 = Convert.ToBase64String(toStore);
-        await _js.InvokeVoidAsync("toledoStorage.setItem", key, base64);
+        await js.InvokeVoidAsync("toledoStorage.setItem", key, base64);
     }
 
     public async Task<byte[]?> GetAsync(string key)
@@ -80,7 +74,7 @@ public class LocalStorageService
         }
 
         // Fall back to browser localStorage
-        var base64 = await _js.InvokeAsync<string?>("toledoStorage.getItem", key);
+        var base64 = await js.InvokeAsync<string?>("toledoStorage.getItem", key);
         if (base64 is null)
             return null;
 
@@ -101,7 +95,7 @@ public class LocalStorageService
     public async Task DeleteAsync(string key)
     {
         _cache.Remove(key);
-        await _js.InvokeVoidAsync("toledoStorage.removeItem", key);
+        await js.InvokeVoidAsync("toledoStorage.removeItem", key);
     }
 
     public async Task<bool> ContainsKeyAsync(string key)
@@ -109,6 +103,6 @@ public class LocalStorageService
         if (_cache.ContainsKey(key))
             return true;
 
-        return await _js.InvokeAsync<bool>("toledoStorage.containsKey", key);
+        return await js.InvokeAsync<bool>("toledoStorage.containsKey", key);
     }
 }

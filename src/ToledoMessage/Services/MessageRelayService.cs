@@ -301,17 +301,6 @@ public class MessageRelayService(ApplicationDbContext db, IHubContext<ChatHub> h
     }
 
     /// <summary>
-    /// Get unread counts for all conversations a user participates in.
-    /// Returns a dictionary of conversationId → unreadCount. O(1) per conversation via pointers.
-    /// </summary>
-    public async Task<Dictionary<long, int>> GetAllUnreadCounts(long userId)
-    {
-        return await db.ConversationReadPointers
-            .Where(p => p.UserId == userId && p.UnreadCount > 0)
-            .ToDictionaryAsync(static p => p.ConversationId, static p => p.UnreadCount);
-    }
-
-    /// <summary>
     /// Increment the unread count for all participants (except sender) when a new message is sent.
     /// Creates pointers for participants who don't have one yet.
     /// </summary>

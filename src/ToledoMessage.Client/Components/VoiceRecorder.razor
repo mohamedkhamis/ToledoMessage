@@ -17,12 +17,13 @@
         @* FR-028: Show remaining time when under 30 seconds *@
         @if (RemainingSeconds is <= 30 and > 0)
         {
-            <span class="vr-time-warning">(@RemainingSeconds}s left)</span>
+            <span class="vr-time-warning">(@(RemainingSeconds)s left)</span>
         }
         <div class="vr-wave-live">
-            @for (var i = 0; i < 24; i++)
+            @for (var i = 0; i < _liveBarCount; i++)
             {
-                <span class="vr-bar-live" style="animation-delay: @(i * 0.05)s"></span>
+                var height = GetLiveBarHeight(i);
+                <span class="vr-bar-live" style="height: @(height)px"></span>
             }
         </div>
         <button class="vr-btn vr-btn-stop" @onclick="StopRecording" title="Stop recording" aria-label="Stop recording">
@@ -61,10 +62,13 @@ else if (_phase == Phase.Preview)
                    step="0.1" value="@_previewCurrentTime.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
                    @oninput="OnSeek" aria-label="Seek" />
             <div class="vr-wave-static">
-                @for (var i = 0; i < 40; i++)
+                @{
+                    var barCount = _waveformSamples?.Length ?? 40;
+                }
+                @for (var i = 0; i < barCount; i++)
                 {
-                    var height = GetWaveBarHeight(i);
-                    var played = _previewDuration > 0 && (i / 40.0) <= (_previewCurrentTime / _previewDuration);
+                    var height = GetPreviewBarHeight(i);
+                    var played = _previewDuration > 0 && (i / (double)barCount) <= (_previewCurrentTime / _previewDuration);
                     <span class="vr-bar-static @(played ? "played" : "")" style="height: @(height)px"></span>
                 }
             </div>
@@ -100,12 +104,29 @@ else if (_phase == Phase.Preview)
     private ElementReference _audioRef;
     private bool _previewAudioInitialized;
 
-    // Pseudo-random waveform heights (seeded for consistency)
-    private static readonly int[] WaveHeights = [4, 8, 14, 10, 18, 6, 12, 20, 8, 16, 10, 22, 6, 14, 18, 8, 12, 20, 10, 16, 6, 14, 22, 8, 18, 12, 10, 20, 6, 16, 14, 8, 18, 22, 10, 12, 20, 6, 16, 14];
+    // Real waveform data
+    private int[]? _waveformSamples; // From JS analyzeBlob after recording stops
+    private const int _liveBarCount = 24;
+    private int _currentAmplitude = 2; // Current live amplitude from analyser
+    private int _tickCount;
+    private bool _timerBusy; // Prevent reentrant timer callbacks
 
-    private static int GetWaveBarHeight(int index)
+    private int GetLiveBarHeight(int index)
     {
-        return WaveHeights[index % WaveHeights.Length];
+        // Show current amplitude with slight variation per bar for visual spread
+        var variation = (index % 3 == 0) ? -2 : (index % 3 == 1) ? 1 : 0;
+        return Math.Clamp(_currentAmplitude + variation, 2, 28);
+    }
+
+    private int GetPreviewBarHeight(int index)
+    {
+        if (_waveformSamples is { Length: > 0 })
+        {
+            var barCount = _waveformSamples.Length;
+            var sampleIndex = Math.Clamp((int)((double)index / barCount * _waveformSamples.Length), 0, _waveformSamples.Length - 1);
+            return Math.Clamp(_waveformSamples[sampleIndex], 2, 28);
+        }
+        return 4; // minimal fallback
     }
 
     [Parameter]
@@ -119,23 +140,44 @@ else if (_phase == Phase.Preview)
         _objRef = DotNetObjectReference.Create(this);
         _elapsedSeconds = 0;
 
-        _timer = new System.Timers.Timer(1000);
+        _timer = new System.Timers.Timer(200); // 200ms — 5fps is smooth enough for waveform
         _timer.Elapsed += async (_, _) =>
         {
-            if (_disposed) return;
-            _elapsedSeconds++;
-
-            // FR-028: Auto-stop at 5-minute limit
-            if (_elapsedSeconds >= MaxRecordingSeconds)
+            if (_disposed || _timerBusy) return;
+            _timerBusy = true;
+            try
             {
-                _timer?.Stop();
-                try { await StopRecording(); }
-                catch { /* ignored */ }
-                return;
-            }
+                _tickCount++;
 
-            try { await InvokeAsync(StateHasChanged); }
-            catch { /* component disposed */ }
+                // Update elapsed seconds every 5 ticks (1 second at 200ms interval)
+                if (_tickCount % 5 == 0)
+                {
+                    _elapsedSeconds++;
+
+                    // FR-028: Auto-stop at 5-minute limit
+                    if (_elapsedSeconds >= MaxRecordingSeconds)
+                    {
+                        _timer?.Stop();
+                        try { await StopRecording(); }
+                        catch { /* ignored */ }
+                        return;
+                    }
+                }
+
+                // Capture live amplitude from JS
+                try
+                {
+                    _currentAmplitude = await Js.InvokeAsync<int>("voiceRecorder.getLiveAmplitude");
+                }
+                catch { /* ignored */ }
+
+                try { await InvokeAsync(StateHasChanged); }
+                catch { /* component disposed */ }
+            }
+            finally
+            {
+                _timerBusy = false;
+            }
         };
 
         try
@@ -155,6 +197,14 @@ else if (_phase == Phase.Preview)
         _timer?.Stop();
         _timer?.Dispose();
         _timer = null;
+
+        // Get analyzed waveform samples from JS
+        try
+        {
+            _waveformSamples = await Js.InvokeAsync<int[]>("voiceRecorder.getWaveformSamples");
+        }
+        catch { /* fallback to null */ }
+
         _phase = Phase.Preview;
         await InvokeAsync(StateHasChanged);
     }
@@ -257,13 +307,22 @@ else if (_phase == Phase.Preview)
         if (bytes is { Length: > 0 })
         {
             var mimeType = await Js.InvokeAsync<string>("voiceRecorder.getRecordedMimeType");
+
+            // Get waveform samples to pass along with the recording
+            int[]? waveform = null;
+            try
+            {
+                waveform = await Js.InvokeAsync<int[]>("voiceRecorder.getWaveformSamples");
+            }
+            catch { /* ignored */ }
+
             try { await Js.InvokeVoidAsync("voiceRecorder.revokePreview"); }
             catch { /* cleanup best-effort */ }
-            await OnRecorded.InvokeAsync(new VoiceRecordingResult(bytes, mimeType));
+            await OnRecorded.InvokeAsync(new VoiceRecordingResult(bytes, mimeType, waveform));
         }
     }
 
-    public sealed record VoiceRecordingResult(byte[] AudioData, string MimeType);
+    public sealed record VoiceRecordingResult(byte[] AudioData, string MimeType, int[]? Waveform);
 
     private async Task Delete()
     {

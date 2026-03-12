@@ -209,7 +209,6 @@
                                IsSearchHighlight="IsSearchHighlighted(msg.MessageId)"
                                OnImageClick="HandleImageClick"
                                OnVideoClick="HandleVideoClick"
-                               OnPdfClick="HandlePdfClick"
                                OnReply="() => SetReplyTo(msg)"
                                OnContextMenu="(pos) => ShowContextMenu(pos.X, pos.Y, msg)"
                                ReplyToMessageId="msg.ReplyToMessageId"
@@ -218,6 +217,7 @@
                                ReplyToMediaDataUrl="@msg.ReplyToMediaDataUrl"
                                ReplyToThumbnailDataUrl="@msg.ReplyToThumbnailDataUrl"
                                ReplyToContentType="msg.ReplyToContentType"
+                               AudioWaveform="msg.Waveform"
                                OnReplyQuoteClick="ScrollToMessage"
                                ReactionBadges="GetReactionBadges(msg.MessageId)"
                                OnReactionToggle="(emoji) => ToggleReaction(msg.MessageId, emoji)" />
@@ -1163,6 +1163,7 @@
             MediaBytes = hasMedia ? input.MediaBytes : null,
             MimeType = hasMedia ? input.MimeType : null,
             Status = Shared.Enums.DeliveryStatus.Sending,
+            Waveform = input.Waveform,
             ReplyToMessageId = _replyingTo?.MessageId,
             ReplyToSenderName = _replyingTo is not null ? (_replyingTo.IsMine ? "You" : GetSenderDisplayName(_replyingTo)) : null,
             ReplyToText = _replyingTo is not null ? FormatReplyText(_replyingTo) : null,
@@ -1366,11 +1367,12 @@
         // Create MediaPayload with all metadata bundled inside
         var mediaPayload = new MediaPayload
         {
-            FileName = input.FileName,
+            FileName = MediaPayload.SanitizeFileName(input.FileName),
             MimeType = input.MimeType ?? "application/octet-stream",
             Caption = input.Text,
             Thumbnail = thumbnailBase64,
-            Data = Convert.ToBase64String(input.MediaBytes!)
+            Data = Convert.ToBase64String(input.MediaBytes!),
+            Waveform = input.Waveform
         };
 
         // Serialize payload to bytes
@@ -1495,6 +1497,18 @@
                 }
             }
 
+            // For audio: use waveform from payload, or analyze the audio bytes
+            int[]? waveform = mediaPayload.Waveform;
+            if (waveform is null && envelope.ContentType == ContentType.Audio)
+            {
+                try
+                {
+                    waveform = await Js.InvokeAsync<int[]?>("mediaHelpers.analyzeAudioWaveform",
+                        mediaData, mimeType, 64);
+                }
+                catch { /* fallback to null — MessageBubble will use static bars */ }
+            }
+
             return new ChatMessage
             {
                 MessageId = envelope.MessageId,
@@ -1503,12 +1517,13 @@
                 Timestamp = envelope.ServerTimestamp,
                 IsMine = isMine,
                 ContentType = envelope.ContentType,
-                FileName = mediaPayload.FileName,
+                FileName = MediaPayload.SanitizeFileName(mediaPayload.FileName),
                 MediaDataUrl = blobUrl,
                 ThumbnailDataUrl = thumbnailBlobUrl,
                 MediaBytes = mediaData, // Keep for IndexedDB persistence - will be nulled after persist
                 MimeType = mimeType,
                 Status = Shared.Enums.DeliveryStatus.Delivered,
+                Waveform = waveform,
                 ReplyToMessageId = envelope.ReplyToMessageId,
                 ReplyToText = replyToText,
                 ReplyToSenderName = replyToSenderName,
@@ -1564,11 +1579,12 @@
                             Timestamp = envelope.ServerTimestamp,
                             IsMine = isMine,
                             ContentType = inferredContentType,
-                            FileName = possiblePayload.FileName,
+                            FileName = MediaPayload.SanitizeFileName(possiblePayload.FileName),
                             MediaDataUrl = blobUrl,
                             ThumbnailDataUrl = thumbnailBlobUrl,
                             MediaBytes = mediaData,
                             MimeType = mimeType,
+                            Waveform = possiblePayload.Waveform,
                             Status = Shared.Enums.DeliveryStatus.Delivered,
                             ReplyToMessageId = envelope.ReplyToMessageId,
                             ReplyToText = replyToText,
@@ -2232,12 +2248,6 @@
         _videoLightboxUrl = null;
     }
 
-    private async Task HandlePdfClick(string pdfDataUrl)
-    {
-        // Open PDF in a new browser tab
-        await Js.InvokeVoidAsync("open", pdfDataUrl, "_blank");
-    }
-
     // ─── Search methods ───
 
     private void ToggleSearch()
@@ -2431,7 +2441,7 @@
                     ContentType = contentType,
                     FileName = fileName,
                     MediaDataUrl = await CreateMediaBlobUrl(mimeType, mediaBytes),
-                    MediaBytes = null, // Release bytes after blob URL created
+                    MediaBytes = mediaBytes, // Keep until persisted
                     MimeType = mimeType,
                     Status = Shared.Enums.DeliveryStatus.Sending,
                     IsForwarded = true
@@ -2440,6 +2450,7 @@
                 StateHasChanged();
                 await SendMediaToRecipients(input, tempMessage);
                 await PersistMessageAsync(tempMessage);
+                tempMessage.MediaBytes = null; // Release after persist
                 StateHasChanged();
                 return;
             }
@@ -2488,6 +2499,7 @@
         SignalR.OnReactionAdded -= HandleReactionAdded;
         SignalR.OnReactionRemoved -= HandleReactionRemoved;
         SignalR.OnMessageDeleted -= HandleMessageDeleted;
+        SignalR.OnReconnected -= HandleReconnected;
         MessageExpiry.OnMessageExpired -= HandleMessageExpired;
 
         _typingTimer?.Stop();
@@ -2573,5 +2585,6 @@
         public string? ReplyToThumbnailDataUrl { get; init; }
         public ContentType ReplyToContentType { get; init; } = ContentType.Text;
         public bool IsForwarded { get; init; }
+        public int[]? Waveform { get; set; }
     }
 }

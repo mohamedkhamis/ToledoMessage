@@ -20,8 +20,8 @@ public static class ProtocolConstants
     public const int AesNonceSize = 12; // GCM nonce
     public const int AesTagSize = 16; // GCM tag
 
-    // Hybrid signature = 4-byte length prefix + Ed25519 signature + ML-DSA-65 signature
-    public const int HybridSignatureSize = 4 + Ed25519SignatureSize + MlDsa65SignatureSize;
+    // Hybrid signature v1 = 1-byte version + 4-byte length prefix + Ed25519 signature + ML-DSA-65 signature
+    public const int HybridSignatureSize = 1 + 4 + Ed25519SignatureSize + MlDsa65SignatureSize;
 
     // Pre-key management
     public const int OneTimePreKeyBatchSize = 100;

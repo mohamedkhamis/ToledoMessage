@@ -25,6 +25,9 @@ public sealed record MediaPayload
     [JsonPropertyName("d")]
     public string Data { get; init; } = "";
 
+    [JsonPropertyName("w")]
+    public int[]? Waveform { get; init; }
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,

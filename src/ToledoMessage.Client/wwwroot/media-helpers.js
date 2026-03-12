@@ -228,20 +228,6 @@ window.mediaHelpers = {
         return lastVisibleId;
     },
 
-    // Get current scrollHeight (used to maintain scroll position after prepending messages)
-    getScrollHeight: function (selector) {
-        var el = document.querySelector(selector);
-        return el ? el.scrollHeight : 0;
-    },
-
-    // Adjust scrollTop after prepending content to maintain visual position
-    adjustScrollAfterPrepend: function (selector, previousScrollHeight) {
-        var el = document.querySelector(selector);
-        if (el) {
-            el.scrollTop = el.scrollHeight - previousScrollHeight;
-        }
-    },
-
     // Scroll to a specific element by data attribute
     scrollToElement: function (selector) {
         var el = document.querySelector(selector);
@@ -262,15 +248,30 @@ window.mediaHelpers = {
     },
 
     // Audio playback helpers (replaces eval() calls)
+    _currentlyPlayingId: null,
 
     playAudio: function (messageId) {
+        // Pause any currently playing audio first
+        if (this._currentlyPlayingId && this._currentlyPlayingId !== messageId) {
+            var prev = document.querySelector('[data-msg-id="' + this._currentlyPlayingId + '"] audio');
+            if (prev) {
+                prev.pause();
+                prev.currentTime = 0;
+                // Dispatch a custom event so Blazor can update the old bubble's state
+                prev.dispatchEvent(new Event('ended'));
+            }
+        }
         var audio = document.querySelector('[data-msg-id="' + messageId + '"] audio');
-        if (audio) return audio.play();
+        if (audio) {
+            this._currentlyPlayingId = messageId;
+            return audio.play();
+        }
         return false;
     },
     pauseAudio: function (messageId) {
         var audio = document.querySelector('[data-msg-id="' + messageId + '"] audio');
         if (audio) audio.pause();
+        if (this._currentlyPlayingId === messageId) this._currentlyPlayingId = null;
     },
     getAudioCurrentTime: function (messageId) {
         var audio = document.querySelector('[data-msg-id="' + messageId + '"] audio');
@@ -281,26 +282,53 @@ window.mediaHelpers = {
         return (audio && isFinite(audio.duration)) ? audio.duration : 0;
     },
 
-    // Long press registration
-    registerLongPress: function (element, dotNetRef, methodName, delay) {
-        if (!element) return;
-        var timer = null;
-        var triggered = false;
-        element.addEventListener('pointerdown', function (e) {
-            triggered = false;
-            timer = setTimeout(function () {
-                triggered = true;
-                dotNetRef.invokeMethodAsync(methodName, e.clientX, e.clientY);
-            }, delay || 500);
-        });
-        element.addEventListener('pointerup', function () { clearTimeout(timer); });
-        element.addEventListener('pointercancel', function () { clearTimeout(timer); });
-        element.addEventListener('pointermove', function (e) {
-            if (timer && (Math.abs(e.movementX) > 5 || Math.abs(e.movementY) > 5)) clearTimeout(timer);
-        });
-        element.addEventListener('contextmenu', function (e) {
-            if (triggered) e.preventDefault();
-        });
+    // Analyze audio bytes and return waveform samples (array of ints, 0-28 range)
+    // byteArray may be a Uint8Array (from JS) or a base64 string (from Blazor byte[] interop)
+    analyzeAudioWaveform: async function (byteArray, mimeType, sampleCount) {
+        sampleCount = sampleCount || 64;
+        var data;
+        if (typeof byteArray === 'string') {
+            // Blazor sends byte[] as base64 string
+            var binary = atob(byteArray);
+            var bytes = new Uint8Array(binary.length);
+            for (var b = 0; b < binary.length; b++) bytes[b] = binary.charCodeAt(b);
+            data = bytes;
+        } else {
+            data = new Uint8Array(byteArray);
+        }
+        var blob = new Blob([data], { type: mimeType || 'audio/webm' });
+        var arrayBuffer = await blob.arrayBuffer();
+        var ctx = new (window.AudioContext || window.webkitAudioContext)();
+        try {
+            var audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+            var rawData = audioBuffer.getChannelData(0);
+            var actualSamples = Math.min(sampleCount, rawData.length);
+            var blockSize = Math.max(1, Math.floor(rawData.length / actualSamples));
+            var samples = [];
+            for (var i = 0; i < actualSamples; i++) {
+                var start = i * blockSize;
+                var count = Math.min(blockSize, rawData.length - start);
+                var sum = 0;
+                for (var j = 0; j < count; j++) {
+                    sum += Math.abs(rawData[start + j]);
+                }
+                samples.push(count > 0 ? sum / count : 0);
+            }
+            var max = 0;
+            for (var k = 0; k < samples.length; k++) {
+                if (samples[k] > max) max = samples[k];
+            }
+            if (max === 0) max = 1;
+            var result = [];
+            for (var m = 0; m < samples.length; m++) {
+                result.push(Math.max(2, Math.round((samples[m] / max) * 28)));
+            }
+            ctx.close();
+            return result;
+        } catch (e) {
+            try { ctx.close(); } catch (ex) { /* ignored */ }
+            return null;
+        }
     },
 
     // Compress an image using canvas API
@@ -310,6 +338,7 @@ window.mediaHelpers = {
                 var blob = new Blob([new Uint8Array(byteArray)], { type: mimeType });
                 var img = new Image();
                 img.onload = function () {
+                    URL.revokeObjectURL(img.src);
                     var width = img.width;
                     var height = img.height;
 
@@ -361,6 +390,7 @@ window.mediaHelpers = {
                 var blob = new Blob([new Uint8Array(byteArray)], { type: mimeType });
                 var img = new Image();
                 img.onload = function () {
+                    URL.revokeObjectURL(img.src);
                     var width = img.width;
                     var height = img.height;
 
@@ -496,46 +526,6 @@ window.mediaHelpers = {
                 reject(e);
             }
         });
-    },
-
-    // Get video duration in seconds from byte array
-    getVideoDuration: async function (byteArray, mimeType) {
-        return new Promise(function (resolve) {
-            try {
-                var blob = new Blob([new Uint8Array(byteArray)], { type: mimeType });
-                var blobUrl = URL.createObjectURL(blob);
-                var video = document.createElement('video');
-                video.preload = 'metadata';
-                video.muted = true;
-                video.onloadedmetadata = function () {
-                    var dur = isFinite(video.duration) ? video.duration : 0;
-                    URL.revokeObjectURL(blobUrl);
-                    resolve(dur);
-                };
-                video.onerror = function () {
-                    URL.revokeObjectURL(blobUrl);
-                    resolve(0);
-                };
-                setTimeout(function () { URL.revokeObjectURL(blobUrl); resolve(0); }, 5000);
-                video.src = blobUrl;
-            } catch (e) { resolve(0); }
-        });
-    },
-
-    // Download a file from byte array
-    downloadFile: function (byteArray, fileName, mimeType) {
-        try {
-            var blob = new Blob([new Uint8Array(byteArray)], { type: mimeType });
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = fileName || 'download';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        } catch (e) {
-            console.error('Download failed:', e);
-        }
     }
+
 };

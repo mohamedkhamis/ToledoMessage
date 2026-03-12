@@ -377,7 +377,7 @@
                     sendAsHd = msg.SendAsHd,
                     replyToMessageId = msg.ReplyToMessageId
                 };
-                await Js.InvokeVoidAsync("storage.addToOfflineQueue", entry);
+                await Js.InvokeVoidAsync("toledoMessageStore.addToOfflineQueue", entry);
                 // Notify parent that message was queued
                 await OnQueuedOffline.InvokeAsync();
             }
@@ -654,7 +654,8 @@
             FileName = $"voice_{DateTimeOffset.UtcNow:yyyyMMdd_HHmmss}.{ext}",
             MimeType = result.MimeType,
             ContentType = ContentType.Audio,
-            ReplyToMessageId = ReplyContext?.MessageId
+            ReplyToMessageId = ReplyContext?.MessageId,
+            Waveform = result.Waveform
         };
 
         await OnSend.InvokeAsync(msg);
@@ -693,6 +694,7 @@
         public bool SendAsHd { get; set; }
         public bool HasMedia => MediaBytes is not null;
         public long? ReplyToMessageId { get; set; }
+        public int[]? Waveform { get; set; }
     }
 
     public async ValueTask DisposeAsync()

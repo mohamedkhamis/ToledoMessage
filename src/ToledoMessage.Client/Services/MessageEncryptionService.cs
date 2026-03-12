@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using ToledoMessage.Crypto.Protocol;
 
@@ -40,16 +39,6 @@ public class MessageEncryptionService
 
         var ciphertextWithHeader = PackPreKeyMessage(preKeyHeader, header, ciphertext);
         return (ciphertextWithHeader, session.GetState());
-    }
-
-    /// <summary>
-    /// Decrypts a NormalMessage blob using the provided Double Ratchet session.
-    /// </summary>
-    public (string plaintext, RatchetState updatedState) DecryptMessage(
-        DoubleRatchet session, byte[] ciphertextWithHeader)
-    {
-        var (bytes, updatedState) = DecryptToBytes(session, ciphertextWithHeader);
-        return (Encoding.UTF8.GetString(bytes), updatedState);
     }
 
     /// <summary>
@@ -95,7 +84,7 @@ public class MessageEncryptionService
 
     /// <summary>
     /// Returns the ratchet-encrypted portion of a PreKeyMessage (strips the PreKeyHeader prefix).
-    /// This is then in NormalMessage format and can be decrypted with <see cref="DecryptMessage"/>.
+    /// This is then in NormalMessage format and can be decrypted with <see cref="DecryptToBytes"/>.
     /// </summary>
     public static byte[] StripPreKeyHeader(byte[] ciphertextWithHeader)
     {

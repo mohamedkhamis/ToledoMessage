@@ -1005,6 +1005,7 @@ label {
 .message-bubble:has(.message-video) {
     padding: 0;
     max-width: 80%;
+    min-width: 280px;
 }
 /* Clip media to bubble's rounded corners without hiding the reply button */
 .message-bubble:has(.message-image) > .message-media,
@@ -1013,13 +1014,12 @@ label {
     border-radius: inherit;
 }
 
-/* Image: natural size capped at 400px tall, full bubble width */
+/* Image: fill bubble width, capped height for readability */
 .message-image {
     display: block;
-    width: auto;
-    max-width: 100%;
+    width: 100%;
     max-height: 400px;
-    min-width: 180px;
+    min-width: 220px;
     object-fit: contain;
     background: rgba(0, 0, 0, 0.04);
 }
@@ -1192,70 +1192,51 @@ label {
     min-width: 28px;
     text-align: right;
 }
+/* File / Document card (WhatsApp-style) */
 .message-file-card {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 4px 6px;
-    min-width: 200px;
+    gap: 10px;
+    padding: 10px 12px;
+    min-width: 220px;
+    max-width: 320px;
+    background: var(--bg-secondary, rgba(0,0,0,0.04));
+    border-radius: 8px;
+    margin-bottom: 4px;
 }
 .message-file-icon {
-    font-size: 2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    font-size: 1.5em;
     flex-shrink: 0;
+    border-radius: 8px;
+    background: var(--bg-primary, rgba(0,0,0,0.03));
+}
+.message-file-icon.pdf-icon {
+    background: #e74c3c18;
 }
 .message-file-info {
     flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
 }
 .message-file-name {
-    font-size: 0.88em;
+    font-size: 0.85em;
     font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.message-file-download {
-    font-size: 0.8em;
-    color: var(--accent);
-    text-decoration: none;
-    font-weight: 500;
-}
-.message-file-download:hover {
-    text-decoration: underline;
-}
-
-/* PDF Preview */
-.message-pdf-preview {
-    width: 260px;
-    border-radius: 8px;
-    overflow: hidden;
-}
-.pdf-preview-frame-wrapper {
-    position: relative;
-    width: 100%;
-    height: 200px;
-    background: var(--bg-secondary);
-    border-radius: 8px 8px 0 0;
-    overflow: hidden;
-}
-.pdf-preview-frame {
-    width: 100%;
-    height: 100%;
-    border: none;
-    pointer-events: none;
-}
-.pdf-preview-overlay {
-    position: absolute;
-    inset: 0;
-    cursor: pointer;
-}
-.message-file-card.pdf-card {
-    padding: 8px 10px;
-    min-width: unset;
-    border-top: 1px solid var(--border-color, rgba(0,0,0,0.08));
+.message-file-type {
+    font-size: 0.72em;
+    color: var(--text-secondary, #888);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 .message-file-download-btn {
     display: flex;
@@ -2790,7 +2771,7 @@ h1:focus { outline: none; }
         max-height: 80vh;
     }
     .message-image {
-        max-width: 100%;
+        width: 100%;
         max-height: 280px;
         height: auto;
     }
@@ -3473,7 +3454,7 @@ body { font-size: var(--app-font-size); }
 .message-image-clickable {
     cursor: pointer;
     position: relative;
-    display: inline-block;
+    display: block;
 }
 
 /* ============ Emoji Picker ============ */
@@ -3928,13 +3909,9 @@ body { font-size: var(--app-font-size); }
     width: 2.5px;
     background: var(--accent);
     border-radius: 2px;
-    min-height: 3px;
+    min-height: 2px;
     opacity: 0.65;
-    animation: vr-wave 0.5s ease-in-out infinite alternate;
-}
-@keyframes vr-wave {
-    from { height: 3px; }
-    to { height: 22px; }
+    transition: height 0.08s ease-out;
 }
 
 /* --- Preview phase --- */

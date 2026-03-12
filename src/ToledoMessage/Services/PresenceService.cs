@@ -52,12 +52,4 @@ public class PresenceService
         }
     }
 
-    // ReSharper disable once UnusedMember.Global
-    public IReadOnlyCollection<long> GetOnlineUserIds()
-    {
-        lock (_lock)
-        {
-            return _userConnections.Keys.ToList().AsReadOnly();
-        }
-    }
 }

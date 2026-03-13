@@ -376,6 +376,15 @@
   <data name="ShareKeysDesc" xml:space="preserve">
     <value>Back up your identity keys (encrypted with your password) so new devices can decrypt previous conversations</value>
   </data>
+  <data name="Storage and Data" xml:space="preserve">
+    <value>Storage and Data</value>
+  </data>
+  <data name="HD Photos" xml:space="preserve">
+    <value>HD Photos</value>
+  </data>
+  <data name="HdPhotosDesc" xml:space="preserve">
+    <value>Send photos in HD quality by default. You can still change quality per photo.</value>
+  </data>
   <data name="Notifications" xml:space="preserve">
     <value>Notifications</value>
   </data>

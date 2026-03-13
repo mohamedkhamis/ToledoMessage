@@ -1,6 +1,7 @@
 @inject IJSRuntime Js
 @inject IStringLocalizer<SharedResource> Loc
 @inject SignalRService SignalR
+@inject PreferencesService Preferences
 @implements IAsyncDisposable
 
 <div class="chat-input-area">
@@ -221,6 +222,7 @@
     private bool _showEmojiPicker;
     private bool _isRecording;
     private bool _sendAsHd;
+    private bool _globalHdDefault;
     private string? _videoPreviewBlobUrl;
     private ElementReference _textareaRef;
     private int _rateLimitRemaining;
@@ -298,6 +300,13 @@
         {
             try { await Js.InvokeVoidAsync("mediaHelpers.preventEnterNewline", _textareaRef); }
             catch { /* ignored */ }
+
+            try
+            {
+                var prefs = await Preferences.GetPreferencesAsync();
+                _globalHdDefault = prefs.SendPhotoHd;
+            }
+            catch { /* fallback to false */ }
         }
     }
 
@@ -504,7 +513,7 @@
         ClearSelectedFile();
         _selectedContentType = savedContentType;
         _errorMessage = null;
-        _sendAsHd = false;
+        _sendAsHd = _globalHdDefault;
 
         var maxFileSize = ProtocolConstants.MaxMediaFileSizeBytes;
         if (file.Size > maxFileSize)
@@ -521,28 +530,32 @@
         _selectedFile = file;
         _originalFileSize = file.Size;
 
-        // Compress images by default (standard quality mode)
+        // Compress images by default (standard quality mode) unless HD is on
         if (createPreview && _selectedContentType == ContentType.Image)
         {
             // Keep original bytes for HD toggle
             _originalFileBytes = _selectedFileBytes;
 
-            try
+            // Only compress if HD mode is off (standard quality)
+            if (!_sendAsHd)
             {
-                // ReSharper disable NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
-                var mimeType = file.ContentType ?? "image/jpeg";
-                var compressed = await Js.InvokeAsync<CompressedImageResult>(
-                    "mediaHelpers.compressImage", _selectedFileBytes, mimeType, 1600, 0.8);
-
-                if (compressed.Bytes is not null && compressed.Bytes.Length > 0)
+                try
                 {
-                    _selectedFileBytes = compressed.Bytes;
+                    // ReSharper disable NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
+                    var mimeType = file.ContentType ?? "image/jpeg";
+                    var compressed = await Js.InvokeAsync<CompressedImageResult>(
+                        "mediaHelpers.compressImage", _selectedFileBytes, mimeType, 1600, 0.8);
+
+                    if (compressed.Bytes is not null && compressed.Bytes.Length > 0)
+                    {
+                        _selectedFileBytes = compressed.Bytes;
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($@"Image compression failed: {ex.Message}");
-                // Continue without compression — original bytes will be used
+                catch (Exception ex)
+                {
+                    Console.WriteLine($@"Image compression failed: {ex.Message}");
+                    // Continue without compression — original bytes will be used
+                }
             }
 
             // Create preview from the active bytes (compressed or original)

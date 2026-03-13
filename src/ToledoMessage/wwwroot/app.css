@@ -602,7 +602,7 @@ label {
     /* T012: Message slide-in animations */
 
     display: flex;
-    margin-bottom: 8px;
+    margin-bottom: 14px;
     position: relative;
 }
 .message-row.mine {
@@ -3224,9 +3224,9 @@ body { font-size: var(--app-font-size); }
 }
 
 /* ─── Message Grouping ─── */
-.message-row.group-first { margin-bottom: 1px; }
-.message-row.group-middle { margin-top: 1px; margin-bottom: 1px; }
-.message-row.group-last { margin-top: 1px; }
+.message-row.group-first { margin-bottom: 2px; }
+.message-row.group-middle { margin-top: 2px; margin-bottom: 2px; }
+.message-row.group-last { margin-top: 2px; }
 
 .message-row.group-first .message-bubble.mine,
 .message-row.group-middle .message-bubble.mine {

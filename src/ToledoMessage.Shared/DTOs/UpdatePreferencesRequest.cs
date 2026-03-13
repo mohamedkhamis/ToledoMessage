@@ -7,4 +7,5 @@ public sealed record UpdatePreferencesRequest(
     bool? NotificationsEnabled = null,
     bool? ReadReceiptsEnabled = null,
     bool? TypingIndicatorsEnabled = null,
-    bool? SharedKeysEnabled = null);
+    bool? SharedKeysEnabled = null,
+    bool? SendPhotoHd = null);

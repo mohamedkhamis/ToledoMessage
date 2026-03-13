@@ -1,4 +1,4 @@
-# ToledoMessage Development Guidelines
+﻿# ToledoMessage Development Guidelines
 
 Last updated: 2026-03-12
 
@@ -139,6 +139,25 @@ Users, Devices, OneTimePreKeys, Conversations, ConversationParticipants, Encrypt
 - `wwwroot/storage.js` — localStorage/sessionStorage/cookie helpers
 - `wwwroot/voice-recorder.js` — Browser MediaRecorder API
 - `wwwroot/media-helpers.js` — Image/file/blob utilities
+
+## PWA (Progressive Web App) Support
+
+PWA artifacts in `src/ToledoMessage/wwwroot/`:
+- `manifest.json` — Web App Manifest for installability
+- `service-worker.js` — Service Worker for offline caching
+- `offline.html` — Offline fallback page
+- `icon-192.png` — 192x192 app icon
+- `icon-512.png` — 512x512 app icon
+
+### PWA Cache Versioning
+- Bump `CACHE_VERSION` in `service-worker.js` on every deploy
+- Current format: `'toledo-vN'` where N is an incrementing integer
+- Forgetting to bump the version means users will get stale cached files
+
+### PWA Requirements
+- HTTPS required for full PWA features (except localhost for development)
+- Service worker scope is `/` (root)
+- iOS requires proprietary `<meta>` tags in addition to manifest
 
 ## CSS & Theming
 

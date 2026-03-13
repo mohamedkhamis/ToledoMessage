@@ -7,4 +7,5 @@ public sealed record UserPreferencesResponse(
     bool NotificationsEnabled,
     bool ReadReceiptsEnabled,
     bool TypingIndicatorsEnabled,
-    bool SharedKeysEnabled);
+    bool SharedKeysEnabled,
+    bool SendPhotoHd = false);

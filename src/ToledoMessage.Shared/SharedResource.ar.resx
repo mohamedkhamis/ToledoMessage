@@ -376,6 +376,15 @@
   <data name="ShareKeysDesc" xml:space="preserve">
     <value>نسخ احتياطي لمفاتيح هويّتك (مشفّرة بكلمة مرورك) حتى تتمكّن الأجهزة الجديدة من فكّ تشفير المحادثات السابقة</value>
   </data>
+  <data name="Storage and Data" xml:space="preserve">
+    <value>التخزين والبيانات</value>
+  </data>
+  <data name="HD Photos" xml:space="preserve">
+    <value>صور بجودة عالية</value>
+  </data>
+  <data name="HdPhotosDesc" xml:space="preserve">
+    <value>إرسال الصور بجودة عالية تلقائيًا. يمكنك تغيير الجودة لكل صورة على حدة.</value>
+  </data>
   <data name="Notifications" xml:space="preserve">
     <value>الإشعارات</value>
   </data>

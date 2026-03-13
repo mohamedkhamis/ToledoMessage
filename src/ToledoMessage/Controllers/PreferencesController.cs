@@ -34,12 +34,12 @@ public class PreferencesController(ApplicationDbContext db) : BaseApiController
             .FirstOrDefaultAsync(p => p.UserId == userId);
 
         if (prefs is null)
-            return Ok(new UserPreferencesResponse("default", "15", "en", true, true, true, true));
+            return Ok(new UserPreferencesResponse("default", "15", "en", true, true, true, true, false));
 
         return Ok(new UserPreferencesResponse(
             prefs.Theme, prefs.FontSize, prefs.Language,
             prefs.NotificationsEnabled, prefs.ReadReceiptsEnabled, prefs.TypingIndicatorsEnabled,
-            prefs.SharedKeysEnabled));
+            prefs.SharedKeysEnabled, prefs.SendPhotoHd));
     }
 
     [HttpPut]
@@ -104,6 +104,11 @@ public class PreferencesController(ApplicationDbContext db) : BaseApiController
             prefs.SharedKeysEnabled = request.SharedKeysEnabled.Value;
         }
 
+        if (request.SendPhotoHd.HasValue)
+        {
+            prefs.SendPhotoHd = request.SendPhotoHd.Value;
+        }
+
         prefs.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync();
@@ -111,6 +116,6 @@ public class PreferencesController(ApplicationDbContext db) : BaseApiController
         return Ok(new UserPreferencesResponse(
             prefs.Theme, prefs.FontSize, prefs.Language,
             prefs.NotificationsEnabled, prefs.ReadReceiptsEnabled, prefs.TypingIndicatorsEnabled,
-            prefs.SharedKeysEnabled));
+            prefs.SharedKeysEnabled, prefs.SendPhotoHd));
     }
 }

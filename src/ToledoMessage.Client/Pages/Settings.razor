@@ -176,6 +176,22 @@
         }
     </div>
 
+    <h3 class="section-title mt-lg">@Loc["Storage and Data"]</h3>
+
+    <div class="settings-toggles">
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <span class="toggle-label">@Loc["HD Photos"]</span>
+                <span class="toggle-desc">@Loc["HdPhotosDesc"]</span>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" checked="@_sendPhotoHd"
+                       @onchange="e => ToggleSendPhotoHd((bool)e.Value!)" />
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+    </div>
+
     <h3 class="section-title mt-lg">@Loc["Notifications"]</h3>
 
     <div class="settings-toggles">
@@ -316,6 +332,7 @@
     private bool _readReceiptsEnabled = true;
     private bool _typingIndicatorsEnabled = true;
     private bool _sharedKeysEnabled = true;
+    private bool _sendPhotoHd;
     private DateTimeOffset? _backupTimestamp;
     private bool _showBackupPasswordPrompt;
     private string _backupPassword = "";
@@ -377,6 +394,7 @@
             _readReceiptsEnabled = prefs.ReadReceiptsEnabled;
             _typingIndicatorsEnabled = prefs.TypingIndicatorsEnabled;
             _sharedKeysEnabled = prefs.SharedKeysEnabled;
+            _sendPhotoHd = prefs.SendPhotoHd;
 
             // Sync local theme TO server if different (local is source of truth)
             if (prefs.Theme != _currentTheme)
@@ -485,6 +503,19 @@
         try
         {
             await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(TypingIndicatorsEnabled: enabled));
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = string.Format(Loc["FailedToSave"], ex.Message);
+        }
+    }
+
+    private async Task ToggleSendPhotoHd(bool enabled)
+    {
+        _sendPhotoHd = enabled;
+        try
+        {
+            await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(SendPhotoHd: enabled));
         }
         catch (Exception ex)
         {

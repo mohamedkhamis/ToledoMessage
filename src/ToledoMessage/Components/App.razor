@@ -107,6 +107,22 @@
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["themes.css"]" />
     <link rel="stylesheet" href="@Assets["ToledoMessage.styles.css"]" />
+
+    <!-- PWA: Web App Manifest -->
+    @* ReSharper disable once Html.PathError *@
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- PWA: Theme color for browser chrome (Android status bar, desktop title bar) -->
+    <meta name="theme-color" content="#1976d2" />
+
+    <!-- PWA: Standalone mode meta tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Toledo Message" />
+
+    <!-- PWA: iOS touch icon (iOS ignores manifest icons) -->
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+
     <ImportMap />
     <HeadOutlet />
 </head>
@@ -145,6 +161,53 @@
         window.__blazorLoaded = true;
         var el = document.getElementById('app-loading');
         if (el) el.style.display = 'none';
+    </script>
+
+    <!-- PWA: Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(function(registration) {
+                    console.log('SW registered: ', registration.scope);
+                })
+                .catch(function(error) {
+                    console.log('SW registration failed: ', error);
+                });
+        }
+    </script>
+
+    <!-- PWA: HTTP Warning Banner (FR-015) -->
+    <script>
+        (function () {
+            var loc = window.location;
+            if (loc.protocol === 'http:' && loc.hostname !== 'localhost' && loc.hostname !== '127.0.0.1') {
+                var dismissed = false;
+                try { dismissed = localStorage.getItem('http-warning.dismissed') === '1'; } catch (e) { }
+                if (dismissed) return;
+                var culture = 'en';
+                try { culture = localStorage.getItem('app.culture') || 'en'; } catch (e) { }
+                var isAr = culture.startsWith('ar');
+                var msg = isAr
+                    ? 'أنت تستخدم اتصال HTTP غير آمن. ميزات PWA مثل التثبيت والإشعارات لن تعمل. يرجى استخدام HTTPS.'
+                    : 'You are using an insecure HTTP connection. PWA features like install and notifications will not work. Please use HTTPS.';
+                var banner = document.createElement('div');
+                banner.id = 'http-warning-banner';
+                banner.setAttribute('role', 'alert');
+                banner.setAttribute('dir', isAr ? 'rtl' : 'ltr');
+                banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:10000;padding:10px 40px 10px 16px;background:#fff3cd;border-bottom:1px solid #ffc107;color:#856404;font:14px/1.4 system-ui,-apple-system,sans-serif;text-align:center;';
+                banner.textContent = msg;
+                var btn = document.createElement('button');
+                btn.textContent = '\u00d7';
+                btn.setAttribute('aria-label', isAr ? 'إغلاق' : 'Close');
+                btn.style.cssText = 'position:absolute;top:6px;right:12px;background:none;border:none;font-size:20px;cursor:pointer;color:#856404;padding:4px;';
+                btn.onclick = function () {
+                    banner.remove();
+                    try { localStorage.setItem('http-warning.dismissed', '1'); } catch (e) { }
+                };
+                banner.appendChild(btn);
+                document.body.insertBefore(banner, document.body.firstChild);
+            }
+        })();
     </script>
 </body>
 

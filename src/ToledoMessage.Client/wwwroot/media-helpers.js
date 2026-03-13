@@ -549,11 +549,11 @@ window.mediaHelpers = {
         var self = this;
         this._pdfJsLoading = new Promise(function (resolve, reject) {
             var script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+            script.src = '/lib/pdfjs/pdf.min.js';
             script.onload = function () {
                 if (window.pdfjsLib) {
                     window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-                        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                        '/lib/pdfjs/pdf.worker.min.js';
                 }
                 self._pdfJsLoaded = true;
                 resolve();
@@ -570,7 +570,16 @@ window.mediaHelpers = {
         if (!window.pdfjsLib) return null;
 
         try {
-            var pdf = await window.pdfjsLib.getDocument(dataUrl).promise;
+            // Convert blob/data URL to ArrayBuffer so pdf.js worker can access it
+            // (blob URLs are origin-scoped and inaccessible from CDN-hosted workers)
+            var pdfSource = dataUrl;
+            if (typeof dataUrl === 'string' && (dataUrl.startsWith('blob:') || dataUrl.startsWith('data:'))) {
+                var resp = await fetch(dataUrl);
+                var arrayBuffer = await resp.arrayBuffer();
+                pdfSource = { data: new Uint8Array(arrayBuffer) };
+            }
+
+            var pdf = await window.pdfjsLib.getDocument(pdfSource).promise;
             var page = await pdf.getPage(1);
             var unscaledViewport = page.getViewport({ scale: 1 });
             var scale = maxWidth / unscaledViewport.width;
@@ -589,6 +598,7 @@ window.mediaHelpers = {
 
             return { thumbnail: thumbnail, pageCount: pageCount };
         } catch (e) {
+            console.warn('PDF thumbnail generation failed:', e);
             return null;
         }
     }

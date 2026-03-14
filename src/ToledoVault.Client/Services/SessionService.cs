@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using ToledoVault.Crypto.Protocol;
@@ -107,6 +108,7 @@ public class SessionService(HttpClient http, LocalStorageService storage)
 
     /// <summary>
     /// Loads an existing session for the specified remote device, if one exists.
+    /// Verifies HMAC integrity to prevent state tampering/rollback (S-01 fix).
     /// </summary>
     /// <returns>The restored <see cref="DoubleRatchet"/> session, or null if no session exists.</returns>
     public async Task<DoubleRatchet?> LoadSessionAsync(long deviceId)
@@ -116,18 +118,59 @@ public class SessionService(HttpClient http, LocalStorageService storage)
             return null;
 
         var stateJson = Encoding.UTF8.GetString(stateBytes);
+
+        // S-01 Fix: Verify HMAC integrity before deserializing
+        var hmacKey = await GetOrCreateHmacKeyAsync();
+        var storedMac = await storage.GetAsync(SessionHmacKey(deviceId));
+        if (storedMac is not null)
+        {
+            var expectedMac = ComputeHmac(hmacKey, stateBytes);
+            if (!CryptographicOperations.FixedTimeEquals(storedMac, expectedMac))
+            {
+                // Integrity check failed — state may have been tampered with
+                await storage.DeleteAsync(SessionKey(deviceId));
+                await storage.DeleteAsync(SessionHmacKey(deviceId));
+                return null;
+            }
+        }
+
         var state = JsonSerializer.Deserialize<RatchetState>(stateJson);
         return state is null ? null : DoubleRatchet.FromState(state);
     }
 
     /// <summary>
     /// Persists the current session state for the specified remote device.
+    /// Stores HMAC alongside state to prevent tampering/rollback (S-01 fix).
     /// </summary>
     public async Task SaveSessionAsync(long deviceId, RatchetState state)
     {
         var stateJson = JsonSerializer.Serialize(state);
         var stateBytes = Encoding.UTF8.GetBytes(stateJson);
         await storage.StoreAsync(SessionKey(deviceId), stateBytes);
+
+        // S-01 Fix: Store HMAC for integrity verification
+        var hmacKey = await GetOrCreateHmacKeyAsync();
+        var mac = ComputeHmac(hmacKey, stateBytes);
+        await storage.StoreAsync(SessionHmacKey(deviceId), mac);
+    }
+
+    /// <summary>
+    /// Gets or creates a device-local HMAC key for session state integrity checks.
+    /// </summary>
+    private async Task<byte[]> GetOrCreateHmacKeyAsync()
+    {
+        var existing = await storage.GetAsync("session.hmacKey");
+        if (existing is not null)
+            return existing;
+
+        var key = RandomNumberGenerator.GetBytes(32);
+        await storage.StoreAsync("session.hmacKey", key);
+        return key;
+    }
+
+    private static byte[] ComputeHmac(byte[] key, byte[] data)
+    {
+        return HMACSHA256.HashData(key, data);
     }
 
     /// <summary>
@@ -162,5 +205,10 @@ public class SessionService(HttpClient http, LocalStorageService storage)
     private static string SessionKey(long deviceId)
     {
         return $"session.{deviceId}";
+    }
+
+    private static string SessionHmacKey(long deviceId)
+    {
+        return $"session.{deviceId}.hmac";
     }
 }

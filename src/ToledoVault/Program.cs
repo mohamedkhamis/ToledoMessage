@@ -45,6 +45,7 @@ builder.Services.AddHostedService<MessageCleanupHostedService>();
 builder.Services.AddHostedService<AccountDeletionHostedService>();
 builder.Services.AddSingleton<RateLimitService>();
 builder.Services.AddSingleton<PresenceService>();
+builder.Services.AddSingleton<TokenBlacklistService>();
 builder.Services.AddHttpClient("LinkPreview", static client =>
 {
     client.Timeout = TimeSpan.FromSeconds(5);
@@ -57,7 +58,7 @@ builder.Services.AddMemoryCache();
 // Response compression for performance (FR-011) — Brotli priority, then Gzip
 builder.Services.AddResponseCompression(static options =>
 {
-    options.EnableForHttps = true;
+    options.EnableForHttps = false; // S-10: Prevent CRIME/BREACH oracle attacks
     options.Providers.Add<BrotliCompressionProvider>();
     options.Providers.Add<GzipCompressionProvider>();
     options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat([
@@ -116,6 +117,24 @@ builder.Services.AddAuthentication(static options =>
                 if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
                 {
                     context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            },
+            // S-11 Fix: Check if access token has been revoked (JTI blacklist)
+            OnTokenValidated = static context =>
+            {
+                var jti = context.Principal?.FindFirst(
+                    System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti)?.Value;
+                // ReSharper disable once InvertIf
+                if (jti is not null)
+                {
+                    var blacklist = context.HttpContext.RequestServices
+                        .GetRequiredService<TokenBlacklistService>();
+                    if (blacklist.IsRevoked(jti))
+                    {
+                        context.Fail("Token has been revoked.");
+                    }
                 }
 
                 return Task.CompletedTask;

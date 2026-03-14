@@ -555,9 +555,8 @@
                         _selectedFileBytes = compressed.Bytes;
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    Console.WriteLine($@"Image compression failed: {ex.Message}");
                     // Continue without compression — original bytes will be used
                 }
             }
@@ -568,9 +567,9 @@
                 _previewDataUrl = await Js.InvokeAsync<string>(
                     "mediaHelpers.createObjectUrl", _selectedFileBytes, "image/jpeg");
             }
-            catch (Exception ex)
+            // ReSharper disable once EmptyGeneralCatchClause
+            catch (Exception)
             {
-                Console.WriteLine($@"Preview blob URL failed, using data URL: {ex.Message}");
             }
 
             // Fallback to data URL if blob creation failed

@@ -678,8 +678,8 @@
     {
         _currentLanguage = languageId;
         await Js.InvokeVoidAsync("localStorage.setItem", "app.culture", languageId);
-        await Js.InvokeVoidAsync("eval",
-            $"document.cookie='.AspNetCore.Culture=c={languageId}|uic={languageId};path=/;max-age=31536000;samesite=lax'");
+        await Js.InvokeVoidAsync("toledoStorage.setCookie",
+            ".AspNetCore.Culture", $"c={languageId}|uic={languageId}", 365);
         try
         {
             await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(Language: languageId));

@@ -24,7 +24,9 @@ public class AuthController(
     IPasswordHasher<User> passwordHasher,
     IConfiguration configuration,
     AccountDeletionService accountDeletionService,
-    PreKeyService preKeyService)
+    PreKeyService preKeyService,
+    TokenBlacklistService tokenBlacklist,
+    ILogger<AuthController> logger)
     : BaseApiController
 {
     private static readonly Regex UsernameRegex = new("^[a-zA-Z0-9_-]+$", RegexOptions.Compiled);
@@ -75,6 +77,8 @@ public class AuthController(
 
         db.Users.Add(user);
         await db.SaveChangesAsync();
+
+        logger.LogInformation("User registered. UserId={UserId}, Username={Username}", user.Id, user.Username);
 
         var accessToken = GenerateJwtToken(user);
         var refreshToken = await CreateRefreshTokenAsync(user.Id, request.RememberMe);
@@ -197,20 +201,31 @@ public class AuthController(
     {
         var user = await db.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
         if (user == null)
+        {
+            logger.LogWarning("Login failed: user not found. Username={Username}", request.Username);
             return Unauthorized("USER_NOT_FOUND");
+        }
 
         if (!user.IsActive)
+        {
+            logger.LogWarning("Login failed: account deactivated. UserId={UserId}, Username={Username}", user.Id, user.Username);
             return Unauthorized("ACCOUNT_DEACTIVATED");
+        }
 
         var result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
         if (result == PasswordVerificationResult.Failed)
+        {
+            logger.LogWarning("Login failed: wrong password. UserId={UserId}, Username={Username}", user.Id, user.Username);
             return Unauthorized("WRONG_PASSWORD");
+        }
 
         // Cancel pending deletion on successful login (FR-020 grace period)
         if (user.DeletionRequestedAt is not null)
         {
             await accountDeletionService.CancelDeletionAsync(user.Id);
         }
+
+        logger.LogInformation("Login succeeded. UserId={UserId}, Username={Username}", user.Id, user.Username);
 
         var accessToken = GenerateJwtToken(user);
         var refreshToken = await CreateRefreshTokenAsync(user.Id, request.RememberMe);
@@ -237,10 +252,12 @@ public class AuthController(
         if (storedToken == null || storedToken.IsRevoked || storedToken.ExpiresAt <= DateTimeOffset.UtcNow)
             return Unauthorized("Invalid or expired refresh token.");
 
-        // Validate device binding: if the stored token is bound to a device, the request must match
-        if (storedToken.DeviceId is not null && request.DeviceId is not null
-                                             && storedToken.DeviceId != request.DeviceId)
-            return Unauthorized("Refresh token does not belong to this device.");
+        // S-06 Fix: Device-bound tokens MUST include a matching device ID
+        if (storedToken.DeviceId is not null)
+        {
+            if (request.DeviceId is null || storedToken.DeviceId != request.DeviceId)
+                return Unauthorized("Refresh token is bound to a specific device.");
+        }
 
         // Revoke the old refresh token (rotation)
         storedToken.IsRevoked = true;
@@ -273,6 +290,9 @@ public class AuthController(
     {
         var userId = GetUserId();
 
+        // S-11: Blacklist the current access token so it's rejected immediately
+        BlacklistCurrentAccessToken();
+
         var token = await db.RefreshTokens
             .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken && rt.UserId == userId && !rt.IsRevoked);
 
@@ -282,6 +302,8 @@ public class AuthController(
             token.IsRevoked = true;
             await db.SaveChangesAsync();
         }
+
+        logger.LogInformation("User logged out. UserId={UserId}", userId);
 
         return NoContent();
     }
@@ -295,6 +317,9 @@ public class AuthController(
     {
         var userId = GetUserId();
 
+        // S-11: Blacklist the current access token so it's rejected immediately
+        BlacklistCurrentAccessToken();
+
         var tokens = await db.RefreshTokens
             .Where(rt => rt.UserId == userId && !rt.IsRevoked)
             .ToListAsync();
@@ -305,6 +330,8 @@ public class AuthController(
         }
 
         await db.SaveChangesAsync();
+
+        logger.LogInformation("User logged out from all devices. UserId={UserId}, RevokedTokens={Count}", userId, tokens.Count);
 
         return NoContent();
     }
@@ -318,9 +345,57 @@ public class AuthController(
 
         var deletionRequestedAt = await accountDeletionService.InitiateDeletionAsync(userId);
 
+        logger.LogWarning("Account deletion requested. UserId={UserId}, DeletionAt={DeletionAt}", userId, deletionRequestedAt);
+
         return Ok(new AccountDeletionResponse(
             deletionRequestedAt,
             deletionRequestedAt.AddDays(Shared.Constants.ProtocolConstants.AccountDeletionGracePeriodDays)));
+    }
+
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.CurrentPassword))
+            return BadRequest("Current password is required.");
+
+        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 12)
+            return BadRequest("New password must be at least 12 characters.");
+
+        if (request.NewPassword.Length > Shared.Constants.ProtocolConstants.MaxPasswordLength)
+            return BadRequest($"New password must not exceed {Shared.Constants.ProtocolConstants.MaxPasswordLength} characters.");
+
+        var userId = GetUserId();
+        var user = await db.Users.FindAsync(userId);
+        if (user is not { IsActive: true })
+            return Unauthorized("User account not found or deactivated.");
+
+        var result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword);
+        if (result == PasswordVerificationResult.Failed)
+        {
+            logger.LogWarning("Password change failed: wrong current password. UserId={UserId}", userId);
+            return Unauthorized("Current password is incorrect.");
+        }
+
+        user.PasswordHash = passwordHasher.HashPassword(user, request.NewPassword);
+
+        // Revoke all refresh tokens — compromised password means all sessions are suspect
+        var tokens = await db.RefreshTokens
+            .Where(rt => rt.UserId == userId && !rt.IsRevoked)
+            .ToListAsync();
+        foreach (var token in tokens)
+        {
+            token.IsRevoked = true;
+        }
+
+        await db.SaveChangesAsync();
+
+        // Blacklist the current access token so the caller must re-authenticate
+        BlacklistCurrentAccessToken();
+
+        logger.LogInformation("Password changed successfully, {Count} sessions revoked. UserId={UserId}", tokens.Count, userId);
+
+        return NoContent();
     }
 
     private string GenerateJwtToken(User user)
@@ -408,5 +483,21 @@ public class AuthController(
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Extracts the JTI and expiry from the current bearer token and adds it to the blacklist.
+    /// </summary>
+    private void BlacklistCurrentAccessToken()
+    {
+        var jti = User.FindFirstValue(JwtRegisteredClaimNames.Jti);
+        if (jti is null) return;
+
+        var expClaim = User.FindFirstValue(JwtRegisteredClaimNames.Exp);
+        var expiresAt = expClaim is not null && long.TryParse(expClaim, out var exp)
+            ? DateTimeOffset.FromUnixTimeSeconds(exp)
+            : DateTimeOffset.UtcNow.AddMinutes(15); // Fallback to max token lifetime
+
+        tokenBlacklist.RevokeToken(jti, expiresAt);
     }
 }

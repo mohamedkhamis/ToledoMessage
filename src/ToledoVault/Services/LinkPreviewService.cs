@@ -28,14 +28,40 @@ public partial class LinkPreviewService(IHttpClientFactory httpClientFactory, IM
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
             return null;
 
-        // Block private/local IPs (SSRF protection)
-        if (IsPrivateHost(uri))
+        // Only allow HTTP/HTTPS schemes
+        if (uri.Scheme is not ("http" or "https"))
+            return null;
+
+        // Block private/local hostnames
+        if (uri.Host is "localhost" || uri.Host.EndsWith(".local", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        // S-02 Fix: Resolve DNS once and pin the IP to prevent DNS rebinding
+        IPAddress resolvedIp;
+        try
+        {
+            var addresses = await Dns.GetHostAddressesAsync(uri.Host);
+            if (addresses.Length == 0)
+                return null;
+            resolvedIp = addresses[0];
+        }
+        catch
+        {
+            return null;
+        }
+
+        // Validate the resolved IP (not the hostname) against private ranges
+        if (IsPrivateIp(resolvedIp))
             return null;
 
         try
         {
             var client = httpClientFactory.CreateClient("LinkPreview");
-            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            // Connect to the pinned IP directly to prevent DNS rebinding
+            var pinnedUri = new UriBuilder(uri) { Host = resolvedIp.ToString() }.Uri;
+            using var request = new HttpRequestMessage(HttpMethod.Get, pinnedUri);
+            request.Headers.Host = uri.Host; // Preserve original Host header
             request.Headers.Add("User-Agent", "ToledoVault-LinkPreview/1.0");
 
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
@@ -53,7 +79,7 @@ public partial class LinkPreviewService(IHttpClientFactory httpClientFactory, IM
             var read = await reader.ReadBlockAsync(buffer, 0, MaxResponseBytes);
             var html = new string(buffer, 0, read);
 
-            var result = ParseOpenGraph(html, uri);
+            var result = await ParseOpenGraphAsync(html, uri);
 
             if (result is not null)
             {
@@ -68,7 +94,7 @@ public partial class LinkPreviewService(IHttpClientFactory httpClientFactory, IM
         }
     }
 
-    private static LinkPreviewResponse? ParseOpenGraph(string html, Uri baseUri)
+    private static async Task<LinkPreviewResponse?> ParseOpenGraphAsync(string html, Uri baseUri)
     {
         var title = ExtractMeta(html, "og:title") ?? ExtractTitle(html);
         var description = ExtractMeta(html, "og:description") ?? ExtractMeta(html, "description");
@@ -83,6 +109,34 @@ public partial class LinkPreviewService(IHttpClientFactory httpClientFactory, IM
             if (Uri.TryCreate(baseUri, imageUrl, out var absoluteImage))
             {
                 imageUrl = absoluteImage.ToString();
+            }
+        }
+
+        // S-03 Fix: Re-validate the resolved og:image URL against private IPs (including DNS rebinding)
+        if (!string.IsNullOrEmpty(imageUrl) && Uri.TryCreate(imageUrl, UriKind.Absolute, out var imageUri))
+        {
+            if (imageUri.Host is "localhost" || imageUri.Host.EndsWith(".local", StringComparison.OrdinalIgnoreCase))
+            {
+                imageUrl = null;
+            }
+            else if (IPAddress.TryParse(imageUri.Host, out var imageIp))
+            {
+                if (IsPrivateIp(imageIp))
+                    imageUrl = null;
+            }
+            else
+            {
+                // Hostname — resolve DNS and check the IP
+                try
+                {
+                    var imageAddresses = await Dns.GetHostAddressesAsync(imageUri.Host);
+                    if (imageAddresses.Length == 0 || IsPrivateIp(imageAddresses[0]))
+                        imageUrl = null;
+                }
+                catch
+                {
+                    imageUrl = null;
+                }
             }
         }
 
@@ -115,15 +169,8 @@ public partial class LinkPreviewService(IHttpClientFactory httpClientFactory, IM
         return match.Success ? WebUtility.HtmlDecode(match.Groups[1].Value) : null;
     }
 
-    private static bool IsPrivateHost(Uri uri)
+    private static bool IsPrivateIp(IPAddress ip)
     {
-        var host = uri.Host;
-        if (host is "localhost" || host.EndsWith(".local", StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        if (!IPAddress.TryParse(host, out var ip))
-            return false;
-
         // Map IPv6-mapped IPv4 (::ffff:x.x.x.x) to IPv4 for consistent checks
         if (ip.IsIPv4MappedToIPv6)
         {

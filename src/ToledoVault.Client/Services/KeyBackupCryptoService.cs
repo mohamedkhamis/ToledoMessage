@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Org.BouncyCastle.Crypto.Digests;
@@ -10,7 +11,7 @@ namespace ToledoVault.Client.Services;
 
 public class KeyBackupCryptoService
 {
-    private const int Pbkdf2Iterations = 100_000;
+    private const int Pbkdf2Iterations = 600_000; // NIST SP 800-132 (2023) minimum
     private const int KeyLengthBytes = 32;
     private const int SaltLengthBytes = 16;
     private const int NonceLengthBytes = 12;
@@ -27,18 +28,31 @@ public class KeyBackupCryptoService
         random.NextBytes(nonce);
 
         var key = DeriveKey(password, salt);
-        var ciphertext = AesGcmCipher.Encrypt(key, nonce, plaintext);
-
-        return (ciphertext, salt, nonce);
+        try
+        {
+            var ciphertext = AesGcmCipher.Encrypt(key, nonce, plaintext);
+            return (ciphertext, salt, nonce);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+        }
     }
 
     public KeyBackupPayload Decrypt(byte[] encryptedBlob, byte[] salt, byte[] nonce, string password)
     {
         var key = DeriveKey(password, salt);
-        var plaintext = AesGcmCipher.Decrypt(key, nonce, encryptedBlob);
-        var json = Encoding.UTF8.GetString(plaintext);
-        return JsonSerializer.Deserialize<KeyBackupPayload>(json)
-               ?? throw new InvalidOperationException("Failed to deserialize key backup payload.");
+        try
+        {
+            var plaintext = AesGcmCipher.Decrypt(key, nonce, encryptedBlob);
+            var json = Encoding.UTF8.GetString(plaintext);
+            return JsonSerializer.Deserialize<KeyBackupPayload>(json)
+                   ?? throw new InvalidOperationException("Failed to deserialize key backup payload.");
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+        }
     }
 
     private static byte[] DeriveKey(string password, byte[] salt)

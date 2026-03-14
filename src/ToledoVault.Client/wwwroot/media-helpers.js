@@ -598,9 +598,12 @@ window.mediaHelpers = {
 
             return { thumbnail: thumbnail, pageCount: pageCount };
         } catch (e) {
-            console.warn('PDF thumbnail generation failed:', e);
             return null;
         }
+    },
+
+    getViewportHeight: function () {
+        return window.innerHeight;
     }
 
 };

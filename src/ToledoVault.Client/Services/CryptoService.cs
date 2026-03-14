@@ -155,11 +155,10 @@ public class CryptoService(
                 var (ciphertextBase64, messageType) = await EncryptBytesAsync(device.DeviceId, data);
                 results.Add((device.DeviceId, ciphertextBase64, messageType));
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Skip this device but continue sending to others.
                 // Common cause: PreKey bundle fetch failed for an inactive/stale device.
-                Console.WriteLine($@"Failed to encrypt for device {device.DeviceId}: {ex.Message}");
             }
         }
 

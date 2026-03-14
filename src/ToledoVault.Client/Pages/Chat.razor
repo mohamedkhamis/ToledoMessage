@@ -1150,9 +1150,9 @@
                 var blobMime = input.MimeType ?? GetDefaultMimeType(contentType);
                 mediaDataUrl = await CreateMediaBlobUrl(blobMime, input.MediaBytes);
             }
-            catch (Exception ex)
+            // ReSharper disable EmptyGeneralCatchClause
+            catch (Exception)
             {
-                Console.WriteLine($@"Blob URL creation failed, using data URL fallback: {ex.Message}");
             }
 
             // Fallback to data URL if blob URL creation failed
@@ -1341,9 +1341,8 @@
                     thumbnailBase64 = thumbnailBase64Result;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Console.WriteLine($@"Failed to generate thumbnail: {ex.Message}");
             }
         }
         else if (input.ContentType == ContentType.Video)
@@ -1357,9 +1356,8 @@
                     thumbnailBase64 = thumbnailBase64Result;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Console.WriteLine($@"Failed to capture video frame: {ex.Message}");
             }
         }
 
@@ -1371,9 +1369,8 @@
                 var thumbBytes = Convert.FromBase64String(thumbnailBase64);
                 tempMessage.ThumbnailDataUrl = await CreateMediaBlobUrl("image/jpeg", thumbBytes);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Console.WriteLine($@"Failed to create sender thumbnail URL: {ex.Message}");
             }
         }
 
@@ -1504,9 +1501,8 @@
                     var thumbnailData = Convert.FromBase64String(mediaPayload.Thumbnail);
                     thumbnailBlobUrl = await CreateMediaBlobUrl("image/jpeg", thumbnailData);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    Console.WriteLine($@"Failed to create thumbnail URL: {ex.Message}");
                 }
             }
 
@@ -1912,7 +1908,7 @@
 
         // Get viewport height to determine if we need to flip the menu upward
         double viewportHeight;
-        try { viewportHeight = await Js.InvokeAsync<double>("eval", "window.innerHeight"); }
+        try { viewportHeight = await Js.InvokeAsync<double>("mediaHelpers.getViewportHeight"); }
         catch { viewportHeight = 800; }
 
         // Estimate menu height: ~40px per item, 5-6 items + padding

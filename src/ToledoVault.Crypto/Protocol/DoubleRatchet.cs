@@ -1,4 +1,6 @@
+using System.Buffers.Binary;
 using System.Diagnostics.CodeAnalysis;
+using System.Security.Cryptography;
 using ToledoVault.Crypto.Classical;
 using ToledoVault.Crypto.Hybrid;
 
@@ -119,13 +121,22 @@ public class DoubleRatchet
         };
 
         // 4. Encrypt plaintext with AesGcmCipher using messageKey
+        //    S-05: Bind header to ciphertext via AEAD associated data
         var nonce = CreateNonce(_state.SendMessageIndex);
-        var ciphertext = AesGcmCipher.Encrypt(messageKey, nonce, plaintext);
+        var ad = BuildAssociatedData(header);
+        try
+        {
+            var ciphertext = AesGcmCipher.Encrypt(messageKey, nonce, plaintext, ad);
 
-        // 5. Increment SendMessageIndex
-        _state.SendMessageIndex++;
+            // 5. Increment SendMessageIndex
+            _state.SendMessageIndex++;
 
-        return (ciphertext, header);
+            return (ciphertext, header);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(messageKey);
+        }
     }
 
     /// <summary>
@@ -134,11 +145,21 @@ public class DoubleRatchet
     public byte[] Decrypt(byte[] ciphertext, MessageHeader header)
     {
         // 1. Check if message key is in skipped keys (out-of-order)
+        // S-05: Build associated data from header for AEAD verification
+        var ad = BuildAssociatedData(header);
+
         var skippedKey = TryGetSkippedMessageKey(header);
         if (skippedKey is not null)
         {
-            var skippedNonce = CreateNonce(header.MessageIndex);
-            return AesGcmCipher.Decrypt(skippedKey, skippedNonce, ciphertext);
+            try
+            {
+                var skippedNonce = CreateNonce(header.MessageIndex);
+                return AesGcmCipher.Decrypt(skippedKey, skippedNonce, ciphertext, ad);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(skippedKey);
+            }
         }
 
         // 2. If header.RatchetPublicKey != state.RemoteRatchetPublicKey: perform DH ratchet step
@@ -158,9 +179,16 @@ public class DoubleRatchet
         _state.ReceiveChainKey = nextChainKey;
         _state.ReceiveMessageIndex++;
 
-        // 6. Decrypt with AesGcmCipher
+        // 6. Decrypt with AesGcmCipher (S-05: verify header via AEAD AD)
         var nonce = CreateNonce(header.MessageIndex);
-        return AesGcmCipher.Decrypt(messageKey, nonce, ciphertext);
+        try
+        {
+            return AesGcmCipher.Decrypt(messageKey, nonce, ciphertext, ad);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(messageKey);
+        }
     }
 
     /// <summary>
@@ -256,6 +284,20 @@ public class DoubleRatchet
         return $"{Convert.ToBase64String(ratchetPublicKey)}:{messageIndex}";
     }
 
+    /// <summary>
+    /// Builds AEAD associated data from message header fields.
+    /// AD = RatchetPublicKey (32 bytes) || PreviousChainLength (4 bytes) || MessageIndex (4 bytes)
+    /// </summary>
+    private static byte[] BuildAssociatedData(MessageHeader header)
+    {
+        var ad = new byte[header.RatchetPublicKey.Length + 8];
+        Buffer.BlockCopy(header.RatchetPublicKey, 0, ad, 0, header.RatchetPublicKey.Length);
+        var offset = header.RatchetPublicKey.Length;
+        BinaryPrimitives.WriteInt32LittleEndian(ad.AsSpan(offset), header.PreviousChainLength);
+        BinaryPrimitives.WriteInt32LittleEndian(ad.AsSpan(offset + 4), header.MessageIndex);
+        return ad;
+    }
+
     private static byte[] CreateNonce(int messageIndex)
     {
         var nonce = new byte[12];
@@ -270,6 +312,6 @@ public class DoubleRatchet
             return false;
 
         // Constant-time comparison to prevent timing side-channel attacks
-        return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(a, b);
+        return CryptographicOperations.FixedTimeEquals(a, b);
     }
 }

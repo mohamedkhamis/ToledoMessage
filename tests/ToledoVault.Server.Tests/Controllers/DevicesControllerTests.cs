@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using ToledoVault.Controllers;
 using ToledoVault.Services;
 using ToledoVault.Shared.Constants;
@@ -20,7 +21,7 @@ public class DevicesControllerTests
         var preKeyService = new PreKeyService(db);
         var hubContext = new StubHubContext();
         var relayService = new MessageRelayService(db, hubContext);
-        var controller = new DevicesController(db, preKeyService, relayService);
+        var controller = new DevicesController(db, preKeyService, relayService, NullLogger<DevicesController>.Instance);
         TestDbContextFactory.SetUser(controller, userId);
         return (controller, db);
     }

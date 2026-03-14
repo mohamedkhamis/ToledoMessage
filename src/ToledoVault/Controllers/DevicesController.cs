@@ -15,7 +15,7 @@ namespace ToledoVault.Controllers;
 [ApiController]
 [Route("api/devices")]
 [Authorize]
-public class DevicesController(ApplicationDbContext db, PreKeyService preKeyService, MessageRelayService relayService) : BaseApiController
+public class DevicesController(ApplicationDbContext db, PreKeyService preKeyService, MessageRelayService relayService, ILogger<DevicesController> logger) : BaseApiController
 {
     /// <summary>
     /// Register a new device for the current user.
@@ -99,6 +99,8 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
             await preKeyService.StoreOneTimePreKeys(device.Id, request.OneTimePreKeys);
         }
 
+        logger.LogInformation("Device registered. UserId={UserId}, DeviceId={DeviceId}, DeviceName={DeviceName}", userId, device.Id, device.DeviceName);
+
         return Created(string.Empty, new { deviceId = device.Id });
     }
 
@@ -137,6 +139,8 @@ public class DevicesController(ApplicationDbContext db, PreKeyService preKeyServ
 
         // Clean up stale undelivered messages for the deactivated device
         await relayService.CleanupDeactivatedDeviceMessages(deviceId);
+
+        logger.LogInformation("Device revoked. UserId={UserId}, DeviceId={DeviceId}", userId, deviceId);
 
         return NoContent();
     }

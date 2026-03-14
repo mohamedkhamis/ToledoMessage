@@ -12,7 +12,8 @@ namespace ToledoVault.Client.Services;
 /// </summary>
 public class AuthTokenHandler(LocalStorageService storage) : DelegatingHandler
 {
-    private static bool _isRefreshing;
+    private static readonly SemaphoreSlim RefreshSemaphore = new(1, 1);
+    private static bool _lastRefreshSucceeded;
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
@@ -26,16 +27,40 @@ public class AuthTokenHandler(LocalStorageService storage) : DelegatingHandler
         var response = await base.SendAsync(request, cancellationToken);
 
         // If we get a 401 and this isn't an auth endpoint, try refreshing
-        if (response.StatusCode == HttpStatusCode.Unauthorized && !isAuthEndpoint && !_isRefreshing)
+        if (response.StatusCode == HttpStatusCode.Unauthorized && !isAuthEndpoint)
         {
-            var refreshed = await TryRefreshTokenAsync(cancellationToken);
-            if (refreshed)
+            if (await RefreshSemaphore.WaitAsync(0, cancellationToken))
             {
-                // Clone the request (original is disposed) and retry
-                var retryRequest = await CloneRequestAsync(request);
-                await AttachTokenAsync(retryRequest);
-                response.Dispose();
-                response = await base.SendAsync(retryRequest, cancellationToken);
+                try
+                {
+                    _lastRefreshSucceeded = await TryRefreshTokenAsync(cancellationToken);
+                    if (_lastRefreshSucceeded)
+                    {
+                        var retryRequest = await CloneRequestAsync(request);
+                        await AttachTokenAsync(retryRequest);
+                        response.Dispose();
+                        response = await base.SendAsync(retryRequest, cancellationToken);
+                    }
+                }
+                finally
+                {
+                    RefreshSemaphore.Release();
+                }
+            }
+            else
+            {
+                // Another refresh is in progress — wait for it to finish
+                await RefreshSemaphore.WaitAsync(cancellationToken);
+                RefreshSemaphore.Release();
+
+                // Only retry if the other thread's refresh succeeded
+                if (_lastRefreshSucceeded)
+                {
+                    var retryRequest = await CloneRequestAsync(request);
+                    await AttachTokenAsync(retryRequest);
+                    response.Dispose();
+                    response = await base.SendAsync(retryRequest, cancellationToken);
+                }
             }
         }
 
@@ -54,7 +79,6 @@ public class AuthTokenHandler(LocalStorageService storage) : DelegatingHandler
 
     private async Task<bool> TryRefreshTokenAsync(CancellationToken cancellationToken)
     {
-        _isRefreshing = true;
         try
         {
             var accessTokenBytes = await storage.GetAsync("auth.token");
@@ -97,10 +121,6 @@ public class AuthTokenHandler(LocalStorageService storage) : DelegatingHandler
         catch
         {
             return false;
-        }
-        finally
-        {
-            _isRefreshing = false;
         }
     }
 

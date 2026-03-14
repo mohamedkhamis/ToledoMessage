@@ -51,13 +51,13 @@ specs/003-fix-styles/
 ### Source Code (files to modify)
 
 ```text
-src/ToledoMessage/
+src/ToledoVault/
 ├── Components/
 │   └── App.razor                          # Add WASM loading spinner
 └── wwwroot/
     └── app.css                            # Reply bar, responsive, touch targets, spinner CSS
 
-src/ToledoMessage.Client/
+src/ToledoVault.Client/
 ├── Components/
 │   ├── MessageInput.razor                 # Reply preview bar markup (media placeholder)
 │   ├── MessageBubble.razor                # Quoted block markup
@@ -140,7 +140,7 @@ src/ToledoMessage.Client/
 **Tasks**:
 
 13. **Add WASM loading spinner to App.razor**:
-    - Add a `<div id="app-loading">` before `<Routes />` with pure CSS spinner + "ToledoMessage" text
+    - Add a `<div id="app-loading">` before `<Routes />` with pure CSS spinner + "ToledoVault" text
     - CSS: centered, theme-aware background, spinner animation
     - Auto-hide via: `blazor:initialized` event listener that sets `display: none` on the loading div
 

@@ -1,4 +1,4 @@
-# Specification Quality Checklist: ToledoMessage SaaS Enhancement Plan (v2.0)
+# Specification Quality Checklist: ToledoVault SaaS Enhancement Plan (v2.0)
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-03-09

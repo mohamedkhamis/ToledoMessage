@@ -19,7 +19,7 @@
 
 **Purpose**: Fix foundational JavaScript bugs that affect multiple user stories. These are shared infrastructure fixes that must land first.
 
-- [X] T001 Fix `storeMessages` early-return bug in `src/ToledoMessage.Client/wwwroot/storage.js` (line 104-124)
+- [X] T001 Fix `storeMessages` early-return bug in `src/ToledoVault.Client/wwwroot/storage.js` (line 104-124)
 
   **Context**: The `storeMessages` function has a critical logic error. When `msgs` is empty/null, it immediately enters a `return new Promise(...)` block that references `db` — but `db` is declared on line 114 (`const db = await this.open()`), AFTER the early return. This means:
   - If called with an empty array, `db` is `undefined` → `db.transaction(...)` throws `TypeError: Cannot read properties of undefined`
@@ -63,7 +63,7 @@
 
   **Acceptance**: `storeMessages([])` returns without error. `storeMessages([msg1, msg2])` persists both messages to IndexedDB. Remove the `// ReSharper disable` comment on line 103 since the variable-before-declaration issue is eliminated.
 
-- [X] T002 [P] Add audio helper functions to `src/ToledoMessage.Client/wwwroot/media-helpers.js`
+- [X] T002 [P] Add audio helper functions to `src/ToledoVault.Client/wwwroot/media-helpers.js`
 
   **Context**: `MessageBubble.razor` currently uses `Js.InvokeVoidAsync("eval", ...)` for all audio DOM operations (play, pause, get currentTime, get duration). This is fragile and a security concern. We need proper named JS functions in `media-helpers.js` that the Blazor component can call instead.
 
@@ -117,7 +117,7 @@
 
 ### Implementation for User Story 1
 
-- [X] T003 [US1] Null out `MediaBytes` after blob URL creation in `DecryptEnvelopeToChatMessage` in `src/ToledoMessage.Client/Pages/Chat.razor` (line 1035)
+- [X] T003 [US1] Null out `MediaBytes` after blob URL creation in `DecryptEnvelopeToChatMessage` in `src/ToledoVault.Client/Pages/Chat.razor` (line 1035)
 
   **Context**: When a media message is decrypted, `DecryptEnvelopeToChatMessage` (line 1000) stores the raw decrypted bytes in `MediaBytes = bytes` (line 1035). These bytes stay in memory for the lifetime of the `ChatMessage` object, even though a blob URL has already been created from them. For a conversation with 20+ images, this causes unbounded memory growth → browser tab crash.
 
@@ -166,7 +166,7 @@
 
   **Acceptance**: Open DevTools → Memory tab. Load a conversation with 20+ images. Memory should not grow unboundedly. Each `ChatMessage` object should have `MediaBytes = null` after rendering.
 
-- [X] T004 [US1] Verify media send flow handles `MediaBytes = null` correctly in `src/ToledoMessage.Client/Pages/Chat.razor`
+- [X] T004 [US1] Verify media send flow handles `MediaBytes = null` correctly in `src/ToledoVault.Client/Pages/Chat.razor`
 
   **Context**: After T003, received messages have `MediaBytes = null`. Verify that no code path in Chat.razor reads `MediaBytes` on a received message after blob URL creation.
 
@@ -188,7 +188,7 @@
 
   **Context**: 215 existing tests (142 server + 65 crypto + 8 integration) must continue passing.
 
-  **Command**: `dotnet test ToledoMessage.slnx` from repo root.
+  **Command**: `dotnet test ToledoVault.slnx` from repo root.
 
   **Acceptance**: All 215+ tests pass. Zero failures, zero errors.
 
@@ -204,7 +204,7 @@
 
 ### Implementation for User Story 2
 
-- [X] T006 [US2] Fix `_messageReactions.Clear()` to only remove reactions for deleted messages in `ClearChat` method in `src/ToledoMessage.Client/Pages/Chat.razor` (line 1347)
+- [X] T006 [US2] Fix `_messageReactions.Clear()` to only remove reactions for deleted messages in `ClearChat` method in `src/ToledoVault.Client/Pages/Chat.razor` (line 1347)
 
   **Context**: `ClearChat` (line 1321) removes messages matching the time threshold, but then calls `_messageReactions.Clear()` (line 1347) which removes ALL reactions — including reactions for messages that were NOT deleted.
 
@@ -233,7 +233,7 @@
 
   **Acceptance**: After clearing "last hour" messages, reactions on older messages remain visible. After clearing "all messages", all reactions are gone.
 
-- [X] T007 [US2] Add error notification for failed ClearChat operations in `src/ToledoMessage.Client/Pages/Chat.razor` (lines 1349-1361)
+- [X] T007 [US2] Add error notification for failed ClearChat operations in `src/ToledoVault.Client/Pages/Chat.razor` (lines 1349-1361)
 
   **Context**: Both the IndexedDB clear (line 1350) and the SignalR server clear (line 1357) catch and silently ignore all exceptions. The user has no idea if the clear actually worked. If the server clear fails, messages will reappear on next load.
 
@@ -282,7 +282,7 @@
 
 ### Implementation for User Story 3
 
-- [X] T008 [US3] Clear reply context when replied-to message is deleted in `DeleteForMe` method in `src/ToledoMessage.Client/Pages/Chat.razor` (line 1245)
+- [X] T008 [US3] Clear reply context when replied-to message is deleted in `DeleteForMe` method in `src/ToledoVault.Client/Pages/Chat.razor` (line 1245)
 
   **Context**: When a user is composing a reply (reply preview shown at bottom of chat) and then deletes the message they're replying to via the context menu, the reply preview remains — pointing to a now-deleted message. Sending that reply would reference a non-existent message.
 
@@ -335,7 +335,7 @@
 
   **Acceptance**: Start replying to message → delete that message (via context menu or by receiving a "Delete for everyone") → reply preview disappears.
 
-- [X] T009 [US3] Notify user when media forward fails instead of silent fallback in `SendForwardedMessage` in `src/ToledoMessage.Client/Pages/Chat.razor` (line 1578)
+- [X] T009 [US3] Notify user when media forward fails instead of silent fallback in `SendForwardedMessage` in `src/ToledoVault.Client/Pages/Chat.razor` (line 1578)
 
   **Context**: When forwarding a media message, `SendForwardedMessage` (line 1566) tries to fetch the media bytes from the blob URL. If the blob URL has expired or been revoked, the catch block on line 1578 silently swallows the error and falls through to the text-only forward path (line 1617). The user thinks they forwarded the image, but only text was sent.
 
@@ -391,7 +391,7 @@
 
 ### Implementation for User Story 4
 
-- [X] T010 [US4] Replace `eval()` calls with `mediaHelpers` functions in `ToggleAudioPlayback` in `src/ToledoMessage.Client/Components/MessageBubble.razor` (lines 193-209)
+- [X] T010 [US4] Replace `eval()` calls with `mediaHelpers` functions in `ToggleAudioPlayback` in `src/ToledoVault.Client/Components/MessageBubble.razor` (lines 193-209)
 
   **Context**: The `ToggleAudioPlayback` method uses `eval()` to find and control the `<audio>` element in the DOM. This is fragile (breaks if the DOM selector changes), a security concern (eval is flagged by CSP), and unnecessarily complex.
 
@@ -439,7 +439,7 @@
 
   **Acceptance**: Audio play/pause works identically to before but without eval(). Verify in browser console: no eval() calls when clicking play/pause.
 
-- [X] T011 [US4] Replace `eval()` calls with `mediaHelpers` functions in `UpdateAudioTimeAsync` and `LoadAudioDurationAsync` in `src/ToledoMessage.Client/Components/MessageBubble.razor` (lines 217-242)
+- [X] T011 [US4] Replace `eval()` calls with `mediaHelpers` functions in `UpdateAudioTimeAsync` and `LoadAudioDurationAsync` in `src/ToledoVault.Client/Components/MessageBubble.razor` (lines 217-242)
 
   **Context**: Same eval() problem as T010, but for getting the audio current time and duration.
 
@@ -530,7 +530,7 @@
 
 - [X] T013 Run full test suite to verify no regressions across all changes
 
-  **Command**: `dotnet test ToledoMessage.slnx` from repo root.
+  **Command**: `dotnet test ToledoVault.slnx` from repo root.
   **Acceptance**: All 215+ tests pass. Zero failures, zero errors.
 
 - [ ] T014 Run quickstart.md manual testing checklist against all user stories
@@ -658,12 +658,12 @@ Recommended order for a single developer:
 
 ## Notes
 
-- **No server-side changes**: All fixes are in `src/ToledoMessage.Client/` (Blazor WASM + JS interop)
+- **No server-side changes**: All fixes are in `src/ToledoVault.Client/` (Blazor WASM + JS interop)
 - **Files modified**: 3 files total
-  - `src/ToledoMessage.Client/wwwroot/storage.js` (T001)
-  - `src/ToledoMessage.Client/wwwroot/media-helpers.js` (T002)
-  - `src/ToledoMessage.Client/Pages/Chat.razor` (T003, T004, T006, T007, T008, T009)
-  - `src/ToledoMessage.Client/Components/MessageBubble.razor` (T010, T011)
+  - `src/ToledoVault.Client/wwwroot/storage.js` (T001)
+  - `src/ToledoVault.Client/wwwroot/media-helpers.js` (T002)
+  - `src/ToledoVault.Client/Pages/Chat.razor` (T003, T004, T006, T007, T008, T009)
+  - `src/ToledoVault.Client/Components/MessageBubble.razor` (T010, T011)
 - **Research confirms**: byte[] → Uint8Array marshalling is correct (R-001). No JS interop fix needed.
 - **Existing tests**: 215 tests must pass throughout. Run after each user story.
 - **User input note**: Tasks are written with rich context so another model can execute them without additional codebase exploration.

@@ -29,10 +29,10 @@
 
 **Purpose**: Remove duplicate/conflicting CSS that causes unpredictable cascade behavior. This MUST be done first because later tasks modify the same CSS sections.
 
-- [X] T001 Remove the FIRST duplicate `.reply-preview-bar` CSS rule set (lines 1220–1262) in `src/ToledoMessage/wwwroot/app.css`
+- [X] T001 Remove the FIRST duplicate `.reply-preview-bar` CSS rule set (lines 1220–1262) in `src/ToledoVault/wwwroot/app.css`
 
 **DETAILED INSTRUCTIONS for T001**:
-- Open `src/ToledoMessage/wwwroot/app.css`
+- Open `src/ToledoVault/wwwroot/app.css`
 - Delete the entire block from line 1220 (`/* Enhanced reply preview bar */`) through line 1262 (`.reply-preview-close:hover { ... }`)
 - This includes these selectors that must ALL be removed:
   - `.reply-preview-bar` (lines 1221–1230) — uses `align-items: flex-start` + `padding: 10px 14px` (CONFLICTING with the second set)
@@ -57,10 +57,10 @@
 
 ### Implementation for User Story 1
 
-- [X] T002 [US1] Redesign `.reply-preview-bar` CSS to WhatsApp/Telegram compact pattern in `src/ToledoMessage/wwwroot/app.css`
+- [X] T002 [US1] Redesign `.reply-preview-bar` CSS to WhatsApp/Telegram compact pattern in `src/ToledoVault/wwwroot/app.css`
 
 **DETAILED INSTRUCTIONS for T002**:
-- In `src/ToledoMessage/wwwroot/app.css`, find the SURVIVING `.reply-preview-bar` block (around line ~2944 after T001 deletion, originally at line 2944).
+- In `src/ToledoVault/wwwroot/app.css`, find the SURVIVING `.reply-preview-bar` block (around line ~2944 after T001 deletion, originally at line 2944).
 - Replace the entire `.reply-preview-bar` rule set AND its child selectors (`.reply-preview-content`, `.reply-preview-bar .reply-sender-name`, `.reply-preview-bar .reply-quote-text`, `.reply-preview-close`, `.reply-preview-close:hover`) with this consolidated design:
 
 ```css
@@ -132,10 +132,10 @@
 
 ---
 
-- [X] T003 [US1] Refine `.reply-quote-block` CSS (quoted message inside bubbles) in `src/ToledoMessage/wwwroot/app.css`
+- [X] T003 [US1] Refine `.reply-quote-block` CSS (quoted message inside bubbles) in `src/ToledoVault/wwwroot/app.css`
 
 **DETAILED INSTRUCTIONS for T003**:
-- In `src/ToledoMessage/wwwroot/app.css`, find the `/* ============ Reply Quote ============ */` section (around line ~2913 after T001 deletion).
+- In `src/ToledoVault/wwwroot/app.css`, find the `/* ============ Reply Quote ============ */` section (around line ~2913 after T001 deletion).
 - Update the `.reply-quote-block` rule (currently has `max-height: 60px; overflow: hidden` — keep those):
 
 ```css
@@ -185,10 +185,10 @@
 
 ---
 
-- [X] T004 [US1] Add media placeholder labels for reply context in `src/ToledoMessage.Client/Pages/Chat.razor` (line ~1176)
+- [X] T004 [US1] Add media placeholder labels for reply context in `src/ToledoVault.Client/Pages/Chat.razor` (line ~1176)
 
 **DETAILED INSTRUCTIONS for T004**:
-- In `src/ToledoMessage.Client/Pages/Chat.razor`, find the `SetReplyTo` method (around line 1169).
+- In `src/ToledoVault.Client/Pages/Chat.razor`, find the `SetReplyTo` method (around line 1169).
 - Current code at line 1176:
 ```csharp
 Text = msg.ContentType != ContentType.Text ? $"[{msg.ContentType}]" : (msg.Text.Length > 80 ? msg.Text[..80] + "..." : msg.Text)
@@ -210,10 +210,10 @@ Text = msg.ContentType switch
 
 ---
 
-- [X] T005 [US1] Add media placeholder labels for quoted blocks in `src/ToledoMessage.Client/Components/MessageBubble.razor` (line ~13)
+- [X] T005 [US1] Add media placeholder labels for quoted blocks in `src/ToledoVault.Client/Components/MessageBubble.razor` (line ~13)
 
 **DETAILED INSTRUCTIONS for T005**:
-- In `src/ToledoMessage.Client/Components/MessageBubble.razor`, find the reply quote block (around line 9–15):
+- In `src/ToledoVault.Client/Components/MessageBubble.razor`, find the reply quote block (around line 9–15):
 ```razor
 @if (!string.IsNullOrEmpty(ReplyToSenderName))
 {
@@ -233,10 +233,10 @@ Text = msg.ContentType switch
 
 ---
 
-- [X] T006 [US1] Add media placeholder labels in the reply preview bar in `src/ToledoMessage.Client/Components/MessageInput.razor` (line ~15)
+- [X] T006 [US1] Add media placeholder labels in the reply preview bar in `src/ToledoVault.Client/Components/MessageInput.razor` (line ~15)
 
 **DETAILED INSTRUCTIONS for T006**:
-- In `src/ToledoMessage.Client/Components/MessageInput.razor`, find the reply preview bar (lines 10–19):
+- In `src/ToledoVault.Client/Components/MessageInput.razor`, find the reply preview bar (lines 10–19):
 ```razor
 @if (ReplyContext is not null)
 {
@@ -268,10 +268,10 @@ Text = msg.ContentType switch
 
 ### Implementation for User Story 2
 
-- [X] T007 [US2] Replace `<a href="/chat">` back link with NavigationManager button in `src/ToledoMessage.Client/Pages/Chat.razor` (line ~21)
+- [X] T007 [US2] Replace `<a href="/chat">` back link with NavigationManager button in `src/ToledoVault.Client/Pages/Chat.razor` (line ~21)
 
 **DETAILED INSTRUCTIONS for T007**:
-- In `src/ToledoMessage.Client/Pages/Chat.razor`, find line 21:
+- In `src/ToledoVault.Client/Pages/Chat.razor`, find line 21:
 ```razor
 <a href="/chat" class="back-link back-link-desktop-hidden" aria-label="Back to conversations">&larr;</a>
 ```
@@ -295,15 +295,15 @@ button.back-link {
     cursor: pointer;
 }
 ```
-Add this to `src/ToledoMessage/wwwroot/app.css` near the existing `.back-link` rules if needed.
+Add this to `src/ToledoVault/wwwroot/app.css` near the existing `.back-link` rules if needed.
 - **VERIFY**: On mobile (375px), tap a conversation to open it, then tap the back arrow — the conversation list should reappear without errors or blank screens.
 
 ---
 
-- [X] T008 [US2] Add error recovery and logging to `UpdateMobileLayout()` in `src/ToledoMessage.Client/Components/ConversationListSidebar.razor` (lines 208–225)
+- [X] T008 [US2] Add error recovery and logging to `UpdateMobileLayout()` in `src/ToledoVault.Client/Components/ConversationListSidebar.razor` (lines 208–225)
 
 **DETAILED INSTRUCTIONS for T008**:
-- In `src/ToledoMessage.Client/Components/ConversationListSidebar.razor`, find the `UpdateMobileLayout` method (lines 208–225):
+- In `src/ToledoVault.Client/Components/ConversationListSidebar.razor`, find the `UpdateMobileLayout` method (lines 208–225):
 ```csharp
 private async Task UpdateMobileLayout()
 {
@@ -361,10 +361,10 @@ private async Task UpdateMobileLayout()
 
 ---
 
-- [X] T009 [P] [US2] Fix sidebar button touch targets (44px minimum) in `src/ToledoMessage/wwwroot/app.css` (lines ~2021–2040)
+- [X] T009 [P] [US2] Fix sidebar button touch targets (44px minimum) in `src/ToledoVault/wwwroot/app.css` (lines ~2021–2040)
 
 **DETAILED INSTRUCTIONS for T009**:
-- In `src/ToledoMessage/wwwroot/app.css`, find `.sidebar-header-actions` (line ~2021) and `.sidebar-icon-btn` (line ~2026).
+- In `src/ToledoVault/wwwroot/app.css`, find `.sidebar-header-actions` (line ~2021) and `.sidebar-icon-btn` (line ~2026).
 - Update `.sidebar-header-actions` to increase gap:
 ```css
 .sidebar-header-actions {
@@ -401,10 +401,10 @@ private async Task UpdateMobileLayout()
 
 ---
 
-- [X] T010 [P] [US2] Add global `touch-action: manipulation` rule in `src/ToledoMessage/wwwroot/app.css`
+- [X] T010 [P] [US2] Add global `touch-action: manipulation` rule in `src/ToledoVault/wwwroot/app.css`
 
 **DETAILED INSTRUCTIONS for T010**:
-- In `src/ToledoMessage/wwwroot/app.css`, near the top of the file (after the `*, *::before, *::after` reset rules — look for the first few global rules), add:
+- In `src/ToledoVault/wwwroot/app.css`, near the top of the file (after the `*, *::before, *::after` reset rules — look for the first few global rules), add:
 ```css
 /* Eliminate iOS 300ms tap delay on all interactive elements */
 button, a, [role="button"], input, select, textarea {
@@ -427,7 +427,7 @@ button, a, [role="button"], input, select, textarea {
 
 ### Implementation for User Story 3
 
-- [ ] T011 [US3] Audit and fix horizontal overflow at 320px width across all pages in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T011 [US3] Audit and fix horizontal overflow at 320px width across all pages in `src/ToledoVault/wwwroot/app.css`
 
 **DETAILED INSTRUCTIONS for T011**:
 - Open the app in browser DevTools at 320px width (iPhone SE). Navigate to each page:
@@ -443,7 +443,7 @@ button, a, [role="button"], input, select, textarea {
   - Elements overflowing past the right edge
   - Fixed `width` or `min-width` values that are too large for 320px
   - `padding` that combined with content exceeds viewport
-- Common fixes to apply in `src/ToledoMessage/wwwroot/app.css`:
+- Common fixes to apply in `src/ToledoVault/wwwroot/app.css`:
   - Replace fixed `width` with `max-width: 100%`
   - Add `overflow-wrap: break-word` to text containers
   - Use `box-sizing: border-box` (should already be global)
@@ -453,14 +453,14 @@ button, a, [role="button"], input, select, textarea {
 
 ---
 
-- [ ] T012 [US3] Verify voice recorder responsive behavior at 320px in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T012 [US3] Verify voice recorder responsive behavior at 320px in `src/ToledoVault/wwwroot/app.css`
 
 **DETAILED INSTRUCTIONS for T012**:
 - At 320px viewport, start a voice recording in a chat.
 - Check that the recording bar (waveform bars, timer, controls) fits within the viewport.
 - If the waveform overflows, adjust the CSS:
   - The waveform uses 30 bars (defined in `MessageBubble.razor` line 72: `@for (var i = 0; i < 30; i++)`). Each bar has a class `.aw-bar`.
-  - In `src/ToledoMessage/wwwroot/app.css`, find the `.audio-wave-track` and `.aw-bar` rules.
+  - In `src/ToledoVault/wwwroot/app.css`, find the `.audio-wave-track` and `.aw-bar` rules.
   - Add responsive adjustments if needed:
     ```css
     @media (max-width: 375px) {
@@ -477,7 +477,7 @@ button, a, [role="button"], input, select, textarea {
 
 ---
 
-- [ ] T013 [US3] Ensure overlay sizing is viewport-aware on mobile in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T013 [US3] Ensure overlay sizing is viewport-aware on mobile in `src/ToledoVault/wwwroot/app.css`
 
 **DETAILED INSTRUCTIONS for T013**:
 - Check these overlays at 320px, 375px, and 480px viewports:
@@ -490,13 +490,13 @@ button, a, [role="button"], input, select, textarea {
 
 ---
 
-- [ ] T014 [US3] Verify tablet breakpoint (768px) panel switching in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T014 [US3] Verify tablet breakpoint (768px) panel switching in `src/ToledoVault/wwwroot/app.css`
 
 **DETAILED INSTRUCTIONS for T014**:
 - In DevTools, test at exactly 767px and 768px viewports:
   - At 767px: Should show single-panel mode (only sidebar OR chat panel visible, not both)
   - At 768px: Should show two-panel mode (sidebar AND chat panel side by side)
-- Look for the media query breakpoint in `src/ToledoMessage/wwwroot/app.css` — search for `@media` rules near the mobile layout section.
+- Look for the media query breakpoint in `src/ToledoVault/wwwroot/app.css` — search for `@media` rules near the mobile layout section.
 - The existing breakpoint should be `@media (max-width: 768px)` or `@media (min-width: 769px)`.
 - Verify the CSS correctly handles the boundary:
   - `hide-mobile` class should only apply at mobile breakpoint
@@ -517,10 +517,10 @@ button, a, [role="button"], input, select, textarea {
 
 ### Implementation for User Story 4
 
-- [X] T015 [US4] Add WASM loading spinner to `src/ToledoMessage/Components/App.razor`
+- [X] T015 [US4] Add WASM loading spinner to `src/ToledoVault/Components/App.razor`
 
 **DETAILED INSTRUCTIONS for T015**:
-- In `src/ToledoMessage/Components/App.razor`, find `<body>` (line 59). Currently:
+- In `src/ToledoVault/Components/App.razor`, find `<body>` (line 59). Currently:
 ```html
 <body>
     <Routes />
@@ -530,7 +530,7 @@ button, a, [role="button"], input, select, textarea {
 <body>
     <div id="app-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:var(--bg-primary, #0f172a);color:var(--text-primary, #e2e8f0);font-family:system-ui,-apple-system,sans-serif;">
         <div style="width:40px;height:40px;border:3px solid rgba(255,255,255,0.1);border-top-color:var(--accent, #3b82f6);border-radius:50%;animation:app-spin 0.8s linear infinite;"></div>
-        <div style="margin-top:16px;font-size:1.1em;font-weight:500;letter-spacing:0.5px;">ToledoMessage</div>
+        <div style="margin-top:16px;font-size:1.1em;font-weight:500;letter-spacing:0.5px;">ToledoVault</div>
     </div>
     <style>
         @keyframes app-spin {
@@ -557,14 +557,14 @@ button, a, [role="button"], input, select, textarea {
 ```
 - **WHY**: Currently, during WASM download (~1-2 seconds on first load), the page is completely blank. This spinner provides immediate visual feedback using pure inline styles (no dependency on app.css which may not be loaded yet). The `var(--bg-primary, #0f172a)` syntax uses theme color with a dark fallback.
 - **NOTE**: Using inline styles intentionally — the spinner must display BEFORE the CSS file loads. The CSS file (`app.css`) is loaded via `<link rel="stylesheet">` which may take time.
-- **VERIFY**: Hard refresh (Ctrl+Shift+R) on the login page — a centered spinner with "ToledoMessage" text should appear immediately, then transition to the rendered page once WASM loads.
+- **VERIFY**: Hard refresh (Ctrl+Shift+R) on the login page — a centered spinner with "ToledoVault" text should appear immediately, then transition to the rendered page once WASM loads.
 
 ---
 
-- [X] T016 [P] [US4] Pre-allocate status message space on Login page in `src/ToledoMessage.Client/Pages/Login.razor` (lines 18–26)
+- [X] T016 [P] [US4] Pre-allocate status message space on Login page in `src/ToledoVault.Client/Pages/Login.razor` (lines 18–26)
 
 **DETAILED INSTRUCTIONS for T016**:
-- In `src/ToledoMessage.Client/Pages/Login.razor`, find the status message rendering (lines 18–26):
+- In `src/ToledoVault.Client/Pages/Login.razor`, find the status message rendering (lines 18–26):
 ```razor
 @if (!string.IsNullOrEmpty(_errorMessage))
 {
@@ -587,7 +587,7 @@ button, a, [role="button"], input, select, textarea {
     </div>
 </div>
 ```
-- Then add the `.alert-hidden` and `.auth-status-area` CSS in `src/ToledoMessage/wwwroot/app.css` (near the existing `.alert` rules around line ~217):
+- Then add the `.alert-hidden` and `.auth-status-area` CSS in `src/ToledoVault/wwwroot/app.css` (near the existing `.alert` rules around line ~217):
 ```css
 .auth-status-area {
     min-height: 48px;
@@ -607,10 +607,10 @@ button, a, [role="button"], input, select, textarea {
 
 ---
 
-- [X] T017 [P] [US4] Pre-allocate status message space on Register page in `src/ToledoMessage.Client/Pages/Register.razor` (lines 15–19)
+- [X] T017 [P] [US4] Pre-allocate status message space on Register page in `src/ToledoVault.Client/Pages/Register.razor` (lines 15–19)
 
 **DETAILED INSTRUCTIONS for T017**:
-- In `src/ToledoMessage.Client/Pages/Register.razor`, find the error message rendering (lines 15–19):
+- In `src/ToledoVault.Client/Pages/Register.razor`, find the error message rendering (lines 15–19):
 ```razor
 @if (!string.IsNullOrEmpty(_errorMessage))
 {
@@ -630,10 +630,10 @@ button, a, [role="button"], input, select, textarea {
 
 ---
 
-- [X] T018 [P] [US4] Stabilize alert animation to prevent layout reflow in `src/ToledoMessage/wwwroot/app.css` (line ~1699)
+- [X] T018 [P] [US4] Stabilize alert animation to prevent layout reflow in `src/ToledoVault/wwwroot/app.css` (line ~1699)
 
 **DETAILED INSTRUCTIONS for T018**:
-- In `src/ToledoMessage/wwwroot/app.css`, find the `@keyframes fadeIn` animation (around line 1699):
+- In `src/ToledoVault/wwwroot/app.css`, find the `@keyframes fadeIn` animation (around line 1699):
 ```css
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(4px); }
@@ -659,7 +659,7 @@ button, a, [role="button"], input, select, textarea {
 
 **Purpose**: Verify all changes work across themes and devices. No new features — only testing and minor fixes discovered during testing.
 
-- [ ] T019 Verify all changes across all 8 themes in `src/ToledoMessage/wwwroot/app.css` and `src/ToledoMessage/wwwroot/themes.css`
+- [ ] T019 Verify all changes across all 8 themes in `src/ToledoVault/wwwroot/app.css` and `src/ToledoVault/wwwroot/themes.css`
 
 **DETAILED INSTRUCTIONS for T019**:
 - Open the app and switch through all 8 themes (via Settings page):

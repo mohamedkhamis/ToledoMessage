@@ -4,7 +4,7 @@
 # Thresholds (from tasks.md T134):
 #   >=80% overall line coverage  (server + crypto + shared; Blazor Client excluded —
 #                                  WebAssembly UI requires bUnit/Playwright, not xUnit)
-#   >=90% crypto library         (ToledoMessage.Crypto)
+#   >=90% crypto library         (ToledoVault.Crypto)
 #
 # Usage: bash check-coverage.sh [--open-report]
 #
@@ -44,17 +44,17 @@ echo
 echo "Running unit tests with coverage..."
 rm -rf "$RESULTS_DIR"
 
-dotnet test "$REPO_ROOT/tests/ToledoMessage.Crypto.Tests" \
+dotnet test "$REPO_ROOT/tests/ToledoVault.Crypto.Tests" \
   --collect:"XPlat Code Coverage" \
   --results-directory "$RESULTS_DIR/crypto" \
   --nologo -v q
 
-dotnet test "$REPO_ROOT/tests/ToledoMessage.Server.Tests" \
+dotnet test "$REPO_ROOT/tests/ToledoVault.Server.Tests" \
   --collect:"XPlat Code Coverage" \
   --results-directory "$RESULTS_DIR/server" \
   --nologo -v q
 
-dotnet test "$REPO_ROOT/tests/ToledoMessage.Client.Tests" \
+dotnet test "$REPO_ROOT/tests/ToledoVault.Client.Tests" \
   --collect:"XPlat Code Coverage" \
   --results-directory "$RESULTS_DIR/client" \
   --nologo -v q
@@ -69,7 +69,7 @@ reportgenerator \
   "-reports:$W_RESULTS/**/*.xml" \
   "-targetdir:$W_REPORT" \
   -reporttypes:"Html;TextSummary;Cobertura" \
-  "-assemblyfilters:+ToledoMessage;+ToledoMessage.*;+Toledo.SharedKernel;-*Tests;-*Benchmarks" \
+  "-assemblyfilters:+ToledoVault;+ToledoVault.*;+Toledo.SharedKernel;-*Tests;-*Benchmarks" \
   "-classfilters:-*Migrations*;-*Program" \
   -verbosity:Warning
 
@@ -78,7 +78,7 @@ reportgenerator \
   "-reports:$W_RESULTS/**/*.xml" \
   "-targetdir:$W_REPORT/server-only" \
   -reporttypes:"Cobertura" \
-  "-assemblyfilters:+ToledoMessage;+ToledoMessage.Crypto;+ToledoMessage.Shared;+Toledo.SharedKernel;-*Tests;-*Benchmarks;-ToledoMessage.Client" \
+  "-assemblyfilters:+ToledoVault;+ToledoVault.Crypto;+ToledoVault.Shared;+Toledo.SharedKernel;-*Tests;-*Benchmarks;-ToledoVault.Client" \
   "-classfilters:-*Migrations*;-*Program" \
   -verbosity:Warning
 
@@ -87,7 +87,7 @@ reportgenerator \
   "-reports:$W_RESULTS/crypto/**/*.xml" \
   "-targetdir:$W_REPORT/crypto-only" \
   -reporttypes:"Cobertura" \
-  "-assemblyfilters:+ToledoMessage.Crypto" \
+  "-assemblyfilters:+ToledoVault.Crypto" \
   -verbosity:Warning
 
 echo
@@ -108,7 +108,7 @@ CRYPTO_PCT=$( awk "BEGIN {printf \"%.1f\", $CRYPTO_RATE  * 100}")
 # ─── 4. Threshold checks ─────────────────────────────────────────────────────
 echo "=== Results ==="
 echo "Overall (server + crypto + shared)  : ${OVERALL_PCT}%   threshold: ${OVERALL_THRESHOLD}%"
-echo "ToledoMessage.Crypto                : ${CRYPTO_PCT}%   threshold: ${CRYPTO_THRESHOLD}%"
+echo "ToledoVault.Crypto                : ${CRYPTO_PCT}%   threshold: ${CRYPTO_THRESHOLD}%"
 echo
 
 if awk "BEGIN { exit !($OVERALL_PCT >= $OVERALL_THRESHOLD) }"; then

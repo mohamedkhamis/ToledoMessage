@@ -4,7 +4,7 @@
 
 ## What This Feature Does
 
-Makes ToledoMessage installable as a Progressive Web App on mobile (iOS/Android) and desktop (Chrome/Edge). Users can add the app to their home screen or app launcher, and it opens in a standalone window without browser chrome.
+Makes ToledoVault installable as a Progressive Web App on mobile (iOS/Android) and desktop (Chrome/Edge). Users can add the app to their home screen or app launcher, and it opens in a standalone window without browser chrome.
 
 Includes push notifications for new messages and offline message queuing.
 
@@ -27,10 +27,10 @@ Includes push notifications for new messages and offline message queuing.
 
 ## Files to Modify
 
-1. **`src/ToledoMessage/Components/App.razor`** — Add `<link rel="manifest">`, iOS meta tags, service worker registration script
-2. **`src/ToledoMessage.Client/Services/SignalRService.cs`** — Add offline queue processing
-3. **`src/ToledoMessage.Client/Pages/Chat.razor`** — Add pending message indicator UI
-4. **`src/ToledoMessage/appsettings.json`** — Add VAPID keys
+1. **`src/ToledoVault/Components/App.razor`** — Add `<link rel="manifest">`, iOS meta tags, service worker registration script
+2. **`src/ToledoVault.Client/Services/SignalRService.cs`** — Add offline queue processing
+3. **`src/ToledoVault.Client/Pages/Chat.razor`** — Add pending message indicator UI
+4. **`src/ToledoVault/appsettings.json`** — Add VAPID keys
 5. **`CLAUDE.md`** — Document PWA support in the tech stack and architecture sections
 
 ## How to Test

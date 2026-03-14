@@ -11,7 +11,7 @@
 ## Build & Run
 
 ```bash
-cd src/ToledoMessage
+cd src/ToledoVault
 dotnet run
 ```
 
@@ -20,7 +20,7 @@ App runs at `https://localhost:5001` (or configured port).
 ## Run Tests
 
 ```bash
-dotnet test ToledoMessage.slnx
+dotnet test ToledoVault.slnx
 ```
 
 Expected: 215+ tests pass (142 server + 65 crypto + 8 integration).

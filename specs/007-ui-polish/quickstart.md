@@ -5,7 +5,7 @@
 ## Prerequisites
 
 - .NET 10 SDK installed
-- Project builds and runs (`dotnet run` from `src/ToledoMessage/`)
+- Project builds and runs (`dotnet run` from `src/ToledoVault/`)
 - Browser with DevTools (for CSS inspection and mobile viewport simulation)
 
 ## Development Workflow
@@ -13,7 +13,7 @@
 ### 1. Start the app
 
 ```bash
-cd src/ToledoMessage
+cd src/ToledoVault
 dotnet run
 ```
 
@@ -23,10 +23,10 @@ Navigate to `http://localhost:5000` (or configured port).
 
 | File | What to change |
 |------|---------------|
-| `src/ToledoMessage/wwwroot/app.css` | Main stylesheet — animations, component styles, accessibility |
-| `src/ToledoMessage/wwwroot/themes.css` | CSS custom properties per theme (new variables) |
-| `src/ToledoMessage.Client/Components/MessageBubble.razor` | Reply quote markup, delivery icons, grouped spacing |
-| `src/ToledoMessage.Client/Pages/Chat.razor` | Unread divider, context menu, message animations |
+| `src/ToledoVault/wwwroot/app.css` | Main stylesheet — animations, component styles, accessibility |
+| `src/ToledoVault/wwwroot/themes.css` | CSS custom properties per theme (new variables) |
+| `src/ToledoVault.Client/Components/MessageBubble.razor` | Reply quote markup, delivery icons, grouped spacing |
+| `src/ToledoVault.Client/Pages/Chat.razor` | Unread divider, context menu, message animations |
 
 ### 3. Testing across themes
 

@@ -1,4 +1,4 @@
-# Data Model: ToledoMessage SaaS Enhancement Plan (v2.0)
+# Data Model: ToledoVault SaaS Enhancement Plan (v2.0)
 
 **Feature**: `008-saas-enhancements`
 **Date**: 2026-03-09

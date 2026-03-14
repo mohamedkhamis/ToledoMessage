@@ -49,7 +49,7 @@
 
 **Rationale**: Currently there is NO loading indicator — the page is blank during WASM download. A simple CSS-only spinner in the initial HTML (not dependent on WASM) provides immediate visual feedback.
 
-**Approach**: Add a `<div id="app-loading">` with CSS spinner + "ToledoMessage" text. Hide it via `blazor:initialized` event or by the Routes component rendering over it.
+**Approach**: Add a `<div id="app-loading">` with CSS spinner + "ToledoVault" text. Hide it via `blazor:initialized` event or by the Routes component rendering over it.
 
 **Alternatives considered**:
 - Skeleton screen (rejected: complex to maintain, overkill for 1-2 second load)

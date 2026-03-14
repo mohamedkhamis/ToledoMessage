@@ -59,11 +59,11 @@ specs/007-ui-polish/
 
 ```text
 src/
-├── ToledoMessage/                    # Server project
+├── ToledoVault/                    # Server project
 │   └── wwwroot/
 │       ├── app.css                   # PRIMARY: Main stylesheet (bulk of changes)
 │       └── themes.css                # Theme CSS custom properties
-├── ToledoMessage.Client/             # Client WASM project
+├── ToledoVault.Client/             # Client WASM project
 │   ├── Components/
 │   │   ├── MessageBubble.razor       # Reply quotes, delivery icons, grouped spacing
 │   │   ├── ConversationListSidebar.razor
@@ -73,7 +73,7 @@ src/
 │   │   └── Settings.razor
 │   └── wwwroot/
 │       └── storage.js                # JS interop (if needed)
-└── ToledoMessage.Shared/             # Shared DTOs (no changes expected)
+└── ToledoVault.Shared/             # Shared DTOs (no changes expected)
 ```
 
 **Structure Decision**: All changes occur within existing files. Primary targets are `app.css` (styling), `themes.css` (CSS custom properties), and Blazor `.razor` components for markup adjustments. No new projects or directories needed.

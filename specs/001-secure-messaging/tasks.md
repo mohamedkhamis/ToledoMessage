@@ -19,10 +19,10 @@
 
 **Purpose**: Verify current state and establish baseline before making changes
 
-- [X] T001 Read and audit current responsive breakpoints in `src/ToledoMessage/wwwroot/app.css` — document all existing `@media` queries, their ranges, and which components they cover
-- [X] T002 Read `src/ToledoMessage.Client/Components/MessageBubble.razor` to understand current message text rendering and identify where to inject emoji-only detection
-- [X] T003 Read `src/ToledoMessage/Components/Pages/Home.razor` to catalog all technical jargon text and current header button markup
-- [X] T004 Read `src/ToledoMessage.Client/Pages/Login.razor` lines 100-160 to understand the full device validation flow and identify the exact branch where device-not-found triggers re-registration
+- [X] T001 Read and audit current responsive breakpoints in `src/ToledoVault/wwwroot/app.css` — document all existing `@media` queries, their ranges, and which components they cover
+- [X] T002 Read `src/ToledoVault.Client/Components/MessageBubble.razor` to understand current message text rendering and identify where to inject emoji-only detection
+- [X] T003 Read `src/ToledoVault/Components/Pages/Home.razor` to catalog all technical jargon text and current header button markup
+- [X] T004 Read `src/ToledoVault.Client/Pages/Login.razor` lines 100-160 to understand the full device validation flow and identify the exact branch where device-not-found triggers re-registration
 
 ---
 
@@ -32,7 +32,7 @@
 
 **⚠️ CRITICAL**: The 480px and landscape breakpoints are needed by US1, US2, and US3
 
-- [X] T005 [US1] Add small phone breakpoint block (`@media (max-width: 480px)`) to `src/ToledoMessage/wwwroot/app.css` with base rules:
+- [X] T005 [US1] Add small phone breakpoint block (`@media (max-width: 480px)`) to `src/ToledoVault/wwwroot/app.css` with base rules:
   ```css
   @media (max-width: 480px) {
       .msg-textarea { max-height: 100px; }
@@ -42,7 +42,7 @@
   ```
   Place this AFTER the existing `@media (max-width: 767px)` block.
 
-- [X] T006 [US1] Add landscape breakpoint block to `src/ToledoMessage/wwwroot/app.css`:
+- [X] T006 [US1] Add landscape breakpoint block to `src/ToledoVault/wwwroot/app.css`:
   ```css
   @media (max-height: 500px) and (orientation: landscape) {
       .chat-header { padding: 4px 12px; }
@@ -64,7 +64,7 @@
 
 ### Implementation for User Story 1
 
-- [X] T007 [P] [US1] Make emoji picker responsive in `src/ToledoMessage/wwwroot/app.css` — add inside the existing `@media (max-width: 767px)` block:
+- [X] T007 [P] [US1] Make emoji picker responsive in `src/ToledoVault/wwwroot/app.css` — add inside the existing `@media (max-width: 767px)` block:
   ```css
   .emoji-picker-popup {
       width: calc(100vw - 24px);
@@ -78,7 +78,7 @@
   .emoji-picker-popup { width: 100vw; left: 0; right: 0; border-radius: 12px 12px 0 0; }
   ```
 
-- [X] T008 [P] [US1] Make forward dialog responsive in `src/ToledoMessage/wwwroot/app.css` — add inside the existing `@media (max-width: 767px)` block:
+- [X] T008 [P] [US1] Make forward dialog responsive in `src/ToledoVault/wwwroot/app.css` — add inside the existing `@media (max-width: 767px)` block:
   ```css
   .forward-dialog {
       max-width: calc(100vw - 32px);
@@ -86,7 +86,7 @@
   }
   ```
 
-- [X] T009 [P] [US1] Make voice recorder responsive in `src/ToledoMessage/wwwroot/app.css` — add inside the 480px block:
+- [X] T009 [P] [US1] Make voice recorder responsive in `src/ToledoVault/wwwroot/app.css` — add inside the 480px block:
   ```css
   .voice-recorder-bar { min-height: 40px; border-radius: 20px; padding: 6px 10px; }
   .wave-bar { width: 1.5px; }
@@ -109,7 +109,7 @@
 
 ### Implementation for User Story 2
 
-- [X] T010 [P] [US2] Fix image preview mobile sizing in `src/ToledoMessage/wwwroot/app.css` — add inside the existing `@media (max-width: 767px)` block:
+- [X] T010 [P] [US2] Fix image preview mobile sizing in `src/ToledoVault/wwwroot/app.css` — add inside the existing `@media (max-width: 767px)` block:
   ```css
   .message-image { max-height: 280px; }
   .lightbox-image { max-width: 95vw; max-height: 85vh; }
@@ -117,14 +117,14 @@
   .lightbox-nav { width: 40px; height: 60px; }
   ```
 
-- [X] T011 [P] [US2] Polish audio recording bar for narrow screens in `src/ToledoMessage/wwwroot/app.css` — add waveform overflow prevention. Inside the 480px block, add:
+- [X] T011 [P] [US2] Polish audio recording bar for narrow screens in `src/ToledoVault/wwwroot/app.css` — add waveform overflow prevention. Inside the 480px block, add:
   ```css
   .voice-waveform, .voice-waveform-static { overflow: hidden; max-width: calc(100vw - 180px); }
   .voice-preview-bar { gap: 6px; }
   .voice-preview-duration { font-size: 0.75rem; min-width: 36px; }
   ```
 
-- [X] T012 [US2] CSS audit pass on `src/ToledoMessage/wwwroot/app.css`:
+- [X] T012 [US2] CSS audit pass on `src/ToledoVault/wwwroot/app.css`:
   - Verify all theme CSS variables from `themes.css` are used consistently (check `--msg-bubble-radius`, `--input-radius`, `--sidebar-width`, `--chat-bg-image`, `--msg-font-size`, `--input-padding`)
   - Check z-index values on mobile overlays (`.emoji-picker-popup`, `.lightbox-overlay`, `.forward-dialog`, `.context-menu`) don't conflict — emoji picker and context menu should be below lightbox
   - Verify no hardcoded color values that should use CSS variables
@@ -141,7 +141,7 @@
 
 ### Implementation for User Story 3
 
-- [X] T013 [US3] Add `IsEmojiOnly` helper method in `src/ToledoMessage.Client/Components/MessageBubble.razor` `@code` block:
+- [X] T013 [US3] Add `IsEmojiOnly` helper method in `src/ToledoVault.Client/Components/MessageBubble.razor` `@code` block:
   ```csharp
   private static bool IsEmojiOnly(string? text)
   {
@@ -155,13 +155,13 @@
   }
   ```
 
-- [X] T014 [US3] Apply emoji-only CSS class in `src/ToledoMessage.Client/Components/MessageBubble.razor` — find the `<div>` that wraps the message text content and add conditional class:
+- [X] T014 [US3] Apply emoji-only CSS class in `src/ToledoVault.Client/Components/MessageBubble.razor` — find the `<div>` that wraps the message text content and add conditional class:
   ```razor
   <div class="message-text @(IsEmojiOnly(messageText) ? "emoji-only" : "")">
   ```
   Where `messageText` is the variable holding the decrypted/plain text of the message. Identify the exact variable name by reading the existing rendering code.
 
-- [X] T015 [US3] Add big emoji CSS styles in `src/ToledoMessage/wwwroot/app.css` — add near the `.message-text` styles:
+- [X] T015 [US3] Add big emoji CSS styles in `src/ToledoVault/wwwroot/app.css` — add near the `.message-text` styles:
   ```css
   .message-text.emoji-only {
       font-size: 2.8em;
@@ -187,23 +187,23 @@
 
 ### Implementation for User Story 4
 
-- [ ] T016 [US4] Replace hero section content in `src/ToledoMessage/Components/Pages/Home.razor`:
+- [ ] T016 [US4] Replace hero section content in `src/ToledoVault/Components/Pages/Home.razor`:
   - Hero badge: "Quantum-Resistant Messaging" → **"Secure Messaging"**
   - Hero title: "Secure Messaging for Tomorrow's Threat" → **"Private Messaging Made Simple"**
   - Hero description: technical crypto description → **"Send messages, photos, and voice notes — all protected with the strongest encryption. Only you and the people you talk to can read them."**
 
-- [ ] T017 [P] [US4] Replace stat cards in `src/ToledoMessage/Components/Pages/Home.razor`:
+- [ ] T017 [P] [US4] Replace stat cards in `src/ToledoVault/Components/Pages/Home.razor`:
   - Stat 1: "256-bit / AES Encryption" → **"End-to-End / Encrypted"**
   - Stat 2: "Hybrid PQ / Key Exchange" → **"Future-Proof / Protection"**
   - Stat 3: "Zero-Knowledge / Server Architecture" → **"Private / By Design"**
 
-- [ ] T018 [P] [US4] Replace feature descriptions in `src/ToledoMessage/Components/Pages/Home.razor`:
+- [ ] T018 [P] [US4] Replace feature descriptions in `src/ToledoVault/Components/Pages/Home.razor`:
   - Feature 1 title: "Post-Quantum Safe" → **"Always Protected"**
   - Feature 1 desc: "ML-KEM-768 + X25519..." → **"Your messages are secured with cutting-edge encryption that protects against both today's and tomorrow's threats"**
   - Feature 2 desc: "Signal Protocol with Double Ratchet..." → **"Only you and the person you're talking to can read your messages. Not even we can."**
   - Feature 3 desc: "All cryptography runs in your browser..." → **"Everything is encrypted on your device before it's sent. We never see your messages or personal data."**
 
-- [ ] T019 [US4] Fix header "Sign In" button style in `src/ToledoMessage/Components/Pages/Home.razor` — change:
+- [ ] T019 [US4] Fix header "Sign In" button style in `src/ToledoVault/Components/Pages/Home.razor` — change:
   ```html
   <!-- Before -->
   <a href="/login">Sign In</a>
@@ -211,7 +211,7 @@
   <a href="/login" class="btn-nav-outline">Sign In</a>
   ```
 
-- [ ] T020 [US4] Add `.btn-nav-outline` CSS class in `src/ToledoMessage/wwwroot/app.css` near the existing `.btn-nav` styles:
+- [ ] T020 [US4] Add `.btn-nav-outline` CSS class in `src/ToledoVault/wwwroot/app.css` near the existing `.btn-nav` styles:
   ```css
   .btn-nav-outline {
       color: #f8fafc !important;
@@ -242,9 +242,9 @@
 
 ### Implementation for User Story 5
 
-- [ ] T021 [US5] Read `src/ToledoMessage.Client/Services/KeyGenerationService.cs` to understand the existing `RestoreKeysAndBuildRequest` method signature and confirm it reads identity keys from localStorage and generates fresh pre-keys/OTPKs
+- [ ] T021 [US5] Read `src/ToledoVault.Client/Services/KeyGenerationService.cs` to understand the existing `RestoreKeysAndBuildRequest` method signature and confirm it reads identity keys from localStorage and generates fresh pre-keys/OTPKs
 
-- [ ] T022 [US5] Modify the device validation flow in `src/ToledoMessage.Client/Pages/Login.razor` — find the branch where `deviceId` is not found in the server device list (around lines 133-145 per plan). Replace the "generate new keys" path with a check for existing identity keys:
+- [ ] T022 [US5] Modify the device validation flow in `src/ToledoVault.Client/Pages/Login.razor` — find the branch where `deviceId` is not found in the server device list (around lines 133-145 per plan). Replace the "generate new keys" path with a check for existing identity keys:
   ```csharp
   // When stored deviceId not found on server:
   var existingIdentity = await Storage.GetAsync("local.identityKeyPublicClassical");
@@ -272,7 +272,7 @@
   ```
   **Important**: Adapt this to match the exact variable names and flow patterns already used in Login.razor. The `RestoreKeysAndBuildRequest` method should already exist from the SharedKeys feature — verify its signature in T021.
 
-- [ ] T023 [US5] Test the device restore flow by verifying that `POST /api/devices` in `src/ToledoMessage/Controllers/DevicesController.cs` accepts any valid public keys (no change expected — just confirm the endpoint works for restored keys with a different deviceId)
+- [ ] T023 [US5] Test the device restore flow by verifying that `POST /api/devices` in `src/ToledoVault/Controllers/DevicesController.cs` accepts any valid public keys (no change expected — just confirm the endpoint works for restored keys with a different deviceId)
 
 **Checkpoint**: Same browser preserves device identity across server redeployments
 

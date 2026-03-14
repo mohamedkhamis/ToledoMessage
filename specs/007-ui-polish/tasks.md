@@ -15,13 +15,13 @@
 
 | File | Purpose |
 |------|---------|
-| `src/ToledoMessage/wwwroot/app.css` | Main stylesheet (~4050 lines) — bulk of CSS changes |
-| `src/ToledoMessage/wwwroot/themes.css` | Theme CSS custom properties (8 themes) |
-| `src/ToledoMessage.Client/Components/MessageBubble.razor` | Message bubble component (464 lines) |
-| `src/ToledoMessage.Client/Components/DeliveryStatus.razor` | Delivery status icon component |
-| `src/ToledoMessage.Client/Components/LinkPreview.razor` | Link preview card component |
-| `src/ToledoMessage.Client/Pages/Chat.razor` | Main chat page (2206 lines) — unread divider, context menu, search, toasts |
-| `src/ToledoMessage.Client/Pages/Settings.razor` | Settings page |
+| `src/ToledoVault/wwwroot/app.css` | Main stylesheet (~4050 lines) — bulk of CSS changes |
+| `src/ToledoVault/wwwroot/themes.css` | Theme CSS custom properties (8 themes) |
+| `src/ToledoVault.Client/Components/MessageBubble.razor` | Message bubble component (464 lines) |
+| `src/ToledoVault.Client/Components/DeliveryStatus.razor` | Delivery status icon component |
+| `src/ToledoVault.Client/Components/LinkPreview.razor` | Link preview card component |
+| `src/ToledoVault.Client/Pages/Chat.razor` | Main chat page (2206 lines) — unread divider, context menu, search, toasts |
+| `src/ToledoVault.Client/Pages/Settings.razor` | Settings page |
 
 ## Current Theme Variables Available
 
@@ -42,7 +42,7 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
 **Purpose**: Add new CSS custom properties to the theme system that will be consumed by multiple user stories. This phase MUST complete before any user story work begins.
 
-- [ ] T001 Add new CSS custom properties `--waveform-played`, `--waveform-unplayed`, `--skeleton-base`, `--skeleton-shimmer` to ALL 8 theme definitions in `src/ToledoMessage/wwwroot/themes.css`
+- [ ] T001 Add new CSS custom properties `--waveform-played`, `--waveform-unplayed`, `--skeleton-base`, `--skeleton-shimmer` to ALL 8 theme definitions in `src/ToledoVault/wwwroot/themes.css`
 
   **Details**: Each theme block is defined via `:root[data-theme="..."]` selectors. Add 4 new properties to each of the 8 themes. Use theme-appropriate colors:
 
@@ -57,7 +57,7 @@ All 8 themes define these CSS custom properties in `themes.css`:
   | Signal | `#3a76f0` | `#c5c5c5` | `#e8e8e8` | `#f0f0f0` |
   | Signal Dark | `#3a76f0` | `#383a3d` | `#212224` | `#2a2b2e` |
 
-  **File**: `src/ToledoMessage/wwwroot/themes.css`
+  **File**: `src/ToledoVault/wwwroot/themes.css`
   **Lines affected**: Each theme block (lines ~18-51, 53-85, 87-120, 122-154, 156-188, 190-223, 225-258, and root fallback)
 
   **Verification**: After this task, open browser DevTools → Elements → `:root` computed styles → confirm all 4 new variables resolve for each theme when switched in Settings.
@@ -70,7 +70,7 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
 **CRITICAL**: No user story work (Phase 3+) should begin until this phase is complete.
 
-- [ ] T002 Add the `@keyframes message-slide-in-left` and `@keyframes message-slide-in-right` animation definitions in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T002 Add the `@keyframes message-slide-in-left` and `@keyframes message-slide-in-right` animation definitions in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: Insert these keyframe definitions near the existing animation block (around line 2010-2035 where `fadeIn`, `slideInRight`, `slideInLeft`, `pulse`, `badgePop` are defined). These are NEW keyframes distinct from the existing `slideInLeft`/`slideInRight` which are generic slide-ins. The message variants include a slight vertical shift for a more natural feel:
 
@@ -87,9 +87,9 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
   Duration: 200ms, easing: ease-out (applied via the `.message-row` class in a later task).
 
-  **File**: `src/ToledoMessage/wwwroot/app.css` (insert near line ~2035)
+  **File**: `src/ToledoVault/wwwroot/app.css` (insert near line ~2035)
 
-- [ ] T003 [P] Add the `@keyframes reaction-pop` animation definition in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T003 [P] Add the `@keyframes reaction-pop` animation definition in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: Insert near the existing `badgePop` keyframe (~line 2030):
 
@@ -103,9 +103,9 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
   This will be applied to `.reaction-badge` on click in a later task (US5).
 
-  **File**: `src/ToledoMessage/wwwroot/app.css` (insert near line ~2033)
+  **File**: `src/ToledoVault/wwwroot/app.css` (insert near line ~2033)
 
-- [ ] T004 [P] Add the `@keyframes context-menu-enter` animation definition in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T004 [P] Add the `@keyframes context-menu-enter` animation definition in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: Insert near existing animation keyframes:
 
@@ -118,9 +118,9 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
   Duration: 150ms, easing: ease-out (applied to `.context-menu` in a later task).
 
-  **File**: `src/ToledoMessage/wwwroot/app.css` (insert near line ~2035)
+  **File**: `src/ToledoVault/wwwroot/app.css` (insert near line ~2035)
 
-- [ ] T005 Add a comprehensive `@media (prefers-reduced-motion: reduce)` block at the END of `src/ToledoMessage/wwwroot/app.css`
+- [ ] T005 Add a comprehensive `@media (prefers-reduced-motion: reduce)` block at the END of `src/ToledoVault/wwwroot/app.css`
 
   **Details**: This single media query block suppresses ALL animations added by this feature AND existing animations. Insert at the very end of app.css (after all other rules):
 
@@ -142,7 +142,7 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
   **Why at the end**: CSS specificity — `!important` in a media query at the end ensures it overrides all animation declarations regardless of source order.
 
-  **File**: `src/ToledoMessage/wwwroot/app.css` (append at end of file)
+  **File**: `src/ToledoVault/wwwroot/app.css` (append at end of file)
 
   **Verification**: In Chrome DevTools → Rendering tab → check "Emulate CSS media feature prefers-reduced-motion" → set to "reduce" → confirm no animations play.
 
@@ -164,7 +164,7 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Replace hardcoded `#00a884` in audio waveform "mine" styles with `var(--waveform-played)` in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T006 [US1] Replace hardcoded `#00a884` in audio waveform "mine" styles with `var(--waveform-played)` in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: There are 3 occurrences of hardcoded WhatsApp green `#00a884` in audio-related CSS:
 
@@ -183,11 +183,11 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
   **Search pattern**: Search for `00a884` in app.css to find all instances.
 
-  **File**: `src/ToledoMessage/wwwroot/app.css`
+  **File**: `src/ToledoVault/wwwroot/app.css`
 
   **Verification**: Switch to Signal theme → play an audio message → waveform bars should be Signal blue (`#3a76f0`), not WhatsApp green.
 
-- [ ] T007 [P] [US1] Replace hardcoded PDF preview background color with theme variable in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T007 [P] [US1] Replace hardcoded PDF preview background color with theme variable in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: The PDF preview frame wrapper (`.pdf-preview-frame-wrapper`, line ~1125) may have a hardcoded background or inherit a non-themed color. Ensure it uses `var(--bg-secondary)` for the frame background so dark themes show a dark PDF preview area:
 
@@ -205,11 +205,11 @@ All 8 themes define these CSS custom properties in `themes.css`:
   .message-file-download-btn { color: var(--accent-text); }
   ```
 
-  **File**: `src/ToledoMessage/wwwroot/app.css`
+  **File**: `src/ToledoVault/wwwroot/app.css`
 
   **Verification**: Switch to WhatsApp Dark theme → open a PDF message → preview area should have dark background, not white/light gray.
 
-- [ ] T008 [P] [US1] Replace hardcoded video play button overlay colors with theme variables in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T008 [P] [US1] Replace hardcoded video play button overlay colors with theme variables in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: The video play button (`.message-video-play-btn`, lines ~951-979) uses:
   - `background: rgba(0, 0, 0, 0.55)` — hardcoded dark overlay
@@ -222,9 +222,9 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
   **Minimal change needed**: This is already theme-compatible. Mark as verified/no-change-needed if inspection confirms.
 
-  **File**: `src/ToledoMessage/wwwroot/app.css`
+  **File**: `src/ToledoVault/wwwroot/app.css`
 
-- [ ] T009 [P] [US1] Audit and replace remaining hardcoded color values in alert/notification styles in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T009 [P] [US1] Audit and replace remaining hardcoded color values in alert/notification styles in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: Several alert/notification styles use hardcoded colors that should use CSS variables:
 
@@ -234,11 +234,11 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
   **Only change**: Line ~162 `.error-badge` background from `#c82333` to `var(--danger)`.
 
-  **File**: `src/ToledoMessage/wwwroot/app.css`
+  **File**: `src/ToledoVault/wwwroot/app.css`
 
   **Verification**: Open app in each theme → trigger an error state → badge should use theme's danger color.
 
-- [ ] T010 [US1] Audit HD toggle button for hardcoded colors in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T010 [US1] Audit HD toggle button for hardcoded colors in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: The HD toggle (`.hd-toggle-btn`, lines ~736-765) already uses `var(--text-secondary)` for inactive and `var(--accent)` for active states. The active state uses `color: #fff` for text.
 
@@ -247,7 +247,7 @@ All 8 themes define these CSS custom properties in `themes.css`:
   .hd-toggle-btn.active { color: var(--accent-text); }
   ```
 
-  **File**: `src/ToledoMessage/wwwroot/app.css`
+  **File**: `src/ToledoVault/wwwroot/app.css`
 
   **Verification**: Switch themes → toggle HD button → active text should always be readable against the accent background.
 
@@ -267,7 +267,7 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] Update timestamp opacity from 0.7 to 0.85 baseline and remove hover-only visibility dependency in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T011 [US2] Update timestamp opacity from 0.7 to 0.85 baseline and remove hover-only visibility dependency in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: Currently the timestamp styling has:
   - Base opacity: 0.7 (lines ~564-572 and ~1571-1583 in `.message-timestamp` / `.msg-meta`)
@@ -293,7 +293,7 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
   The `@media (hover: none)` query targets touch-only devices (phones, tablets) where hover is not available.
 
-  **File**: `src/ToledoMessage/wwwroot/app.css`
+  **File**: `src/ToledoVault/wwwroot/app.css`
 
   **Verification**:
   - Desktop: Timestamps visible at 0.85 opacity, increase to 1.0 on bubble hover
@@ -318,7 +318,7 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
 ### Implementation for User Story 3
 
-- [ ] T012 [US3] Apply message slide-in animation to `.message-row` in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T012 [US3] Apply message slide-in animation to `.message-row` in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: Add animation to new messages using the keyframes defined in T002. Messages should slide in from their respective side:
 
@@ -335,15 +335,15 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
   **Caveat**: This will animate ALL message rows on initial load (which could look weird for a full chat history). To limit animation to newly arrived messages only, the Blazor component should add a CSS class like `new-message` that triggers the animation. Check if `Chat.razor` already has such a mechanism (e.g., `_newlyReceivedIds` set or similar). If not, a Blazor-side change is needed.
 
-  **Blazor-side change** (if needed): In `src/ToledoMessage.Client/Pages/Chat.razor`, track newly received message IDs and add a `new-message` CSS class to their `.message-row` div. Then scope the animation to `.message-row.new-message` only.
+  **Blazor-side change** (if needed): In `src/ToledoVault.Client/Pages/Chat.razor`, track newly received message IDs and add a `new-message` CSS class to their `.message-row` div. Then scope the animation to `.message-row.new-message` only.
 
   **Files**:
-  - `src/ToledoMessage/wwwroot/app.css` — CSS animation rule
-  - `src/ToledoMessage.Client/Pages/Chat.razor` — Add `new-message` class to newly received messages (optional, but recommended)
+  - `src/ToledoVault/wwwroot/app.css` — CSS animation rule
+  - `src/ToledoVault.Client/Pages/Chat.razor` — Add `new-message` class to newly received messages (optional, but recommended)
 
   **Verification**: Send a message → it slides in from the right. Receive a message → it slides in from the left. Existing messages on chat load should NOT animate.
 
-- [ ] T013 [P] [US3] Update skeleton loader animation from basic pulse to shimmer gradient in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T013 [P] [US3] Update skeleton loader animation from basic pulse to shimmer gradient in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: The skeleton loader already has a `shimmer` keyframe defined (line ~2950) and uses it. However, verify that ALL skeleton elements use shimmer instead of pulse:
 
@@ -365,11 +365,11 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
   Also ensure ALL skeleton elements (`.skeleton-avatar`, `.skeleton-conversation-item`, `.skeleton-message`) use the shimmer gradient, not just `.skeleton-line`.
 
-  **File**: `src/ToledoMessage/wwwroot/app.css` (lines ~2936-2999)
+  **File**: `src/ToledoVault/wwwroot/app.css` (lines ~2936-2999)
 
   **Verification**: Navigate to a chat that takes a moment to load → skeleton should show a sweeping shimmer gradient, not a pulsing opacity change.
 
-- [ ] T014 [P] [US3] Apply reaction pop animation to `.reaction-badge` on interaction in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T014 [P] [US3] Apply reaction pop animation to `.reaction-badge` on interaction in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: When a user clicks a reaction badge, it should briefly scale up and back down. The keyframe `reaction-pop` was defined in T003.
 
@@ -390,11 +390,11 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
   **Recommended**: Start with `:active` — it's simpler and CSS-only.
 
-  **File**: `src/ToledoMessage/wwwroot/app.css`
+  **File**: `src/ToledoVault/wwwroot/app.css`
 
   **Verification**: Click a reaction badge → it should briefly enlarge then return to normal size.
 
-- [ ] T015 [P] [US3] Apply context menu fade-in animation to `.context-menu` in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T015 [P] [US3] Apply context menu fade-in animation to `.context-menu` in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: The context menu (`.context-menu`, lines ~3445-3500 in app.css) currently appears instantly. Apply the `context-menu-enter` keyframe defined in T004:
 
@@ -407,11 +407,11 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
   The `transform-origin` should be set to the corner closest to where the menu appears (usually top-right for header menus, or near the click point for message context menus).
 
-  **File**: `src/ToledoMessage/wwwroot/app.css` (modify existing `.context-menu` block around line ~3450)
+  **File**: `src/ToledoVault/wwwroot/app.css` (modify existing `.context-menu` block around line ~3450)
 
   **Verification**: Right-click (or long-press on mobile) a message → context menu should fade in with a slight scale-up, not appear instantly.
 
-- [ ] T016 [US3] Verify toast notification animations are working correctly in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T016 [US3] Verify toast notification animations are working correctly in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: Toast animations already exist in app.css (lines ~3045-3058):
   - `toast-slide-in`: translateX 100% → 0, 0.3s ease-out
@@ -429,8 +429,8 @@ All 8 themes define these CSS custom properties in `themes.css`:
   If the toast component doesn't support exit animation, add a `removing` CSS class mechanism in the Blazor toast component.
 
   **Files**:
-  - `src/ToledoMessage/wwwroot/app.css` — Verify/fix animation rules
-  - Toast component (search for `toast` in `src/ToledoMessage.Client/Components/`) — Verify/fix class toggling
+  - `src/ToledoVault/wwwroot/app.css` — Verify/fix animation rules
+  - Toast component (search for `toast` in `src/ToledoVault.Client/Components/`) — Verify/fix class toggling
 
   **Verification**: Trigger a toast (e.g., copy a message) → toast should slide in from right. After timeout → toast should slide out to right.
 
@@ -452,7 +452,7 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
 ### Implementation for User Story 4
 
-- [ ] T017 [US4] Review and enhance forward dialog styling in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T017 [US4] Review and enhance forward dialog styling in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: The forward dialog already has comprehensive CSS (lines ~3977-4042):
   - `.forward-dialog-overlay`: fixed overlay, z-1000, rgba backdrop
@@ -470,11 +470,11 @@ All 8 themes define these CSS custom properties in `themes.css`:
   3. Ensure empty state (no conversations) has styled placeholder text
   4. Test on all 8 themes — verify borders, backgrounds, text colors adapt
 
-  **File**: `src/ToledoMessage/wwwroot/app.css` (lines ~3977-4042)
+  **File**: `src/ToledoVault/wwwroot/app.css` (lines ~3977-4042)
 
   **Verification**: Open a message → click Forward → dialog should appear with smooth animation, themed colors, searchable conversation list. Test on WhatsApp Dark and Signal themes specifically.
 
-- [ ] T018 [P] [US4] Review and enhance search result counter and highlight styling in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T018 [P] [US4] Review and enhance search result counter and highlight styling in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: The search counter already has basic CSS (line ~3960-3963):
   - `.chat-search-count`: 0.8em, `--text-secondary`, nowrap, 4px/8px padding
@@ -500,11 +500,11 @@ All 8 themes define these CSS custom properties in `themes.css`:
      ```
      Search app.css for existing `.message-highlight` rules and enhance if needed.
 
-  **File**: `src/ToledoMessage/wwwroot/app.css`
+  **File**: `src/ToledoVault/wwwroot/app.css`
 
   **Verification**: Type a search query → results counter shows "1 / 5" with subtle background → highlighted message has visible accent outline.
 
-- [ ] T019 [P] [US4] Review and enhance link preview card styling in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T019 [P] [US4] Review and enhance link preview card styling in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: Link preview already has comprehensive CSS (lines ~3747-3801):
   - `.link-preview-card`: flex, bordered, 8px radius, hover state
@@ -524,11 +524,11 @@ All 8 themes define these CSS custom properties in `themes.css`:
   .link-preview-card { border-left: 3px solid var(--accent); }
   ```
 
-  **File**: `src/ToledoMessage/wwwroot/app.css` (lines ~3747-3801)
+  **File**: `src/ToledoVault/wwwroot/app.css` (lines ~3747-3801)
 
   **Verification**: Send a URL in a message → link preview card appears with image, title, description, domain → card is properly themed and readable in all 8 themes.
 
-- [ ] T020 [P] [US4] Review and enhance clear chat dialog styling in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T020 [P] [US4] Review and enhance clear chat dialog styling in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: Clear chat dialog already has CSS (lines ~3875-3936):
   - `.clear-chat-dialog`: fixed centered, max 360px, card bg, padded
@@ -545,7 +545,7 @@ All 8 themes define these CSS custom properties in `themes.css`:
   3. Test button focus states — danger button should have visible focus ring
   4. Ensure cancel button is clearly distinguished from action buttons
 
-  **File**: `src/ToledoMessage/wwwroot/app.css` (lines ~3875-3936)
+  **File**: `src/ToledoVault/wwwroot/app.css` (lines ~3875-3936)
 
   **Verification**: Click menu → Clear Chat → dialog should animate in with dimmed backdrop, danger button clearly styled red, cancel button neutral.
 
@@ -566,7 +566,7 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
 ### Implementation for User Story 5
 
-- [ ] T021 [US5] Verify and enhance reply quote block left accent border in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T021 [US5] Verify and enhance reply quote block left accent border in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: The reply quote block already has a 3px left border using `var(--accent)` based on the exploration. Verify this in the actual CSS:
 
@@ -597,11 +597,11 @@ All 8 themes define these CSS custom properties in `themes.css`:
      .reply-sender-name { color: var(--accent); font-weight: 600; }
      ```
 
-  **File**: `src/ToledoMessage/wwwroot/app.css`
+  **File**: `src/ToledoVault/wwwroot/app.css`
 
   **Verification**: Reply to a message → the quote block should have a clear colored left border in the theme's accent color. Switch between themes → border color changes accordingly.
 
-- [ ] T022 [US5] Tighten grouped message spacing for consecutive same-sender messages in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T022 [US5] Tighten grouped message spacing for consecutive same-sender messages in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: Currently grouped messages use classes `group-first`, `group-middle`, `group-last` with 1px margins between them (app.css lines ~2878-2893). This is already quite tight.
 
@@ -629,11 +629,11 @@ All 8 themes define these CSS custom properties in `themes.css`:
   .message-bubble.mine.group-last { border-top-right-radius: 4px; }
   ```
 
-  **File**: `src/ToledoMessage/wwwroot/app.css`
+  **File**: `src/ToledoVault/wwwroot/app.css`
 
   **Verification**: Send 3+ consecutive messages → they should appear as a visually connected group with minimal gaps. A message from a different sender should have normal spacing.
 
-- [ ] T023 [US5] Enhance unread message divider to be more prominent in `src/ToledoMessage/wwwroot/app.css` and `src/ToledoMessage.Client/Pages/Chat.razor`
+- [ ] T023 [US5] Enhance unread message divider to be more prominent in `src/ToledoVault/wwwroot/app.css` and `src/ToledoVault.Client/Pages/Chat.razor`
 
   **Details**: The current unread divider (app.css lines ~3061-3078) uses `var(--accent)` color with `::before`/`::after` lines. Per research decision R-006, it should be a full-width bar with accent background and contrasting text.
 
@@ -662,7 +662,7 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
   **Blazor markup** (Chat.razor lines ~148-154): The markup already renders `<div class="unread-divider"><span>...</span></div>`. No Blazor changes needed unless the text format needs updating.
 
-  **File**: `src/ToledoMessage/wwwroot/app.css` (lines ~3061-3078 — replace existing rules)
+  **File**: `src/ToledoVault/wwwroot/app.css` (lines ~3061-3078 — replace existing rules)
 
   **Verification**: Open a chat with unread messages → a prominent colored bar reading "X new messages" should be immediately visible when scrolling through the chat. The bar should use the theme's accent color as background.
 
@@ -684,7 +684,7 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
 ### Implementation for User Story 6
 
-- [ ] T024 [US6] Review and enhance `DeliveryStatus.razor` component for clear icon differentiation in `src/ToledoMessage.Client/Components/DeliveryStatus.razor`
+- [ ] T024 [US6] Review and enhance `DeliveryStatus.razor` component for clear icon differentiation in `src/ToledoVault.Client/Components/DeliveryStatus.razor`
 
   **Details**: First, read the current `DeliveryStatus.razor` component to understand the current implementation. The component renders delivery status icons based on an enum (Sending, Sent, Delivered, Read).
 
@@ -705,8 +705,8 @@ All 8 themes define these CSS custom properties in `themes.css`:
   ```
 
   **Files**:
-  - `src/ToledoMessage.Client/Components/DeliveryStatus.razor` — Review and update markup/icons
-  - `src/ToledoMessage/wwwroot/app.css` — Add/update delivery status CSS
+  - `src/ToledoVault.Client/Components/DeliveryStatus.razor` — Review and update markup/icons
+  - `src/ToledoVault/wwwroot/app.css` — Add/update delivery status CSS
 
   **Verification**: Send a message → observe the status icon change through: clock (sending) → single check (sent) → double check (delivered) → blue/accent double check (read). Each state should be visually distinct without reading tooltip text.
 
@@ -727,7 +727,7 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
 ### Implementation for User Story 7
 
-- [ ] T025 [US7] Verify and fix touch target sizes for interactive buttons in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T025 [US7] Verify and fix touch target sizes for interactive buttons in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: Current button sizes from exploration:
   - Emoji button: 40px x 40px (needs 44px)
@@ -775,11 +775,11 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
   **Recommended**: Use `min-width`/`min-height` — it's simpler and the 2-4px size increase is barely noticeable.
 
-  **File**: `src/ToledoMessage/wwwroot/app.css`
+  **File**: `src/ToledoVault/wwwroot/app.css`
 
   **Verification**: Open DevTools → device toolbar (iPhone/Android) → inspect button elements → computed size should be >= 44x44px.
 
-- [ ] T026 [P] [US7] Verify focus-visible rings are applied to ALL interactive elements in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T026 [P] [US7] Verify focus-visible rings are applied to ALL interactive elements in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: Focus rings already exist globally (lines ~2074-2082):
   ```css
@@ -806,11 +806,11 @@ All 8 themes define these CSS custom properties in `themes.css`:
      - Change to `<button>` (preferred)
      - Add `tabindex="0"` and `.focus-ring` class
 
-  **File**: `src/ToledoMessage/wwwroot/app.css` (and potentially Blazor components if `<div>` needs changing to `<button>`)
+  **File**: `src/ToledoVault/wwwroot/app.css` (and potentially Blazor components if `<div>` needs changing to `<button>`)
 
   **Verification**: Start at the top of the app → Tab key repeatedly → every interactive element should show a 2px accent-colored outline. No element should be skipped or have no visible focus indicator.
 
-- [ ] T027 [P] [US7] Increase scrollbar width to 8px on touch devices in `src/ToledoMessage/wwwroot/app.css`
+- [ ] T027 [P] [US7] Increase scrollbar width to 8px on touch devices in `src/ToledoVault/wwwroot/app.css`
 
   **Details**: Current scrollbar (lines ~2253-2262):
   ```css
@@ -840,7 +840,7 @@ All 8 themes define these CSS custom properties in `themes.css`:
   }
   ```
 
-  **File**: `src/ToledoMessage/wwwroot/app.css`
+  **File**: `src/ToledoVault/wwwroot/app.css`
 
   **Verification**: Open on mobile viewport → scroll through chat or conversation list → scrollbar should be noticeably wider (8px) and easily graspable.
 
@@ -879,7 +879,7 @@ All 8 themes define these CSS custom properties in `themes.css`:
 
   If any animation still plays, update the `@media (prefers-reduced-motion: reduce)` block from T005.
 
-  **File**: `src/ToledoMessage/wwwroot/app.css` (update media query block if needed)
+  **File**: `src/ToledoVault/wwwroot/app.css` (update media query block if needed)
 
 - [ ] T030 [P] Verify all existing tests still pass after UI changes
 

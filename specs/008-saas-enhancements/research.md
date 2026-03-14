@@ -1,4 +1,4 @@
-# Research: ToledoMessage SaaS Enhancement Plan (v2.0)
+# Research: ToledoVault SaaS Enhancement Plan (v2.0)
 
 **Feature**: `008-saas-enhancements`
 **Date**: 2026-03-09
@@ -147,7 +147,7 @@ This document records all research findings and technical decisions made during 
 **Decision**: Prepend a single byte `0x01` to v1 signatures. Detect v0 (legacy) by absence of the version prefix.
 
 **Key details**:
-- **File**: `src/ToledoMessage.Crypto/HybridSigner.cs` (or equivalent signing class).
+- **File**: `src/ToledoVault.Crypto/HybridSigner.cs` (or equivalent signing class).
 - **v0 format**: `[Ed25519Signature(64 bytes)][DilithiumSignature(variable)]` — current format.
 - **v1 format**: `[0x01][Ed25519Signature(64 bytes)][DilithiumSignature(variable)]`.
 - **Detection**: Ed25519 signatures are 64 bytes and their first byte is NOT `0x01` with overwhelming probability (it's a point encoding). But for robustness, the verifier checks: if `signature[0] == 0x01` AND `signature.Length > 1 + 64 + minDilithiumSize`, parse as v1. Otherwise, parse as v0.

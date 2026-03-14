@@ -14,7 +14,7 @@
 
 ```bash
 # From repository root
-cd src/ToledoMessage
+cd src/ToledoVault
 dotnet build
 dotnet run
 ```
@@ -28,10 +28,10 @@ App runs at `https://localhost:5001` (development) or `http://localhost:8080` (I
 dotnet test
 
 # Specific test projects
-dotnet test tests/ToledoMessage.Server.Tests/
-dotnet test tests/ToledoMessage.Crypto.Tests/
-dotnet test tests/ToledoMessage.Integration.Tests/
-dotnet test tests/ToledoMessage.Client.Tests/
+dotnet test tests/ToledoVault.Server.Tests/
+dotnet test tests/ToledoVault.Crypto.Tests/
+dotnet test tests/ToledoVault.Integration.Tests/
+dotnet test tests/ToledoVault.Client.Tests/
 ```
 
 ## Deploy to IIS
@@ -46,33 +46,33 @@ powershell -ExecutionPolicy Bypass -File ./deploy-iis.ps1 -Force
 
 | File | Changes |
 |------|---------|
-| `src/ToledoMessage.Client/Pages/Chat.razor` | MediaPayload serialization, caption bundling, memory fix, received media persistence |
-| `src/ToledoMessage.Client/Components/MessageInput.razor` | Image compression via JS interop, "send as document" option |
-| `src/ToledoMessage.Client/Components/MessageBubble.razor` | Video player UI, document file card, thumbnail preview |
-| `src/ToledoMessage.Client/wwwroot/media-helpers.js` | Image compression, thumbnail generation, video frame capture |
-| `src/ToledoMessage.Client/Services/CryptoService.cs` | No changes (encryption API unchanged) |
+| `src/ToledoVault.Client/Pages/Chat.razor` | MediaPayload serialization, caption bundling, memory fix, received media persistence |
+| `src/ToledoVault.Client/Components/MessageInput.razor` | Image compression via JS interop, "send as document" option |
+| `src/ToledoVault.Client/Components/MessageBubble.razor` | Video player UI, document file card, thumbnail preview |
+| `src/ToledoVault.Client/wwwroot/media-helpers.js` | Image compression, thumbnail generation, video frame capture |
+| `src/ToledoVault.Client/Services/CryptoService.cs` | No changes (encryption API unchanged) |
 
 ### Shared (DTOs)
 
 | File | Changes |
 |------|---------|
-| `src/ToledoMessage.Shared/DTOs/SendMessageRequest.cs` | No schema change; `FileName`/`MimeType` set to null for media |
-| `src/ToledoMessage.Shared/Models/MediaPayload.cs` | **NEW** — MediaPayload record for serialization |
+| `src/ToledoVault.Shared/DTOs/SendMessageRequest.cs` | No schema change; `FileName`/`MimeType` set to null for media |
+| `src/ToledoVault.Shared/Models/MediaPayload.cs` | **NEW** — MediaPayload record for serialization |
 
 ### Server
 
 | File | Changes |
 |------|---------|
-| `src/ToledoMessage/Hubs/ChatHub.cs` | No changes needed (validates ciphertext size, doesn't inspect content) |
-| `src/ToledoMessage/Services/MessageRelayService.cs` | No changes needed |
+| `src/ToledoVault/Hubs/ChatHub.cs` | No changes needed (validates ciphertext size, doesn't inspect content) |
+| `src/ToledoVault/Services/MessageRelayService.cs` | No changes needed |
 
 ### Tests
 
 | File | Changes |
 |------|---------|
-| `tests/ToledoMessage.Server.Tests/` | Add media content type validation tests |
-| `tests/ToledoMessage.Integration.Tests/` | Add media encryption round-trip tests |
-| `tests/ToledoMessage.Client.Tests/` | Add MediaPayload serialization, compression, caption bundling tests |
+| `tests/ToledoVault.Server.Tests/` | Add media content type validation tests |
+| `tests/ToledoVault.Integration.Tests/` | Add media encryption round-trip tests |
+| `tests/ToledoVault.Client.Tests/` | Add MediaPayload serialization, compression, caption bundling tests |
 
 ## Testing Media Locally
 

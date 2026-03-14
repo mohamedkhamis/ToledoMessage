@@ -1,4 +1,4 @@
-# Feature Specification: ToledoMessage SaaS Enhancement Plan (v2.0)
+# Feature Specification: ToledoVault SaaS Enhancement Plan (v2.0)
 
 **Feature Branch**: `008-saas-enhancements`
 **Created**: 2026-03-09

@@ -2,7 +2,7 @@
 
 **Created:** 2026-03-02
 **Updated:** 2026-03-02
-**Feature:** UI theming system that transforms ToledoMessage into WhatsApp, Telegram, or Signal style
+**Feature:** UI theming system that transforms ToledoVault into WhatsApp, Telegram, or Signal style
 
 ---
 
@@ -36,7 +36,7 @@ Extend the existing color-based theme system (7 themes in `themes.css` with 22 C
 ## Phase 1: CSS Structural Theming (Quick Visual Win)
 
 ### 1.1 Add Telegram Dark Theme
-**File:** `src/ToledoMessage/wwwroot/themes.css`
+**File:** `src/ToledoVault/wwwroot/themes.css`
 
 Add 8th theme `telegram-dark` after the existing Telegram block:
 ```css
@@ -67,7 +67,7 @@ Add 8th theme `telegram-dark` after the existing Telegram block:
 }
 ```
 
-**File:** `src/ToledoMessage.Client/Services/ThemeService.cs`
+**File:** `src/ToledoVault.Client/Services/ThemeService.cs`
 
 Add to `GetAvailableThemes()`:
 ```csharp
@@ -75,7 +75,7 @@ new ThemeInfo("telegram-dark", "Telegram Dark", "#17212b")
 ```
 
 ### 1.2 Add Structural CSS Variables to Each Theme
-**File:** `src/ToledoMessage/wwwroot/themes.css`
+**File:** `src/ToledoVault/wwwroot/themes.css`
 
 Append these variables inside each existing theme block:
 
@@ -93,7 +93,7 @@ Append these variables inside each existing theme block:
 Dark variants inherit their light counterpart's structural values (only colors differ).
 
 ### 1.3 Update app.css to Use Structural Variables
-**File:** `src/ToledoMessage/wwwroot/app.css`
+**File:** `src/ToledoVault/wwwroot/app.css`
 
 Replace hardcoded values with `var()` references:
 
@@ -122,7 +122,7 @@ Replace hardcoded values with `var()` references:
 ## Phase 2: Theme Labels System
 
 ### 2.1 Create ThemeLabelSet Record
-**File:** `src/ToledoMessage.Client/Services/ThemeLabelSet.cs` (new)
+**File:** `src/ToledoVault.Client/Services/ThemeLabelSet.cs` (new)
 
 A single record with all theme-varying strings. Four static instances (Default, WhatsApp, Telegram, Signal):
 
@@ -259,7 +259,7 @@ public sealed record ThemeLabelSet
 ```
 
 ### 2.2 Extend ThemeService with Labels + Change Event
-**File:** `src/ToledoMessage.Client/Services/ThemeService.cs`
+**File:** `src/ToledoVault.Client/Services/ThemeService.cs`
 
 ```csharp
 public sealed class ThemeService(IJSRuntime js)
@@ -329,7 +329,7 @@ Every component that uses labels follows this pattern:
 ```
 
 ### 3.2 ConversationListSidebar.razor
-**File:** `src/ToledoMessage.Client/Components/ConversationListSidebar.razor`
+**File:** `src/ToledoVault.Client/Components/ConversationListSidebar.razor`
 
 | Line | Current | Replace With |
 |------|---------|-------------|
@@ -341,7 +341,7 @@ Every component that uses labels follows this pattern:
 | 40 | `"Start a conversation"` | `@Theme.Labels.StartConversation` |
 
 ### 3.3 Chat.razor
-**File:** `src/ToledoMessage.Client/Pages/Chat.razor`
+**File:** `src/ToledoVault.Client/Pages/Chat.razor`
 
 | Line | Current | Replace With |
 |------|---------|-------------|
@@ -366,7 +366,7 @@ Every component that uses labels follows this pattern:
 | 240 | `"Forward message"` | `@Theme.Labels.ForwardMessage` |
 
 ### 3.4 MessageInput.razor
-**File:** `src/ToledoMessage.Client/Components/MessageInput.razor`
+**File:** `src/ToledoVault.Client/Components/MessageInput.razor`
 
 | Line | Current | Replace With |
 |------|---------|-------------|
@@ -376,7 +376,7 @@ Every component that uses labels follows this pattern:
 | 96 | `placeholder="Type a message..."` | `placeholder="@Theme.Labels.TypeMessage"` |
 
 ### 3.5 MessageBubble.razor
-**File:** `src/ToledoMessage.Client/Components/MessageBubble.razor`
+**File:** `src/ToledoVault.Client/Components/MessageBubble.razor`
 
 | Line | Current | Replace With |
 |------|---------|-------------|
@@ -390,7 +390,7 @@ Every component that uses labels follows this pattern:
 CSS structural changes (bubble radius) are handled automatically by Phase 1 CSS variables — no C# changes needed for styling.
 
 ### 3.6 Settings.razor
-**File:** `src/ToledoMessage.Client/Pages/Settings.razor`
+**File:** `src/ToledoVault.Client/Pages/Settings.razor`
 
 | Line | Current | Replace With |
 |------|---------|-------------|
@@ -459,15 +459,15 @@ public DeliveryDisplayStyle DeliveryStyle { get; init; } = DeliveryDisplayStyle.
 
 | File | Action |
 |------|--------|
-| `src/ToledoMessage/wwwroot/themes.css` | Add Telegram Dark + structural CSS vars to all themes |
-| `src/ToledoMessage/wwwroot/app.css` | Replace hardcoded values with `var()` references |
-| `src/ToledoMessage.Client/Services/ThemeLabelSet.cs` | **New** — label record with 4 static instances |
-| `src/ToledoMessage.Client/Services/ThemeService.cs` | Add `Labels`, `OnThemeChanged`, `ResolveLabels()` |
-| `src/ToledoMessage.Client/Components/ConversationListSidebar.razor` | Use `Theme.Labels.*` for 6 strings |
-| `src/ToledoMessage.Client/Pages/Chat.razor` | Use `Theme.Labels.*` for 20+ strings |
-| `src/ToledoMessage.Client/Components/MessageInput.razor` | Use `Theme.Labels.*` for 4 strings |
-| `src/ToledoMessage.Client/Components/MessageBubble.razor` | Use `Theme.Labels.*` for 6 strings + delivery style |
-| `src/ToledoMessage.Client/Pages/Settings.razor` | Use `Theme.Labels.*` for 10 section headers |
+| `src/ToledoVault/wwwroot/themes.css` | Add Telegram Dark + structural CSS vars to all themes |
+| `src/ToledoVault/wwwroot/app.css` | Replace hardcoded values with `var()` references |
+| `src/ToledoVault.Client/Services/ThemeLabelSet.cs` | **New** — label record with 4 static instances |
+| `src/ToledoVault.Client/Services/ThemeService.cs` | Add `Labels`, `OnThemeChanged`, `ResolveLabels()` |
+| `src/ToledoVault.Client/Components/ConversationListSidebar.razor` | Use `Theme.Labels.*` for 6 strings |
+| `src/ToledoVault.Client/Pages/Chat.razor` | Use `Theme.Labels.*` for 20+ strings |
+| `src/ToledoVault.Client/Components/MessageInput.razor` | Use `Theme.Labels.*` for 4 strings |
+| `src/ToledoVault.Client/Components/MessageBubble.razor` | Use `Theme.Labels.*` for 6 strings + delivery style |
+| `src/ToledoVault.Client/Pages/Settings.razor` | Use `Theme.Labels.*` for 10 section headers |
 
 **Not changed:** Home.razor, Login.razor, Register.razor, VoiceRecorder.razor (kept as-is — not theme-specific)
 

@@ -1,8 +1,8 @@
-# Post-Quantum Hybrid Encryption Architecture for Secure Messaging: The ToledoMessage Approach
+# Post-Quantum Hybrid Encryption Architecture for Secure Messaging: The ToledoVault Approach
 
 ## Abstract
 
-This paper presents the cryptographic architecture of ToledoMessage, a secure messaging application that implements post-quantum hybrid encryption to protect user communications against both classical and quantum computing threats. The system combines the Signal Protocol's double ratchet mechanism with post-quantum cryptographic primitives (ML-KEM-768 and ML-DSA-65) while maintaining backward compatibility with classical algorithms (X25519 and Ed25519). This paper details the key exchange protocols, message encryption mechanisms, and signature schemes that provide forward secrecy, future secrecy, and quantum resistance.
+This paper presents the cryptographic architecture of ToledoVault, a secure messaging application that implements post-quantum hybrid encryption to protect user communications against both classical and quantum computing threats. The system combines the Signal Protocol's double ratchet mechanism with post-quantum cryptographic primitives (ML-KEM-768 and ML-DSA-65) while maintaining backward compatibility with classical algorithms (X25519 and Ed25519). This paper details the key exchange protocols, message encryption mechanisms, and signature schemes that provide forward secrecy, future secrecy, and quantum resistance.
 
 **Keywords:** Post-quantum cryptography, Hybrid encryption, Double ratchet, Signal Protocol, ML-KEM, ML-DSA, Secure messaging
 
@@ -12,7 +12,7 @@ This paper presents the cryptographic architecture of ToledoMessage, a secure me
 
 The advent of quantum computers poses a significant threat to current cryptographic systems. While large-scale quantum computers capable of breaking RSA and elliptic curve cryptography do not yet exist, the "harvest now, decrypt later" attack strategy means that sensitive communications encrypted today could be compromised in the future. This reality necessitates the development of cryptographic systems that are secure against both classical and quantum adversaries.
 
-ToledoMessage addresses this challenge by implementing a hybrid cryptographic architecture that combines:
+ToledoVault addresses this challenge by implementing a hybrid cryptographic architecture that combines:
 - Classical cryptographic algorithms with proven security properties
 - Post-quantum algorithms standardized by NIST
 - The double ratchet mechanism from the Signal Protocol
@@ -59,7 +59,7 @@ The system incorporates NIST-standardized post-quantum algorithms:
 
 ### 3.1 Design Philosophy
 
-ToledoMessage employs a hybrid approach that combines classical and post-quantum key exchange. This strategy provides:
+ToledoVault employs a hybrid approach that combines classical and post-quantum key exchange. This strategy provides:
 - **Immediate security**: Classical algorithms remain secure against classical attackers
 - **Future-proofing**: Post-quantum algorithms protect against quantum adversaries
 - **Defense in depth**: Even if one algorithm is compromised, the system remains secure
@@ -72,14 +72,14 @@ The hybrid key exchange combines X25519 and ML-KEM-768 using a key derivation fu
 
 ```
 IKM = DH_classical || KEM_pq
-SK = HKDF(IKM, info="ToledoMessage-HybridKEM-v1", length=32)
+SK = HKDF(IKM, info="ToledoVault-HybridKEM-v1", length=32)
 ```
 
 This ensures that the resulting shared secret requires breaking both the classical and post-quantum components.
 
 ### 3.3 Hybrid Digital Signatures
 
-For digital signatures, ToledoMessage combines Ed25519 and ML-DSA-65:
+For digital signatures, ToledoVault combines Ed25519 and ML-DSA-65:
 
 ```
 σ = σ_classical || σ_pq
@@ -93,7 +93,7 @@ The signature verification requires both classical and post-quantum signatures t
 
 ### 4.1 Protocol Overview
 
-ToledoMessage implements the Extended Triple Diffie-Hellman (X3DH) protocol with post-quantum extensions. This protocol enables asynchronous key exchange, allowing users to initiate encrypted conversations even when the recipient is offline.
+ToledoVault implements the Extended Triple Diffie-Hellman (X3DH) protocol with post-quantum extensions. This protocol enables asynchronous key exchange, allowing users to initiate encrypted conversations even when the recipient is offline.
 
 ### 4.2 Pre-Key Bundle Structure
 
@@ -149,7 +149,7 @@ Both parties derive identical root and chain keys, establishing a secure session
 
 ### 5.1 Overview
 
-After X3DH establishes initial shared secrets, ToledoMessage employs the Double Ratchet algorithm to provide continuous key evolution. This ensures:
+After X3DH establishes initial shared secrets, ToledoVault employs the Double Ratchet algorithm to provide continuous key evolution. This ensures:
 
 - **Forward Secrecy**: Compromised session keys do not reveal past messages
 - **Future Secrecy** (Post-compromise security): After key compromise, future messages remain secure
@@ -299,7 +299,7 @@ The ongoing message encryption/decryption uses symmetric cryptography (AES-GCM),
 
 ## 10. Conclusion
 
-ToledoMessage demonstrates a practical implementation of post-quantum hybrid cryptography for secure messaging. The key innovations include:
+ToledoVault demonstrates a practical implementation of post-quantum hybrid cryptography for secure messaging. The key innovations include:
 
 1. **Hybrid Key Exchange**: Combining X25519 and ML-KEM-768 provides defense-in-depth against both classical and quantum attacks.
 
@@ -311,7 +311,7 @@ ToledoMessage demonstrates a practical implementation of post-quantum hybrid cry
 
 5. **Practical Performance**: The hybrid overhead is manageable for real-world messaging applications.
 
-As quantum computing continues to advance, systems like ToledoMessage provide a migration path to post-quantum security while maintaining compatibility with existing infrastructure. The hybrid approach represents best practices for cryptographic systems requiring long-term security.
+As quantum computing continues to advance, systems like ToledoVault provide a migration path to post-quantum security while maintaining compatibility with existing infrastructure. The hybrid approach represents best practices for cryptographic systems requiring long-term security.
 
 ---
 
@@ -334,4 +334,4 @@ As quantum computing continues to advance, systems like ToledoMessage provide a 
 ---
 
 *Paper generated: March 2026*
-*ToledoMessage Secure Messaging System*
+*ToledoVault Secure Messaging System*

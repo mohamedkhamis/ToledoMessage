@@ -1,4 +1,4 @@
-# Quickstart: ToledoMessage SaaS Enhancement Plan (v2.0)
+# Quickstart: ToledoVault SaaS Enhancement Plan (v2.0)
 
 **Feature**: `008-saas-enhancements`
 **Date**: 2026-03-09
@@ -128,12 +128,12 @@ The enhancements are organized into 6 pillars. The recommended implementation or
 
 | Area | Test Focus | Project |
 |------|-----------|---------|
-| Rate limiting in hub | Verify SendMessage/TypingIndicator are limited | `ToledoMessage.Server.Tests` |
-| Auth checks | Unread count, DeleteForEveryone participant validation | `ToledoMessage.Server.Tests` |
-| Read pointer clamping | Verify clamping to max sequence | `ToledoMessage.Server.Tests` |
-| Signature versioning | v0 backward compat, v1 round-trip | `ToledoMessage.Crypto.Tests` |
-| Batch ack grouping | Verify GroupBy logic | `ToledoMessage.Server.Tests` |
-| Participant cache | TTL expiry, invalidation | `ToledoMessage.Server.Tests` |
+| Rate limiting in hub | Verify SendMessage/TypingIndicator are limited | `ToledoVault.Server.Tests` |
+| Auth checks | Unread count, DeleteForEveryone participant validation | `ToledoVault.Server.Tests` |
+| Read pointer clamping | Verify clamping to max sequence | `ToledoVault.Server.Tests` |
+| Signature versioning | v0 backward compat, v1 round-trip | `ToledoVault.Crypto.Tests` |
+| Batch ack grouping | Verify GroupBy logic | `ToledoVault.Server.Tests` |
+| Participant cache | TTL expiry, invalidation | `ToledoVault.Server.Tests` |
 
 ### Manual Tests Required
 
@@ -153,21 +153,21 @@ The enhancements are organized into 6 pillars. The recommended implementation or
 
 | Purpose | File Path |
 |---------|-----------|
-| Server entry point | `src/ToledoMessage/Program.cs` |
-| SignalR hub | `src/ToledoMessage/Hubs/ChatHub.cs` |
-| Rate limit service | `src/ToledoMessage/Services/RateLimitService.cs` |
-| Rate limit middleware | `src/ToledoMessage/Middleware/RateLimitMiddleware.cs` |
-| Message relay | `src/ToledoMessage/Services/MessageRelayService.cs` |
-| Presence service | `src/ToledoMessage/Services/PresenceService.cs` |
-| Cleanup service | `src/ToledoMessage/Services/MessageCleanupHostedService.cs` |
-| Main chat page | `src/ToledoMessage.Client/Pages/Chat.razor` |
-| Message input | `src/ToledoMessage.Client/Components/MessageInput.razor` |
-| SignalR client | `src/ToledoMessage.Client/Services/SignalRService.cs` |
-| Message expiry | `src/ToledoMessage.Client/Services/MessageExpiryService.cs` |
-| Local storage | `src/ToledoMessage.Client/Services/LocalStorageService.cs` |
-| IndexedDB/JS | `src/ToledoMessage.Client/wwwroot/storage.js` |
-| Voice recorder JS | `src/ToledoMessage.Client/wwwroot/voice-recorder.js` |
-| CSS | `src/ToledoMessage/wwwroot/app.css` |
-| Localization EN | `src/ToledoMessage.Shared/SharedResource.resx` |
-| Localization AR | `src/ToledoMessage.Shared/SharedResource.ar.resx` |
-| Crypto signing | `src/ToledoMessage.Crypto/` (HybridSigner) |
+| Server entry point | `src/ToledoVault/Program.cs` |
+| SignalR hub | `src/ToledoVault/Hubs/ChatHub.cs` |
+| Rate limit service | `src/ToledoVault/Services/RateLimitService.cs` |
+| Rate limit middleware | `src/ToledoVault/Middleware/RateLimitMiddleware.cs` |
+| Message relay | `src/ToledoVault/Services/MessageRelayService.cs` |
+| Presence service | `src/ToledoVault/Services/PresenceService.cs` |
+| Cleanup service | `src/ToledoVault/Services/MessageCleanupHostedService.cs` |
+| Main chat page | `src/ToledoVault.Client/Pages/Chat.razor` |
+| Message input | `src/ToledoVault.Client/Components/MessageInput.razor` |
+| SignalR client | `src/ToledoVault.Client/Services/SignalRService.cs` |
+| Message expiry | `src/ToledoVault.Client/Services/MessageExpiryService.cs` |
+| Local storage | `src/ToledoVault.Client/Services/LocalStorageService.cs` |
+| IndexedDB/JS | `src/ToledoVault.Client/wwwroot/storage.js` |
+| Voice recorder JS | `src/ToledoVault.Client/wwwroot/voice-recorder.js` |
+| CSS | `src/ToledoVault/wwwroot/app.css` |
+| Localization EN | `src/ToledoVault.Shared/SharedResource.resx` |
+| Localization AR | `src/ToledoVault.Shared/SharedResource.ar.resx` |
+| Crypto signing | `src/ToledoVault.Crypto/` (HybridSigner) |

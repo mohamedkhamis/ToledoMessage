@@ -36,16 +36,16 @@ Six enhancements to improve the app's UX: (1) full responsive CSS for mobile/tab
 ### Files to Modify
 
 ```text
-src/ToledoMessage/wwwroot/app.css                          # Responsive CSS, emoji, audio, image
-src/ToledoMessage/Components/Pages/Home.razor              # Simplify content, fix button styles
-src/ToledoMessage.Client/Components/MessageBubble.razor    # Big emoji detection + rendering
-src/ToledoMessage.Client/Components/VoiceRecorder.razor    # Mobile responsive adjustments
-src/ToledoMessage.Client/Components/EmojiPicker.razor      # Mobile responsive
-src/ToledoMessage.Client/Pages/Login.razor                 # Device restore logic
-src/ToledoMessage.Client/Pages/Chat.razor                  # Forward dialog responsive
-src/ToledoMessage.Client/Services/KeyGenerationService.cs  # RestoreDeviceRequest builder
-src/ToledoMessage/Controllers/DevicesController.cs         # Device restore endpoint
-src/ToledoMessage.Shared/DTOs/                             # RestoreDeviceRequest DTO (if needed)
+src/ToledoVault/wwwroot/app.css                          # Responsive CSS, emoji, audio, image
+src/ToledoVault/Components/Pages/Home.razor              # Simplify content, fix button styles
+src/ToledoVault.Client/Components/MessageBubble.razor    # Big emoji detection + rendering
+src/ToledoVault.Client/Components/VoiceRecorder.razor    # Mobile responsive adjustments
+src/ToledoVault.Client/Components/EmojiPicker.razor      # Mobile responsive
+src/ToledoVault.Client/Pages/Login.razor                 # Device restore logic
+src/ToledoVault.Client/Pages/Chat.razor                  # Forward dialog responsive
+src/ToledoVault.Client/Services/KeyGenerationService.cs  # RestoreDeviceRequest builder
+src/ToledoVault/Controllers/DevicesController.cs         # Device restore endpoint
+src/ToledoVault.Shared/DTOs/                             # RestoreDeviceRequest DTO (if needed)
 ```
 
 ---
@@ -199,7 +199,7 @@ Recent emoji already persists in `localStorage["emoji.recent"]` (CSV, max 30 ite
 
 ### 4.1 Replace Technical Content
 
-**File**: `src/ToledoMessage/Components/Pages/Home.razor`
+**File**: `src/ToledoVault/Components/Pages/Home.razor`
 
 | Section | Current | New |
 |---------|---------|-----|

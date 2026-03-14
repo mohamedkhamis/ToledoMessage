@@ -23,7 +23,7 @@ Add Progressive Web App (PWA) support to the existing Blazor WebAssembly chat ap
 **Project Type**: Progressive Web App (PWA) layered on existing Blazor WASM application
 **Performance Goals**: Offline shell load < 2s, PWA Lighthouse score 90+
 **Constraints**: HTTPS required for full PWA (except localhost dev), icons generated from existing favicon.svg
-**Scale/Scope**: Existing ToledoMessage users - no scale changes, same backend API
+**Scale/Scope**: Existing ToledoVault users - no scale changes, same backend API
 
 ## Constitution Check
 
@@ -79,7 +79,7 @@ specs/009-pwa-support/
 The PWA feature adds files to the existing Blazor WebAssembly project structure:
 
 ```text
-src/ToledoMessage/                                    # Server project (host)
+src/ToledoVault/                                    # Server project (host)
 ├── wwwroot/
 │   ├── manifest.json                                 # NEW: Web App Manifest
 │   ├── icons/
@@ -87,7 +87,7 @@ src/ToledoMessage/                                    # Server project (host)
 │   │   └── icon-512.png                             # NEW: Generated from favicon.svg
 │   └── service-worker.js                            # NEW: Service Worker script
 
-src/ToledoMessage.Client/                            # Blazor WASM client
+src/ToledoVault.Client/                            # Blazor WASM client
 ├── wwwroot/
 │   ├── push-notification.js                         # NEW: Push notification handling
 │   ├── offline-queue.js                             # NEW: Offline message queue

@@ -1,4 +1,4 @@
-﻿# ToledoMessage Development Guidelines
+﻿# ToledoVault Development Guidelines
 
 Last updated: 2026-03-12
 
@@ -14,43 +14,43 @@ Last updated: 2026-03-12
 ## Solution Structure
 
 ```
-ToledoMessage.slnx
+ToledoVault.slnx
 src/
-  ToledoMessage/              # Server — API, SignalR hub, Blazor host
-  ToledoMessage.Client/       # Blazor WASM client
-  ToledoMessage.Shared/       # DTOs, enums, constants, converters
-  ToledoMessage.Crypto/       # Signal Protocol + hybrid PQ crypto
+  ToledoVault/              # Server — API, SignalR hub, Blazor host
+  ToledoVault.Client/       # Blazor WASM client
+  ToledoVault.Shared/       # DTOs, enums, constants, converters
+  ToledoVault.Crypto/       # Signal Protocol + hybrid PQ crypto
   Toledo.SharedKernel/        # Cross-cutting (IdGenerator)
 tests/
-  ToledoMessage.Server.Tests/       # ~152 tests (MSTest, InMemory EF)
-  ToledoMessage.Crypto.Tests/       # ~65 tests
-  ToledoMessage.Client.Tests/       # ~8 tests
-  ToledoMessage.Integration.Tests/  # ~8 tests
-  ToledoMessage.Benchmarks/         # BenchmarkDotNet perf tests
+  ToledoVault.Server.Tests/       # ~152 tests (MSTest, InMemory EF)
+  ToledoVault.Crypto.Tests/       # ~65 tests
+  ToledoVault.Client.Tests/       # ~8 tests
+  ToledoVault.Integration.Tests/  # ~8 tests
+  ToledoVault.Benchmarks/         # BenchmarkDotNet perf tests
 ```
 
 ## Commands
 
 ```bash
 # Build
-dotnet build ToledoMessage.slnx
+dotnet build ToledoVault.slnx
 
 # Run (dev)
-dotnet run --project src/ToledoMessage
+dotnet run --project src/ToledoVault
 # Listens: http://localhost:5005, https://localhost:7159
 
 # Test all
-dotnet test ToledoMessage.slnx
+dotnet test ToledoVault.slnx
 
 # Test specific project
-dotnet test tests/ToledoMessage.Server.Tests
-dotnet test tests/ToledoMessage.Crypto.Tests
-dotnet test tests/ToledoMessage.Client.Tests
-dotnet test tests/ToledoMessage.Integration.Tests
+dotnet test tests/ToledoVault.Server.Tests
+dotnet test tests/ToledoVault.Crypto.Tests
+dotnet test tests/ToledoVault.Client.Tests
+dotnet test tests/ToledoVault.Integration.Tests
 
 # EF Migrations
-dotnet ef migrations add <Name> --project src/ToledoMessage
-dotnet ef database update --project src/ToledoMessage
+dotnet ef migrations add <Name> --project src/ToledoVault
+dotnet ef database update --project src/ToledoVault
 
 # Deploy to local IIS
 powershell -ExecutionPolicy Bypass -File ./deploy-iis.ps1 -Force
@@ -131,7 +131,7 @@ Users, Devices, OneTimePreKeys, Conversations, ConversationParticipants, Encrypt
 - **Device limit**: Max 10 per user. Max 100 group participants.
 - **Pre-keys**: Batch size 100, low threshold 10.
 - **Account deletion**: 7-day grace period.
-- **Logging**: Serilog to console + `logs/toledomessage-.log` (daily rolling).
+- **Logging**: Serilog to console + `logs/toledovault-.log` (daily rolling).
 - **Health check**: GET `/health` (DB connectivity).
 
 ## Client JS Interop Files
@@ -142,7 +142,7 @@ Users, Devices, OneTimePreKeys, Conversations, ConversationParticipants, Encrypt
 
 ## PWA (Progressive Web App) Support
 
-PWA artifacts in `src/ToledoMessage/wwwroot/`:
+PWA artifacts in `src/ToledoVault/wwwroot/`:
 - `manifest.json` — Web App Manifest for installability
 - `service-worker.js` — Service Worker for offline caching
 - `offline.html` — Offline fallback page
@@ -161,8 +161,8 @@ PWA artifacts in `src/ToledoMessage/wwwroot/`:
 
 ## CSS & Theming
 
-- `src/ToledoMessage/wwwroot/app.css` — Base styles, layout, all components
-- `src/ToledoMessage/wwwroot/themes.css` — 8 themes: default, default-dark, whatsapp, whatsapp-dark, telegram, telegram-dark, signal, signal-dark
+- `src/ToledoVault/wwwroot/app.css` — Base styles, layout, all components
+- `src/ToledoVault/wwwroot/themes.css` — 8 themes: default, default-dark, whatsapp, whatsapp-dark, telegram, telegram-dark, signal, signal-dark
 
 ## Project Phase
 

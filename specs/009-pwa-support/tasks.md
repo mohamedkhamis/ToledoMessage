@@ -11,15 +11,15 @@
 
 - **[P]**: Can run in parallel (different files, no dependencies on incomplete tasks)
 - **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3, US4)
-- All file paths are relative to the repository root: `D:\Repo\01-Khamis-Projects\ToledoMessage\`
+- All file paths are relative to the repository root: `D:\Repo\01-Khamis-Projects\ToledoVault\`
 
 ## Path Conventions
 
-- **Server project**: `src/ToledoMessage/` (ASP.NET Core host — serves static files from `wwwroot/`)
-- **Client project**: `src/ToledoMessage.Client/` (Blazor WASM — runs in browser)
-- **Shared project**: `src/ToledoMessage.Shared/` (DTOs, enums, constants)
-- **Static files**: `src/ToledoMessage/wwwroot/` (served at root URL `/`)
-- **App entry point (HTML host)**: `src/ToledoMessage/Components/App.razor` (the Razor component that renders the `<html>` tag, `<head>`, and `<body>`)
+- **Server project**: `src/ToledoVault/` (ASP.NET Core host — serves static files from `wwwroot/`)
+- **Client project**: `src/ToledoVault.Client/` (Blazor WASM — runs in browser)
+- **Shared project**: `src/ToledoVault.Shared/` (DTOs, enums, constants)
+- **Static files**: `src/ToledoVault/wwwroot/` (served at root URL `/`)
+- **App entry point (HTML host)**: `src/ToledoVault/Components/App.razor` (the Razor component that renders the `<html>` tag, `<head>`, and `<body>`)
 
 ---
 
@@ -29,41 +29,41 @@
 
 **Goal**: Ensure the `wwwroot/` directory is ready to receive all PWA artifacts.
 
-**Expected state after Phase 1**: Two placeholder PNG icon files exist in `src/ToledoMessage/wwwroot/`. No functionality changes yet.
+**Expected state after Phase 1**: Two placeholder PNG icon files exist in `src/ToledoVault/wwwroot/`. No functionality changes yet.
 
-- [x] T001 [P] Create app icon file `src/ToledoMessage/wwwroot/icon-192.png` (192x192 PNG)
+- [x] T001 [P] Create app icon file `src/ToledoVault/wwwroot/icon-192.png` (192x192 PNG)
 
   **Goal**: Provide a 192x192 pixel PNG app icon for the PWA manifest. This icon appears on mobile home screens and in app drawers.
 
   **What to do**:
-  1. Create a 192x192 pixel PNG image file at the path `src/ToledoMessage/wwwroot/icon-192.png`.
+  1. Create a 192x192 pixel PNG image file at the path `src/ToledoVault/wwwroot/icon-192.png`.
   2. The icon should have a solid background using the app's accent color `#1976d2` (a medium blue).
   3. The icon should display the letters "TM" (for "Toledo Message") in white, centered, using a bold sans-serif font.
   4. If you cannot generate a real PNG image, create a minimal valid 192x192 PNG file (even a solid blue square is acceptable as a placeholder). The important thing is that the file exists, is a valid PNG, and is 192x192 pixels.
 
-  **Output**: A valid PNG file at `src/ToledoMessage/wwwroot/icon-192.png`, dimensions 192x192.
+  **Output**: A valid PNG file at `src/ToledoVault/wwwroot/icon-192.png`, dimensions 192x192.
 
   **Dependencies**: None — can start immediately.
 
   **Expected result**: The file `icon-192.png` exists in `wwwroot/` and can be served at the URL `/icon-192.png`. Opening the file in an image viewer shows a 192x192 image.
 
-- [x] T002 [P] Create app icon file `src/ToledoMessage/wwwroot/icon-512.png` (512x512 PNG)
+- [x] T002 [P] Create app icon file `src/ToledoVault/wwwroot/icon-512.png` (512x512 PNG)
 
   **Goal**: Provide a 512x512 pixel PNG app icon for the PWA manifest. This icon is used for splash screens and high-resolution displays.
 
   **What to do**:
-  1. Create a 512x512 pixel PNG image file at the path `src/ToledoMessage/wwwroot/icon-512.png`.
+  1. Create a 512x512 pixel PNG image file at the path `src/ToledoVault/wwwroot/icon-512.png`.
   2. The icon should have a solid background using the app's accent color `#1976d2` (a medium blue).
   3. The icon should display the letters "TM" (for "Toledo Message") in white, centered, using a bold sans-serif font.
   4. If you cannot generate a real PNG image, create a minimal valid 512x512 PNG file (even a solid blue square is acceptable as a placeholder). The important thing is that the file exists, is a valid PNG, and is 512x512 pixels.
 
-  **Output**: A valid PNG file at `src/ToledoMessage/wwwroot/icon-512.png`, dimensions 512x512.
+  **Output**: A valid PNG file at `src/ToledoVault/wwwroot/icon-512.png`, dimensions 512x512.
 
   **Dependencies**: None — can start immediately.
 
   **Expected result**: The file `icon-512.png` exists in `wwwroot/` and can be served at the URL `/icon-512.png`. Opening the file in an image viewer shows a 512x512 image.
 
-**Checkpoint**: Two icon PNG files exist in `src/ToledoMessage/wwwroot/`. No other changes yet.
+**Checkpoint**: Two icon PNG files exist in `src/ToledoVault/wwwroot/`. No other changes yet.
 
 ---
 
@@ -78,12 +78,12 @@
 
 ### T003: Create Web App Manifest
 
-- [x] T003 Create Web App Manifest at `src/ToledoMessage/wwwroot/manifest.json`
+- [x] T003 Create Web App Manifest at `src/ToledoVault/wwwroot/manifest.json`
 
   **Goal**: Create a W3C Web App Manifest file that tells browsers this web app is installable. The manifest defines the app's name, icons, colors, display mode, and start URL.
 
   **What to do**:
-  1. Create a new file at `src/ToledoMessage/wwwroot/manifest.json`.
+  1. Create a new file at `src/ToledoVault/wwwroot/manifest.json`.
   2. The file must contain valid JSON with the following properties:
 
   ```json
@@ -124,7 +124,7 @@
      - `"orientation"`: Must be `"any"` — allows both portrait and landscape.
      - `"icons"`: Array with exactly two entries referencing the icon files created in T001 and T002. The `"purpose": "any maskable"` allows the OS to crop the icon for adaptive icon shapes (Android).
 
-  **Output**: A valid JSON file at `src/ToledoMessage/wwwroot/manifest.json` with all the properties listed above.
+  **Output**: A valid JSON file at `src/ToledoVault/wwwroot/manifest.json` with all the properties listed above.
 
   **Dependencies**: T001 and T002 (icon files must exist for the manifest to reference them).
 
@@ -132,7 +132,7 @@
 
 ### T004: Create Service Worker
 
-- [x] T004 Create service worker at `src/ToledoMessage/wwwroot/service-worker.js`
+- [x] T004 Create service worker at `src/ToledoVault/wwwroot/service-worker.js`
 
   **Goal**: Create a service worker JavaScript file that:
   1. Caches the app shell (static files) on install
@@ -142,7 +142,7 @@
   5. Falls back to an offline HTML page when the network is unavailable and the requested page is not cached
 
   **What to do**:
-  1. Create a new file at `src/ToledoMessage/wwwroot/service-worker.js`.
+  1. Create a new file at `src/ToledoVault/wwwroot/service-worker.js`.
   2. The file must contain the following JavaScript code (explained section by section):
 
   ```javascript
@@ -267,7 +267,7 @@
      - `self.skipWaiting()` ensures the new SW activates immediately (no waiting for tab closure).
      - `self.clients.claim()` ensures the new SW controls all open tabs immediately after activation.
 
-  **Output**: A JavaScript file at `src/ToledoMessage/wwwroot/service-worker.js` with install, activate, and fetch event handlers implementing the cache strategy described above.
+  **Output**: A JavaScript file at `src/ToledoVault/wwwroot/service-worker.js` with install, activate, and fetch event handlers implementing the cache strategy described above.
 
   **Dependencies**: None (but the file references `/offline.html` which is created in T005, and icon files from T001/T002).
 
@@ -275,7 +275,7 @@
 
 ### T005: Create Offline Fallback Page
 
-- [x] T005 [P] Create offline fallback page at `src/ToledoMessage/wwwroot/offline.html`
+- [x] T005 [P] Create offline fallback page at `src/ToledoVault/wwwroot/offline.html`
 
   **Goal**: Create a simple, self-contained HTML page that the service worker shows when:
   1. The user is offline (no network)
@@ -285,7 +285,7 @@
   This page should look professional and match the app's branding. It tells the user they are offline and to check their connection.
 
   **What to do**:
-  1. Create a new file at `src/ToledoMessage/wwwroot/offline.html`.
+  1. Create a new file at `src/ToledoVault/wwwroot/offline.html`.
   2. The file must be a complete, self-contained HTML document (all CSS must be inline — no external stylesheets, since we may be offline and external files may not be cached).
   3. The file must contain:
 
@@ -362,7 +362,7 @@
      - The page uses the app's accent color `#1976d2` for branding consistency.
      - The "Retry" button simply reloads the page, which will work if the user has regained connectivity.
 
-  **Output**: A self-contained HTML file at `src/ToledoMessage/wwwroot/offline.html`.
+  **Output**: A self-contained HTML file at `src/ToledoVault/wwwroot/offline.html`.
 
   **Dependencies**: None — can be created in parallel with T003 and T004.
 
@@ -389,13 +389,13 @@
 
 ### Implementation for User Story 1
 
-- [x] T006 [US1] Modify `src/ToledoMessage/Components/App.razor` to add manifest link, iOS meta tags, theme-color meta tag, and service worker registration script
+- [x] T006 [US1] Modify `src/ToledoVault/Components/App.razor` to add manifest link, iOS meta tags, theme-color meta tag, and service worker registration script
 
   **Goal**: Wire up all PWA artifacts by adding the necessary HTML tags and JavaScript to the app's root Razor component. This is the ONLY file that needs to be modified for PWA to work. After this change, the browser can discover the manifest, register the service worker, and iOS can detect the app as standalone-capable.
 
   **What to do**:
 
-  1. Open the file `src/ToledoMessage/Components/App.razor`.
+  1. Open the file `src/ToledoVault/Components/App.razor`.
   2. Find the `<head>` section of the HTML.
   3. Add the following lines INSIDE the `<head>` tag (after existing `<link>` and `<meta>` tags):
 
@@ -443,7 +443,7 @@
 
   6. **Do NOT** remove or modify any existing content in `App.razor`. Only ADD the new tags and script.
 
-  **Input**: The existing file `src/ToledoMessage/Components/App.razor`.
+  **Input**: The existing file `src/ToledoVault/Components/App.razor`.
 
   **Output**: The modified file with 7 new HTML tags in `<head>` and 1 new `<script>` block before `</body>`.
 
@@ -524,12 +524,12 @@
 
 ### Implementation for User Story 3
 
-- [x] T008 [US3] Enhance service worker static assets list in `src/ToledoMessage/wwwroot/service-worker.js` to include Blazor WASM framework files
+- [x] T008 [US3] Enhance service worker static assets list in `src/ToledoVault/wwwroot/service-worker.js` to include Blazor WASM framework files
 
   **Goal**: The initial `STATIC_ASSETS` list in T004 only includes basic files. For the offline shell to work fully, the service worker must also pre-cache the Blazor WASM framework files (the `.dll` files, `blazor.boot.json`, and the `dotnet.wasm` runtime). These files are large (~15-30 MB) but essential for the app to render offline.
 
   **What to do**:
-  1. Open `src/ToledoMessage/wwwroot/service-worker.js`.
+  1. Open `src/ToledoVault/wwwroot/service-worker.js`.
   2. Find the `STATIC_ASSETS` array near the top of the file.
   3. The current array from T004 contains:
      ```javascript
@@ -610,7 +610,7 @@
   **Goal**: Confirm that changing the `CACHE_VERSION` string in `service-worker.js` and redeploying triggers a full cache refresh for all users.
 
   **What to do**:
-  1. Open `src/ToledoMessage/wwwroot/service-worker.js`.
+  1. Open `src/ToledoVault/wwwroot/service-worker.js`.
   2. Change `const CACHE_VERSION = 'toledo-v1';` to `const CACHE_VERSION = 'toledo-v2';`.
   3. Deploy the app: `powershell -ExecutionPolicy Bypass -File ./deploy-iis.ps1 -Force`.
   4. Open the app in Chrome. Open DevTools > Application > Service Workers.
@@ -641,16 +641,16 @@
   1. Open `CLAUDE.md` at the repository root.
   2. In the "Active Technologies" section, add a new bullet:
      ```
-     - PWA (Progressive Web App): manifest.json, service-worker.js, offline.html in src/ToledoMessage/wwwroot/ (009-pwa-support)
+     - PWA (Progressive Web App): manifest.json, service-worker.js, offline.html in src/ToledoVault/wwwroot/ (009-pwa-support)
      ```
   3. In the "Project Structure" section (or equivalent), add:
      ```
-     PWA artifacts: src/ToledoMessage/wwwroot/ (manifest.json, service-worker.js, offline.html, icon-192.png, icon-512.png)
+     PWA artifacts: src/ToledoVault/wwwroot/ (manifest.json, service-worker.js, offline.html, icon-192.png, icon-512.png)
      ```
   4. Add a note about the cache versioning:
      ```
      ## PWA Cache Versioning
-     - Bump `CACHE_VERSION` in `src/ToledoMessage/wwwroot/service-worker.js` on every deploy
+     - Bump `CACHE_VERSION` in `src/ToledoVault/wwwroot/service-worker.js` on every deploy
      - Current format: 'toledo-vN' where N is an incrementing integer
      - Forgetting to bump the version means users will get stale cached files
      ```
@@ -823,13 +823,13 @@ SEQUENTIAL (Final):
 
 ```bash
 # Launch Phase 1 tasks in parallel (both are independent files):
-Task T001: "Create icon-192.png at src/ToledoMessage/wwwroot/icon-192.png"
-Task T002: "Create icon-512.png at src/ToledoMessage/wwwroot/icon-512.png"
+Task T001: "Create icon-192.png at src/ToledoVault/wwwroot/icon-192.png"
+Task T002: "Create icon-512.png at src/ToledoVault/wwwroot/icon-512.png"
 
 # After Phase 1, launch Phase 2 tasks (T004 and T005 are parallel):
-Task T003: "Create manifest.json at src/ToledoMessage/wwwroot/manifest.json" (needs T001, T002)
-Task T004: "Create service-worker.js at src/ToledoMessage/wwwroot/service-worker.js" (independent)
-Task T005: "Create offline.html at src/ToledoMessage/wwwroot/offline.html" (independent)
+Task T003: "Create manifest.json at src/ToledoVault/wwwroot/manifest.json" (needs T001, T002)
+Task T004: "Create service-worker.js at src/ToledoVault/wwwroot/service-worker.js" (independent)
+Task T005: "Create offline.html at src/ToledoVault/wwwroot/offline.html" (independent)
 ```
 
 ---
@@ -856,13 +856,13 @@ Task T005: "Create offline.html at src/ToledoMessage/wwwroot/offline.html" (inde
 
 | File | Action | Phase | Task |
 |------|--------|-------|------|
-| `src/ToledoMessage/wwwroot/icon-192.png` | CREATE | 1 | T001 |
-| `src/ToledoMessage/wwwroot/icon-512.png` | CREATE | 2 | T002 |
-| `src/ToledoMessage/wwwroot/manifest.json` | CREATE | 2 | T003 |
-| `src/ToledoMessage/wwwroot/service-worker.js` | CREATE | 2 | T004 |
-| `src/ToledoMessage/wwwroot/offline.html` | CREATE | 2 | T005 |
-| `src/ToledoMessage/Components/App.razor` | MODIFY | 3 | T006 |
-| `src/ToledoMessage/wwwroot/service-worker.js` | MODIFY | 5 | T008 |
+| `src/ToledoVault/wwwroot/icon-192.png` | CREATE | 1 | T001 |
+| `src/ToledoVault/wwwroot/icon-512.png` | CREATE | 2 | T002 |
+| `src/ToledoVault/wwwroot/manifest.json` | CREATE | 2 | T003 |
+| `src/ToledoVault/wwwroot/service-worker.js` | CREATE | 2 | T004 |
+| `src/ToledoVault/wwwroot/offline.html` | CREATE | 2 | T005 |
+| `src/ToledoVault/Components/App.razor` | MODIFY | 3 | T006 |
+| `src/ToledoVault/wwwroot/service-worker.js` | MODIFY | 5 | T008 |
 | `CLAUDE.md` | MODIFY | 7 | T010 |
 
 **Total new files**: 5 (icon-192.png, icon-512.png, manifest.json, service-worker.js, offline.html)

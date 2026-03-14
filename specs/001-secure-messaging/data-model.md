@@ -2,7 +2,7 @@
 
 **Phase**: 1 — Design & Contracts
 **Date**: 2026-02-26
-**Source**: EF Core Code First entities in `src/ToledoMessage/Models/`
+**Source**: EF Core Code First entities in `src/ToledoVault/Models/`
 
 ## Entity Relationship Diagram (Text)
 
@@ -335,6 +335,6 @@ never sent to the server:
 | Search Rate Limit | 10/minute | |
 | Max Message Size | 65,536 bytes (64 KB) | Plaintext limit before encryption |
 | Account Deletion Grace Period | 7 days | Login re-activates during grace period |
-| HKDF Info - Root Key | `ToledoMessage_RootKey` | Domain separation |
-| HKDF Info - Chain Key | `ToledoMessage_ChainKey` | Domain separation |
-| HKDF Info - Message Key | `ToledoMessage_MessageKey` | Domain separation |
+| HKDF Info - Root Key | `ToledoVault_RootKey` | Domain separation |
+| HKDF Info - Chain Key | `ToledoVault_ChainKey` | Domain separation |
+| HKDF Info - Message Key | `ToledoVault_MessageKey` | Domain separation |

@@ -94,7 +94,7 @@
 
 ## R-008: Localization for PWA UI
 
-**Decision**: Use existing localization infrastructure (ToledoMessage.Shared resources) for all PWA UI strings. Service worker and JavaScript will load localized strings from Blazor's localization system.
+**Decision**: Use existing localization infrastructure (ToledoVault.Shared resources) for all PWA UI strings. Service worker and JavaScript will load localized strings from Blazor's localization system.
 
 **Rationale**: The app already has full English/Arabic localization. PWA strings (install prompts, offline indicators, notification text) should follow the same pattern.
 

@@ -1,11 +1,11 @@
-# Implementation Plan: ToledoMessage SaaS Enhancement Plan (v2.0)
+# Implementation Plan: ToledoVault SaaS Enhancement Plan (v2.0)
 
 **Branch**: `008-saas-enhancements` | **Date**: 2026-03-09 | **Spec**: [spec.md](spec.md)
 **Input**: Feature specification from `/specs/008-saas-enhancements/spec.md`
 
 ## Summary
 
-Comprehensive hardening and enhancement of the ToledoMessage E2EE messaging SaaS across 6 pillars: security (rate limiting in SignalR hub, authorization gap closures, error sanitization, eval removal, storage encryption checks), performance (response compression, message list virtualization, typing indicator caching, batched notifications, query optimization, debounce, background jitter, pre-key cleanup), UI (accessibility WCAG 2.1 AA, responsive fixes, date separators, localization completeness), UX (error recovery, offline indicator, voice recording limits, file send preservation, in-conversation search), encryption (signature versioning, disappearing messages wiring), and functionality (offline message queue, group multi-admin, presence heartbeat timeout).
+Comprehensive hardening and enhancement of the ToledoVault E2EE messaging SaaS across 6 pillars: security (rate limiting in SignalR hub, authorization gap closures, error sanitization, eval removal, storage encryption checks), performance (response compression, message list virtualization, typing indicator caching, batched notifications, query optimization, debounce, background jitter, pre-key cleanup), UI (accessibility WCAG 2.1 AA, responsive fixes, date separators, localization completeness), UX (error recovery, offline indicator, voice recording limits, file send preservation, in-conversation search), encryption (signature versioning, disappearing messages wiring), and functionality (offline message queue, group multi-admin, presence heartbeat timeout).
 
 ## Technical Context
 
@@ -54,7 +54,7 @@ specs/008-saas-enhancements/
 ```text
 src/
 ├── Toledo.SharedKernel/              # Shared utilities (IdGenerator)
-├── ToledoMessage/                    # ASP.NET Core server
+├── ToledoVault/                    # ASP.NET Core server
 │   ├── Controllers/                  # 9 REST API controllers
 │   │   ├── AuthController.cs
 │   │   ├── ConversationsController.cs
@@ -80,7 +80,7 @@ src/
 │   │   ├── PreKeyService.cs
 │   │   └── AccountDeletionService.cs
 │   └── wwwroot/                      # Server static assets (app.css, themes.css)
-├── ToledoMessage.Client/             # Blazor WebAssembly
+├── ToledoVault.Client/             # Blazor WebAssembly
 │   ├── Pages/                        # Blazor pages
 │   │   ├── Chat.razor                # Main chat — virtualization, offline queue, search, expiry
 │   │   ├── Login.razor               # Error sanitization
@@ -108,17 +108,17 @@ src/
 │       ├── notifications.js
 │       ├── media-helpers.js
 │       └── voice-recorder.js         # 5-min limit enforcement
-├── ToledoMessage.Shared/             # DTOs, enums, constants
+├── ToledoVault.Shared/             # DTOs, enums, constants
 │   └── Enums/
 │       └── ParticipantRole.cs        # Already has Admin role
-└── ToledoMessage.Crypto/             # BouncyCastle crypto (signature versioning)
+└── ToledoVault.Crypto/             # BouncyCastle crypto (signature versioning)
 
 tests/
-├── ToledoMessage.Server.Tests/       # Server unit tests
-├── ToledoMessage.Client.Tests/       # Client unit tests
-├── ToledoMessage.Crypto.Tests/       # Crypto unit tests
-├── ToledoMessage.Integration.Tests/  # Integration tests
-└── ToledoMessage.Benchmarks/         # Performance benchmarks
+├── ToledoVault.Server.Tests/       # Server unit tests
+├── ToledoVault.Client.Tests/       # Client unit tests
+├── ToledoVault.Crypto.Tests/       # Crypto unit tests
+├── ToledoVault.Integration.Tests/  # Integration tests
+└── ToledoVault.Benchmarks/         # Performance benchmarks
 ```
 
 **Structure Decision**: Existing multi-project Blazor hosted structure is retained. No new projects needed. All changes are modifications to existing files or new files within existing project directories.
@@ -187,7 +187,7 @@ All technical decisions below were determined by analyzing the existing codebase
 
 ### R-006: Signature Format Versioning
 
-**Decision**: Prepend a single version byte (`0x01`) to the combined hybrid signature output. Current format becomes v0 (no prefix). Verification checks first byte: if `0x01`, parse as v1; otherwise, parse as v0 (legacy). This happens in the `HybridSigner` class in `ToledoMessage.Crypto`.
+**Decision**: Prepend a single version byte (`0x01`) to the combined hybrid signature output. Current format becomes v0 (no prefix). Verification checks first byte: if `0x01`, parse as v1; otherwise, parse as v0 (legacy). This happens in the `HybridSigner` class in `ToledoVault.Crypto`.
 
 **Rationale**: Single version byte is the standard approach (TLS, SSH, Signal Protocol all use version prefixes). Backward compatible: v0 signatures don't start with `0x01` (they start with Ed25519 signature bytes which have different structure).
 

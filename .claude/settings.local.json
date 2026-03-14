@@ -5,7 +5,8 @@
       "Bash(./afk-ralph.sh:*)",
       "Bash(docker sandbox run:*)",
       "Bash(docker sandbox logs:*)",
-      "Bash(docker sandbox:*)"
+      "Bash(docker sandbox:*)",
+      "Bash(git mv:*)"
     ]
   }
 }

@@ -9,7 +9,7 @@
 ## Build & Run
 
 ```bash
-cd src/ToledoMessage
+cd src/ToledoVault
 dotnet run
 ```
 

@@ -111,7 +111,7 @@ The installed PWA receives push notifications for new messages and reactions eve
 - **FR-011**: The service worker MUST handle fetch requests with a cache-first strategy for static assets and network-first for API/hub requests.
 - **FR-012**: *(DEFERRED — separate feature)* System SHOULD implement push notification support including VAPID key generation, service worker push event handling, and notification display for new messages and reactions. Deferred to a dedicated push notification feature branch due to scope (requires DB schema change, new NuGet package, VAPID infra, new API endpoints).
 - **FR-013**: System MUST implement offline message queuing - messages composed offline are queued and automatically sent when connectivity is restored.
-- **FR-014**: All PWA UI strings (install prompts, offline messages, notifications) MUST use the existing localization infrastructure (ToledoMessage.Shared resources).
+- **FR-014**: All PWA UI strings (install prompts, offline messages, notifications) MUST use the existing localization infrastructure (ToledoVault.Shared resources).
 - **FR-015**: The app MUST show a warning banner when accessed via non-localhost HTTP; PWA features work fully on localhost HTTP.
 
 ### Key Entities
@@ -138,7 +138,7 @@ The installed PWA receives push notifications for new messages and reactions eve
 ### Session 2026-03-12
 
 - Q: Icon Assets → A: Generate PNG icons from the existing favicon.svg using a build script
-- Q: Localization → A: Use the existing localization infrastructure (ToledoMessage.Shared resources) for all PWA UI strings
+- Q: Localization → A: Use the existing localization infrastructure (ToledoVault.Shared resources) for all PWA UI strings
 - Q: HTTPS Requirement → A: Allow HTTP for localhost development, show warning for non-localhost HTTP
 - Q: Push Notifications → A: Include push notifications now (new messages, reactions)
 - Q: Offline Messaging → A: Implement basic offline message queuing (queue messages when offline, send on reconnect)

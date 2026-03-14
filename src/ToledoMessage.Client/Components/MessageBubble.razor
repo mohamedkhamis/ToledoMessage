@@ -9,30 +9,39 @@
         @if (!string.IsNullOrEmpty(ReplyToSenderName))
         {
             <div class="reply-quote-block" @onclick="() => OnReplyQuoteClick.InvokeAsync(ReplyToMessageId ?? 0)">
-                <div class="reply-sender-name">@ReplyToSenderName</div>
-                @if (ReplyToContentType == ContentType.Image || ReplyToContentType == ContentType.Video)
+                <div class="reply-quote-info">
+                    <div class="reply-sender-name">@ReplyToSenderName</div>
+                    @if (ReplyToContentType == ContentType.Image)
+                    {
+                        <div class="reply-quote-text">📷 Photo</div>
+                    }
+                    else if (ReplyToContentType == ContentType.Video)
+                    {
+                        <div class="reply-quote-text">🎬 Video</div>
+                    }
+                    else if (ReplyToContentType == ContentType.Audio)
+                    {
+                        <div class="reply-quote-text">🎤 Voice message</div>
+                    }
+                    else if (ReplyToContentType == ContentType.File)
+                    {
+                        <div class="reply-quote-text">📄 @(!string.IsNullOrEmpty(ReplyToText) ? ReplyToText : "File")</div>
+                    }
+                    else
+                    {
+                        <div class="reply-quote-text">@(!string.IsNullOrEmpty(ReplyToText) ? ReplyToText : "Message")</div>
+                    }
+                </div>
+                @if (ReplyToContentType is ContentType.Image or ContentType.Video or ContentType.File)
                 {
                     @if (!string.IsNullOrEmpty(ReplyToThumbnailDataUrl))
                     {
                         <img src="@ReplyToThumbnailDataUrl" class="reply-media-thumb" alt="Reply preview" />
                     }
-                    else if (!string.IsNullOrEmpty(ReplyToMediaDataUrl))
+                    else if (ReplyToContentType is ContentType.Image or ContentType.Video && !string.IsNullOrEmpty(ReplyToMediaDataUrl))
                     {
                         <img src="@ReplyToMediaDataUrl" class="reply-media-thumb" alt="Reply preview" />
                     }
-                    <div class="reply-quote-text">@(ReplyToContentType == ContentType.Image ? "📷 Photo" : "🎬 Video")</div>
-                }
-                else if (ReplyToContentType == ContentType.Audio)
-                {
-                    <div class="reply-quote-text">🎤 Voice message</div>
-                }
-                else if (ReplyToContentType == ContentType.File)
-                {
-                    <div class="reply-quote-text">@ReplyToText</div>
-                }
-                else
-                {
-                    <div class="reply-quote-text">@(!string.IsNullOrEmpty(ReplyToText) ? ReplyToText : "Message")</div>
                 }
             </div>
         }
@@ -239,6 +248,7 @@
                 {
                     _pdfThumbnailUrl = result.Thumbnail;
                     _pdfPageCount = result.PageCount;
+                    await OnPdfThumbnailGenerated.InvokeAsync(result.Thumbnail);
                     await InvokeAsync(StateHasChanged);
                 }
             }
@@ -473,6 +483,9 @@
 
     [Parameter]
     public long FileSizeBytes { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnPdfThumbnailGenerated { get; set; }
 
     private bool IsPdf => MimeType?.StartsWith("application/pdf", StringComparison.OrdinalIgnoreCase) == true
                           || FileName?.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) == true;

@@ -221,7 +221,8 @@
                                FileSizeBytes="msg.MediaBytes?.Length ?? 0"
                                OnReplyQuoteClick="ScrollToMessage"
                                ReactionBadges="GetReactionBadges(msg.MessageId)"
-                               OnReactionToggle="(emoji) => ToggleReaction(msg.MessageId, emoji)" />
+                               OnReactionToggle="(emoji) => ToggleReaction(msg.MessageId, emoji)"
+                               OnPdfThumbnailGenerated="(thumb) => { msg.ThumbnailDataUrl = thumb; }" />
             }
         }
     </div>
@@ -1865,7 +1866,11 @@
         {
             MessageId = msg.MessageId,
             SenderName = msg.IsMine ? "You" : GetSenderDisplayName(msg),
-            Text = FormatReplyText(msg)
+            Text = FormatReplyText(msg),
+            ThumbnailDataUrl = msg.ContentType is ContentType.Image or ContentType.Video
+                ? (msg.ThumbnailDataUrl ?? msg.MediaDataUrl)
+                : msg.ThumbnailDataUrl,
+            ContentType = msg.ContentType
         };
         _showContextMenu = false;
     }

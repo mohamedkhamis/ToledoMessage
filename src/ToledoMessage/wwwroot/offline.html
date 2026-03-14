@@ -76,9 +76,10 @@
                 document.documentElement.dir = 'rtl';
             }
             var els = document.querySelectorAll('.lang-' + show);
-            for (var i = 0; i < els.length; i++) els[i].style.display = '';
+            var i;
+            for (i = 0; i < els.length; i++) els[i].style.display = '';
             els = document.querySelectorAll('.lang-' + hide);
-            for (var i = 0; i < els.length; i++) els[i].style.display = 'none';
+            for (i = 0; i < els.length; i++) els[i].style.display = 'none';
         })();
     </script>
 </body>

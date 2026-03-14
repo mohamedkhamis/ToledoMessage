@@ -204,7 +204,7 @@ app.Use(static async (context, next) =>
     // CSP: Blazor WASM requires unsafe-eval for IL interpreter + unsafe-inline for inline scripts/styles
     context.Response.Headers["Content-Security-Policy"] =
         "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
-        "connect-src 'self' ws: wss:; img-src 'self' data: blob:; media-src 'self' blob:; " +
+        "connect-src 'self' ws: wss: blob:; img-src 'self' data: blob:; media-src 'self' blob:; " +
         "frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
     await next();
 });

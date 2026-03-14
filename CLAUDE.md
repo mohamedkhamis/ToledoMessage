@@ -99,11 +99,11 @@ ChatLayout is in the **client project** (WASM can't load server assemblies).
 
 Users, Devices, OneTimePreKeys, Conversations, ConversationParticipants, EncryptedMessages, RefreshTokens, UserPreferences, MessageReactions, EncryptedKeyBackups, ConversationReadPointers
 
-**Migrations**: InitialCreate, AddDisplayNameSecondary, UpdateFontSizeDefault
+**Migrations**: InitialCreate, AddDisplayNameSecondary, UpdateFontSizeDefault, AddRefreshTokenIsPersistent, AddSendPhotoHdPreference
 
 ## Key Services
 
-**Server**: PreKeyService, MessageRelayService, AccountDeletionService, PresenceService, RateLimitService, LinkPreviewService, MessageCleanupHostedService, AccountDeletionHostedService
+**Server**: PreKeyService, MessageRelayService, AccountDeletionService (BackgroundService), PresenceService, RateLimitService, LinkPreviewService, MessageCleanupHostedService (BackgroundService)
 
 **Client**: LocalStorageService, SignalRService, CryptoService, SessionService, MessageEncryptionService, KeyGenerationService, KeyBackupService, KeyBackupCryptoService, FingerprintService, PreKeyReplenishmentService, MessageExpiryService, MessageStoreService, ThemeService, PreferencesService, ToastService, AuthTokenHandler
 
@@ -263,7 +263,7 @@ This is a **production SaaS** product, not an MVP. All features should be implem
 - Always ask the user to type "commit" before committing
 - After completing any work, summarize changes and ask: "Ready to commit?"
 - Wait for user to explicitly type "commit" before running git add/commit/push
-- **Bug tracking:** All bugs go in `BUGS.md` (project root) — see its Bug Workflow section for format and rules
+- **Bug tracking:** All bugs go in `docs/BUGS.md` — see its Bug Workflow section for format and rules
 - Before starting work, check `BUGS.md` for open bugs related to your feature
 - After code review, report any bugs found to `BUGS.md` under "Open Bugs" with full template (severity, file/line, fix steps)
 - After fixing a bug, move it from "Open Bugs" to "Resolved Bugs" with fix date

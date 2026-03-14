@@ -208,18 +208,11 @@ function Publish-App {
         exit 1
     }
 
-    # Clean old WASM framework files to prevent stale cache
-    $frameworkDir = Join-Path $OutputPath "wwwroot\_framework"
-    if (Test-Path $frameworkDir) {
-        Write-Step "Cleaning old WASM framework files..."
-        Remove-Item "$frameworkDir\*" -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Ok "Old framework files cleaned"
-    }
-
-    Write-Step "Publishing app to $OutputPath ..."
+    # Publish to default location first (required for static web assets manifest
+    # to include Blazor WASM runtime files — using --output breaks this in .NET 8+).
+    Write-Step "Publishing app..."
     & dotnet publish $projectPath `
         --configuration Release `
-        --output $OutputPath `
         --no-self-contained 2>&1 | ForEach-Object {
         if ($_ -match "error") { Write-Err $_ } else { Write-Info $_ }
     }
@@ -229,6 +222,25 @@ function Publish-App {
         exit 1
     }
     Write-Ok "Publish succeeded"
+
+    # Copy from default publish location to the deploy path
+    $projectDir = Split-Path $projectPath -Parent
+    $defaultPublishDir = Join-Path $projectDir "bin\Release\net11.0\publish"
+    if (-not (Test-Path $defaultPublishDir)) {
+        Write-Err "Publish output not found at: $defaultPublishDir"
+        exit 1
+    }
+
+    Write-Step "Copying to $OutputPath ..."
+    if (Test-Path $OutputPath) {
+        # Clean old deployment (except logs and appsettings.Production.json)
+        Get-ChildItem -Path $OutputPath -Exclude "logs", "appsettings.Production.json" |
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    } else {
+        New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
+    }
+    Copy-Item -Path "$defaultPublishDir\*" -Destination $OutputPath -Recurse -Force
+    Write-Ok "Files copied to $OutputPath"
 
     # Generate version file for cache busting (timestamp-based) - put in wwwroot
     $version = (Get-Date).ToString("yyyyMMddHHmmss")

@@ -5,12 +5,12 @@
 
 // VERSION: Bump this string on every deploy to trigger cache refresh.
 // When this value changes, the browser detects a "new" service worker
-// and triggers the install + activate lifecycle events.
+// and triggers the installation + activate lifecycle events.
 const CACHE_VERSION = 'toledo-v1';
 
-// STATIC_ASSETS: List of URLs to pre-cache during the install event.
-// Blazor WASM framework files (.dll, .wasm, blazor.boot.json) are cached
-// dynamically on first load via the fetch handler's cache-on-response logic.
+// STATIC_ASSETS: List of URLs to pre-cache during the installation event.
+// Blazor WASM framework files (_framework/*) are excluded from SW caching
+// entirely — Blazor has its own integrity-checked boot/cache mechanism.
 const STATIC_ASSETS = [
   '/',
   '/offline.html',
@@ -24,6 +24,7 @@ const STATIC_ASSETS = [
 // We open a versioned cache and add all static assets to it.
 // skipWaiting() tells the browser to activate this SW immediately
 // instead of waiting for all tabs to close.
+// ReSharper disable once Html.EventNotResolved
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_VERSION)
@@ -56,11 +57,20 @@ self.addEventListener('activate', (event) => {
 //   - All other requests (static assets): CACHE-FIRST
 //     (serve from cache if available; fall back to network; cache the response)
 //   - If both cache and network fail: show offline.html fallback
+// ReSharper disable once Html.EventNotResolved
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // --- Skip non-HTTP(S) requests (e.g. chrome-extension://) ---
   if (!url.protocol.startsWith('http')) {
+    return;
+  }
+
+  // --- Pass-through for Blazor framework files ---
+  // _framework/ contains dotnet.js, .wasm, .dll files that Blazor loads
+  // with integrity checks. The SW must NOT intercept these — caching them
+  // can cause module load failures and integrity mismatches on updates.
+  if (url.pathname.startsWith('/_framework/')) {
     return;
   }
 

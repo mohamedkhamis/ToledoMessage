@@ -21,8 +21,12 @@ public class PreferencesController(ApplicationDbContext db) : BaseApiController
         "telegram", "telegram-dark", "signal", "signal-dark"
     ];
 
-    private static readonly HashSet<string> ValidFontSizes = ["small", "medium", "large",
-        "12", "13", "14", "15", "16", "17", "18", "19", "20"];
+    private static readonly HashSet<string> ValidFontSizes =
+    [
+        "small", "medium", "large",
+        "12", "13", "14", "15", "16", "17", "18", "19", "20"
+    ];
+
     private static readonly HashSet<string> ValidLanguages = ["en", "ar"];
 
     [HttpGet]
@@ -34,7 +38,7 @@ public class PreferencesController(ApplicationDbContext db) : BaseApiController
             .FirstOrDefaultAsync(p => p.UserId == userId);
 
         if (prefs is null)
-            return Ok(new UserPreferencesResponse("default", "15", "en", true, true, true, true, false));
+            return Ok(new UserPreferencesResponse("default", "15", "en", true, true, true, true));
 
         return Ok(new UserPreferencesResponse(
             prefs.Theme, prefs.FontSize, prefs.Language,

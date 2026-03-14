@@ -160,6 +160,27 @@
   <data name="Invalid credentials." xml:space="preserve">
   <value>بيانات تسجيل الدخول غير صحيحة.</value>
   </data>
+  <data name="The username or password you entered is incorrect. Please try again." xml:space="preserve">
+    <value>اسم المستخدم أو كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.</value>
+  </data>
+  <data name="Too many login attempts. Please wait a moment and try again." xml:space="preserve">
+    <value>محاولات تسجيل دخول كثيرة جداً. يرجى الانتظار لحظة والمحاولة مرة أخرى.</value>
+  </data>
+  <data name="Unable to connect. Please check your internet connection and try again." xml:space="preserve">
+    <value>تعذر الاتصال. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.</value>
+  </data>
+  <data name="Something went wrong. Please try again later." xml:space="preserve">
+    <value>حدث خطأ ما. يرجى المحاولة مرة أخرى لاحقاً.</value>
+  </data>
+  <data name="No account found with this username. Please check and try again." xml:space="preserve">
+    <value>لا يوجد حساب بهذا الاسم. يرجى التحقق والمحاولة مرة أخرى.</value>
+  </data>
+  <data name="This account has been deactivated." xml:space="preserve">
+    <value>تم تعطيل هذا الحساب.</value>
+  </data>
+  <data name="Incorrect password. Please try again." xml:space="preserve">
+    <value>كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.</value>
+  </data>
   <data name="Setting up encryption keys..." xml:space="preserve">
     <value>جارٍ إعداد مفاتيح التشفير...</value>
   </data>

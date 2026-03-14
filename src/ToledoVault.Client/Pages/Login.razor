@@ -356,7 +356,28 @@
 
             if (!response.IsSuccessStatusCode)
             {
-                _errorMessage = Loc["Invalid credentials."];
+                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                {
+                    _errorMessage = Loc["Too many login attempts. Please wait a moment and try again."];
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    var errorBody = await response.Content.ReadAsStringAsync();
+                    _errorMessage = errorBody switch
+                    {
+                        _ when errorBody.Contains("USER_NOT_FOUND") =>
+                            Loc["No account found with this username. Please check and try again."],
+                        _ when errorBody.Contains("ACCOUNT_DEACTIVATED") =>
+                            Loc["This account has been deactivated."],
+                        _ when errorBody.Contains("WRONG_PASSWORD") =>
+                            Loc["Incorrect password. Please try again."],
+                        _ => Loc["The username or password you entered is incorrect. Please try again."]
+                    };
+                }
+                else
+                {
+                    _errorMessage = Loc["Unable to connect. Please check your internet connection and try again."];
+                }
                 return;
             }
 
@@ -519,7 +540,7 @@
 #pragma warning restore CS0168 // Variable is declared but never used
         {
             // FR-007: Sanitize error messages - don't expose internal details
-            _errorMessage = Loc["Invalid credentials."];
+            _errorMessage = Loc["Something went wrong. Please try again later."];
         }
         finally
         {

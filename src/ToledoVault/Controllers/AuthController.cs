@@ -195,18 +195,16 @@ public class AuthController(
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        const string genericError = "Invalid username or password.";
-
         var user = await db.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
         if (user == null)
-            return Unauthorized(genericError);
+            return Unauthorized("USER_NOT_FOUND");
 
         if (!user.IsActive)
-            return Unauthorized(genericError);
+            return Unauthorized("ACCOUNT_DEACTIVATED");
 
         var result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
         if (result == PasswordVerificationResult.Failed)
-            return Unauthorized(genericError);
+            return Unauthorized("WRONG_PASSWORD");
 
         // Cancel pending deletion on successful login (FR-020 grace period)
         if (user.DeletionRequestedAt is not null)
@@ -241,7 +239,7 @@ public class AuthController(
 
         // Validate device binding: if the stored token is bound to a device, the request must match
         if (storedToken.DeviceId is not null && request.DeviceId is not null
-            && storedToken.DeviceId != request.DeviceId)
+                                             && storedToken.DeviceId != request.DeviceId)
             return Unauthorized("Refresh token does not belong to this device.");
 
         // Revoke the old refresh token (rotation)

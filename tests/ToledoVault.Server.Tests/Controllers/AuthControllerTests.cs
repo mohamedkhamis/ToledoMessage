@@ -132,6 +132,8 @@ public class AuthControllerTests
 
         var result = await controller.Login(new LoginRequest("wrongpw", "WrongPassword1"));
         Assert.IsInstanceOfType<UnauthorizedObjectResult>(result);
+        var unauthorized = (UnauthorizedObjectResult)result;
+        Assert.AreEqual("WRONG_PASSWORD", unauthorized.Value?.ToString());
     }
 
     [TestMethod]
@@ -140,10 +142,12 @@ public class AuthControllerTests
         var (controller, _) = CreateController();
         var result = await controller.Login(new LoginRequest("nonexistent", "MySecurePass12"));
         Assert.IsInstanceOfType<UnauthorizedObjectResult>(result);
+        var unauthorized = (UnauthorizedObjectResult)result;
+        Assert.AreEqual("USER_NOT_FOUND", unauthorized.Value?.ToString());
     }
 
     [TestMethod]
-    public async Task Login_DeactivatedUser_ReturnsUnauthorized_WithGenericError()
+    public async Task Login_DeactivatedUser_ReturnsUnauthorized_WithDeactivatedError()
     {
         var (controller, db) = CreateController();
 
@@ -158,10 +162,7 @@ public class AuthControllerTests
         var result = await controller.Login(new LoginRequest("deactuser", "MySecurePass12"));
         Assert.IsInstanceOfType<UnauthorizedObjectResult>(result);
         var unauthorized = (UnauthorizedObjectResult)result;
-        // Should return the same generic error to prevent user enumeration
-#pragma warning disable MSTEST0046
-        StringAssert.Contains(unauthorized.Value?.ToString(), "Invalid username or password");
-#pragma warning restore MSTEST0046
+        Assert.AreEqual("ACCOUNT_DEACTIVATED", unauthorized.Value?.ToString());
     }
 
     [TestMethod]
@@ -298,10 +299,10 @@ public class AuthControllerTests
         Assert.IsInstanceOfType<UnauthorizedResult>(result);
     }
 
-    // --- User Enumeration Prevention ---
+    // --- Login Error Differentiation ---
 
     [TestMethod]
-    public async Task Login_NonExistentUser_ReturnsSameErrorAsWrongPassword()
+    public async Task Login_ReturnsDistinctErrorCodes()
     {
         var (controller, _) = CreateController();
         await controller.Register(new RegisterRequest("realuser", "Real User", "MySecurePass12"));
@@ -314,8 +315,9 @@ public class AuthControllerTests
         Assert.IsInstanceOfType<UnauthorizedObjectResult>(wrongPasswordResult);
         var wrongPasswordError = (UnauthorizedObjectResult)wrongPasswordResult;
 
-        // Both should return the exact same generic error message
-        Assert.AreEqual(nonExistentError.Value?.ToString(), wrongPasswordError.Value?.ToString());
+        // Each failure reason returns a distinct error code for user-friendly messages
+        Assert.AreEqual("USER_NOT_FOUND", nonExistentError.Value?.ToString());
+        Assert.AreEqual("WRONG_PASSWORD", wrongPasswordError.Value?.ToString());
     }
 
     // --- Logout ---

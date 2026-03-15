@@ -22,11 +22,13 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="11.0.0-preview.2.26159.112" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="11.0.0-preview.2.26159.112" />
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.MSSqlServer" Version="9.0.3" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ToledoVault.Client\ToledoVault.Client.csproj" />
     <ProjectReference Include="..\ToledoVault.Shared\ToledoVault.Shared.csproj" />
+    <ProjectReference Include="..\ToledoVault.Admin\ToledoVault.Admin.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,191 @@
+@page "/admin/settings"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@layout AdminLayout
+@inject AdminApiService Api
+@inject IStringLocalizer<AdminResource> Loc
+
+<h2>@Loc["Settings_Title"]</h2>
+
+@if (loading)
+{
+    <p>Loading settings...</p>
+}
+else if (categories is not null)
+{
+    @foreach (var category in categories)
+    {
+        <div class="admin-card settings-category">
+            <h3>@category.Category</h3>
+            @foreach (var setting in category.Settings)
+            {
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-name">@setting.DisplayName</div>
+                        @if (setting.Description is not null)
+                        {
+                            <div class="setting-desc">@setting.Description</div>
+                        }
+                    </div>
+                    <div class="setting-control">
+                        @if (setting.ValueType == "boolean")
+                        {
+                            <label class="toggle-switch">
+                                <input type="checkbox" checked="@(setting.CurrentValue == "true")"
+                                       @onchange="e => UpdateBoolean(setting.Key, (bool)(e.Value ?? false))" />
+                                <span class="toggle-slider"></span>
+                            </label>
+                        }
+                        else if (setting.ValueType == "selection")
+                        {
+                            <select value="@GetEditValue(setting.Key, setting.CurrentValue)"
+                                    @onchange="e => UpdateSetting(setting.Key, e.Value?.ToString() ?? string.Empty)">
+                                @foreach (var opt in GetOptions(setting))
+                                {
+                                    <option value="@opt" selected="@(opt == GetEditValue(setting.Key, setting.CurrentValue))">@opt</option>
+                                }
+                            </select>
+                        }
+                        else if (setting.ValueType == "integer")
+                        {
+                            <input type="number" value="@GetEditValue(setting.Key, setting.CurrentValue)"
+                                   @onchange="e => UpdateSetting(setting.Key, e.Value?.ToString() ?? string.Empty)"
+                                   min="@GetMin(setting)" max="@GetMax(setting)" />
+                        }
+                        else
+                        {
+                            <input type="text" value="@GetEditValue(setting.Key, setting.CurrentValue)"
+                                   @onchange="e => UpdateSetting(setting.Key, e.Value?.ToString() ?? string.Empty)" />
+                        }
+
+                        @if (setting.CurrentValue != setting.DefaultValue)
+                        {
+                            <button class="btn btn-outline btn-sm" @onclick="() => ResetSetting(setting.Key)">Reset</button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@if (toast is not null)
+{
+    <div class="admin-toast @toast.Type">@toast.Message</div>
+}
+
+@code {
+    private List<ToledoVault.Shared.DTOs.SettingCategoryResponse>? categories;
+    private bool loading = true;
+    private Dictionary<string, string> editValues = new();
+    private ToastInfo? toast;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+    }
+
+    private async Task LoadSettings()
+    {
+        loading = true;
+        try
+        {
+            categories = await Api.GetSettingsAsync();
+        }
+        catch
+        {
+            ShowToast("Failed to load settings.", "error");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private string GetEditValue(string key, string current)
+    {
+        return editValues.GetValueOrDefault(key, current);
+    }
+
+    private async Task UpdateSetting(string key, string value)
+    {
+        editValues[key] = value;
+        try
+        {
+            var response = await Api.UpdateSettingAsync(key, value);
+            if (response.IsSuccessStatusCode)
+            {
+                ShowToast("Setting saved.", "success");
+                await LoadSettings();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                ShowToast($"Error: {error}", "error");
+            }
+        }
+        catch
+        {
+            ShowToast("Failed to save setting.", "error");
+        }
+    }
+
+    private async Task UpdateBoolean(string key, bool value)
+    {
+        await UpdateSetting(key, value ? "true" : "false");
+    }
+
+    private async Task ResetSetting(string key)
+    {
+        try
+        {
+            var response = await Api.ResetSettingAsync(key);
+            if (response.IsSuccessStatusCode)
+            {
+                editValues.Remove(key);
+                ShowToast("Setting reset to default.", "success");
+                await LoadSettings();
+            }
+        }
+        catch
+        {
+            ShowToast("Failed to reset setting.", "error");
+        }
+    }
+
+    private List<string> GetOptions(ToledoVault.Shared.DTOs.GlobalSettingResponse setting)
+    {
+        if (setting.ValidationRules is System.Text.Json.JsonElement el &&
+            el.TryGetProperty("options", out var opts))
+        {
+            return opts.EnumerateArray().Select(o => o.GetString() ?? "").ToList();
+        }
+        return [];
+    }
+
+    private string? GetMin(ToledoVault.Shared.DTOs.GlobalSettingResponse setting)
+    {
+        if (setting.ValidationRules is System.Text.Json.JsonElement el &&
+            el.TryGetProperty("min", out var min))
+            return min.GetInt32().ToString();
+        return null;
+    }
+
+    private string? GetMax(ToledoVault.Shared.DTOs.GlobalSettingResponse setting)
+    {
+        if (setting.ValidationRules is System.Text.Json.JsonElement el &&
+            el.TryGetProperty("max", out var max))
+            return max.GetInt32().ToString();
+        return null;
+    }
+
+    private async void ShowToast(string message, string type)
+    {
+        toast = new ToastInfo(message, type);
+        StateHasChanged();
+        await Task.Delay(3000);
+        toast = null;
+        StateHasChanged();
+    }
+
+    private record ToastInfo(string Message, string Type);
+}

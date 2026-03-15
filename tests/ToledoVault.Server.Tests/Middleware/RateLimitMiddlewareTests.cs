@@ -214,6 +214,157 @@ public class RateLimitMiddlewareTests
     }
 
     [TestMethod]
+    public async Task InvokeAsync_AdminLoginEndpoint_LimitsAfter5()
+    {
+        var (middleware, _) = CreateMiddleware();
+
+        for (var i = 0; i < 5; i++)
+        {
+            var context = new DefaultHttpContext
+            {
+                Request =
+                {
+                    Path = "/api/admin/auth/login"
+                },
+                Connection =
+                {
+                    RemoteIpAddress = IPAddress.Parse("10.0.0.50")
+                }
+            };
+            await middleware.InvokeAsync(context);
+            Assert.AreNotEqual(429, context.Response.StatusCode);
+        }
+
+        // 6th request should be rate limited
+        var limitedContext = new DefaultHttpContext
+        {
+            Request =
+            {
+                Path = "/api/admin/auth/login"
+            },
+            Connection =
+            {
+                RemoteIpAddress = IPAddress.Parse("10.0.0.50")
+            },
+            Response =
+            {
+                Body = new MemoryStream()
+            }
+        };
+
+        await middleware.InvokeAsync(limitedContext);
+
+        Assert.AreEqual(429, limitedContext.Response.StatusCode);
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_AdminLoginEndpoint_DifferentIPs_IndependentLimits()
+    {
+        var (middleware, _) = CreateMiddleware();
+
+        // Exhaust limit for IP 1
+        for (var i = 0; i < 6; i++)
+        {
+            var context = new DefaultHttpContext
+            {
+                Request =
+                {
+                    Path = "/api/admin/auth/login"
+                },
+                Connection =
+                {
+                    RemoteIpAddress = IPAddress.Parse("10.0.0.50")
+                },
+                Response =
+                {
+                    Body = new MemoryStream()
+                }
+            };
+            await middleware.InvokeAsync(context);
+        }
+
+        // IP 2 should still be allowed
+        var context2 = new DefaultHttpContext
+        {
+            Request =
+            {
+                Path = "/api/admin/auth/login"
+            },
+            Connection =
+            {
+                RemoteIpAddress = IPAddress.Parse("10.0.0.51")
+            }
+        };
+
+        await middleware.InvokeAsync(context2);
+
+        Assert.AreNotEqual(429, context2.Response.StatusCode);
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_AuthenticatedAdminEndpoint_LimitsAt60()
+    {
+        var (middleware, _) = CreateMiddleware();
+
+        for (var i = 0; i < 60; i++)
+        {
+            var context = new DefaultHttpContext
+            {
+                Request =
+                {
+                    Path = "/api/admin/settings"
+                },
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim("sub", "adminuser")], "Test"))
+            };
+            await middleware.InvokeAsync(context);
+        }
+
+        // 61st request should be rate limited
+        var limitedContext = new DefaultHttpContext
+        {
+            Request =
+            {
+                Path = "/api/admin/settings"
+            },
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim("sub", "adminuser")], "Test")),
+            Response =
+            {
+                Body = new MemoryStream()
+            }
+        };
+
+        await middleware.InvokeAsync(limitedContext);
+
+        Assert.AreEqual(429, limitedContext.Response.StatusCode);
+    }
+
+    [TestMethod]
+    public async Task InvokeAsync_AuthenticatedAdminEndpoint_NoAuth_PassesThrough()
+    {
+        var nextCalled = false;
+        var (middleware, _) = CreateMiddleware(_ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
+
+        var context = new DefaultHttpContext
+        {
+            Request =
+            {
+                Path = "/api/admin/logs"
+            }
+        };
+        // No authenticated user — [Authorize] will handle rejection
+
+        await middleware.InvokeAsync(context);
+
+        Assert.IsTrue(nextCalled);
+    }
+
+    [TestMethod]
     public async Task InvokeAsync_DifferentIPs_IndependentLimits()
     {
         var (middleware, _) = CreateMiddleware();

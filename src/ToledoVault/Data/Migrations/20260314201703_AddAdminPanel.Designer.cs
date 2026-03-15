@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ToledoVault.Data;
 
@@ -11,9 +12,11 @@ using ToledoVault.Data;
 namespace ToledoVault.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260314201703_AddAdminPanel")]
+    partial class AddAdminPanel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -350,152 +353,138 @@ namespace ToledoVault.Data.Migrations
                     b.HasData(
                         new
                         {
-                            Id = 2375481900587111243L,
+                            Id = 8498888103287051600L,
                             Category = "Security",
                             CurrentValue = "256",
                             DefaultValue = "256",
                             Description = "AES key size in bits for message encryption",
                             DisplayName = "Encryption Key Length",
                             Key = "security.encryptionKeyLength",
-                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 43, 1, 902, DateTimeKind.Unspecified).AddTicks(5875), new TimeSpan(0, 0, 0, 0, 0)),
+                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 17, 2, 668, DateTimeKind.Unspecified).AddTicks(1994), new TimeSpan(0, 0, 0, 0, 0)),
                             SortOrder = 0,
                             ValidationRules = "{\"options\": [\"128\", \"192\", \"256\"]}",
                             ValueType = "selection"
                         },
                         new
                         {
-                            Id = 6767577967081690152L,
+                            Id = 4234894333481566928L,
                             Category = "Security",
                             CurrentValue = "600000",
                             DefaultValue = "600000",
                             Description = "Number of iterations for password-based key derivation",
                             DisplayName = "PBKDF2 Iterations",
                             Key = "security.pbkdf2Iterations",
-                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 43, 1, 902, DateTimeKind.Unspecified).AddTicks(5875), new TimeSpan(0, 0, 0, 0, 0)),
+                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 17, 2, 668, DateTimeKind.Unspecified).AddTicks(1994), new TimeSpan(0, 0, 0, 0, 0)),
                             SortOrder = 1,
                             ValidationRules = "{\"min\": 100000, \"max\": 1000000}",
                             ValueType = "integer"
                         },
                         new
                         {
-                            Id = 4932607441112003257L,
+                            Id = 3312535075451403539L,
                             Category = "Appearance",
                             CurrentValue = "default",
                             DefaultValue = "default",
                             Description = "Default theme for new users",
                             DisplayName = "Default Theme",
                             Key = "appearance.defaultTheme",
-                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 43, 1, 902, DateTimeKind.Unspecified).AddTicks(5875), new TimeSpan(0, 0, 0, 0, 0)),
+                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 17, 2, 668, DateTimeKind.Unspecified).AddTicks(1994), new TimeSpan(0, 0, 0, 0, 0)),
                             SortOrder = 0,
                             ValidationRules = "{\"options\": [\"default\", \"default-dark\", \"whatsapp\", \"whatsapp-dark\", \"telegram\", \"telegram-dark\", \"signal\", \"signal-dark\"]}",
                             ValueType = "selection"
                         },
                         new
                         {
-                            Id = 1647305997828296015L,
+                            Id = 4202225848195657054L,
                             Category = "Appearance",
                             CurrentValue = "medium",
                             DefaultValue = "medium",
                             Description = "Default font size for new users",
                             DisplayName = "Default Font Size",
                             Key = "appearance.defaultFontSize",
-                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 43, 1, 902, DateTimeKind.Unspecified).AddTicks(5875), new TimeSpan(0, 0, 0, 0, 0)),
+                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 17, 2, 668, DateTimeKind.Unspecified).AddTicks(1994), new TimeSpan(0, 0, 0, 0, 0)),
                             SortOrder = 1,
                             ValidationRules = "{\"options\": [\"small\", \"medium\", \"large\"]}",
                             ValueType = "selection"
                         },
                         new
                         {
-                            Id = 3547443041045299879L,
+                            Id = 7062314752539193280L,
                             Category = "Features",
                             CurrentValue = "true",
                             DefaultValue = "true",
                             Description = "Allow users to see when messages are read",
                             DisplayName = "Read Receipts",
                             Key = "features.readReceipts",
-                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 43, 1, 902, DateTimeKind.Unspecified).AddTicks(5875), new TimeSpan(0, 0, 0, 0, 0)),
+                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 17, 2, 668, DateTimeKind.Unspecified).AddTicks(1994), new TimeSpan(0, 0, 0, 0, 0)),
                             SortOrder = 0,
                             ValueType = "boolean"
                         },
                         new
                         {
-                            Id = 8186949666844831051L,
+                            Id = 624708109479566483L,
                             Category = "Features",
                             CurrentValue = "true",
                             DefaultValue = "true",
                             Description = "Show when users are typing",
                             DisplayName = "Typing Indicators",
                             Key = "features.typingIndicators",
-                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 43, 1, 902, DateTimeKind.Unspecified).AddTicks(5875), new TimeSpan(0, 0, 0, 0, 0)),
+                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 17, 2, 668, DateTimeKind.Unspecified).AddTicks(1994), new TimeSpan(0, 0, 0, 0, 0)),
                             SortOrder = 1,
                             ValueType = "boolean"
                         },
                         new
                         {
-                            Id = 8841052925682027482L,
+                            Id = 4267429388408400089L,
                             Category = "Features",
                             CurrentValue = "true",
                             DefaultValue = "true",
                             Description = "Generate preview cards for shared URLs",
                             DisplayName = "Link Previews",
                             Key = "features.linkPreviews",
-                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 43, 1, 902, DateTimeKind.Unspecified).AddTicks(5875), new TimeSpan(0, 0, 0, 0, 0)),
+                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 17, 2, 668, DateTimeKind.Unspecified).AddTicks(1994), new TimeSpan(0, 0, 0, 0, 0)),
                             SortOrder = 2,
                             ValueType = "boolean"
                         },
                         new
                         {
-                            Id = 6261558502429981551L,
+                            Id = 7985863922861211497L,
                             Category = "Features",
                             CurrentValue = "true",
                             DefaultValue = "true",
                             Description = "Allow users to send voice messages",
                             DisplayName = "Voice Messages",
                             Key = "features.voiceMessages",
-                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 43, 1, 902, DateTimeKind.Unspecified).AddTicks(5875), new TimeSpan(0, 0, 0, 0, 0)),
+                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 17, 2, 668, DateTimeKind.Unspecified).AddTicks(1994), new TimeSpan(0, 0, 0, 0, 0)),
                             SortOrder = 3,
                             ValueType = "boolean"
                         },
                         new
                         {
-                            Id = 5084024938015077971L,
+                            Id = 609358493797075579L,
                             Category = "Logging",
                             CurrentValue = "Information",
                             DefaultValue = "Information",
                             Description = "Minimum severity level for log entries",
                             DisplayName = "Minimum Log Level",
                             Key = "logging.minLevel",
-                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 43, 1, 902, DateTimeKind.Unspecified).AddTicks(5875), new TimeSpan(0, 0, 0, 0, 0)),
+                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 17, 2, 668, DateTimeKind.Unspecified).AddTicks(1994), new TimeSpan(0, 0, 0, 0, 0)),
                             SortOrder = 0,
                             ValidationRules = "{\"options\": [\"Verbose\", \"Debug\", \"Information\", \"Warning\", \"Error\", \"Fatal\"]}",
                             ValueType = "selection"
                         },
                         new
                         {
-                            Id = 2186619364910816402L,
+                            Id = 6159339716170130721L,
                             Category = "Logging",
                             CurrentValue = "30",
                             DefaultValue = "30",
                             Description = "Number of days to retain log entries",
                             DisplayName = "Log Retention Days",
                             Key = "logging.retentionDays",
-                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 43, 1, 902, DateTimeKind.Unspecified).AddTicks(5875), new TimeSpan(0, 0, 0, 0, 0)),
+                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 17, 2, 668, DateTimeKind.Unspecified).AddTicks(1994), new TimeSpan(0, 0, 0, 0, 0)),
                             SortOrder = 1,
                             ValidationRules = "{\"min\": 1, \"max\": 365}",
-                            ValueType = "integer"
-                        },
-                        new
-                        {
-                            Id = 3134461825223462409L,
-                            Category = "Notifications",
-                            CurrentValue = "3",
-                            DefaultValue = "3",
-                            Description = "Number of times to retry failed push notifications",
-                            DisplayName = "Max Push Notification Retries",
-                            Key = "notifications.maxRetries",
-                            LastModifiedAt = new DateTimeOffset(new DateTime(2026, 3, 14, 20, 43, 1, 902, DateTimeKind.Unspecified).AddTicks(5875), new TimeSpan(0, 0, 0, 0, 0)),
-                            SortOrder = 0,
-                            ValidationRules = "{\"min\": 1, \"max\": 10}",
                             ValueType = "integer"
                         });
                 });

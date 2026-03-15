@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using Serilog.Sinks.MSSqlServer;
 using ToledoVault.Components;
 using ToledoVault.Data;
 using ToledoVault.Models;
@@ -12,6 +13,8 @@ using ToledoVault.Hubs;
 using ToledoVault.Middleware;
 using ToledoVault.Client.Services;
 using ToledoVault.Services;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Localization;
 using ToledoVault.Shared.Converters;
 
 // ReSharper disable RemoveRedundantBraces
@@ -26,7 +29,14 @@ builder.Host.UseSerilog(static (context, loggerConfiguration) =>
         .Enrich.FromLogContext()
         .Enrich.WithProperty("Application", "ToledoVault")
         .WriteTo.Console()
-        .WriteTo.File("logs/toledovault-.log", rollingInterval: RollingInterval.Day);
+        .WriteTo.File("logs/toledovault-.log", rollingInterval: RollingInterval.Day)
+        .WriteTo.MSSqlServer(
+            connectionString: context.Configuration.GetConnectionString("DefaultConnection"),
+            sinkOptions: new MSSqlServerSinkOptions
+            {
+                TableName = "LogEntries",
+                AutoCreateSqlTable = true
+            });
 });
 
 // EF Core with SQL Server
@@ -52,6 +62,9 @@ builder.Services.AddHttpClient("LinkPreview", static client =>
     client.MaxResponseContentBufferSize = 1_048_576;
 });
 builder.Services.AddScoped<LinkPreviewService>();
+builder.Services.AddScoped<AdminAuthService>();
+builder.Services.AddScoped<GlobalSettingsService>();
+builder.Services.AddScoped<LocalizationOverrideService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();
 
@@ -168,8 +181,15 @@ builder.Services.AddControllers(static options =>
     options.JsonSerializerOptions.Converters.Add(new LongNullableToStringConverter());
 });
 
-// Localization
+// Localization — standard .resx setup, then decorated with DB-override layer
 builder.Services.AddLocalization();
+builder.Services.AddScoped<IStringLocalizer<ToledoVault.Shared.SharedResource>>(sp =>
+{
+    var inner = ActivatorUtilities.CreateInstance<StringLocalizer<ToledoVault.Shared.SharedResource>>(sp);
+    var db = sp.GetRequiredService<ApplicationDbContext>();
+    var cache = sp.GetRequiredService<IMemoryCache>();
+    return new AdminLocalizationStringLocalizer(inner, db, cache);
+});
 
 // CORS — restrict origins based on environment
 builder.Services.AddCors(options =>
@@ -282,6 +302,8 @@ app.MapHealthChecks("/health");
 
 app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()
-    .AddAdditionalAssemblies(typeof(ToledoVault.Client._Imports).Assembly);
+    .AddAdditionalAssemblies(
+        typeof(ToledoVault.Client._Imports).Assembly,
+        typeof(ToledoVault.Admin._Imports).Assembly);
 
 app.Run();

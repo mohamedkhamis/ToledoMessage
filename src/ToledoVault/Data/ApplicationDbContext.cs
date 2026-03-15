@@ -16,6 +16,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<MessageReaction> MessageReactions => Set<MessageReaction>();
     public DbSet<EncryptedKeyBackup> EncryptedKeyBackups => Set<EncryptedKeyBackup>();
     public DbSet<ConversationReadPointer> ConversationReadPointers => Set<ConversationReadPointer>();
+    public DbSet<AdminCredential> AdminCredentials => Set<AdminCredential>();
+    public DbSet<GlobalSetting> GlobalSettings => Set<GlobalSetting>();
+    public DbSet<LocalizationOverride> LocalizationOverrides => Set<LocalizationOverride>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" />
+              <xsd:attribute name="xml:space" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+
+  <!-- Navigation -->
+  <data name="Nav_Dashboard" xml:space="preserve">
+    <value>Dashboard</value>
+  </data>
+  <data name="Nav_Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Nav_Logs" xml:space="preserve">
+    <value>Logs</value>
+  </data>
+  <data name="Nav_Localization" xml:space="preserve">
+    <value>Localization</value>
+  </data>
+  <data name="Nav_Logout" xml:space="preserve">
+    <value>Logout</value>
+  </data>
+
+  <!-- Login Page -->
+  <data name="Login_AppTitle" xml:space="preserve">
+    <value>ToledoVault</value>
+  </data>
+  <data name="Login_Subtitle" xml:space="preserve">
+    <value>Admin Panel</value>
+  </data>
+  <data name="Login_Username" xml:space="preserve">
+    <value>Username</value>
+  </data>
+  <data name="Login_Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="Login_Button" xml:space="preserve">
+    <value>Login</value>
+  </data>
+  <data name="Login_LoggingIn" xml:space="preserve">
+    <value>Logging in...</value>
+  </data>
+  <data name="Login_InvalidCredentials" xml:space="preserve">
+    <value>Invalid credentials.</value>
+  </data>
+  <data name="Login_ConnectionError" xml:space="preserve">
+    <value>Connection error. Please try again.</value>
+  </data>
+
+  <!-- Change Password Page -->
+  <data name="ChangePassword_Title" xml:space="preserve">
+    <value>Change Password</value>
+  </data>
+  <data name="ChangePassword_MustChange" xml:space="preserve">
+    <value>You must change your default password before continuing.</value>
+  </data>
+  <data name="ChangePassword_CurrentPassword" xml:space="preserve">
+    <value>Current Password</value>
+  </data>
+  <data name="ChangePassword_NewPassword" xml:space="preserve">
+    <value>New Password (min 12 characters)</value>
+  </data>
+  <data name="ChangePassword_ConfirmPassword" xml:space="preserve">
+    <value>Confirm New Password</value>
+  </data>
+  <data name="ChangePassword_Button" xml:space="preserve">
+    <value>Change Password</value>
+  </data>
+  <data name="ChangePassword_Changing" xml:space="preserve">
+    <value>Changing...</value>
+  </data>
+  <data name="ChangePassword_MinLength" xml:space="preserve">
+    <value>Password must be at least 12 characters.</value>
+  </data>
+  <data name="ChangePassword_Mismatch" xml:space="preserve">
+    <value>Passwords do not match.</value>
+  </data>
+  <data name="ChangePassword_Incorrect" xml:space="preserve">
+    <value>Current password is incorrect.</value>
+  </data>
+  <data name="ChangePassword_ConnectionError" xml:space="preserve">
+    <value>Connection error. Please try again.</value>
+  </data>
+
+  <!-- Dashboard Page -->
+  <data name="Dashboard_Title" xml:space="preserve">
+    <value>Dashboard</value>
+  </data>
+  <data name="Dashboard_TotalSettings" xml:space="preserve">
+    <value>Total Settings</value>
+  </data>
+  <data name="Dashboard_LogEntriesToday" xml:space="preserve">
+    <value>Log Entries Today</value>
+  </data>
+  <data name="Dashboard_LocalizationKeys" xml:space="preserve">
+    <value>Localization Keys</value>
+  </data>
+
+  <!-- Settings Page -->
+  <data name="Settings_Title" xml:space="preserve">
+    <value>Global Settings</value>
+  </data>
+  <data name="Settings_Loading" xml:space="preserve">
+    <value>Loading settings...</value>
+  </data>
+  <data name="Settings_Reset" xml:space="preserve">
+    <value>Reset</value>
+  </data>
+  <data name="Settings_Saved" xml:space="preserve">
+    <value>Setting saved.</value>
+  </data>
+  <data name="Settings_LoadFailed" xml:space="preserve">
+    <value>Failed to load settings.</value>
+  </data>
+  <data name="Settings_Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Settings_SaveFailed" xml:space="preserve">
+    <value>Failed to save setting.</value>
+  </data>
+  <data name="Settings_ResetSuccess" xml:space="preserve">
+    <value>Setting reset to default.</value>
+  </data>
+  <data name="Settings_ResetFailed" xml:space="preserve">
+    <value>Failed to reset setting.</value>
+  </data>
+
+  <!-- Logs Page -->
+  <data name="Logs_Title" xml:space="preserve">
+    <value>Application Logs</value>
+  </data>
+  <data name="Logs_Severity" xml:space="preserve">
+    <value>Severity</value>
+  </data>
+  <data name="Logs_All" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="Logs_From" xml:space="preserve">
+    <value>From</value>
+  </data>
+  <data name="Logs_To" xml:space="preserve">
+    <value>To</value>
+  </data>
+  <data name="Logs_Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Logs_SearchPlaceholder" xml:space="preserve">
+    <value>Keyword...</value>
+  </data>
+  <data name="Logs_Apply" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="Logs_Clear" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="Logs_DeleteOld" xml:space="preserve">
+    <value>Delete Old Logs</value>
+  </data>
+  <data name="Logs_Loading" xml:space="preserve">
+    <value>Loading logs...</value>
+  </data>
+  <data name="Logs_Timestamp" xml:space="preserve">
+    <value>Timestamp</value>
+  </data>
+  <data name="Logs_Level" xml:space="preserve">
+    <value>Level</value>
+  </data>
+  <data name="Logs_Message" xml:space="preserve">
+    <value>Message</value>
+  </data>
+  <data name="Logs_FullMessage" xml:space="preserve">
+    <value>Full Message:</value>
+  </data>
+  <data name="Logs_Exception" xml:space="preserve">
+    <value>Exception:</value>
+  </data>
+  <data name="Logs_Showing" xml:space="preserve">
+    <value>Showing</value>
+  </data>
+  <data name="Logs_Of" xml:space="preserve">
+    <value>of</value>
+  </data>
+  <data name="Logs_Entries" xml:space="preserve">
+    <value>entries</value>
+  </data>
+  <data name="Logs_Previous" xml:space="preserve">
+    <value>Previous</value>
+  </data>
+  <data name="Logs_Page" xml:space="preserve">
+    <value>Page</value>
+  </data>
+  <data name="Logs_Next" xml:space="preserve">
+    <value>Next</value>
+  </data>
+  <data name="Logs_DeleteOlderThan" xml:space="preserve">
+    <value>Delete logs older than:</value>
+  </data>
+  <data name="Logs_Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Logs_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Logs_DeletedCount" xml:space="preserve">
+    <value>Deleted {0} log entries.</value>
+  </data>
+  <data name="Logs_LoadFailed" xml:space="preserve">
+    <value>Failed to load logs.</value>
+  </data>
+  <data name="Logs_DeleteFailed" xml:space="preserve">
+    <value>Failed to delete logs.</value>
+  </data>
+  <data name="Logs_NoLogsFound" xml:space="preserve">
+    <value>No logs found.</value>
+  </data>
+
+  <!-- Localization Page -->
+  <data name="Loc_Title" xml:space="preserve">
+    <value>Localization</value>
+  </data>
+  <data name="Loc_All" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="Loc_English" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="Loc_Arabic" xml:space="preserve">
+    <value>Arabic</value>
+  </data>
+  <data name="Loc_Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Loc_Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Loc_SearchPlaceholder" xml:space="preserve">
+    <value>Key or value...</value>
+  </data>
+  <data name="Loc_MissingOnly" xml:space="preserve">
+    <value>Missing Only</value>
+  </data>
+  <data name="Loc_Apply" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="Loc_Clear" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="Loc_AddNewKey" xml:space="preserve">
+    <value>Add New Key</value>
+  </data>
+  <data name="Loc_ResourceKey" xml:space="preserve">
+    <value>Resource Key</value>
+  </data>
+  <data name="Loc_EnglishValue" xml:space="preserve">
+    <value>English Value</value>
+  </data>
+  <data name="Loc_ArabicValue" xml:space="preserve">
+    <value>Arabic Value</value>
+  </data>
+  <data name="Loc_Source" xml:space="preserve">
+    <value>Source</value>
+  </data>
+  <data name="Loc_Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Loc_Missing" xml:space="preserve">
+    <value>Missing</value>
+  </data>
+  <data name="Loc_Revert" xml:space="preserve">
+    <value>Revert</value>
+  </data>
+  <data name="Loc_Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Loc_AddKey" xml:space="preserve">
+    <value>Add Key</value>
+  </data>
+  <data name="Loc_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Loc_Saved" xml:space="preserve">
+    <value>Saved.</value>
+  </data>
+  <data name="Loc_SaveFailed" xml:space="preserve">
+    <value>Failed to save.</value>
+  </data>
+  <data name="Loc_LoadFailed" xml:space="preserve">
+    <value>Failed to load data.</value>
+  </data>
+  <data name="Loc_KeyAdded" xml:space="preserve">
+    <value>Key added.</value>
+  </data>
+  <data name="Loc_KeyDeleted" xml:space="preserve">
+    <value>Key deleted.</value>
+  </data>
+  <data name="Loc_Reverted" xml:space="preserve">
+    <value>Reverted to baseline.</value>
+  </data>
+  <data name="Loc_ErrorSaving" xml:space="preserve">
+    <value>Error saving.</value>
+  </data>
+  <data name="Loc_KeyExists" xml:space="preserve">
+    <value>Key already exists.</value>
+  </data>
+  <data name="Loc_KeyRequired" xml:space="preserve">
+    <value>Resource key is required.</value>
+  </data>
+  <data name="Loc_ValueRequired" xml:space="preserve">
+    <value>At least one value is required.</value>
+  </data>
+  <data name="Loc_Loading" xml:space="preserve">
+    <value>Loading localization data...</value>
+  </data>
+  <data name="Loc_TotalKeys" xml:space="preserve">
+    <value>{0} total keys</value>
+  </data>
+  <data name="Loc_AddNewLocKey" xml:space="preserve">
+    <value>Add New Localization Key</value>
+  </data>
+  <data name="Loc_KeyPlaceholder" xml:space="preserve">
+    <value>e.g., Feature.NewLabel</value>
+  </data>
+  <data name="Loc_ErrorCreating" xml:space="preserve">
+    <value>Error creating key.</value>
+  </data>
+</root>

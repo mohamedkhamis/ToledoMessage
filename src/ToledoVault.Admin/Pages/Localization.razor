@@ -1,0 +1,294 @@
+@page "/admin/localization"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@layout AdminLayout
+@inject AdminApiService Api
+@inject IStringLocalizer<AdminResource> Loc
+
+<h2>@Loc["Loc_Title"]</h2>
+
+<div class="filter-bar">
+    <div class="form-group">
+        <label>Language</label>
+        <select @bind="filterLanguage">
+            <option value="">All</option>
+            <option value="en">English</option>
+            <option value="ar">Arabic</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label>Search</label>
+        <input type="text" @bind="filterSearch" placeholder="Key or value..." />
+    </div>
+    <div class="form-group" style="display:flex;align-items:end;gap:8px">
+        <label style="display:flex;align-items:center;gap:4px">
+            <input type="checkbox" @bind="missingOnly" /> Missing Only
+        </label>
+    </div>
+    <button class="btn btn-primary btn-sm" @onclick="ApplyFilters">Apply</button>
+    <button class="btn btn-outline btn-sm" @onclick="ClearFilters">Clear</button>
+    <button class="btn btn-primary btn-sm" @onclick="() => showAddModal = true">Add New Key</button>
+</div>
+
+@if (loading)
+{
+    <p>Loading localization data...</p>
+}
+else if (data is not null)
+{
+    <div class="admin-card" style="padding:0;overflow:hidden">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Resource Key</th>
+                    <th>English</th>
+                    <th>Arabic</th>
+                    <th>Source</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in data.Entries)
+                {
+                    <tr>
+                        <td><code>@entry.ResourceKey</code></td>
+                        <td>
+                            @if (editingKey == entry.ResourceKey && editingLang == Lang_En)
+                            {
+                                <input type="text" @bind="editValue" @onkeydown="@(e => HandleEditKeyDown(e, entry.ResourceKey, Lang_En))" style="width:100%" />
+                            }
+                            else
+                            {
+                                <span @ondblclick="@(() => StartEdit(entry.ResourceKey, Lang_En, GetLangValue(entry, Lang_En)))">
+                                    @(GetLangValue(entry, Lang_En))
+                                    @if (!entry.Values.ContainsKey(Lang_En))
+                                    {
+                                        <span class="badge badge-warning">Missing</span>
+                                    }
+                                </span>
+                            }
+                        </td>
+                        <td dir="rtl">
+                            @if (editingKey == entry.ResourceKey && editingLang == Lang_Ar)
+                            {
+                                <input type="text" @bind="editValue" @onkeydown="@(e => HandleEditKeyDown(e, entry.ResourceKey, Lang_Ar))" style="width:100%" dir="rtl" />
+                            }
+                            else
+                            {
+                                <span @ondblclick="@(() => StartEdit(entry.ResourceKey, Lang_Ar, GetLangValue(entry, Lang_Ar)))">
+                                    @(GetLangValue(entry, Lang_Ar))
+                                    @if (!entry.Values.ContainsKey(Lang_Ar))
+                                    {
+                                        <span class="badge badge-warning">Missing</span>
+                                    }
+                                </span>
+                            }
+                        </td>
+                        <td>
+                            @if (entry.IsNewKey)
+                            {
+                                <span class="badge badge-new">NEW</span>
+                            }
+                            else
+                            {
+                                var hasOverride = entry.Values.Any(v => v.Value.Source == "override");
+                                <span class="badge @(hasOverride ? "badge-info" : "badge-grey")">@(hasOverride ? "override" : "resx")</span>
+                            }
+                        </td>
+                        <td>
+                            @if (entry.Values.Any(v => v.Value.Source == "override"))
+                            {
+                                <button class="btn btn-outline btn-sm" @onclick="() => RevertOverride(entry)">Revert</button>
+                            }
+                            @if (entry.IsNewKey)
+                            {
+                                <button class="btn btn-danger btn-sm" @onclick="() => DeleteKey(entry)">Delete</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination">
+        <span>@data.TotalKeys total keys</span>
+    </div>
+}
+
+@if (showAddModal)
+{
+    <div class="modal-overlay" @onclick="() => showAddModal = false">
+        <div class="modal-content" @onclick:stopPropagation="true">
+            <h3>Add New Localization Key</h3>
+            <div class="form-group">
+                <label>Resource Key</label>
+                <input type="text" @bind="newKey" placeholder="e.g., Feature.NewLabel" />
+            </div>
+            <div class="form-group">
+                <label>English Value</label>
+                <input type="text" @bind="newValueEn" />
+            </div>
+            <div class="form-group">
+                <label>Arabic Value</label>
+                <input type="text" @bind="newValueAr" dir="rtl" />
+            </div>
+            @if (addError is not null)
+            {
+                <div class="alert alert-error">@addError</div>
+            }
+            <div class="modal-actions">
+                <button class="btn btn-outline" @onclick="() => showAddModal = false">Cancel</button>
+                <button class="btn btn-primary" @onclick="AddNewKey">Add Key</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (toast is not null)
+{
+    <div class="admin-toast @toast.Type">@toast.Message</div>
+}
+
+@code {
+    private const string Lang_En = "en";
+    private const string Lang_Ar = "ar";
+
+    private ToledoVault.Shared.DTOs.LocalizationListResponse? data;
+    private bool loading = true;
+    private string filterLanguage = "";
+    private string filterSearch = "";
+    private bool missingOnly;
+    private string? editingKey;
+    private string? editingLang;
+    private string editValue = "";
+    private bool showAddModal;
+    private string newKey = "";
+    private string newValueEn = "";
+    private string newValueAr = "";
+    private string? addError;
+    private record ToastInfo(string Message, string Type);
+    private ToastInfo? toast;
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        loading = true;
+        try
+        {
+            data = await Api.GetLocalizationAsync(
+                string.IsNullOrEmpty(filterLanguage) ? null : filterLanguage,
+                string.IsNullOrEmpty(filterSearch) ? null : filterSearch,
+                missingOnly);
+        }
+        catch { ShowToast("Failed to load data.", "error"); }
+        finally { loading = false; }
+    }
+
+    private static string GetLangValue(ToledoVault.Shared.DTOs.LocalizationEntryResponse entry, string lang)
+        => entry.Values.GetValueOrDefault(lang)?.Value ?? string.Empty;
+
+    private async Task ApplyFilters() => await LoadData();
+
+    private async Task ClearFilters()
+    {
+        filterLanguage = ""; filterSearch = ""; missingOnly = false;
+        await LoadData();
+    }
+
+    private void StartEdit(string key, string lang, string currentValue)
+    {
+        editingKey = key; editingLang = lang; editValue = currentValue;
+    }
+
+    private async Task HandleEditKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e, string key, string lang)
+    {
+        if (e.Key == "Enter")
+        {
+            await SaveEdit(key, lang);
+        }
+        else if (e.Key == "Escape")
+        {
+            editingKey = null; editingLang = null;
+        }
+    }
+
+    private async Task SaveEdit(string key, string lang)
+    {
+        try
+        {
+            var response = await Api.UpdateLocalizationAsync(key, lang, editValue);
+            if (response.IsSuccessStatusCode)
+            {
+                ShowToast("Saved.", "success");
+                editingKey = null; editingLang = null;
+                await LoadData();
+            }
+            else { ShowToast("Failed to save.", "error"); }
+        }
+        catch { ShowToast("Error saving.", "error"); }
+    }
+
+    private async Task RevertOverride(ToledoVault.Shared.DTOs.LocalizationEntryResponse entry)
+    {
+        foreach (var (lang, info) in entry.Values.Where(v => v.Value.Source == "override"))
+        {
+            await Api.DeleteLocalizationOverrideAsync(entry.ResourceKey, lang);
+        }
+        ShowToast("Reverted to baseline.", "success");
+        await LoadData();
+    }
+
+    private async Task DeleteKey(ToledoVault.Shared.DTOs.LocalizationEntryResponse entry)
+    {
+        foreach (var lang in entry.Values.Keys.ToList())
+        {
+            await Api.DeleteLocalizationOverrideAsync(entry.ResourceKey, lang);
+        }
+        ShowToast("Key deleted.", "success");
+        await LoadData();
+    }
+
+    private async Task AddNewKey()
+    {
+        addError = null;
+        if (string.IsNullOrWhiteSpace(newKey))
+        {
+            addError = "Resource key is required."; return;
+        }
+
+        var values = new Dictionary<string, string>();
+        if (!string.IsNullOrWhiteSpace(newValueEn)) values["en"] = newValueEn;
+        if (!string.IsNullOrWhiteSpace(newValueAr)) values["ar"] = newValueAr;
+
+        if (values.Count == 0)
+        {
+            addError = "At least one value is required."; return;
+        }
+
+        try
+        {
+            var response = await Api.CreateLocalizationKeyAsync(newKey, values);
+            if (response.IsSuccessStatusCode)
+            {
+                ShowToast("Key added.", "success");
+                showAddModal = false; newKey = ""; newValueEn = ""; newValueAr = "";
+                await LoadData();
+            }
+            else
+            {
+                addError = "Key already exists.";
+            }
+        }
+        catch { addError = "Error creating key."; }
+    }
+
+    private async void ShowToast(string message, string type)
+    {
+        toast = new ToastInfo(message, type);
+        StateHasChanged();
+        await Task.Delay(3000);
+        toast = null;
+        StateHasChanged();
+    }
+}

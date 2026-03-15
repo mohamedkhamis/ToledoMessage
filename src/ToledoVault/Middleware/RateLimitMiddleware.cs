@@ -13,12 +13,15 @@ namespace ToledoVault.Middleware;
 public class RateLimitMiddleware(RequestDelegate next, RateLimitService rateLimitService)
 {
     // Rate limit rules: (path prefix, max requests, time window, use user ID as key)
+    // Order matters — first matching rule wins, so more specific prefixes must come first.
     private static readonly (string Path, int MaxRequests, TimeSpan Window, bool ByUser)[] Rules =
     [
         ("/api/auth/register", 5, TimeSpan.FromMinutes(1), false),
         ("/api/auth/login", 10, TimeSpan.FromMinutes(1), false),
         ("/api/auth/refresh", 10, TimeSpan.FromMinutes(1), false),
         ("/api/auth/logout", 10, TimeSpan.FromMinutes(1), false),
+        ("/api/admin/auth/login", 5, TimeSpan.FromMinutes(1), false),   // Brute-force protection (IP-based)
+        ("/api/admin/", 60, TimeSpan.FromMinutes(1), true),             // Authenticated admin endpoints (per-user)
         ("/api/messages", 60, TimeSpan.FromMinutes(1), true),
         ("/api/users/search", 10, TimeSpan.FromMinutes(1), true),
         ("/api/conversations", 30, TimeSpan.FromMinutes(1), true),

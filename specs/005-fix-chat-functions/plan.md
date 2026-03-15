@@ -69,18 +69,18 @@ specs/005-fix-chat-functions/
 
 ```text
 src/
-├── ToledoMessage/               # Server (ASP.NET Core, SignalR hub, EF Core)
+├── ToledoVault/               # Server (ASP.NET Core, SignalR hub, EF Core)
 │   ├── Controllers/             # API endpoints
 │   ├── Services/               # Business logic
 │   ├── Hubs/                   # SignalR hubs
 │   └── Data/                   # EF Core migrations
-├── ToledoMessage.Client/        # Blazor WebAssembly client
+├── ToledoVault.Client/        # Blazor WebAssembly client
 │   ├── Pages/                  # Route pages (Chat, Settings, etc.)
 │   ├── Components/             # UI components
 │   ├── Services/                # Client services
 │   └── wwwroot/                 # JS interop
-├── ToledoMessage.Shared/        # Shared DTOs
-├── ToledoMessage.Crypto/        # Cryptographic operations
+├── ToledoVault.Shared/        # Shared DTOs
+├── ToledoVault.Crypto/        # Cryptographic operations
 └── Toledo.SharedKernel/         # Common utilities
 
 tests/                           # Existing test suite (215+ tests)

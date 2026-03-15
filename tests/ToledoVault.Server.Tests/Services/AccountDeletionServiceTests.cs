@@ -1,0 +1,155 @@
+using Microsoft.Extensions.Logging.Abstractions;
+using ToledoVault.Services;
+using ToledoVault.Shared.Constants;
+
+namespace ToledoVault.Server.Tests.Services;
+
+[TestClass]
+public class AccountDeletionServiceTests
+{
+    private static AccountDeletionService CreateService(Data.ApplicationDbContext db)
+    {
+        return new AccountDeletionService(db, NullLogger<AccountDeletionService>.Instance);
+    }
+
+    [TestMethod]
+    public async Task InitiateDeletionAsync_SetsDeletionRequestedAt()
+    {
+        var db = TestDbContextFactory.Create();
+        await TestDbContextFactory.SeedUser(db, 1L);
+        var service = CreateService(db);
+
+        var result = await service.InitiateDeletionAsync(1L);
+
+        var user = await db.Users.FindAsync(1L);
+        Assert.IsNotNull(user?.DeletionRequestedAt);
+        Assert.AreEqual(result, user.DeletionRequestedAt.Value);
+    }
+
+    [TestMethod]
+    public async Task InitiateDeletionAsync_UserNotFound_Throws()
+    {
+        var db = TestDbContextFactory.Create();
+        var service = CreateService(db);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.InitiateDeletionAsync(999L));
+    }
+
+    [TestMethod]
+    public async Task CancelDeletionAsync_ClearsDeletionRequestedAt()
+    {
+        var db = TestDbContextFactory.Create();
+        var user = await TestDbContextFactory.SeedUser(db, 1L);
+        user.DeletionRequestedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        await service.CancelDeletionAsync(1L);
+
+        var refreshedUser = await db.Users.FindAsync(1L);
+        Assert.IsNull(refreshedUser?.DeletionRequestedAt);
+    }
+
+    [TestMethod]
+    public async Task CancelDeletionAsync_NoDeletionPending_DoesNothing()
+    {
+        var db = TestDbContextFactory.Create();
+        await TestDbContextFactory.SeedUser(db, 1L);
+        var service = CreateService(db);
+
+        // Should not throw
+        await service.CancelDeletionAsync(1L);
+
+        var user = await db.Users.FindAsync(1L);
+        Assert.IsNull(user?.DeletionRequestedAt);
+    }
+
+    [TestMethod]
+    public async Task CancelDeletionAsync_UserNotFound_DoesNothing()
+    {
+        var db = TestDbContextFactory.Create();
+        var service = CreateService(db);
+
+        // Should not throw
+        await service.CancelDeletionAsync(999L);
+    }
+
+    [TestMethod]
+    public async Task ProcessExpiredDeletionsAsync_DeactivatesExpiredAccounts()
+    {
+        var db = TestDbContextFactory.Create();
+        var user = await TestDbContextFactory.SeedUser(db, 1L);
+        await TestDbContextFactory.SeedDevice(db, 10L, 1L);
+
+        // Set deletion to well past the grace period
+        user.DeletionRequestedAt = DateTimeOffset.UtcNow.AddDays(-(ProtocolConstants.AccountDeletionGracePeriodDays + 1));
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        await service.ProcessExpiredDeletionsAsync(CancellationToken.None);
+
+        var refreshedUser = await db.Users.FindAsync(1L);
+        Assert.IsFalse(refreshedUser?.IsActive);
+
+        var refreshedDevice = await db.Devices.FindAsync(10L);
+        Assert.IsFalse(refreshedDevice?.IsActive);
+    }
+
+    [TestMethod]
+    public async Task ProcessExpiredDeletionsAsync_RevokesRefreshTokens()
+    {
+        var db = TestDbContextFactory.Create();
+        var user = await TestDbContextFactory.SeedUser(db, 1L);
+
+        user.DeletionRequestedAt = DateTimeOffset.UtcNow.AddDays(-(ProtocolConstants.AccountDeletionGracePeriodDays + 1));
+        await db.SaveChangesAsync();
+
+        db.RefreshTokens.Add(new Models.RefreshToken
+        {
+            Id = 100L,
+            UserId = 1L,
+            Token = "test-token",
+            ExpiresAt = DateTimeOffset.UtcNow.AddDays(30),
+            CreatedAt = DateTimeOffset.UtcNow,
+            IsRevoked = false
+        });
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        await service.ProcessExpiredDeletionsAsync(CancellationToken.None);
+
+        var token = await db.RefreshTokens.FindAsync(100L);
+        Assert.IsTrue(token?.IsRevoked);
+    }
+
+    [TestMethod]
+    public async Task ProcessExpiredDeletionsAsync_SkipsAccountsWithinGracePeriod()
+    {
+        var db = TestDbContextFactory.Create();
+        var user = await TestDbContextFactory.SeedUser(db, 1L);
+
+        // Set deletion to only 1 day ago (within 7-day grace period)
+        user.DeletionRequestedAt = DateTimeOffset.UtcNow.AddDays(-1);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        await service.ProcessExpiredDeletionsAsync(CancellationToken.None);
+
+        var refreshedUser = await db.Users.FindAsync(1L);
+        Assert.IsTrue(refreshedUser?.IsActive ?? false); // Should still be active
+    }
+
+    [TestMethod]
+    public async Task ProcessExpiredDeletionsAsync_SkipsAlreadyDeactivated()
+    {
+        var db = TestDbContextFactory.Create();
+        var user = await TestDbContextFactory.SeedUser(db, 1L, isActive: false);
+        user.DeletionRequestedAt = DateTimeOffset.UtcNow.AddDays(-30);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+
+        // Should not throw and should not process already-inactive users
+        await service.ProcessExpiredDeletionsAsync(CancellationToken.None);
+    }
+}

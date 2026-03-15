@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Toledo.SharedKernel/Toledo.SharedKernel.csproj" />
+    <Project Path="src/ToledoVault.Client/ToledoVault.Client.csproj" />
+    <Project Path="src/ToledoVault.Crypto/ToledoVault.Crypto.csproj" />
+    <Project Path="src/ToledoVault.Shared/ToledoVault.Shared.csproj" />
+    <Project Path="src/ToledoVault/ToledoVault.csproj" />
+    <Project Path="src/ToledoVault.Admin/ToledoVault.Admin.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ToledoVault.Admin.Tests/ToledoVault.Admin.Tests.csproj" />
+    <Project Path="tests/ToledoVault.Benchmarks/ToledoVault.Benchmarks.csproj" />
+    <Project Path="tests/ToledoVault.Client.Tests/ToledoVault.Client.Tests.csproj" />
+    <Project Path="tests/ToledoVault.Crypto.Tests/ToledoVault.Crypto.Tests.csproj" />
+    <Project Path="tests/ToledoVault.Integration.Tests/ToledoVault.Integration.Tests.csproj" />
+    <Project Path="tests/ToledoVault.Server.Tests/ToledoVault.Server.Tests.csproj" />
+  </Folder>
+</Solution>

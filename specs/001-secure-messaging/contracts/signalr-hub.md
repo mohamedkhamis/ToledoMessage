@@ -4,7 +4,7 @@
 
 Hub URL: `/hubs/chat`
 Authentication: JWT Bearer token via query string (`?access_token=<jwt>`)
-Source: `src/ToledoMessage/Hubs/ChatHub.cs`
+Source: `src/ToledoVault/Hubs/ChatHub.cs`
 
 ## Connection Lifecycle
 

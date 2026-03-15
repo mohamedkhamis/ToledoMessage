@@ -18,7 +18,7 @@
   Follow-up TODOs: None
 -->
 
-# ToledoMessage Constitution
+# ToledoVault Constitution
 
 ## Core Principles
 
@@ -225,7 +225,7 @@ ciphertext that cannot be decrypted without the user's password.
 ## Governance
 
 This constitution is the supreme authority for all development
-decisions in the ToledoMessage project. In case of conflict between
+decisions in the ToledoVault project. In case of conflict between
 this constitution and any other document (specs, plans, tasks, or
 code), the constitution prevails.
 

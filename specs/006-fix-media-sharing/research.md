@@ -81,9 +81,9 @@ The JSON is UTF-8 encoded to `byte[]`, then passed to `EncryptBytesAsync` — sa
 ## R-007: Test Infrastructure for Media
 
 **Decision**: Add media tests in three locations:
-1. `ToledoMessage.Server.Tests` — server validation of media content types, size limits, relay
-2. `ToledoMessage.Crypto.Tests` or `ToledoMessage.Integration.Tests` — `MessageEncryptionService` binary round-trip
-3. `ToledoMessage.Client.Tests` — `MediaPayload` serialization/deserialization, compression validation, caption bundling
+1. `ToledoVault.Server.Tests` — server validation of media content types, size limits, relay
+2. `ToledoVault.Crypto.Tests` or `ToledoVault.Integration.Tests` — `MessageEncryptionService` binary round-trip
+3. `ToledoVault.Client.Tests` — `MediaPayload` serialization/deserialization, compression validation, caption bundling
 
 **Rationale**: Existing test infrastructure uses MSTest 4.1.0 with hand-rolled stubs. No mocking library needed. `MessageEncryptionService` is pure C# (no JS interop) so can be tested directly. Server tests already have `TestDbContextFactory` and `StubHubContext`.
 

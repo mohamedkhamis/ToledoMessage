@@ -5,7 +5,19 @@
       "Bash(./afk-ralph.sh:*)",
       "Bash(docker sandbox run:*)",
       "Bash(docker sandbox logs:*)",
-      "Bash(docker sandbox:*)"
+      "Bash(docker sandbox:*)",
+      "Bash(git mv:*)",
+      "Bash(dotnet new razorclasslib -o src/ToledoVault.Admin --framework net11.0)",
+      "Bash(rm -rf src/ToledoVault.Admin/Component1.razor src/ToledoVault.Admin/ExampleJsInterop.cs src/ToledoVault.Admin/wwwroot/exampleJsInterop.js src/ToledoVault.Admin/wwwroot/background.png)",
+      "Bash(mkdir -p src/ToledoVault.Admin/Pages src/ToledoVault.Admin/Components/Layout src/ToledoVault.Admin/Services src/ToledoVault.Admin/wwwroot)",
+      "Bash(dotnet new mstest -o tests/ToledoVault.Admin.Tests --framework net11.0)",
+      "Bash(dotnet sln ToledoVault.slnx add src/ToledoVault.Admin/ToledoVault.Admin.csproj)",
+      "Bash(dotnet sln ToledoVault.slnx add tests/ToledoVault.Admin.Tests/ToledoVault.Admin.Tests.csproj)",
+      "Bash(dotnet add src/ToledoVault/ToledoVault.csproj reference src/ToledoVault.Admin/ToledoVault.Admin.csproj)",
+      "Bash(dotnet add src/ToledoVault/ToledoVault.csproj package Serilog.Sinks.MSSqlServer)",
+      "Bash(mkdir -p tests/ToledoVault.Admin.Tests/Controllers tests/ToledoVault.Admin.Tests/Services)",
+      "Bash(rm -f tests/ToledoVault.Admin.Tests/Test1.cs)",
+      "Bash(dotnet add src/ToledoVault.Admin package Microsoft.Extensions.Localization)"
     ]
   }
 }

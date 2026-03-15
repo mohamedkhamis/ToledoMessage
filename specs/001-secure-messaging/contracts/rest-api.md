@@ -2,7 +2,7 @@
 
 **Branch**: `001-secure-messaging` | **Date**: 2026-02-26
 
-All endpoints served by ASP.NET Core (`src/ToledoMessage/Controllers/`).
+All endpoints served by ASP.NET Core (`src/ToledoVault/Controllers/`).
 Request/response bodies are JSON. Authentication uses JWT Bearer tokens.
 Base URL: `https://<host>/api`
 

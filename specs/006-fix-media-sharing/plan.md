@@ -54,12 +54,12 @@ specs/006-fix-media-sharing/
 
 ```text
 src/
-├── ToledoMessage/                          # Server (ASP.NET Core)
+├── ToledoVault/                          # Server (ASP.NET Core)
 │   ├── Hubs/ChatHub.cs                     # No changes needed
 │   ├── Services/MessageRelayService.cs     # No changes needed
 │   └── Models/EncryptedMessage.cs          # No schema changes
 │
-├── ToledoMessage.Client/                   # Client (Blazor WASM)
+├── ToledoVault.Client/                   # Client (Blazor WASM)
 │   ├── Pages/Chat.razor                    # MediaPayload integration, memory fix, persistence fix
 │   ├── Components/
 │   │   ├── MessageInput.razor              # Compression, "send as document", thumbnail gen
@@ -69,14 +69,14 @@ src/
 │   └── wwwroot/
 │       └── media-helpers.js                # compressImage, generateThumbnail, captureVideoFrame
 │
-├── ToledoMessage.Shared/                   # Shared DTOs & Models
+├── ToledoVault.Shared/                   # Shared DTOs & Models
 │   ├── DTOs/SendMessageRequest.cs          # FileName/MimeType null for media
 │   └── Models/MediaPayload.cs              # NEW — serializable payload record
 │
 tests/
-├── ToledoMessage.Server.Tests/             # Add media content type tests
-├── ToledoMessage.Integration.Tests/        # Add media encryption round-trip tests
-└── ToledoMessage.Client.Tests/             # Add MediaPayload, compression, caption tests
+├── ToledoVault.Server.Tests/             # Add media content type tests
+├── ToledoVault.Integration.Tests/        # Add media encryption round-trip tests
+└── ToledoVault.Client.Tests/             # Add MediaPayload, compression, caption tests
 ```
 
 **Structure Decision**: Existing multi-project structure (Server, Client, Shared, Crypto + 5 test projects). No new projects needed. One new file (`MediaPayload.cs`) in Shared. New test files in existing test projects.

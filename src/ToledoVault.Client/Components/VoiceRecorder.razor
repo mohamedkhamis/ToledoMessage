@@ -1,0 +1,370 @@
+@inject IJSRuntime Js
+@implements IAsyncDisposable
+
+@if (_phase == Phase.Recording)
+{
+    <div class="vr-bar vr-recording">
+        <button class="vr-btn vr-btn-trash" @onclick="Cancel" title="Cancel recording" aria-label="Cancel recording">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+            </svg>
+        </button>
+        <div class="vr-rec-indicator">
+            <span class="vr-rec-dot"></span>
+        </div>
+        <span class="vr-time">@FormatDuration(_elapsedSeconds)</span>
+        @* FR-028: Show remaining time when under 30 seconds *@
+        @if (RemainingSeconds is <= 30 and > 0)
+        {
+            <span class="vr-time-warning">(@(RemainingSeconds)s left)</span>
+        }
+        <div class="vr-wave-live">
+            @for (var i = 0; i < LiveBarCount; i++)
+            {
+                var height = GetLiveBarHeight(i);
+                <span class="vr-bar-live" style="height: @(height)px"></span>
+            }
+        </div>
+        <button class="vr-btn vr-btn-stop" @onclick="StopRecording" title="Stop recording" aria-label="Stop recording">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="5" y="5" width="14" height="14" rx="2"/>
+            </svg>
+        </button>
+    </div>
+}
+else if (_phase == Phase.Preview)
+{
+    <div class="vr-bar vr-preview">
+        <button class="vr-btn vr-btn-trash" @onclick="Delete" title="Delete recording" aria-label="Delete recording">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+            </svg>
+        </button>
+        <button class="vr-btn vr-btn-play" @onclick="TogglePlayback" title="@(_isPlaying ? "Pause" : "Play")" aria-label="@(_isPlaying ? "Pause" : "Play")">
+            @if (_isPlaying)
+            {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="4" width="4" height="16" rx="1"/>
+                    <rect x="14" y="4" width="4" height="16" rx="1"/>
+                </svg>
+            }
+            else
+            {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+            }
+        </button>
+        <div class="vr-track">
+            <input type="range" class="vr-seek" min="0" max="@_previewDuration.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
+                   step="0.1" value="@_previewCurrentTime.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
+                   @oninput="OnSeek" aria-label="Seek" />
+            <div class="vr-wave-static">
+                @{
+                    var barCount = _waveformSamples?.Length ?? 40;
+                }
+                @for (var i = 0; i < barCount; i++)
+                {
+                    var height = GetPreviewBarHeight(i);
+                    var played = _previewDuration > 0 && (i / (double)barCount) <= (_previewCurrentTime / _previewDuration);
+                    <span class="vr-bar-static @(played ? "played" : "")" style="height: @(height)px"></span>
+                }
+            </div>
+        </div>
+        <span class="vr-time">@FormatDuration(_previewDuration > 0 ? (int)Math.Ceiling(_previewCurrentTime) : 0) / @FormatDuration((int)Math.Ceiling(_previewDuration))</span>
+        <button class="vr-btn vr-btn-send" @onclick="Send" title="Send voice message" aria-label="Send voice message">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+        </button>
+    </div>
+    <audio @ref="_audioRef" preload="auto" @onended="OnPlaybackEnded" @ontimeupdate="OnTimeUpdate"
+           @onloadedmetadata="OnMetadataLoaded" style="display:none"></audio>
+}
+
+@code {
+    private enum Phase { Recording, Preview }
+    private Phase _phase = Phase.Recording;
+
+    private int _elapsedSeconds;
+    private System.Timers.Timer? _timer;
+    private DotNetObjectReference<VoiceRecorder>? _objRef;
+    private bool _disposed;
+
+    // FR-028: 5-minute maximum recording limit
+    private const int MaxRecordingSeconds = 300; // 5 minutes
+    private int RemainingSeconds => Math.Max(0, MaxRecordingSeconds - _elapsedSeconds);
+
+    // Preview state
+    private bool _isPlaying;
+    private double _previewCurrentTime;
+    private double _previewDuration;
+    private ElementReference _audioRef;
+    private bool _previewAudioInitialized;
+
+    // Real waveform data
+    private int[]? _waveformSamples; // From JS analyzeBlob after recording stops
+    private const int LiveBarCount = 24;
+    private int _currentAmplitude = 2; // Current live amplitude from analyser
+    private int _tickCount;
+    private bool _timerBusy; // Prevent reentrant timer callbacks
+
+    private int GetLiveBarHeight(int index)
+    {
+        // Show current amplitude with slight variation per bar for visual spread
+        var variation = (index % 3 == 0) ? -2 : (index % 3 == 1) ? 1 : 0;
+        return Math.Clamp(_currentAmplitude + variation, 2, 28);
+    }
+
+    private int GetPreviewBarHeight(int index)
+    {
+        if (_waveformSamples is { Length: > 0 })
+        {
+            var barCount = _waveformSamples.Length;
+            var sampleIndex = Math.Clamp((int)((double)index / barCount * _waveformSamples.Length), 0, _waveformSamples.Length - 1);
+            return Math.Clamp(_waveformSamples[sampleIndex], 2, 28);
+        }
+        return 4; // minimal fallback
+    }
+
+    [Parameter]
+    public EventCallback<VoiceRecordingResult> OnRecorded { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelled { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _objRef = DotNetObjectReference.Create(this);
+        _elapsedSeconds = 0;
+
+        _timer = new System.Timers.Timer(200); // 200ms — 5fps is smooth enough for waveform
+        _timer.Elapsed += async (_, _) =>
+        {
+            if (_disposed || _timerBusy) return;
+            _timerBusy = true;
+            try
+            {
+                _tickCount++;
+
+                // Update elapsed seconds every 5 ticks (1 second at 200ms interval)
+                if (_tickCount % 5 == 0)
+                {
+                    _elapsedSeconds++;
+
+                    // FR-028: Auto-stop at 5-minute limit
+                    if (_elapsedSeconds >= MaxRecordingSeconds)
+                    {
+                        _timer?.Stop();
+                        try { await StopRecording(); }
+                        catch { /* ignored */ }
+                        return;
+                    }
+                }
+
+                // Capture live amplitude from JS
+                try
+                {
+                    _currentAmplitude = await Js.InvokeAsync<int>("voiceRecorder.getLiveAmplitude");
+                }
+                catch { /* ignored */ }
+
+                try { await InvokeAsync(StateHasChanged); }
+                catch { /* component disposed */ }
+            }
+            finally
+            {
+                _timerBusy = false;
+            }
+        };
+
+        try
+        {
+            await Js.InvokeVoidAsync("voiceRecorder.start", _objRef);
+            _timer.Start();
+        }
+        catch
+        {
+            await OnCancelled.InvokeAsync();
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnRecordingStopped()
+    {
+        _timer?.Stop();
+        _timer?.Dispose();
+        _timer = null;
+
+        // Get analyzed waveform samples from JS
+        try
+        {
+            _waveformSamples = await Js.InvokeAsync<int[]>("voiceRecorder.getWaveformSamples");
+        }
+        catch { /* fallback to null */ }
+
+        _phase = Phase.Preview;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_phase == Phase.Preview && !_previewAudioInitialized)
+        {
+            _previewAudioInitialized = true;
+            try
+            {
+                await Js.InvokeVoidAsync("voiceRecorder.initPreviewAudio", _audioRef);
+            }
+            catch
+            {
+                _previewAudioInitialized = false;
+            }
+        }
+    }
+
+    private async Task StopRecording()
+    {
+        _timer?.Stop();
+        try { await Js.InvokeVoidAsync("voiceRecorder.stop"); }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private async Task TogglePlayback()
+    {
+        if (_isPlaying)
+        {
+            await Js.InvokeVoidAsync("voiceRecorder.pausePreview");
+            _isPlaying = false;
+        }
+        else
+        {
+            await Js.InvokeVoidAsync("voiceRecorder.playPreview");
+            _isPlaying = true;
+        }
+    }
+
+    private async Task OnSeek(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var time))
+        {
+            _previewCurrentTime = time;
+            await Js.InvokeVoidAsync("voiceRecorder.seekPreview", time);
+        }
+    }
+
+    private void OnTimeUpdate()
+    {
+        _ = UpdateTimeAsync();
+    }
+
+    private async Task UpdateTimeAsync()
+    {
+        try
+        {
+            _previewCurrentTime = await Js.InvokeAsync<double>("voiceRecorder.getPreviewCurrentTime");
+            await InvokeAsync(StateHasChanged);
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private void OnMetadataLoaded()
+    {
+        _ = LoadDurationAsync();
+    }
+
+    private async Task LoadDurationAsync()
+    {
+        try
+        {
+            _previewDuration = await Js.InvokeAsync<double>("voiceRecorder.getPreviewDuration");
+            await InvokeAsync(StateHasChanged);
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private void OnPlaybackEnded()
+    {
+        _isPlaying = false;
+        _previewCurrentTime = 0;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task Send()
+    {
+        var bytes = await Js.InvokeAsync<byte[]>("voiceRecorder.getRecordedBytes");
+        if (bytes is { Length: > 0 })
+        {
+            var mimeType = await Js.InvokeAsync<string>("voiceRecorder.getRecordedMimeType");
+
+            // Get waveform samples to pass along with the recording
+            int[]? waveform = null;
+            try
+            {
+                waveform = await Js.InvokeAsync<int[]>("voiceRecorder.getWaveformSamples");
+            }
+            catch { /* ignored */ }
+
+            try { await Js.InvokeVoidAsync("voiceRecorder.revokePreview"); }
+            catch { /* cleanup best-effort */ }
+            await OnRecorded.InvokeAsync(new VoiceRecordingResult(bytes, mimeType, waveform));
+        }
+    }
+
+    public sealed record VoiceRecordingResult(byte[] AudioData, string MimeType, int[]? Waveform);
+
+    private async Task Delete()
+    {
+        try { await Js.InvokeVoidAsync("voiceRecorder.revokePreview"); }
+        catch
+        {
+            // ignored
+        }
+
+        await OnCancelled.InvokeAsync();
+    }
+
+    private async Task Cancel()
+    {
+        _timer?.Stop();
+        try { await Js.InvokeVoidAsync("voiceRecorder.cancel"); }
+        catch
+        {
+            // ignored
+        }
+
+        await OnCancelled.InvokeAsync();
+    }
+
+    private static string FormatDuration(int totalSeconds)
+    {
+        var m = totalSeconds / 60;
+        var s = totalSeconds % 60;
+        return $"{m}:{s:D2}";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        _timer?.Stop();
+        _timer?.Dispose();
+        try { await Js.InvokeVoidAsync("voiceRecorder.cancel"); }
+        catch
+        {
+            // ignored
+        }
+
+        _objRef?.Dispose();
+    }
+}

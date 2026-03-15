@@ -1,0 +1,204 @@
+@page "/admin/logs"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@layout AdminLayout
+@inject AdminApiService Api
+@inject IStringLocalizer<AdminResource> Loc
+
+<h2>@Loc["Logs_Title"]</h2>
+
+<div class="filter-bar">
+    <div class="form-group">
+        <label>Severity</label>
+        <select @bind="filterLevel">
+            <option value="">All</option>
+            <option>Verbose</option>
+            <option>Debug</option>
+            <option>Information</option>
+            <option>Warning</option>
+            <option>Error</option>
+            <option>Fatal</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label>From</label>
+        <input type="datetime-local" @bind="filterFrom" />
+    </div>
+    <div class="form-group">
+        <label>To</label>
+        <input type="datetime-local" @bind="filterTo" />
+    </div>
+    <div class="form-group">
+        <label>Search</label>
+        <input type="text" @bind="filterSearch" placeholder="Keyword..." />
+    </div>
+    <button class="btn btn-primary btn-sm" @onclick="ApplyFilters">Apply</button>
+    <button class="btn btn-outline btn-sm" @onclick="ClearFilters">Clear</button>
+    <button class="btn btn-danger btn-sm" @onclick="() => showDeleteModal = true">Delete Old Logs</button>
+</div>
+
+@if (loading)
+{
+    <p>Loading logs...</p>
+}
+else if (logs is not null)
+{
+    <div class="admin-card" style="padding:0;overflow:hidden">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Level</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var log in logs.Items)
+                {
+                    <tr @onclick="() => ToggleExpand(log.Id)" style="cursor:pointer">
+                        <td style="white-space:nowrap">@log.Timestamp.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td><span class="badge @LevelBadge(log.Level)">@log.Level</span></td>
+                        <td>@Truncate(log.Message, 200)</td>
+                    </tr>
+                    @if (expandedId == log.Id)
+                    {
+                        <tr>
+                            <td colspan="3" class="expandable-detail">
+                                <strong>Full Message:</strong>
+                                <pre>@log.Message</pre>
+                                @if (log.Exception is not null)
+                                {
+                                    <strong>Exception:</strong>
+                                    <pre>@log.Exception</pre>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination">
+        <span>Showing @((logs.Page - 1) * logs.PageSize + 1)-@(Math.Min(logs.Page * logs.PageSize, logs.TotalCount)) of @logs.TotalCount entries</span>
+        <div class="pagination-controls">
+            <button @onclick="PrevPage" disabled="@(logs.Page <= 1)">Previous</button>
+            <span>Page @logs.Page of @logs.TotalPages</span>
+            <button @onclick="NextPage" disabled="@(logs.Page >= logs.TotalPages)">Next</button>
+            <select @bind="pageSize" @bind:after="ApplyFilters">
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+            </select>
+        </div>
+    </div>
+}
+
+@if (showDeleteModal)
+{
+    <div class="modal-overlay" @onclick="() => showDeleteModal = false">
+        <div class="modal-content" @onclick:stopPropagation="true">
+            <h3>Delete Old Logs</h3>
+            <div class="form-group">
+                <label>Delete logs older than:</label>
+                <input type="date" @bind="deleteOlderThan" />
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-outline" @onclick="() => showDeleteModal = false">Cancel</button>
+                <button class="btn btn-danger" @onclick="DeleteOldLogs">Delete</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (toast is not null)
+{
+    <div class="admin-toast @toast.Type">@toast.Message</div>
+}
+
+@code {
+    private ToledoVault.Shared.DTOs.PaginatedResponse<ToledoVault.Shared.DTOs.LogEntryResponse>? logs;
+    private bool loading = true;
+    private string filterLevel = "";
+    private DateTime? filterFrom;
+    private DateTime? filterTo;
+    private string filterSearch = "";
+    private int currentPage = 1;
+    private int pageSize = 50;
+    private int? expandedId;
+    private bool showDeleteModal;
+    private DateTime deleteOlderThan = DateTime.Now.AddDays(-30);
+    private record ToastInfo(string Message, string Type);
+    private ToastInfo? toast;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLogs();
+    }
+
+    private async Task LoadLogs()
+    {
+        loading = true;
+        try
+        {
+            var query = new ToledoVault.Shared.DTOs.LogQueryRequest(
+                Level: string.IsNullOrEmpty(filterLevel) ? null : filterLevel,
+                From: filterFrom.HasValue ? new DateTimeOffset(filterFrom.Value) : null,
+                To: filterTo.HasValue ? new DateTimeOffset(filterTo.Value) : null,
+                Search: string.IsNullOrEmpty(filterSearch) ? null : filterSearch,
+                Page: currentPage,
+                PageSize: pageSize);
+            logs = await Api.GetLogsAsync(query);
+        }
+        catch
+        {
+            ShowToast("Failed to load logs.", "error");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task ApplyFilters() { currentPage = 1; await LoadLogs(); }
+    private async Task ClearFilters() { filterLevel = ""; filterFrom = null; filterTo = null; filterSearch = ""; currentPage = 1; await LoadLogs(); }
+    private async Task PrevPage() { currentPage--; await LoadLogs(); }
+    private async Task NextPage() { currentPage++; await LoadLogs(); }
+    private void ToggleExpand(int id) { expandedId = expandedId == id ? null : id; }
+
+    private async Task DeleteOldLogs()
+    {
+        try
+        {
+            var result = await Api.DeleteLogsAsync(new DateTimeOffset(deleteOlderThan));
+            ShowToast($"Deleted {result.DeletedCount} log entries.", "success");
+            showDeleteModal = false;
+            await LoadLogs();
+        }
+        catch
+        {
+            ShowToast("Failed to delete logs.", "error");
+        }
+    }
+
+    private static string LevelBadge(string level) => level switch
+    {
+        "Error" or "Fatal" => "badge-error",
+        "Warning" => "badge-warning",
+        "Information" => "badge-success",
+        "Debug" => "badge-info",
+        _ => "badge-grey"
+    };
+
+    private static string? Truncate(string? s, int max) =>
+        s is not null && s.Length > max ? s[..max] + "..." : s;
+
+    private async void ShowToast(string message, string type)
+    {
+        toast = new ToastInfo(message, type);
+        StateHasChanged();
+        await Task.Delay(3000);
+        toast = null;
+        StateHasChanged();
+    }
+}

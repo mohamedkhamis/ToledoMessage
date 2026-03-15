@@ -1,0 +1,139 @@
+@inject IJSRuntime Js
+
+@if (IsVisible)
+{
+    <div class="lightbox-overlay" @onclick="HandleBackdropClick">
+        <div class="lightbox-toolbar">
+            <button class="lightbox-toolbar-btn" @onclick="DownloadImage" @onclick:stopPropagation="true" aria-label="Download" title="Download">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+            </button>
+            <button class="lightbox-close" @onclick="Close" aria-label="Close">&times;</button>
+        </div>
+
+        @if (ImageUrls.Count > 1)
+        {
+            <div class="lightbox-counter">@(CurrentIndex + 1) / @ImageUrls.Count</div>
+        }
+
+        @if (ImageUrls.Count > 1 && CurrentIndex > 0)
+        {
+            <button class="lightbox-nav lightbox-nav-left" @onclick="Previous" @onclick:stopPropagation="true" aria-label="Previous image">
+                &#8249;
+            </button>
+        }
+
+        <div class="lightbox-image-wrapper" @onclick:stopPropagation="true" @ref="_imageWrapper">
+            <img src="@ImageUrls[CurrentIndex]"
+                 class="lightbox-image"
+                 alt="Full size preview"
+                 @onclick:stopPropagation="true"
+                 draggable="false" />
+        </div>
+
+        @if (ImageUrls.Count > 1 && CurrentIndex < ImageUrls.Count - 1)
+        {
+            <button class="lightbox-nav lightbox-nav-right" @onclick="Next" @onclick:stopPropagation="true" aria-label="Next image">
+                &#8250;
+            </button>
+        }
+    </div>
+}
+
+@code {
+    private ElementReference _imageWrapper;
+
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public List<string> ImageUrls { get; set; } = [];
+
+    [Parameter]
+    public int CurrentIndex { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnIndexChanged { get; set; }
+
+    private bool _zoomInitialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsVisible && !_zoomInitialized)
+        {
+            _zoomInitialized = true;
+            try { await Js.InvokeVoidAsync("mediaHelpers.initLightboxZoom", _imageWrapper); }
+            catch
+            {
+                // ignored
+            }
+        }
+        else if (!IsVisible && _zoomInitialized)
+        {
+            _zoomInitialized = false;
+        }
+    }
+
+    private async Task Close()
+    {
+        try { await Js.InvokeVoidAsync("mediaHelpers.destroyLightboxZoom"); }
+        catch
+        {
+            // ignored
+        }
+
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await Close();
+    }
+
+    private async Task Previous()
+    {
+        if (CurrentIndex > 0)
+        {
+            try { await Js.InvokeVoidAsync("mediaHelpers.resetLightboxZoom"); }
+            catch
+            {
+                // ignored
+            }
+
+            await OnIndexChanged.InvokeAsync(CurrentIndex - 1);
+        }
+    }
+
+    private async Task Next()
+    {
+        if (CurrentIndex < ImageUrls.Count - 1)
+        {
+            try { await Js.InvokeVoidAsync("mediaHelpers.resetLightboxZoom"); }
+            catch
+            {
+                // ignored
+            }
+
+            await OnIndexChanged.InvokeAsync(CurrentIndex + 1);
+        }
+    }
+
+    private async Task DownloadImage()
+    {
+        try
+        {
+            var url = ImageUrls[CurrentIndex];
+            await Js.InvokeVoidAsync("mediaHelpers.downloadDataUrl", url, "image.png");
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+}

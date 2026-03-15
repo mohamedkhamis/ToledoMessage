@@ -1,0 +1,720 @@
+@page "/settings"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@layout ChatLayout
+@using System.Text
+@inject HttpClient Http
+@inject LocalStorageService Storage
+@inject NavigationManager Navigation
+@inject ThemeService Theme
+@inject PreferencesService Preferences
+@inject IJSRuntime Js
+@inject MessageStoreService MessageStore
+@inject KeyBackupService KeyBackup
+@inject IStringLocalizer<SharedResource> Loc
+
+<div class="panel-content-scroll">
+<div class="settings-page">
+    <div class="settings-header">
+        <button class="back-link back-link-desktop-hidden" @onclick="GoBackToChat" aria-label="Back to conversations">&larr;</button>
+        <h2>@Loc["Settings"]</h2>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-error" role="alert">@_errorMessage</div>
+    }
+
+    @if (!string.IsNullOrEmpty(_successMessage))
+    {
+        <div class="alert alert-success" role="status">@_successMessage</div>
+    }
+
+    <h3 class="section-title">@Loc["Appearance"]</h3>
+
+    <div class="theme-grid">
+        @foreach (var theme in ThemeService.GetAvailableThemes())
+        {
+            <div class="theme-card @(_currentTheme == theme.Id ? "active" : "")"
+                 @onclick="() => SelectTheme(theme.Id)">
+                <div class="theme-swatch" style="background:@theme.SwatchColor;"></div>
+                <div class="theme-name">@theme.DisplayName</div>
+            </div>
+        }
+    </div>
+
+    <h4 class="subsection-title mt-md">@Loc["Font Size"]</h4>
+    <div class="font-size-slider-container">
+        <div class="font-size-preview" style="font-size:@(_currentFontSize)px;">
+            <span class="font-size-preview-label" style="font-size:0.7rem;">@Loc["Font Size"]</span>
+            @Loc["Ultra-Secure Messaging"]
+        </div>
+        <div class="font-size-slider-row">
+            <span class="slider-icon slider-icon-sm">A</span>
+            <input type="range" class="font-size-slider" min="12" max="20" step="1"
+                   value="@_currentFontSize"
+                   @oninput="OnFontSizeSliderInput"
+                   @onchange="OnFontSizeSliderCommit" />
+            <span class="slider-icon slider-icon-lg">A</span>
+        </div>
+        <div class="font-size-value">@(_currentFontSize)px</div>
+    </div>
+
+    <h4 class="subsection-title mt-md">@Loc["Language"]</h4>
+    <div class="font-size-selector">
+        @foreach (var lang in Languages)
+        {
+            <button class="font-size-btn @(_currentLanguage == lang.Id ? "active" : "")"
+                    @onclick="() => SelectLanguage(lang.Id)">
+                <span style="font-size:1.2em">@lang.Flag</span>
+                <span class="font-size-label">@lang.Label</span>
+            </button>
+        }
+    </div>
+
+    <h4 class="subsection-title mt-md">@Loc["Chat Wallpaper"]</h4>
+    <div class="wallpaper-grid">
+        @foreach (var wp in ThemeService.GetAvailableWallpapers())
+        {
+            <div class="wallpaper-card @(_currentWallpaper == wp.Id ? "active" : "")"
+                 @onclick="() => SelectWallpaper(wp.Id)">
+                <div class="wallpaper-swatch" style="@GetWallpaperSwatchStyle(wp)"></div>
+                <div class="wallpaper-name">@wp.DisplayName</div>
+            </div>
+        }
+    </div>
+
+    <h3 class="section-title mt-lg">@Loc["Privacy"]</h3>
+
+    <div class="settings-toggles">
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <span class="toggle-label">@Loc["Read Receipts"]</span>
+                <span class="toggle-desc">@Loc["ReadReceiptsDesc"]</span>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" checked="@_readReceiptsEnabled"
+                       @onchange="e => ToggleReadReceipts((bool)e.Value!)" />
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <span class="toggle-label">@Loc["Typing Indicators"]</span>
+                <span class="toggle-desc">@Loc["TypingIndicatorsDesc"]</span>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" checked="@_typingIndicatorsEnabled"
+                       @onchange="e => ToggleTypingIndicators((bool)e.Value!)" />
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <h3 class="section-title mt-lg">@Loc["Security"]</h3>
+
+    <div class="settings-toggles">
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <span class="toggle-label">@Loc["Share Keys Across Devices"]</span>
+                <span class="toggle-desc">@Loc["ShareKeysDesc"]</span>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" checked="@_sharedKeysEnabled"
+                       @onchange="e => ToggleSharedKeys((bool)e.Value!)" />
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        @if (_sharedKeysEnabled)
+        {
+            <div class="backup-status-row">
+                @if (_backupTimestamp.HasValue)
+                {
+                    <div class="backup-status backup-ok">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+                        <span>@string.Format(Loc["BackupLastUpdated"], _backupTimestamp.Value.ToLocalTime().ToString("MMM dd, yyyy HH:mm"))</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="backup-status backup-none">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <span>@Loc["No backup found"]</span>
+                    </div>
+                }
+
+                @if (!_showBackupPasswordPrompt)
+                {
+                    <button class="btn-backup" @onclick="() => _showBackupPasswordPrompt = true"
+                            disabled="@_isBackingUp">
+                        @Loc["Backup Now"]
+                    </button>
+                }
+                else
+                {
+                    <div class="backup-password-prompt">
+                        <input type="password" class="floating-input backup-password-input"
+                               placeholder="@Loc["Enter your password"]"
+                               @bind="_backupPassword" />
+                        <div class="backup-prompt-actions">
+                            <button class="btn-backup" @onclick="BackupNow" disabled="@_isBackingUp">
+                                @if (_isBackingUp)
+                                {
+                                    <span class="spinner spinner-sm"></span>
+                                }
+                                else
+                                {
+                                    @Loc["Confirm"]
+                                }
+                            </button>
+                            <button class="btn-secondary btn-sm" @onclick="CancelBackupPrompt">@Loc["Cancel"]</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <h3 class="section-title mt-lg">@Loc["Storage and Data"]</h3>
+
+    <div class="settings-toggles">
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <span class="toggle-label">@Loc["HD Photos"]</span>
+                <span class="toggle-desc">@Loc["HdPhotosDesc"]</span>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" checked="@_sendPhotoHd"
+                       @onchange="e => ToggleSendPhotoHd((bool)e.Value!)" />
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <h3 class="section-title mt-lg">@Loc["Notifications"]</h3>
+
+    <div class="settings-toggles">
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <span class="toggle-label">@Loc["Desktop Notifications"]</span>
+                <span class="toggle-desc">@Loc["DesktopNotificationsDesc"]</span>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" checked="@_notificationsEnabled"
+                       @onchange="e => ToggleNotifications((bool)e.Value!)" />
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <h3 class="section-title mt-lg">@Loc["Linked Devices"]</h3>
+
+    @if (_isLoading)
+    {
+        <p class="loading-text"><span class="spinner"></span> @Loc["Loading devices..."]</p>
+    }
+    else if (_devices.Count == 0)
+    {
+        <p class="loading-text">@Loc["No active devices found."]</p>
+    }
+    else
+    {
+        <div class="device-list">
+            @foreach (var device in _devices)
+            {
+                <div class="device-card">
+                    <div>
+                        <div class="device-name">
+                            @device.DeviceName
+                            @if (device.DeviceId == _currentDeviceId)
+                            {
+                                <span class="device-current">@Loc["(this device)"]</span>
+                            }
+                        </div>
+                        <div class="device-date">
+                            @string.Format(Loc["Linked {0}"], device.CreatedAt.ToString("MMM dd, yyyy"))
+                        </div>
+                        <div class="device-lastseen">
+                            @string.Format(Loc["DeviceLastSeen"], device.LastSeenAt.ToString("MMM dd, yyyy HH:mm"))
+                        </div>
+                    </div>
+
+                    @if (device.DeviceId != _currentDeviceId)
+                    {
+                        <button class="btn-unlink"
+                                @onclick="() => UnlinkDevice(device.DeviceId)"
+                                disabled="@_unlinkingDeviceId.HasValue">
+                            @if (_unlinkingDeviceId == device.DeviceId)
+                            {
+                                <span>@Loc["Unlinking..."]</span>
+                            }
+                            else
+                            {
+                                <span>@Loc["Unlink"]</span>
+                            }
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    <div class="link-device-box">
+        <p>@Loc["Link New Device"]</p>
+        <p class="link-device-sub">
+            @Loc["QrCodeComingSoon"]
+        </p>
+    </div>
+
+    <h3 class="section-title mt-lg danger-text">@Loc["Account Deletion"]</h3>
+
+    @if (_deletionPending)
+    {
+        <div class="alert alert-warning" role="status">
+            <p>@string.Format(Loc["DeletionScheduledDesc"], _deletionEndsAt?.ToString("MMM dd, yyyy HH:mm"))</p>
+            <p>@Loc["Log in again to cancel the deletion."]</p>
+        </div>
+    }
+    else
+    {
+        <div class="danger-zone">
+            @if (!_showDeleteConfirmation)
+            {
+                <p class="danger-description">
+                    @Loc["DeleteAccountDesc"]
+                </p>
+                <button class="btn-danger" @onclick="() => _showDeleteConfirmation = true">
+                    @Loc["Delete Account"]
+                </button>
+            }
+            else
+            {
+                <p class="danger-description">
+                    @Loc["DeleteConfirmDesc"]
+                </p>
+                <div class="danger-actions">
+                    <button class="btn-danger" @onclick="DeleteAccount" disabled="@_isDeletingAccount">
+                        @(_isDeletingAccount ? Loc["Deleting..."] : Loc["Yes, Delete My Account"])
+                    </button>
+                    <button class="btn-secondary" @onclick="() => _showDeleteConfirmation = false"
+                            disabled="@_isDeletingAccount">
+                        @Loc["Cancel"]
+                    </button>
+                </div>
+            }
+        </div>
+    }
+
+    <div class="app-version-footer">Toledo Vault v@(AppVersion.Current)</div>
+</div>
+</div>
+
+@implements IDisposable
+
+@code {
+    private List<DeviceInfoResponse> _devices = [];
+    private long _currentDeviceId;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    private void GoBackToChat()
+    {
+        Navigation.NavigateTo("/chat");
+    }
+
+    private string? _successMessage;
+    private long? _unlinkingDeviceId;
+    private string _currentTheme = "default";
+    private int _currentFontSize = 15;
+    private string _currentWallpaper = "default";
+    private bool _notificationsEnabled = true;
+    private bool _readReceiptsEnabled = true;
+    private bool _typingIndicatorsEnabled = true;
+    private bool _sharedKeysEnabled = true;
+    private bool _sendPhotoHd;
+    private DateTimeOffset? _backupTimestamp;
+    private bool _showBackupPasswordPrompt;
+    private string _backupPassword = "";
+    private bool _isBackingUp;
+    private bool _showDeleteConfirmation;
+    private bool _isDeletingAccount;
+    private bool _deletionPending;
+    private DateTimeOffset? _deletionEndsAt;
+
+    private string _currentLanguage = "en";
+
+    private static readonly LanguageOption[] Languages = [new("en", "English", "🇬🇧"), new("ar", "العربية", "🇸🇦")];
+
+    private const int FontSizeMin = 12;
+    private const int FontSizeMax = 20;
+
+    protected override void OnInitialized()
+    {
+        Theme.OnThemeChanged += OnThemeChanged;
+    }
+
+    private void OnThemeChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Theme.OnThemeChanged -= OnThemeChanged;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _currentTheme = await Theme.GetThemeAsync();
+            _currentFontSize = await Theme.GetFontSizeAsync();
+            _currentWallpaper = await Theme.GetWallpaperAsync();
+            _currentLanguage = await Js.InvokeAsync<string?>("localStorage.getItem", "app.culture") ?? "en";
+
+            var deviceIdBytes = await Storage.GetAsync("local.deviceId");
+            var tokenBytes = await Storage.GetAsync("auth.token");
+
+            if (deviceIdBytes is null || tokenBytes is null)
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+
+            _currentDeviceId = long.Parse(Encoding.UTF8.GetString(deviceIdBytes));
+            var accessToken = Encoding.UTF8.GetString(tokenBytes);
+
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+            // Load preferences from server
+            var prefs = await Preferences.GetPreferencesAsync();
+            _notificationsEnabled = prefs.NotificationsEnabled;
+            _readReceiptsEnabled = prefs.ReadReceiptsEnabled;
+            _typingIndicatorsEnabled = prefs.TypingIndicatorsEnabled;
+            _sharedKeysEnabled = prefs.SharedKeysEnabled;
+            _sendPhotoHd = prefs.SendPhotoHd;
+
+            // Sync local theme TO server if different (local is source of truth)
+            if (prefs.Theme != _currentTheme)
+            {
+                try { await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(Theme: _currentTheme)); }
+                catch { /* best effort */ }
+            }
+
+            var serverFontSize = int.TryParse(prefs.FontSize, out var fsPx) ? fsPx : 15;
+            if (serverFontSize != _currentFontSize)
+            {
+                _currentFontSize = serverFontSize;
+                await Theme.SetFontSizeAsync(serverFontSize);
+            }
+
+            await LoadDevices();
+
+            // Load backup status
+            if (_sharedKeysEnabled)
+            {
+                try { _backupTimestamp = await KeyBackup.GetBackupTimestampAsync(); }
+                catch { /* non-critical */ }
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = string.Format(Loc["FailedToLoadSettings"], ex.Message);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SelectTheme(string themeId)
+    {
+        _currentTheme = themeId;
+        await Theme.SetThemeAsync(themeId);
+        try
+        {
+            await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(Theme: themeId));
+            _successMessage = Loc["Theme saved."];
+        }
+        catch
+        {
+            // Local theme still applied even if server sync fails
+        }
+    }
+
+    private async Task OnFontSizeSliderInput(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var px) && px is >= FontSizeMin and <= FontSizeMax)
+        {
+            _currentFontSize = px;
+            await Theme.SetFontSizeAsync(px);
+        }
+    }
+
+    private async Task OnFontSizeSliderCommit(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var px) && px is >= FontSizeMin and <= FontSizeMax)
+        {
+            _currentFontSize = px;
+            await Theme.SetFontSizeAsync(px);
+            try
+            {
+                await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(FontSize: px.ToString()));
+                _successMessage = Loc["Font size saved."];
+            }
+            catch
+            {
+                // Local change still applied
+            }
+        }
+    }
+
+    private async Task ToggleNotifications(bool enabled)
+    {
+        _notificationsEnabled = enabled;
+        try
+        {
+            await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(NotificationsEnabled: enabled));
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = string.Format(Loc["FailedToSave"], ex.Message);
+        }
+    }
+
+    private async Task ToggleReadReceipts(bool enabled)
+    {
+        _readReceiptsEnabled = enabled;
+        try
+        {
+            await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(ReadReceiptsEnabled: enabled));
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = string.Format(Loc["FailedToSave"], ex.Message);
+        }
+    }
+
+    private async Task ToggleTypingIndicators(bool enabled)
+    {
+        _typingIndicatorsEnabled = enabled;
+        try
+        {
+            await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(TypingIndicatorsEnabled: enabled));
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = string.Format(Loc["FailedToSave"], ex.Message);
+        }
+    }
+
+    private async Task ToggleSendPhotoHd(bool enabled)
+    {
+        _sendPhotoHd = enabled;
+        try
+        {
+            await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(SendPhotoHd: enabled));
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = string.Format(Loc["FailedToSave"], ex.Message);
+        }
+    }
+
+    private async Task ToggleSharedKeys(bool enabled)
+    {
+        _sharedKeysEnabled = enabled;
+        try
+        {
+            await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(SharedKeysEnabled: enabled));
+
+            if (!enabled)
+            {
+                // Delete the server-side backup when disabling
+                try
+                {
+                    await KeyBackup.DeleteBackupAsync();
+                    _successMessage = Loc["Key sharing disabled. Server backup deleted."];
+                }
+                catch
+                {
+                    _successMessage = Loc["Key sharing disabled."];
+                }
+            }
+            else
+            {
+                _successMessage = Loc["Key sharing enabled. Backup will be created on next login."];
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = string.Format(Loc["FailedToSave"], ex.Message);
+        }
+    }
+
+    private async Task BackupNow()
+    {
+        if (string.IsNullOrWhiteSpace(_backupPassword))
+            return;
+
+        _isBackingUp = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            await KeyBackup.UploadBackupAsync(_backupPassword);
+            _backupTimestamp = DateTimeOffset.UtcNow;
+            _successMessage = Loc["Key backup uploaded successfully."];
+            _showBackupPasswordPrompt = false;
+            _backupPassword = "";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = string.Format(Loc["BackupFailed"], ex.Message);
+        }
+        finally
+        {
+            _isBackingUp = false;
+        }
+    }
+
+    private void CancelBackupPrompt()
+    {
+        _showBackupPasswordPrompt = false;
+        _backupPassword = "";
+    }
+
+    private async Task LoadDevices()
+    {
+        _devices = await Http.GetFromJsonAsync<List<DeviceInfoResponse>>("/api/devices") ?? [];
+    }
+
+    private async Task DeleteAccount()
+    {
+        _errorMessage = null;
+        _successMessage = null;
+        _isDeletingAccount = true;
+
+        try
+        {
+            var response = await Http.DeleteAsync("/api/auth/account");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content
+                    .ReadFromJsonAsync<AccountDeletionResponse>();
+                if (result is not null)
+                {
+                    // Full wipe: clear all local data (device, keys, sessions, messages)
+                    try
+                    {
+                        await Js.InvokeVoidAsync("toledoStorage.clearAllData");
+                        await MessageStore.ClearAllAsync();
+                    }
+                    catch { /* best effort */ }
+
+                    _deletionPending = true;
+                    _deletionEndsAt = result.GracePeriodEndsAt;
+                    _showDeleteConfirmation = false;
+                    _successMessage = Loc["Account deletion scheduled. Log in again within 7 days to cancel."];
+                }
+            }
+            else
+            {
+                _errorMessage = Loc["Failed to initiate account deletion."];
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = string.Format(Loc["ErrorDeletingAccount"], ex.Message);
+        }
+        finally
+        {
+            _isDeletingAccount = false;
+        }
+    }
+
+    private async Task UnlinkDevice(long deviceId)
+    {
+        _errorMessage = null;
+        _successMessage = null;
+        _unlinkingDeviceId = deviceId;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"/api/devices/{deviceId}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                _successMessage = Loc["Device unlinked successfully."];
+                await LoadDevices();
+            }
+            else
+            {
+                _errorMessage = Loc["Failed to unlink device."];
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = string.Format(Loc["ErrorUnlinkingDevice"], ex.Message);
+        }
+        finally
+        {
+            _unlinkingDeviceId = null;
+        }
+    }
+
+    private async Task SelectWallpaper(string wallpaperId)
+    {
+        _currentWallpaper = wallpaperId;
+        await Theme.SetWallpaperAsync(wallpaperId);
+        _successMessage = Loc["Wallpaper saved."];
+    }
+
+    private async Task SelectLanguage(string languageId)
+    {
+        _currentLanguage = languageId;
+        await Js.InvokeVoidAsync("localStorage.setItem", "app.culture", languageId);
+        await Js.InvokeVoidAsync("toledoStorage.setCookie",
+            ".AspNetCore.Culture", $"c={languageId}|uic={languageId}", 365);
+        try
+        {
+            await Preferences.UpdatePreferencesAsync(new UpdatePreferencesRequest(Language: languageId));
+        }
+        catch { /* best effort */ }
+        Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+    }
+
+    private string GetWallpaperSwatchStyle(WallpaperInfo wp)
+    {
+        var isDark = ThemeService.IsDarkTheme(_currentTheme);
+        var bgColor = isDark ? "#1a1a2e" : "#efeae2";
+        var pattern = isDark ? wp.DarkPattern : wp.LightPattern;
+
+        if (wp.Id == "none")
+            return $"background: {bgColor};";
+
+        if (wp.Id == "default")
+            return $"background: {bgColor}; background-image: {GetDefaultPatternForTheme()}; background-repeat: repeat;";
+
+        return pattern is not null
+            ? $"background: {bgColor}; background-image: {pattern}; background-repeat: repeat;"
+            : $"background: {bgColor};";
+    }
+
+    private string GetDefaultPatternForTheme()
+    {
+        // Return the theme's built-in pattern if any
+        return _currentTheme switch
+        {
+            "whatsapp" => "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d1d7db' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+            "whatsapp-dark" => "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%233f4a53' fill-opacity='0.3'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+            _ => "none"
+        };
+    }
+
+    private sealed record LanguageOption(string Id, string Label, string Flag);
+}

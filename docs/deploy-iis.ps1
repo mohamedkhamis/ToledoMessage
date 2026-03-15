@@ -1,22 +1,22 @@
 <#
 .SYNOPSIS
-    Deploy ToledoMessage to local IIS for testing.
+    Deploy ToledoVault to local IIS for testing.
 
 .DESCRIPTION
-    Publishes the ToledoMessage ASP.NET Core + Blazor WASM app to local IIS.
+    Publishes the ToledoVault ASP.NET Core + Blazor WASM app to local IIS.
     Supports Deploy, Uninstall, and Status actions.
 
 .PARAMETER Action
     Deploy (default), Uninstall, or Status.
 
 .PARAMETER SiteName
-    IIS site and app pool name. Default: ToledoMessage
+    IIS site and app pool name. Default: ToledoVault
 
 .PARAMETER Port
     HTTP port. 0 = auto-select from 8080-8099. Default: 0
 
 .PARAMETER PublishPath
-    Publish output folder. Default: C:\inetpub\ToledoMessage
+    Publish output folder. Default: C:\inetpub\ToledoVault
 
 .PARAMETER Environment
     ASPNETCORE_ENVIRONMENT value. Default: Production
@@ -62,11 +62,11 @@ param(
     [ValidateSet("Deploy", "Uninstall", "Status")]
     [string]$Action = "Deploy",
 
-    [string]$SiteName = "ToledoMessage",
+    [string]$SiteName = "ToledoVault",
 
     [int]$Port = 8080,
 
-    [string]$PublishPath = "C:\inetpub\ToledoMessage",
+    [string]$PublishPath = "C:\inetpub\ToledoVault",
 
     [string]$Environment = "Production",
 
@@ -202,24 +202,17 @@ function Publish-App {
     if ($scriptDir -match "[/\\]docs$") {
         $scriptDir = Split-Path $scriptDir -Parent
     }
-    $projectPath = Join-Path $scriptDir "src\ToledoMessage\ToledoMessage.csproj"
+    $projectPath = Join-Path $scriptDir "src\ToledoVault\ToledoVault.csproj"
     if (-not (Test-Path $projectPath)) {
         Write-Err "Project not found at: $projectPath"
         exit 1
     }
 
-    # Clean old WASM framework files to prevent stale cache
-    $frameworkDir = Join-Path $OutputPath "wwwroot\_framework"
-    if (Test-Path $frameworkDir) {
-        Write-Step "Cleaning old WASM framework files..."
-        Remove-Item "$frameworkDir\*" -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Ok "Old framework files cleaned"
-    }
-
-    Write-Step "Publishing app to $OutputPath ..."
+    # Publish to default location first (required for static web assets manifest
+    # to include Blazor WASM runtime files — using --output breaks this in .NET 8+).
+    Write-Step "Publishing app..."
     & dotnet publish $projectPath `
         --configuration Release `
-        --output $OutputPath `
         --no-self-contained 2>&1 | ForEach-Object {
         if ($_ -match "error") { Write-Err $_ } else { Write-Info $_ }
     }
@@ -229,6 +222,25 @@ function Publish-App {
         exit 1
     }
     Write-Ok "Publish succeeded"
+
+    # Copy from default publish location to the deploy path
+    $projectDir = Split-Path $projectPath -Parent
+    $defaultPublishDir = Join-Path $projectDir "bin\Release\net11.0\publish"
+    if (-not (Test-Path $defaultPublishDir)) {
+        Write-Err "Publish output not found at: $defaultPublishDir"
+        exit 1
+    }
+
+    Write-Step "Copying to $OutputPath ..."
+    if (Test-Path $OutputPath) {
+        # Clean old deployment (except logs and appsettings.Production.json)
+        Get-ChildItem -Path $OutputPath -Exclude "logs", "appsettings.Production.json" |
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    } else {
+        New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
+    }
+    Copy-Item -Path "$defaultPublishDir\*" -Destination $OutputPath -Recurse -Force
+    Write-Ok "Files copied to $OutputPath"
 
     # Generate version file for cache busting (timestamp-based) - put in wwwroot
     $version = (Get-Date).ToString("yyyyMMddHHmmss")
@@ -250,7 +262,7 @@ function Write-WebConfig {
         <add name="aspNetCore" path="*" verb="*" modules="AspNetCoreModuleV2" resourceType="Unspecified" />
       </handlers>
       <aspNetCore processPath="dotnet"
-                  arguments=".\ToledoMessage.dll"
+                  arguments=".\ToledoVault.dll"
                   stdoutLogEnabled="true"
                   stdoutLogFile=".\logs\stdout"
                   hostingModel="InProcess">
@@ -305,8 +317,8 @@ function Write-AppSettingsProduction {
         }
         Jwt = @{
             SecretKey = $JwtKey
-            Issuer = "ToledoMessage"
-            Audience = "ToledoMessage"
+            Issuer = "ToledoVault"
+            Audience = "ToledoVault"
         }
         Cors = @{
             AllowedOrigins = @($corsOrigin)
@@ -442,7 +454,7 @@ function Setup-SqlLogin {
     if ($ConnStr -match "Server=([^;]+)") { $serverName = $Matches[1] }
 
     # Parse database name from connection string
-    $dbName = "ToledoMessage"
+    $dbName = "ToledoVault"
     if ($ConnStr -match "Database=([^;]+)") { $dbName = $Matches[1] }
 
     $identity = "IIS AppPool\$PoolName"
@@ -587,7 +599,7 @@ function Invoke-Deploy {
     # Resolve connection string
     $connStr = $ConnectionString
     if ([string]::IsNullOrWhiteSpace($connStr)) {
-        $connStr = "Server=.;Database=ToledoMessage;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
+        $connStr = "Server=.;Database=ToledoVault;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
     }
 
     # Auto-select port
@@ -758,7 +770,7 @@ function Invoke-Status {
     Import-Module IISAdministration
 
     Write-Host ""
-    Write-Host "  ToledoMessage IIS Status" -ForegroundColor White
+    Write-Host "  ToledoVault IIS Status" -ForegroundColor White
     Write-Host "  --------------------------------------"
 
     # App Pool
@@ -810,7 +822,7 @@ function Invoke-Status {
 
     # Publish path
     if (Test-Path $PublishPath) {
-        $dllPath = Join-Path $PublishPath "ToledoMessage.dll"
+        $dllPath = Join-Path $PublishPath "ToledoVault.dll"
         if (Test-Path $dllPath) {
             $dllInfo = Get-Item $dllPath
             Write-Host "  Published: $PublishPath" -ForegroundColor Green

@@ -1,4 +1,4 @@
-# Quickstart: ToledoMessage
+# Quickstart: ToledoVault
 
 **Branch**: `001-secure-messaging` | **Date**: 2026-02-26
 
@@ -13,23 +13,23 @@
 
 ```bash
 git clone <repository-url>
-cd ToledoMessage
+cd ToledoVault
 git checkout 001-secure-messaging
 ```
 
 ## 2. Configure Database Connection
 
-Edit `src/ToledoMessage/appsettings.Development.json`:
+Edit `src/ToledoVault/appsettings.Development.json`:
 
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=ToledoMessage;Trusted_Connection=True;MultipleActiveResultSets=true"
+    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=ToledoVault;Trusted_Connection=True;MultipleActiveResultSets=true"
   },
   "Jwt": {
     "SecretKey": "your-development-secret-key-at-least-32-characters-long",
-    "Issuer": "ToledoMessage",
-    "Audience": "ToledoMessage",
+    "Issuer": "ToledoVault",
+    "Audience": "ToledoVault",
     "ExpiryMinutes": 60
   }
 }
@@ -41,7 +41,7 @@ Edit `src/ToledoMessage/appsettings.Development.json`:
 ## 3. Apply Database Migrations
 
 ```bash
-cd src/ToledoMessage
+cd src/ToledoVault
 dotnet ef database update
 ```
 
@@ -55,7 +55,7 @@ EncryptedKeyBackups, MessageReactions.
 ```bash
 # From repository root
 dotnet build
-dotnet run --project src/ToledoMessage
+dotnet run --project src/ToledoVault
 ```
 
 The server starts on `https://localhost:7159` (HTTPS) and
@@ -90,26 +90,26 @@ Blazor WebAssembly client.
 
 ```bash
 # Unit tests (crypto library)
-dotnet test tests/ToledoMessage.Crypto.Tests
+dotnet test tests/ToledoVault.Crypto.Tests
 
 # Integration tests (requires SQL Server)
-dotnet test tests/ToledoMessage.Integration.Tests
+dotnet test tests/ToledoVault.Integration.Tests
 
 # All tests
 dotnet test
 
 # Performance benchmarks
-dotnet run --project tests/ToledoMessage.Benchmarks -c Release
+dotnet run --project tests/ToledoVault.Benchmarks -c Release
 ```
 
 ## 7. Project Structure Overview
 
 | Project | Purpose |
 |---------|---------|
-| `src/ToledoMessage` | ASP.NET Core server (API + SignalR + Blazor host) |
-| `src/ToledoMessage.Client` | Blazor WebAssembly client (UI + crypto) |
-| `src/ToledoMessage.Crypto` | Cryptographic library (BouncyCastle) |
-| `src/ToledoMessage.Shared` | Shared DTOs, enums, constants |
+| `src/ToledoVault` | ASP.NET Core server (API + SignalR + Blazor host) |
+| `src/ToledoVault.Client` | Blazor WebAssembly client (UI + crypto) |
+| `src/ToledoVault.Crypto` | Cryptographic library (BouncyCastle) |
+| `src/ToledoVault.Shared` | Shared DTOs, enums, constants |
 | `src/Toledo.SharedKernel` | Cross-cutting utilities |
 
 ## Key URLs

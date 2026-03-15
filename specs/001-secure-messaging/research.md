@@ -270,7 +270,7 @@ a 256-bit AES key from the password + random 16-byte salt. The identity keys
 private + public) are serialized to a JSON payload, encrypted with AES-256-GCM
 (random 12-byte nonce), and the (blob, salt, nonce) triple is uploaded. The
 server stores only opaque ciphertext. Uses BouncyCastle's `Pkcs5S2ParametersGenerator`
-for PBKDF2 and the existing `AesGcmCipher` from `ToledoMessage.Crypto`.
+for PBKDF2 and the existing `AesGcmCipher` from `ToledoVault.Crypto`.
 
 **Alternatives considered**:
 - Argon2id: Rejected — BouncyCastle.Cryptography 2.6.2 does not include Argon2.

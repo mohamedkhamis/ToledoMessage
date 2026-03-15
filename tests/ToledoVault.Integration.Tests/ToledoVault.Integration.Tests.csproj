@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="8.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+    <PackageReference Include="MSTest" Version="4.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="11.0.0-preview.2.26159.112" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ToledoVault\ToledoVault.csproj" />
+    <ProjectReference Include="..\..\src\ToledoVault.Client\ToledoVault.Client.csproj" />
+    <ProjectReference Include="..\..\src\ToledoVault.Shared\ToledoVault.Shared.csproj" />
+    <ProjectReference Include="..\..\src\ToledoVault.Crypto\ToledoVault.Crypto.csproj" />
+  </ItemGroup>
+
+</Project>

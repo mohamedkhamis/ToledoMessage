@@ -1,0 +1,66 @@
+@inherits LayoutComponentBase
+@inject AdminAuthService Auth
+@inject NavigationManager Nav
+@inject IStringLocalizer<AdminResource> Loc
+
+@if (!Auth.IsAuthenticated)
+{
+    <RedirectToLogin />
+}
+else if (Auth.MustChangePassword && !Nav.Uri.Contains("/admin/change-password"))
+{
+    <RedirectToChangePassword />
+}
+else
+{
+    <div class="admin-layout">
+        <nav class="admin-sidebar @(sidebarOpen ? "open" : "")">
+            <div class="sidebar-header">
+                <h2>ToledoVault</h2>
+                <span class="sidebar-subtitle">@Loc["Login_Subtitle"]</span>
+            </div>
+            <ul class="sidebar-nav">
+                <li><a href="/admin" class="@NavClass("/admin")">@Loc["Nav_Dashboard"]</a></li>
+                <li><a href="/admin/settings" class="@NavClass("/admin/settings")">@Loc["Nav_Settings"]</a></li>
+                <li><a href="/admin/logs" class="@NavClass("/admin/logs")">@Loc["Nav_Logs"]</a></li>
+                <li><a href="/admin/localization" class="@NavClass("/admin/localization")">@Loc["Nav_Localization"]</a></li>
+            </ul>
+        </nav>
+        <div class="admin-main">
+            <header class="admin-topbar">
+                <button class="hamburger-btn" @onclick="ToggleSidebar">&#9776;</button>
+                <span class="topbar-title">@Loc["Login_Subtitle"]</span>
+                <button class="logout-btn" @onclick="Logout">@Loc["Nav_Logout"]</button>
+            </header>
+            <main class="admin-content">
+                @Body
+            </main>
+        </div>
+    </div>
+}
+
+@if (sidebarOpen)
+{
+    <div class="sidebar-overlay" @onclick="ToggleSidebar"></div>
+}
+
+@code {
+    private bool sidebarOpen;
+
+    private string NavClass(string path)
+    {
+        var uri = Nav.ToBaseRelativePath(Nav.Uri);
+        var rel = "/" + uri;
+        if (path == "/admin")
+            return rel == "/admin" || rel == "/admin/" ? "active" : "";
+        return rel.StartsWith(path, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    }
+
+    private void ToggleSidebar() => sidebarOpen = !sidebarOpen;
+
+    private void Logout()
+    {
+        Auth.ClearAuth();
+        Nav.NavigateTo("/admin/login");
+    }
+}

@@ -1,0 +1,2636 @@
+@page "/chat/{ConversationId:long}"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@layout ChatLayout
+@using System.Globalization
+@using System.Text
+@using System.Text.Json
+@using ToledoVault.Shared.Helpers
+@using ToledoVault.Shared.Models
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject CryptoService Crypto
+@inject SignalRService SignalR
+@inject LocalStorageService Storage
+@* ReSharper disable  UnusedMember.Local *@
+@inject PreKeyReplenishmentService PreKeyReplenishment
+@inject IJSRuntime Js
+@inject MessageStoreService MessageStore
+@inject ThemeService Theme
+@inject MessageExpiryService MessageExpiry
+@inject IStringLocalizer<SharedResource> Loc
+@implements IAsyncDisposable
+
+<div class="chat-container">
+    <div class="chat-header">
+        @* FR-026: Offline indicator *@
+        @if (!SignalR.IsConnected)
+        {
+            <div class="offline-indicator" role="alert">
+                @Loc["Offline - messages will be sent when connected"]
+            </div>
+        }
+
+        <button class="back-link back-link-desktop-hidden" @onclick="NavigateBack" aria-label="Back to conversations">&larr;</button>
+        @{
+            var peer = _participants.FirstOrDefault(p => p.UserId != _localUserId);
+            var headerName = _conversationDetail?.Type == ConversationType.Group
+                ? (_conversationDetail.GroupName ?? "Group")
+                : (peer is not null ? DisplayNameHelper.Resolve(peer.DisplayName, peer.DisplayNameSecondary) : "Conversation");
+        }
+        <AvatarInitials DisplayName="@headerName" Size="38" />
+        <div>
+            <h3 class="chat-header-title">@headerName</h3>
+            @if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group)
+            {
+                <span class="chat-header-subtitle">@string.Format(Loc["{0} members"], _participants.Count)</span>
+            }
+            else if (_peerIsOnline)
+            {
+                <span class="chat-header-subtitle presence-online">@Loc["online"]</span>
+            }
+            else if (_peerLastSeen.HasValue)
+            {
+                <span class="chat-header-subtitle presence-text">@string.Format(Loc["last seen {0}"], _peerLastSeen.Value.ToLocalTime().ToString("MMM d, HH:mm"))</span>
+            }
+        </div>
+        @if (!string.IsNullOrEmpty(_typingIndicator))
+        {
+            <span class="chat-typing-indicator">@_typingIndicator</span>
+        }
+        <div style="margin-left:auto; display:flex; align-items:center; gap:4px;">
+            <button class="msg-action-btn" @onclick="ToggleSearch" title="@Loc["Search messages..."]">&#128269;</button>
+            <button class="msg-action-btn" @onclick="() => _showChatMenu = !_showChatMenu" title="More options">&#8942;</button>
+            @if (_showChatMenu)
+            {
+                <div class="context-menu-backdrop" @onclick="() => _showChatMenu = false"></div>
+                <div class="context-menu chat-header-menu">
+                    <button class="context-menu-item danger" @onclick="OpenClearChatDialog">
+                        <span class="context-menu-icon">&#128465;</span> @Loc["Clear chat"]
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (_showSearch)
+    {
+        <div class="chat-search-bar">
+            <input type="text" class="chat-search-input" placeholder="@Loc["Search messages..."]"
+                   @bind="_searchQuery" @bind:event="oninput" @bind:after="UpdateSearchResults"
+                   @onkeydown="HandleSearchKeyDown" />
+            @if (_searchResults.Count > 0)
+            {
+                <span class="chat-search-count">@(_searchIndex + 1) / @_searchResults.Count</span>
+            }
+            else if (!string.IsNullOrEmpty(_searchQuery))
+            {
+                <span class="chat-search-count">0 / 0</span>
+            }
+            <button class="msg-action-btn" @onclick="SearchPrevious" title="Previous match" disabled="@(_searchResults.Count == 0)">&#9650;</button>
+            <button class="msg-action-btn" @onclick="SearchNext" title="Next match" disabled="@(_searchResults.Count == 0)">&#9660;</button>
+            <button class="msg-action-btn" @onclick="CloseSearch" title="Close search">&#10005;</button>
+        </div>
+    }
+
+    @if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group && _showParticipants)
+    {
+        <div class="participants-panel">
+            <div class="participants-list">
+                @foreach (var p in _participants)
+                {
+                    <span class="participant-tag">
+                        @DisplayNameHelper.Resolve(p.DisplayName, p.DisplayNameSecondary)
+                        @if (p.Role == ParticipantRole.Admin)
+                        {
+                            <span class="participant-admin">Admin</span>
+                        }
+                    </span>
+                }
+            </div>
+        </div>
+    }
+
+    @if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group)
+    {
+        <div class="toggle-participants-row">
+            <button class="toggle-participants-btn"
+                    @onclick="() => _showParticipants = !_showParticipants">
+                @(_showParticipants ? "Hide participants" : "Show participants")
+            </button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-error mx-chat" role="alert">
+            @_errorMessage
+            <button class="btn-link" @onclick="RetryLoadMessages">@Loc["Retry"]</button>
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(_infoMessage))
+    {
+        <div class="alert alert-info mx-chat" role="status">
+            @_infoMessage
+        </div>
+    }
+
+    <div class="chat-messages" @ref="_messageContainer" role="log" aria-live="polite"
+         style="@_wallpaperStyle">
+        @if (_isLoading)
+        {
+            <SkeletonLoader Variant="SkeletonLoader.SkeletonVariant.ChatMessages" />
+        }
+        else if (_messages.Count == 0)
+        {
+            <div class="empty-state">
+                <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                </svg>
+                <h3>@Loc["No messages yet"]</h3>
+                <p>@Loc["Send the first message to start the conversation."]</p>
+            </div>
+        }
+        else
+        {
+            @if (_hasMoreMessages)
+            {
+                <div class="load-earlier-messages">
+                    <button class="btn-link" @onclick="LoadEarlierMessages" disabled="@_isLoadingMore">
+                        @if (_isLoadingMore)
+                        {
+                            <span>@Loc["Loading..."]</span>
+                        }
+                        else
+                        {
+                            <span>&#8593; @Loc["Load earlier messages"]</span>
+                        }
+                    </button>
+                </div>
+            }
+            @for (int i = 0; i < _messages.Count; i++)
+            {
+                var msg = _messages[i];
+                var prevMsg = i > 0 ? _messages[i - 1] : null;
+                var nextMsg = i < _messages.Count - 1 ? _messages[i + 1] : null;
+
+                bool showDateSeparator = prevMsg is null ||
+                    msg.Timestamp.LocalDateTime.Date != prevMsg.Timestamp.LocalDateTime.Date;
+
+                if (showDateSeparator)
+                {
+                    <DateSeparator Date="msg.Timestamp" />
+                }
+
+                @if (_firstUnreadMessageId.HasValue && msg.MessageId == _firstUnreadMessageId.Value)
+                {
+                    var unreadCount = _serverUnreadCount;
+                    <div class="unread-divider">
+                        <span>@string.Format(Loc["{0} new message(s)"], unreadCount)</span>
+                    </div>
+                }
+
+                bool isFirstInGroup = prevMsg is null || prevMsg.IsMine != msg.IsMine || showDateSeparator;
+                bool isLastInGroup = nextMsg is null || nextMsg.IsMine != msg.IsMine ||
+                    nextMsg.Timestamp.LocalDateTime.Date != msg.Timestamp.LocalDateTime.Date;
+
+                <MessageBubble @key="msg" MessageId="msg.MessageId"
+                               Text="@msg.Text"
+                               Timestamp="msg.Timestamp"
+                               IsMine="msg.IsMine"
+                               Status="msg.Status"
+                               ContentType="msg.ContentType"
+                               MediaDataUrl="@msg.MediaDataUrl"
+                               ThumbnailDataUrl="@msg.ThumbnailDataUrl"
+                               MimeType="@msg.MimeType"
+                               FileName="@msg.FileName"
+                               IsFirstInGroup="isFirstInGroup"
+                               IsLastInGroup="isLastInGroup"
+                               IsForwarded="msg.IsForwarded"
+                               IsSearchHighlight="IsSearchHighlighted(msg.MessageId)"
+                               OnImageClick="HandleImageClick"
+                               OnVideoClick="HandleVideoClick"
+                               OnReply="() => SetReplyTo(msg)"
+                               OnContextMenu="(pos) => ShowContextMenu(pos.X, pos.Y, msg)"
+                               ReplyToMessageId="msg.ReplyToMessageId"
+                               ReplyToSenderName="@msg.ReplyToSenderName"
+                               ReplyToText="@msg.ReplyToText"
+                               ReplyToMediaDataUrl="@msg.ReplyToMediaDataUrl"
+                               ReplyToThumbnailDataUrl="@msg.ReplyToThumbnailDataUrl"
+                               ReplyToContentType="msg.ReplyToContentType"
+                               AudioWaveform="msg.Waveform"
+                               FileSizeBytes="msg.MediaBytes?.Length ?? 0"
+                               OnReplyQuoteClick="ScrollToMessage"
+                               ReactionBadges="GetReactionBadges(msg.MessageId)"
+                               OnReactionToggle="(emoji) => ToggleReaction(msg.MessageId, emoji)"
+                               OnPdfThumbnailGenerated="(thumb) => { msg.ThumbnailDataUrl = thumb; }" />
+            }
+        }
+    </div>
+
+    <ScrollToBottom Visible="_showScrollButton" OnClick="ScrollToBottom" />
+    <MessageInput @ref="_messageInput" OnSend="HandleSend" OnTyping="HandleTyping"
+                  ReplyContext="@_replyContext" OnCancelReply="CancelReply"
+                  RateLimitCooldownEnd="@_rateLimitCooldownEnd"
+                  ConversationId="@ConversationId"
+                  OnQueuedOffline="HandleMessageQueuedOffline" />
+</div>
+
+<ImageLightbox IsVisible="_lightboxVisible"
+               ImageUrls="_lightboxImageUrls"
+               CurrentIndex="_lightboxIndex"
+               OnClose="CloseLightbox"
+               OnIndexChanged="SetLightboxIndex" />
+
+@if (_videoLightboxVisible && _videoLightboxUrl is not null)
+{
+    <div class="video-lightbox-overlay" @onclick="CloseVideoLightbox">
+        <button class="lightbox-close" @onclick="CloseVideoLightbox" aria-label="Close">&times;</button>
+        <div class="video-lightbox-content" @onclick:stopPropagation="true">
+            <video controls autoplay playsinline
+                   src="@_videoLightboxUrl"
+                   class="video-lightbox-player"
+                   aria-label="Video player">
+                Your browser does not support video playback.
+            </video>
+        </div>
+    </div>
+}
+
+@if (_showContextMenu && _contextMenuMessage is not null)
+{
+    <div class="context-menu-backdrop" @onclick="CloseContextMenu"></div>
+    <div class="context-menu @(_contextMenuFlipUp ? "flip-up" : "")" style="left: @(_contextMenuX)px; @(_contextMenuFlipUp ? $"bottom: {_contextMenuBottomY}px" : $"top: {_contextMenuY}px");">
+        <button class="context-menu-item" @onclick="CopyMessageText">
+            <span class="context-menu-icon">&#128203;</span> @Loc["Copy"]
+        </button>
+        <button class="context-menu-item" @onclick="ReplyFromContextMenu">
+            <span class="context-menu-icon">&#8617;</span> @Loc["Reply"]
+        </button>
+        @if (!string.IsNullOrEmpty(_contextMenuMessage.MediaDataUrl))
+        {
+            <button class="context-menu-item" @onclick="DownloadMediaFromContextMenu">
+                <span class="context-menu-icon">&#8595;</span> @Loc["Download"]
+            </button>
+        }
+        <button class="context-menu-item" @onclick="ForwardFromContextMenu">
+            <span class="context-menu-icon">&#10150;</span> @Loc["Forward"]
+        </button>
+        <button class="context-menu-item danger" @onclick="DeleteForMe">
+            <span class="context-menu-icon">&#128465;</span> @Loc["Delete for me"]
+        </button>
+        @if (_contextMenuMessage.IsMine)
+        {
+            <button class="context-menu-item danger" @onclick="DeleteForEveryone">
+                <span class="context-menu-icon">&#128465;</span> @Loc["Delete for everyone"]
+            </button>
+        }
+    </div>
+}
+
+@if (_showClearChatDialog)
+{
+    <div class="context-menu-backdrop" @onclick="() => _showClearChatDialog = false"></div>
+    <div class="clear-chat-dialog">
+        <h4>@Loc["Clear chat messages"]</h4>
+        <p>@Loc["Choose which messages to delete:"]</p>
+        <div class="clear-chat-options">
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromHours(1))">@Loc["Last hour"]</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromHours(24))">@Loc["Last 24 hours"]</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromDays(7))">@Loc["Last 7 days"]</button>
+            <button class="clear-chat-option" @onclick="() => ClearChat(TimeSpan.FromDays(30))">@Loc["Last 30 days"]</button>
+            <button class="clear-chat-option danger" @onclick="() => ClearChat(TimeSpan.Zero)">@Loc["All messages"]</button>
+        </div>
+        <button class="clear-chat-cancel" @onclick="() => _showClearChatDialog = false">@Loc["Cancel"]</button>
+    </div>
+}
+
+@if (_showForwardDialog && _forwardingMessage is not null)
+{
+    <div class="forward-dialog-overlay" @onclick="CloseForwardDialog">
+        <div class="forward-dialog" @onclick:stopPropagation="true">
+            <div class="forward-dialog-header">
+                <h4>@Loc["Forward message"]</h4>
+                <button class="msg-action-btn" @onclick="CloseForwardDialog">&#10005;</button>
+            </div>
+            <input type="text" class="forward-search-input" placeholder="@Loc["Search conversations..."]"
+                   @bind="_forwardSearchQuery" @bind:event="oninput" />
+            <div class="forward-conversation-list">
+                @if (_forwardConversations is null)
+                {
+                    <p style="padding:16px; color:var(--text-secondary);">Loading...</p>
+                }
+                else
+                {
+                    var filtered = string.IsNullOrWhiteSpace(_forwardSearchQuery)
+                        ? _forwardConversations
+                        : _forwardConversations.Where(c => c.DisplayName.Contains(_forwardSearchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
+                    @foreach (var conv in filtered)
+                    {
+                        if (conv.ConversationId == ConversationId) continue;
+                        <button class="forward-conversation-item" @onclick="() => ForwardToConversation(conv.ConversationId)">
+                            <AvatarInitials DisplayName="@conv.DisplayName" Size="36" />
+                            <span>@conv.DisplayName</span>
+                        </button>
+                    }
+                    @if (filtered.All(c => c.ConversationId == ConversationId))
+                    {
+                        <p style="padding:16px; color:var(--text-secondary);">No conversations found.</p>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@* ReSharper disable NotAccessedField.Local *@
+@code {
+    [Parameter]
+    public long ConversationId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Theme.OnThemeChanged += OnThemeChanged;
+    }
+
+    private bool _disposed;
+    private bool _needsScrollToUnread;
+    private bool _needsScrollToBottom;
+    private bool _initialScrollDone;
+    private bool _hasMoreMessages;
+    private bool _isLoadingMore;
+    private const int PageSize = 50;
+    private DotNetObjectReference<Chat>? _dotNetRef;
+
+    // Read tracking (watermark — sequence number based)
+    private long _lastReadSequenceNumber;
+    private System.Timers.Timer? _readDebounceTimer;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Set up scroll observer once
+        if (!_isLoading && _dotNetRef is null && _messages.Count > 0)
+        {
+            try
+            {
+                _dotNetRef = DotNetObjectReference.Create(this);
+                await Js.InvokeVoidAsync("mediaHelpers.observeScroll", ".chat-messages", _dotNetRef);
+            }
+            catch { /* ignored */ }
+        }
+
+        if (_needsScrollToUnread && _firstUnreadMessageId.HasValue)
+        {
+            _needsScrollToUnread = false;
+            _initialScrollDone = true;
+            try
+            {
+                await Js.InvokeVoidAsync("mediaHelpers.scrollToElement",
+                    $"[data-msg-id=\"{_firstUnreadMessageId.Value}\"]");
+            }
+            catch { /* ignored */ }
+        }
+        else if (_needsScrollToBottom)
+        {
+            _needsScrollToBottom = false;
+            var isFirstScroll = !_initialScrollDone;
+            _initialScrollDone = true;
+            try
+            {
+                await Js.InvokeVoidAsync("mediaHelpers.scrollToBottom", ".chat-messages", isFirstScroll);
+            }
+            catch { /* ignored */ }
+        }
+    }
+
+    private void OnThemeChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            await LoadWallpaperStyle();
+            StateHasChanged();
+        });
+    }
+
+    private readonly List<ChatMessage> _messages = [];
+    private ElementReference _messageContainer;
+    private MessageInput? _messageInput;
+    private string? _errorMessage;
+    private string? _infoMessage; // FR-032: Info messages (e.g., offline queue)
+    private DateTime? _rateLimitCooldownEnd; // FR-002a: Rate limit cooldown tracking
+    private bool _isLoading = true;
+    private string _wallpaperStyle = "";
+    private string? _typingIndicator;
+    private long _localDeviceId;
+    private long _localUserId;
+    private string? _accessToken;
+    private System.Timers.Timer? _typingTimer;
+    private ConversationDetailResponse? _conversationDetail;
+    private List<ParticipantResponse> _participants = [];
+    private bool _showParticipants;
+    private bool _showScrollButton;
+    private long? _firstUnreadMessageId;
+    private int _serverUnreadCount;
+    private bool _lightboxVisible;
+    private List<string> _lightboxImageUrls = [];
+    private int _lightboxIndex;
+    private bool _videoLightboxVisible;
+    private string? _videoLightboxUrl;
+    private ChatMessage? _replyingTo;
+
+    // Context menu state
+    private bool _showContextMenu;
+    private double _contextMenuX;
+    private double _contextMenuY;
+    private double _contextMenuBottomY;
+    private bool _contextMenuFlipUp;
+    private ChatMessage? _contextMenuMessage;
+
+    // Presence state
+    private bool _peerIsOnline;
+    private DateTimeOffset? _peerLastSeen;
+
+    // Clear chat / header menu state
+    private bool _showChatMenu;
+    private bool _showClearChatDialog;
+
+    // Search state
+    private bool _showSearch;
+    private string _searchQuery = "";
+    private List<ChatMessage> _searchResults = [];
+    private int _searchIndex;
+
+    // Forward state
+    private bool _showForwardDialog;
+    private ChatMessage? _forwardingMessage;
+    private string _forwardSearchQuery = "";
+    private List<ConversationListItemResponse>? _forwardConversations;
+
+    // Static pending forward — survives navigation between chat pages
+    internal static (string Text, ContentType ContentType, string? FileName, string? MimeType, string? MediaDataUrl, bool IsForwarded, byte[]? MediaBytes)? PendingForward;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Capture and clear any pending forward immediately to prevent stale forwards
+        var pendingFwd = PendingForward;
+        PendingForward = null;
+
+        try
+        {
+            // Retrieve local deviceId and token from storage
+            var deviceIdBytes = await Storage.GetAsync("local.deviceId");
+            var tokenBytes = await Storage.GetAsync("auth.token");
+
+            if (deviceIdBytes is null || tokenBytes is null)
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+
+            _localDeviceId = long.Parse(Encoding.UTF8.GetString(deviceIdBytes));
+            _accessToken = Encoding.UTF8.GetString(tokenBytes);
+
+            // Extract userId from JWT token
+            _localUserId = ExtractUserIdFromJwt(_accessToken);
+
+            // Load wallpaper
+            await LoadWallpaperStyle();
+
+            // Set auth header for HTTP requests
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
+
+            // Initialize message store
+            await MessageStore.InitializeAsync();
+
+            // Load conversation details and participants
+            await LoadConversationDetails();
+            await LoadParticipants();
+
+            // Connect to SignalR hub first (reuses existing connection from sidebar)
+            var hubUrl = Navigation.ToAbsoluteUri("/hubs/chat").ToString();
+            await SignalR.ConnectAsync(hubUrl, _accessToken);
+            try
+            {
+                await SignalR.RegisterDeviceAsync(_localDeviceId);
+            }
+            catch (Exception ex) when (ex.Message.Contains("Device not found"))
+            {
+                await Js.InvokeVoidAsync("toledoStorage.clearAuthData");
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+
+            // Subscribe to real-time events BEFORE loading messages
+            SignalR.OnMessageReceived += HandleMessageReceived;
+            SignalR.OnMessageDelivered += HandleMessageDelivered;
+            SignalR.OnMessageRead += HandleMessageRead;
+            SignalR.OnTypingIndicator += HandleTypingIndicator;
+            SignalR.OnParticipantAdded += HandleParticipantAdded;
+            SignalR.OnParticipantRemoved += HandleParticipantRemoved;
+            SignalR.OnUserOnline += HandleUserOnline;
+            SignalR.OnUserOffline += HandleUserOffline;
+            SignalR.OnReactionAdded += HandleReactionAdded;
+            SignalR.OnReactionRemoved += HandleReactionRemoved;
+            SignalR.OnMessageDeleted += HandleMessageDeleted;
+            SignalR.OnReconnected += HandleReconnected;
+            MessageExpiry.OnMessageExpired += HandleMessageExpired;
+
+            // Load cached messages from IndexedDB (instant display)
+            await LoadCachedMessages();
+
+            // Load pending messages
+            await LoadPendingMessages();
+
+            // Bulk-acknowledge delivery FIRST, then get unread count
+            // (unread = delivered but not read; must deliver before counting)
+            try { await Http.PostAsync($"/api/messages/acknowledge-all?deviceId={_localDeviceId}", null); }
+            catch { /* best effort */ }
+
+            // NOW get unread count + read pointer (after delivery ack, so newly delivered messages are counted)
+            try
+            {
+                var unreadResp = await Http.GetFromJsonAsync<JsonElement>(
+                    $"/api/messages/unread-count?deviceId={_localDeviceId}&conversationId={ConversationId}");
+                _serverUnreadCount = unreadResp.GetProperty("unreadCount").GetInt32();
+                // Initialize read pointer from server so we don't re-mark already-read messages
+                if (unreadResp.TryGetProperty("lastReadSequenceNumber", out var lrsn))
+                    _lastReadSequenceNumber = lrsn.GetInt64();
+            }
+            catch { _serverUnreadCount = 0; }
+
+            // Place the unread divider based on server unread count
+            // (covers both fresh pending messages and returning to a chat with cached messages)
+            if (_serverUnreadCount > 0 && _messages.Count > 0)
+            {
+                // Count incoming messages from the end to find where the divider goes
+                var incomingCount = 0;
+                for (var i = _messages.Count - 1; i >= 0; i--)
+                {
+                    if (!_messages[i].IsMine)
+                    {
+                        incomingCount++;
+                        if (incomingCount == _serverUnreadCount)
+                        {
+                            _firstUnreadMessageId = _messages[i].MessageId;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // FR-030: Flush messages already expired before app started
+            var expiredOnStartup = MessageExpiry.FlushExpired();
+            foreach (var expiredId in expiredOnStartup)
+            {
+                var msg = _messages.FirstOrDefault(m => m.MessageId == expiredId);
+                if (msg is null) continue;
+                _messages.Remove(msg);
+                try
+                {
+                    await MessageStore.DeleteMessageAsync(
+                        expiredId.ToString(CultureInfo.InvariantCulture));
+                }
+                catch { /* best effort */ }
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to initialize chat: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+
+            // Determine scroll position
+            if (_firstUnreadMessageId.HasValue)
+            {
+                _needsScrollToUnread = true;
+            }
+            else if (_messages.Count > 0)
+            {
+                _needsScrollToBottom = true;
+            }
+        }
+
+        // Check for pending forwarded message (use captured value from start of method)
+        if (pendingFwd is not null)
+        {
+            var fwd = pendingFwd.Value;
+            await SendForwardedMessage(fwd.Text, fwd.ContentType, fwd.FileName, fwd.MimeType, fwd.MediaDataUrl, fwd.MediaBytes);
+        }
+    }
+
+    private async Task LoadConversationDetails()
+    {
+        try
+        {
+            _conversationDetail = await Http.GetFromJsonAsync<ConversationDetailResponse>(
+                $"/api/conversations/{ConversationId}");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load conversation details: {ex.Message}";
+        }
+    }
+
+    private async Task LoadParticipants()
+    {
+        try
+        {
+            _participants = await Http.GetFromJsonAsync<List<ParticipantResponse>>(
+                $"/api/conversations/{ConversationId}/participants") ?? [];
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load participants: {ex.Message}";
+        }
+    }
+
+    private async Task LoadCachedMessages()
+    {
+        try
+        {
+            var conversationKey = ConversationId.ToString(CultureInfo.InvariantCulture);
+
+            // FR-012: Load only the most recent page initially for performance
+            var totalCount = await MessageStore.GetMessageCountAsync(conversationKey);
+            var offset = Math.Max(0, totalCount - PageSize);
+            var cached = await MessageStore.GetMessagesPagedAsync(conversationKey, offset, PageSize);
+            _hasMoreMessages = offset > 0;
+
+            foreach (var stored in cached)
+            {
+                // Skip if already in messages list (shouldn't happen, but guard against duplicates)
+                if (_messages.Any(m => m.MessageId.ToString(CultureInfo.InvariantCulture) == stored.MessageId))
+                    continue;
+
+                _messages.Add(new ChatMessage
+                {
+                    MessageId = long.TryParse(stored.MessageId, out var mid) ? mid : 0,
+                    SequenceNumber = stored.SequenceNumber,
+                    Text = stored.Text,
+                    Timestamp = DateTimeOffset.TryParse(stored.Timestamp, out var ts) ? ts : DateTimeOffset.UtcNow,
+                    IsMine = stored.IsMine,
+                    ContentType = (ContentType)stored.ContentType,
+                    FileName = stored.FileName,
+                    MimeType = stored.MimeType,
+                    MediaDataUrl = stored.MediaDataBase64 is not null
+                        ? await CreateMediaBlobUrlFromBase64(stored.MediaDataBase64, stored.MimeType, stored.FileName)
+                        : null,
+                    Status = (Shared.Enums.DeliveryStatus)stored.Status,
+                    ReplyToMessageId = long.TryParse(stored.ReplyToMessageId, out var rid) ? rid : null,
+                    ReplyToText = stored.ReplyToText,
+                    ReplyToSenderName = stored.ReplyToSenderName
+                });
+            }
+
+            // FR-030: Track loaded messages for disappearing timer expiry
+            foreach (var msg in _messages)
+                TrackForExpiry(msg);
+        }
+        catch
+        {
+            // Non-critical: will still load from server
+        }
+    }
+
+    /// <summary>
+    /// FR-012: Load the previous page of older messages when user scrolls to top.
+    /// </summary>
+    private async Task LoadEarlierMessages()
+    {
+        if (_isLoadingMore || !_hasMoreMessages) return;
+        _isLoadingMore = true;
+
+        try
+        {
+            var conversationKey = ConversationId.ToString(CultureInfo.InvariantCulture);
+            var totalCount = await MessageStore.GetMessageCountAsync(conversationKey);
+            var alreadyLoaded = _messages.Count;
+            var offset = Math.Max(0, totalCount - alreadyLoaded - PageSize);
+            var count = Math.Min(PageSize, totalCount - alreadyLoaded);
+
+            if (count <= 0) { _hasMoreMessages = false; return; }
+
+            var older = await MessageStore.GetMessagesPagedAsync(conversationKey, offset, count);
+            _hasMoreMessages = offset > 0;
+
+            var newMessages = new List<ChatMessage>();
+            foreach (var stored in older)
+            {
+                if (_messages.Any(m => m.MessageId.ToString(CultureInfo.InvariantCulture) == stored.MessageId))
+                    continue;
+
+                var chatMsg = new ChatMessage
+                {
+                    MessageId = long.TryParse(stored.MessageId, out var mid) ? mid : 0,
+                    SequenceNumber = stored.SequenceNumber,
+                    Text = stored.Text,
+                    Timestamp = DateTimeOffset.TryParse(stored.Timestamp, out var ts) ? ts : DateTimeOffset.UtcNow,
+                    IsMine = stored.IsMine,
+                    ContentType = (ContentType)stored.ContentType,
+                    FileName = stored.FileName,
+                    MimeType = stored.MimeType,
+                    MediaDataUrl = stored.MediaDataBase64 is not null
+                        ? await CreateMediaBlobUrlFromBase64(stored.MediaDataBase64, stored.MimeType, stored.FileName)
+                        : null,
+                    Status = (Shared.Enums.DeliveryStatus)stored.Status,
+                    ReplyToMessageId = long.TryParse(stored.ReplyToMessageId, out var rid) ? rid : null,
+                    ReplyToText = stored.ReplyToText,
+                    ReplyToSenderName = stored.ReplyToSenderName
+                };
+                TrackForExpiry(chatMsg);
+                newMessages.Add(chatMsg);
+            }
+
+            // Insert older messages at the beginning
+            _messages.InsertRange(0, newMessages);
+            StateHasChanged();
+        }
+        catch
+        {
+            // Non-critical
+        }
+        finally
+        {
+            _isLoadingMore = false;
+        }
+    }
+
+    private async Task<string?> CreateMediaBlobUrlFromBase64(string base64Data, string? storedMimeType, string? fileName)
+    {
+        try
+        {
+            var bytes = Convert.FromBase64String(base64Data);
+            var mimeType = storedMimeType
+                           ?? (fileName is not null ? GetMimeTypeFromFileName(fileName) : "application/octet-stream");
+            return await CreateMediaBlobUrl(mimeType, bytes);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string GetMimeTypeFromFileName(string fileName)
+    {
+        var ext = Path.GetExtension(fileName).ToLowerInvariant();
+        return ext switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".mp4" => "video/mp4",
+            ".webm" => "video/webm",
+            ".mp3" => "audio/mpeg",
+            ".ogg" => "audio/ogg",
+            ".wav" => "audio/wav",
+            ".pdf" => "application/pdf",
+            _ => "application/octet-stream"
+        };
+    }
+
+    private async Task LoadPendingMessages()
+    {
+        try
+        {
+            var envelopes = await Http.GetFromJsonAsync<List<MessageEnvelope>>(
+                $"/api/messages/pending?deviceId={_localDeviceId}");
+
+            if (envelopes is null || envelopes.Count == 0)
+                return;
+
+            // Process ALL pending messages (not just current conversation)
+            foreach (var envelope in envelopes)
+            {
+                if (envelope.ConversationId == ConversationId)
+                {
+                    // Current conversation — decrypt and display
+                    if (_messages.Any(m => m.MessageId == envelope.MessageId))
+                        continue;
+
+                    ChatMessage chatMsg;
+                    try
+                    {
+                        chatMsg = await DecryptEnvelopeToChatMessage(envelope, isMine: false);
+                    }
+                    catch (Exception)
+                    {
+                        chatMsg = new ChatMessage
+                        {
+                            MessageId = envelope.MessageId,
+                            SequenceNumber = envelope.SequenceNumber,
+                            Text = "\ud83d\udd12 Waiting for encryption keys...",
+                            Timestamp = envelope.ServerTimestamp,
+                            IsMine = false,
+                            ContentType = ContentType.Text,
+                            Status = Shared.Enums.DeliveryStatus.Delivered
+                        };
+                    }
+
+                    _messages.Add(chatMsg);
+
+                    await PersistMessageAsync(chatMsg);
+                    if (chatMsg.MediaBytes is not null)
+                        chatMsg.MediaBytes = null;
+                }
+                else
+                {
+                    // Other conversation — decrypt to advance ratchet, persist to IndexedDB
+                    try
+                    {
+                        var otherMsg = await DecryptEnvelopeToChatMessage(envelope, isMine: false);
+                        await MessageStore.StoreMessageAsync(new StoredMessage
+                        {
+                            MessageId = otherMsg.MessageId.ToString(CultureInfo.InvariantCulture),
+                            ConversationId = envelope.ConversationId.ToString(CultureInfo.InvariantCulture),
+                            Text = otherMsg.Text,
+                            Timestamp = otherMsg.Timestamp.ToString("O"),
+                            IsMine = false,
+                            ContentType = (int)otherMsg.ContentType,
+                            FileName = otherMsg.FileName,
+                            MediaDataBase64 = otherMsg.MediaBytes is not null ? Convert.ToBase64String(otherMsg.MediaBytes) : null,
+                            MimeType = otherMsg.MimeType,
+                            Status = (int)Shared.Enums.DeliveryStatus.Delivered
+                        });
+                    }
+                    catch { /* decryption failed — still acknowledge via bulk */ }
+                }
+            }
+            // Individual acks removed — bulk acknowledge-all handles it
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load messages: {ex.Message}";
+        }
+    }
+
+    // FR-025: Retry button for message loading failure
+    private async Task RetryLoadMessages()
+    {
+        _errorMessage = null;
+        await LoadCachedMessages();
+    }
+
+    private async Task PersistMessageAsync(ChatMessage chatMsg)
+    {
+        try
+        {
+            await MessageStore.StoreMessageAsync(new StoredMessage
+            {
+                MessageId = chatMsg.MessageId.ToString(CultureInfo.InvariantCulture),
+                SequenceNumber = chatMsg.SequenceNumber,
+                ConversationId = ConversationId.ToString(CultureInfo.InvariantCulture),
+                Text = chatMsg.Text,
+                Timestamp = chatMsg.Timestamp.ToString("O"),
+                IsMine = chatMsg.IsMine,
+                ContentType = (int)chatMsg.ContentType,
+                FileName = chatMsg.FileName,
+                MediaDataBase64 = chatMsg.MediaBytes is not null ? Convert.ToBase64String(chatMsg.MediaBytes) : null,
+                MimeType = chatMsg.MimeType,
+                Status = (int)chatMsg.Status,
+                ReplyToMessageId = chatMsg.ReplyToMessageId?.ToString(),
+                ReplyToText = chatMsg.ReplyToText,
+                ReplyToSenderName = chatMsg.ReplyToSenderName
+            });
+        }
+        catch
+        {
+            // Non-critical: message is still in memory
+        }
+    }
+
+    // ReSharper disable once AsyncVoidMethod
+    private async void HandleMessageReceived(MessageEnvelope envelope)
+    {
+        if (_disposed) return;
+        if (envelope.ConversationId != ConversationId)
+            return;
+
+        try
+        {
+            await InvokeAsync(async () =>
+            {
+                // Skip duplicates
+                if (_messages.Any(m => m.MessageId == envelope.MessageId))
+                    return;
+
+                ChatMessage chatMsg;
+                try
+                {
+                    chatMsg = await DecryptEnvelopeToChatMessage(envelope, isMine: false);
+                }
+                catch
+                {
+                    chatMsg = new ChatMessage
+                    {
+                        MessageId = envelope.MessageId,
+                        Text = "\ud83d\udd12 Waiting for encryption keys...",
+                        Timestamp = envelope.ServerTimestamp,
+                        IsMine = false,
+                        ContentType = ContentType.Text,
+                        Status = Shared.Enums.DeliveryStatus.Delivered
+                    };
+                }
+
+                _messages.Add(chatMsg);
+                TrackForExpiry(chatMsg);
+                await PersistMessageAsync(chatMsg);
+
+                // Release media bytes after persistence to free memory
+                if (chatMsg.MediaBytes is not null)
+                {
+                    chatMsg.MediaBytes = null;
+                }
+
+                _needsScrollToBottom = true;
+                StateHasChanged();
+            });
+
+            // Always acknowledge delivery — even if decryption failed.
+            await SignalR.AcknowledgeDeliveryAsync(envelope.MessageId);
+        }
+        catch
+        {
+            // Prevent async void from crashing the WASM runtime
+        }
+    }
+
+    // ReSharper disable once AsyncVoidMethod
+    private async void HandleMessageDelivered(long messageId)
+    {
+        if (_disposed) return;
+        try { await InvokeAsync(async () =>
+        {
+            var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
+            if (msg is not null)
+            {
+                msg.Status = Shared.Enums.DeliveryStatus.Delivered;
+                try { await MessageStore.UpdateMessageStatusAsync(messageId.ToString(CultureInfo.InvariantCulture), (int)msg.Status); }
+                catch
+                {
+                    // ignored
+                }
+
+                StateHasChanged();
+            }
+        });
+        } catch { /* prevent async void crash */ }
+    }
+
+    // ReSharper disable  AsyncVoidMethod
+    private async void HandleMessageRead(long messageId)
+    {
+        if (_disposed) return;
+        try { await InvokeAsync(async () =>
+        {
+            var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
+            if (msg is not null)
+            {
+                msg.Status = Shared.Enums.DeliveryStatus.Read;
+                try { await MessageStore.UpdateMessageStatusAsync(messageId.ToString(CultureInfo.InvariantCulture), (int)msg.Status); }
+                catch
+                {
+                    // ignored
+                }
+
+                StateHasChanged();
+            }
+        });
+        } catch { /* prevent async void crash */ }
+    }
+
+    private async void HandleTypingIndicator(long conversationId, string displayName)
+    {
+        if (_disposed) return;
+        try {
+        if (conversationId != ConversationId)
+            return;
+
+        await InvokeAsync(() =>
+        {
+            _typingIndicator = string.Format(Loc["{0} is typing..."], displayName);
+            StateHasChanged();
+        });
+
+        // Clear typing indicator after 3 seconds
+        _typingTimer?.Stop();
+        _typingTimer?.Dispose();
+        _typingTimer = new System.Timers.Timer(3000);
+        _typingTimer.AutoReset = false;
+        _typingTimer.Elapsed += async (_, _) =>
+        {
+            await InvokeAsync(() =>
+            {
+                _typingIndicator = null;
+                StateHasChanged();
+            });
+        };
+        _typingTimer.Start();
+        } catch { /* prevent async void crash */ }
+    }
+
+    private async void HandleParticipantAdded(long conversationId, long userId, string displayName)
+    {
+        if (_disposed) return;
+        try {
+        if (conversationId != ConversationId)
+            return;
+
+        await InvokeAsync(() =>
+        {
+            // Add to the local participant list if not already present
+            if (_participants.All(p => p.UserId != userId))
+            {
+                _participants.Add(new ParticipantResponse(userId, displayName, ParticipantRole.Member));
+            }
+            StateHasChanged();
+        });
+        } catch { /* prevent async void crash */ }
+    }
+
+    private async void HandleParticipantRemoved(long conversationId, long userId)
+    {
+        if (_disposed) return;
+        try {
+        if (conversationId != ConversationId)
+            return;
+
+        await InvokeAsync(() =>
+        {
+            _participants.RemoveAll(p => p.UserId == userId);
+            StateHasChanged();
+        });
+        } catch { /* prevent async void crash */ }
+    }
+
+    private async void HandleUserOnline(long userId)
+    {
+        if (_disposed) return;
+        try {
+        var peer = _participants.FirstOrDefault(p => p.UserId != _localUserId);
+        if (peer is not null && peer.UserId == userId)
+        {
+            await InvokeAsync(() =>
+            {
+                _peerIsOnline = true;
+                StateHasChanged();
+            });
+        }
+        } catch { /* prevent async void crash */ }
+    }
+
+    private async void HandleUserOffline(long userId, DateTimeOffset lastSeen)
+    {
+        if (_disposed) return;
+        try {
+        var peer = _participants.FirstOrDefault(p => p.UserId != _localUserId);
+        if (peer is not null && peer.UserId == userId)
+        {
+            await InvokeAsync(() =>
+            {
+                _peerIsOnline = false;
+                _peerLastSeen = lastSeen;
+                StateHasChanged();
+            });
+        }
+        } catch { /* prevent async void crash */ }
+    }
+
+    private async void HandleReactionAdded(long messageId, long userId, string displayName, string emoji)
+    {
+        if (_disposed) return;
+        try {
+        await InvokeAsync(() =>
+        {
+            if (!_messageReactions.TryGetValue(messageId, out var reactions))
+            {
+                reactions = [];
+                _messageReactions[messageId] = reactions;
+            }
+
+            if (!reactions.Any(r => r.UserId == userId && r.Emoji == emoji))
+            {
+                reactions.Add((userId, emoji, displayName));
+            }
+
+            StateHasChanged();
+        });
+        } catch { /* prevent async void crash */ }
+    }
+
+    private async void HandleReactionRemoved(long messageId, long userId, string emoji)
+    {
+        if (_disposed) return;
+        try {
+        await InvokeAsync(() =>
+        {
+            if (_messageReactions.TryGetValue(messageId, out var reactions))
+            {
+                reactions.RemoveAll(r => r.UserId == userId && r.Emoji == emoji);
+            }
+
+            StateHasChanged();
+        });
+        } catch { /* prevent async void crash */ }
+    }
+
+    private async Task HandleSend(MessageInput.ChatInputMessage input)
+    {
+        var hasMedia = input.HasMedia;
+
+        var contentType = input.ContentType;
+
+        string? mediaDataUrl = null;
+        if (hasMedia && input.MediaBytes is not null)
+        {
+            try
+            {
+                var blobMime = input.MimeType ?? GetDefaultMimeType(contentType);
+                mediaDataUrl = await CreateMediaBlobUrl(blobMime, input.MediaBytes);
+            }
+            // ReSharper disable EmptyGeneralCatchClause
+            catch (Exception)
+            {
+            }
+
+            // Fallback to data URL if blob URL creation failed
+            if (mediaDataUrl is null)
+            {
+                var fallbackMime = input.MimeType ?? GetDefaultMimeType(contentType);
+                var base64 = Convert.ToBase64String(input.MediaBytes);
+                mediaDataUrl = $"data:{fallbackMime};base64,{base64}";
+            }
+        }
+
+        var tempMessage = new ChatMessage
+        {
+            MessageId = 0,
+            Text = input.Text,
+            Timestamp = DateTimeOffset.UtcNow,
+            IsMine = true,
+            ContentType = contentType,
+            FileName = input.FileName,
+            MediaDataUrl = mediaDataUrl,
+            MediaBytes = hasMedia ? input.MediaBytes : null,
+            MimeType = hasMedia ? input.MimeType : null,
+            Status = Shared.Enums.DeliveryStatus.Sending,
+            Waveform = input.Waveform,
+            ReplyToMessageId = _replyingTo?.MessageId,
+            ReplyToSenderName = _replyingTo is not null ? (_replyingTo.IsMine ? "You" : GetSenderDisplayName(_replyingTo)) : null,
+            ReplyToText = _replyingTo is not null ? FormatReplyText(_replyingTo) : null,
+            ReplyToMediaDataUrl = _replyingTo?.MediaDataUrl,
+            ReplyToThumbnailDataUrl = _replyingTo?.ThumbnailDataUrl,
+            ReplyToContentType = _replyingTo?.ContentType ?? ContentType.Text
+        };
+        CancelReply();
+        _messages.Add(tempMessage);
+        _needsScrollToBottom = true;
+        StateHasChanged();
+
+        // FR-032: If disconnected, queue the message for later delivery
+        if (!SignalR.IsConnected)
+        {
+            try
+            {
+                await Js.InvokeVoidAsync("toledoMessageStore.addToOfflineQueue", new
+                {
+                    conversationId = ConversationId.ToString(CultureInfo.InvariantCulture),
+                    text = input.Text,
+                    contentType = contentType.ToString(),
+                    fileName = input.FileName,
+                    mimeType = input.MimeType,
+                    mediaBase64 = input.MediaBytes is not null ? Convert.ToBase64String(input.MediaBytes) : null,
+                    sendAsHd = input.SendAsHd,
+                    replyToMessageId = input.ReplyToMessageId
+                });
+                tempMessage.Status = Shared.Enums.DeliveryStatus.Sending; // Show as pending
+                await PersistMessageAsync(tempMessage);
+                _messageInput?.ClearInputAfterSend();
+                await HandleMessageQueuedOffline();
+            }
+            catch (Exception ex) when (ex.Message.Contains("OFFLINE_QUEUE_FULL"))
+            {
+                _errorMessage = "Offline queue is full. Please wait until you are back online.";
+            }
+            catch
+            {
+                _errorMessage = "Failed to queue message for offline delivery.";
+            }
+            StateHasChanged();
+            return;
+        }
+
+        try
+        {
+            // When there's media, we send the media as the encrypted payload.
+            // The text caption is sent alongside as plain metadata (not encrypted separately).
+            // When there's text only, we send a normal text message.
+            if (hasMedia)
+            {
+                // Update input content type for SendMediaToRecipients
+                input.ContentType = contentType;
+                await SendMediaToRecipients(input, tempMessage);
+            }
+            else
+            {
+                await SendTextToRecipients(input.Text, tempMessage, input.ReplyToMessageId);
+            }
+
+            // Persist sent message to IndexedDB
+            await PersistMessageAsync(tempMessage);
+
+            // Release media bytes to free memory after persistence
+            if (hasMedia)
+            {
+                tempMessage.MediaBytes = null;
+            }
+
+            // FR-046: Clear input after successful send (preserves file on failure)
+            _messageInput?.ClearInputAfterSend();
+        }
+        catch (Exception ex)
+        {
+            // FR-002a: Handle rate limit errors with countdown
+            if (ex.Message.Contains("RATE_LIMIT_EXCEEDED"))
+            {
+                _rateLimitCooldownEnd = DateTime.UtcNow.AddSeconds(60);
+                _errorMessage = "You are sending messages too quickly. Please wait before sending more.";
+            }
+            else
+            {
+                _errorMessage = $"Failed to send message: {ex.Message}";
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task SendTextToRecipients(string text, ChatMessage? tempMessage, long? replyToMessageId = null)
+    {
+        if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group)
+        {
+            var requests = await Crypto.EncryptGroupMessageAsync(ConversationId, _localUserId, _localDeviceId, text);
+
+            SendMessageResult? lastResult = null;
+            foreach (var request in requests)
+            {
+                lastResult = await SignalR.SendMessageAsync(request);
+            }
+
+            if (lastResult is not null)
+            {
+                tempMessage?.MessageId = lastResult.MessageId;
+                tempMessage?.SequenceNumber = lastResult.SequenceNumber;
+                tempMessage?.Timestamp = lastResult.ServerTimestamp;
+                tempMessage?.Status = Shared.Enums.DeliveryStatus.Sent;
+            }
+        }
+        else
+        {
+            var recipient = _participants.FirstOrDefault(p => p.UserId != _localUserId);
+            if (recipient is null)
+            {
+                _errorMessage = "Could not determine the recipient.";
+                return;
+            }
+
+            var deviceCiphertexts = await Crypto.EncryptMessageForAllDevicesAsync(recipient.UserId, text);
+
+            SendMessageResult? lastResult = null;
+            foreach (var (deviceId, ciphertextBase64, messageType) in deviceCiphertexts)
+            {
+                var request = new SendMessageRequest
+                {
+                    ConversationId = ConversationId,
+                    SenderDeviceId = _localDeviceId,
+                    RecipientDeviceId = deviceId,
+                    Ciphertext = ciphertextBase64,
+                    MessageType = messageType,
+                    ContentType = ContentType.Text,
+                    ReplyToMessageId = replyToMessageId
+                };
+
+                lastResult = await SignalR.SendMessageAsync(request);
+            }
+
+            if (lastResult is not null)
+            {
+                tempMessage?.MessageId = lastResult.MessageId;
+                tempMessage?.SequenceNumber = lastResult.SequenceNumber;
+                tempMessage?.Timestamp = lastResult.ServerTimestamp;
+                tempMessage?.Status = Shared.Enums.DeliveryStatus.Sent;
+            }
+        }
+    }
+
+    private async Task SendMediaToRecipients(MessageInput.ChatInputMessage input, ChatMessage tempMessage)
+    {
+        // Generate thumbnail for images and videos
+        string? thumbnailBase64 = null;
+        if (input.ContentType == ContentType.Image)
+        {
+            try
+            {
+                // generateThumbnail returns a base64 string (not byte[])
+                var thumbnailBase64Result = await Js.InvokeAsync<string>("mediaHelpers.generateThumbnail",
+                    input.MediaBytes, input.MimeType, 200, 0.6);
+                if (!string.IsNullOrEmpty(thumbnailBase64Result))
+                {
+                    thumbnailBase64 = thumbnailBase64Result;
+                }
+            }
+            catch (Exception)
+            {
+            }
+        }
+        else if (input.ContentType == ContentType.Video)
+        {
+            try
+            {
+                var thumbnailBase64Result = await Js.InvokeAsync<string>("mediaHelpers.captureVideoFrame",
+                    input.MediaBytes, input.MimeType ?? "video/mp4", 320, 0.75);
+                if (!string.IsNullOrEmpty(thumbnailBase64Result))
+                {
+                    thumbnailBase64 = thumbnailBase64Result;
+                }
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        // Set thumbnail blob URL on the sender's temp message for immediate display
+        if (!string.IsNullOrEmpty(thumbnailBase64))
+        {
+            try
+            {
+                var thumbBytes = Convert.FromBase64String(thumbnailBase64);
+                tempMessage.ThumbnailDataUrl = await CreateMediaBlobUrl("image/jpeg", thumbBytes);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        // Create MediaPayload with all metadata bundled inside
+        var mediaPayload = new MediaPayload
+        {
+            FileName = MediaPayload.SanitizeFileName(input.FileName),
+            MimeType = input.MimeType ?? "application/octet-stream",
+            Caption = input.Text,
+            Thumbnail = thumbnailBase64,
+            Data = Convert.ToBase64String(input.MediaBytes!),
+            Waveform = input.Waveform
+        };
+
+        // Serialize payload to bytes
+        var payloadBytes = MediaPayload.Serialize(mediaPayload);
+
+        if (_conversationDetail is not null && _conversationDetail.Type == ConversationType.Group)
+        {
+            var requests = await Crypto.EncryptGroupBytesAsync(
+                ConversationId, _localUserId, _localDeviceId,
+                payloadBytes, input.ContentType, null, null);
+
+            SendMessageResult? lastResult = null;
+            foreach (var request in requests)
+            {
+                lastResult = await SignalR.SendMessageAsync(request);
+            }
+
+            if (lastResult is not null)
+            {
+                tempMessage.MessageId = lastResult.MessageId;
+                tempMessage.SequenceNumber = lastResult.SequenceNumber;
+                tempMessage.Timestamp = lastResult.ServerTimestamp;
+                tempMessage.Status = Shared.Enums.DeliveryStatus.Sent;
+            }
+        }
+        else
+        {
+            var recipient = _participants.FirstOrDefault(p => p.UserId != _localUserId);
+            if (recipient is null)
+            {
+                _errorMessage = "Could not determine the recipient.";
+                return;
+            }
+
+            var deviceCiphertexts = await Crypto.EncryptBytesForAllDevicesAsync(recipient.UserId, payloadBytes);
+
+            SendMessageResult? lastResult = null;
+            foreach (var (deviceId, ciphertextBase64, messageType) in deviceCiphertexts)
+            {
+                var request = new SendMessageRequest
+                {
+                    ConversationId = ConversationId,
+                    SenderDeviceId = _localDeviceId,
+                    RecipientDeviceId = deviceId,
+                    Ciphertext = ciphertextBase64,
+                    MessageType = messageType,
+                    ContentType = input.ContentType,
+                    FileName = null, // FileName now inside encrypted payload
+                    MimeType = null, // MimeType now inside encrypted payload
+                    ReplyToMessageId = input.ReplyToMessageId
+                };
+
+                lastResult = await SignalR.SendMessageAsync(request);
+            }
+
+            if (lastResult is not null)
+            {
+                tempMessage.MessageId = lastResult.MessageId;
+                tempMessage.SequenceNumber = lastResult.SequenceNumber;
+                tempMessage.Timestamp = lastResult.ServerTimestamp;
+                tempMessage.Status = Shared.Enums.DeliveryStatus.Sent;
+            }
+        }
+    }
+
+    private async Task<ChatMessage> DecryptEnvelopeToChatMessage(MessageEnvelope envelope, bool isMine)
+    {
+        // Resolve reply info from local messages
+        string? replyToText = null;
+        string? replyToSenderName = null;
+        string? replyToMediaDataUrl = null;
+        string? replyToThumbnailDataUrl = null;
+        ContentType replyToContentType = ContentType.Text;
+        if (envelope.ReplyToMessageId.HasValue)
+        {
+            var replyMsg = _messages.FirstOrDefault(m => m.MessageId == envelope.ReplyToMessageId.Value);
+            if (replyMsg is not null)
+            {
+                replyToSenderName = replyMsg.IsMine ? "You" : GetSenderDisplayName(replyMsg);
+                replyToText = FormatReplyText(replyMsg);
+                replyToMediaDataUrl = replyMsg.MediaDataUrl;
+                replyToThumbnailDataUrl = replyMsg.ThumbnailDataUrl;
+                replyToContentType = replyMsg.ContentType;
+            }
+            else
+            {
+                replyToSenderName = "...";
+                replyToText = "...";
+            }
+        }
+
+        if (envelope.ContentType is ContentType.Image or ContentType.Audio or ContentType.Video or ContentType.File)
+        {
+            // Decrypt to bytes and deserialize as MediaPayload
+            var payloadBytes = await Crypto.DecryptToBytesAsync(
+                envelope.SenderDeviceId, envelope.Ciphertext, envelope.MessageType);
+            var mediaPayload = MediaPayload.Deserialize(payloadBytes);
+
+            // Decode media data from base64
+            var mediaData = Convert.FromBase64String(mediaPayload.Data);
+
+            // Get MIME type from payload or fall back to envelope/default
+            var mimeType = !string.IsNullOrEmpty(mediaPayload.MimeType)
+                ? mediaPayload.MimeType
+                : (envelope.MimeType ?? GetDefaultMimeType(envelope.ContentType));
+
+            // Create blob URL for full media
+            var blobUrl = await CreateMediaBlobUrl(mimeType, mediaData);
+
+            // Create thumbnail blob URL if available
+            string? thumbnailBlobUrl = null;
+            if (!string.IsNullOrEmpty(mediaPayload.Thumbnail))
+            {
+                try
+                {
+                    var thumbnailData = Convert.FromBase64String(mediaPayload.Thumbnail);
+                    thumbnailBlobUrl = await CreateMediaBlobUrl("image/jpeg", thumbnailData);
+                }
+                catch (Exception)
+                {
+                }
+            }
+
+            // For audio: use waveform from payload, or analyze the audio bytes
+            int[]? waveform = mediaPayload.Waveform;
+            if (waveform is null && envelope.ContentType == ContentType.Audio)
+            {
+                try
+                {
+                    waveform = await Js.InvokeAsync<int[]?>("mediaHelpers.analyzeAudioWaveform",
+                        mediaData, mimeType, 64);
+                }
+                catch { /* fallback to null — MessageBubble will use static bars */ }
+            }
+
+            return new ChatMessage
+            {
+                MessageId = envelope.MessageId,
+                SequenceNumber = envelope.SequenceNumber,
+                Text = mediaPayload.Caption ?? "",
+                Timestamp = envelope.ServerTimestamp,
+                IsMine = isMine,
+                ContentType = envelope.ContentType,
+                FileName = MediaPayload.SanitizeFileName(mediaPayload.FileName),
+                MediaDataUrl = blobUrl,
+                ThumbnailDataUrl = thumbnailBlobUrl,
+                MediaBytes = mediaData, // Keep for IndexedDB persistence - will be nulled after persist
+                MimeType = mimeType,
+                Status = Shared.Enums.DeliveryStatus.Delivered,
+                Waveform = waveform,
+                ReplyToMessageId = envelope.ReplyToMessageId,
+                ReplyToText = replyToText,
+                ReplyToSenderName = replyToSenderName,
+                ReplyToMediaDataUrl = replyToMediaDataUrl,
+                ReplyToThumbnailDataUrl = replyToThumbnailDataUrl,
+                ReplyToContentType = replyToContentType
+            };
+        }
+        else
+        {
+            // Decrypt as bytes first so we can detect misrouted media payloads
+            var decryptedBytes = await Crypto.DecryptToBytesAsync(
+                envelope.SenderDeviceId, envelope.Ciphertext, envelope.MessageType);
+
+            // Defensive check: if ContentType came through as Text but the decrypted content
+            // is actually a MediaPayload JSON (e.g., due to enum serialization issues over SignalR),
+            // detect and handle it as media instead of displaying raw JSON to the user.
+            if (decryptedBytes.Length > 5 && decryptedBytes[0] == (byte)'{')
+            {
+                try
+                {
+                    var possiblePayload = MediaPayload.Deserialize(decryptedBytes);
+                    if (!string.IsNullOrEmpty(possiblePayload.Data) && !string.IsNullOrEmpty(possiblePayload.MimeType))
+                    {
+                        var mediaData = Convert.FromBase64String(possiblePayload.Data);
+                        var mimeType = possiblePayload.MimeType;
+                        var blobUrl = await CreateMediaBlobUrl(mimeType, mediaData);
+
+                        string? thumbnailBlobUrl = null;
+                        if (!string.IsNullOrEmpty(possiblePayload.Thumbnail))
+                        {
+                            try
+                            {
+                                var thumbnailData = Convert.FromBase64String(possiblePayload.Thumbnail);
+                                thumbnailBlobUrl = await CreateMediaBlobUrl("image/jpeg", thumbnailData);
+                            }
+                            catch { /* ignored */ }
+                        }
+
+                        // Infer content type from MIME type
+                        var inferredContentType = mimeType.ToLowerInvariant() switch
+                        {
+                            var m when m.StartsWith("image/") => ContentType.Image,
+                            var m when m.StartsWith("video/") => ContentType.Video,
+                            var m when m.StartsWith("audio/") => ContentType.Audio,
+                            _ => ContentType.File
+                        };
+
+                        return new ChatMessage
+                        {
+                            MessageId = envelope.MessageId,
+                            Text = possiblePayload.Caption ?? "",
+                            Timestamp = envelope.ServerTimestamp,
+                            IsMine = isMine,
+                            ContentType = inferredContentType,
+                            FileName = MediaPayload.SanitizeFileName(possiblePayload.FileName),
+                            MediaDataUrl = blobUrl,
+                            ThumbnailDataUrl = thumbnailBlobUrl,
+                            MediaBytes = mediaData,
+                            MimeType = mimeType,
+                            Waveform = possiblePayload.Waveform,
+                            Status = Shared.Enums.DeliveryStatus.Delivered,
+                            ReplyToMessageId = envelope.ReplyToMessageId,
+                            ReplyToText = replyToText,
+                            ReplyToSenderName = replyToSenderName
+                        };
+                    }
+                }
+                catch
+                {
+                    // Not a MediaPayload — fall through to normal text handling
+                }
+            }
+
+            var plaintext = Encoding.UTF8.GetString(decryptedBytes);
+            return new ChatMessage
+            {
+                MessageId = envelope.MessageId,
+                SequenceNumber = envelope.SequenceNumber,
+                Text = plaintext,
+                Timestamp = envelope.ServerTimestamp,
+                IsMine = isMine,
+                ContentType = ContentType.Text,
+                Status = Shared.Enums.DeliveryStatus.Delivered,
+                ReplyToMessageId = envelope.ReplyToMessageId,
+                ReplyToText = replyToText,
+                ReplyToSenderName = replyToSenderName
+            };
+        }
+    }
+
+    private static string GetDefaultMimeType(ContentType contentType)
+    {
+        return contentType switch
+        {
+            ContentType.Image => "image/png",
+            ContentType.Audio => "audio/webm",
+            ContentType.Video => "video/mp4",
+            _ => "application/octet-stream"
+        };
+    }
+
+    private readonly List<string> _blobUrls = [];
+
+    private async Task<string> CreateMediaBlobUrl(string? mimeType, byte[] data)
+    {
+        var url = await Js.InvokeAsync<string>("mediaHelpers.createObjectUrl", data, mimeType);
+        _blobUrls.Add(url);
+        return url;
+    }
+
+    private async Task RevokeBlobUrls()
+    {
+        foreach (var url in _blobUrls)
+        {
+            try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", url); }
+            catch
+            {
+                // ignored
+            }
+        }
+        _blobUrls.Clear();
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("mediaHelpers.scrollToBottom", ".chat-messages");
+            _showScrollButton = false;
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    [JSInvokable]
+    public void OnScrollPositionChanged(bool isNearBottom)
+    {
+        _showScrollButton = !isNearBottom;
+        InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public void OnVisibleMessageChanged(string messageIdStr)
+    {
+        if (!long.TryParse(messageIdStr, out var messageId))
+            return;
+
+        var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
+        if (msg is null)
+            return;
+
+        // Use the sequence number of the visible message (works for both mine and incoming)
+        // All messages up to this sequence number have been "seen" by the user
+        var seqNum = msg.SequenceNumber;
+
+        // If the visible message is ours, also check earlier incoming messages
+        if (msg.IsMine)
+        {
+            var visibleIndex = _messages.IndexOf(msg);
+            for (var i = visibleIndex; i >= 0; i--)
+            {
+                if (!_messages[i].IsMine && _messages[i].SequenceNumber > 0)
+                {
+                    seqNum = Math.Max(seqNum, _messages[i].SequenceNumber);
+                    break;
+                }
+            }
+        }
+
+        if (seqNum <= 0 || seqNum <= _lastReadSequenceNumber)
+            return;
+
+        _lastReadSequenceNumber = seqNum;
+        ScheduleReadAck();
+    }
+
+    private void ScheduleReadAck()
+    {
+        // Debounce: send read ack 500ms after the last scroll stop
+        _readDebounceTimer?.Stop();
+        _readDebounceTimer?.Dispose();
+        _readDebounceTimer = new System.Timers.Timer(500);
+        _readDebounceTimer.AutoReset = false;
+        _readDebounceTimer.Elapsed += async (_, _) =>
+        {
+            await SendReadAck();
+        };
+        _readDebounceTimer.Start();
+    }
+
+    private async Task SendReadAck()
+    {
+        if (_lastReadSequenceNumber <= 0)
+            return;
+
+        var upToSeq = _lastReadSequenceNumber;
+        try
+        {
+            // Use HTTP endpoint with sequence number — O(1) pointer update on server
+            var url = $"/api/messages/read?conversationId={ConversationId}&upToSequenceNumber={upToSeq}";
+            var response = await Http.PostAsync(url, null);
+            if (!response.IsSuccessStatusCode)
+                return;
+
+            // Update local unread count based on sequence numbers
+            await InvokeAsync(() =>
+            {
+                _serverUnreadCount = _messages.Count(m => !m.IsMine && m.SequenceNumber > upToSeq);
+
+                if (_serverUnreadCount == 0)
+                {
+                    _firstUnreadMessageId = null;
+                }
+                else
+                {
+                    var firstUnread = _messages
+                        .Where(m => !m.IsMine && m.SequenceNumber > upToSeq)
+                        .OrderBy(static m => m.SequenceNumber)
+                        .FirstOrDefault();
+                    _firstUnreadMessageId = firstUnread?.MessageId;
+                }
+                // Notify sidebar to update the badge
+                SignalR.NotifyUnreadCountChanged(ConversationId, _serverUnreadCount);
+
+                StateHasChanged();
+            });
+
+        }
+        catch { /* best effort */ }
+    }
+
+    private async Task HandleTyping()
+    {
+        try
+        {
+            if (SignalR.IsConnected)
+            {
+                await SignalR.SendTypingIndicatorAsync(ConversationId);
+            }
+        }
+        catch
+        {
+            // Typing indicator failures are non-critical
+        }
+    }
+
+    /// <summary>
+    /// Extracts the user ID from a JWT token by decoding the payload.
+    /// </summary>
+    private static long ExtractUserIdFromJwt(string token)
+    {
+        var parts = token.Split('.');
+        if (parts.Length != 3)
+            throw new InvalidOperationException("Invalid JWT token format.");
+
+        var payload = parts[1];
+        // Fix base64 padding
+        switch (payload.Length % 4)
+        {
+            case 2: payload += "=="; break;
+            case 3: payload += "="; break;
+        }
+        // Handle base64url encoding (JWT uses base64url per RFC 7515)
+        payload = payload.Replace('-', '+').Replace('_', '/');
+
+        var jsonBytes = Convert.FromBase64String(payload);
+        using var doc = JsonDocument.Parse(jsonBytes);
+        var root = doc.RootElement;
+
+        // Try "sub" claim first, then "nameid"
+        if (root.TryGetProperty("sub", out var subProp))
+            return long.Parse(subProp.GetString()!);
+
+        if (root.TryGetProperty("nameid", out var nameidProp))
+            return long.Parse(nameidProp.GetString()!);
+
+        if (root.TryGetProperty("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier", out var fullProp))
+            return long.Parse(fullProp.GetString()!);
+
+        throw new InvalidOperationException("JWT token does not contain a user ID claim.");
+    }
+
+    private async Task LoadWallpaperStyle()
+    {
+        var wallpaperId = await Theme.GetWallpaperAsync();
+        var themeId = await Theme.GetThemeAsync();
+        var isDark = ThemeService.IsDarkTheme(themeId);
+
+        if (wallpaperId == "none")
+        {
+            _wallpaperStyle = "--chat-bg-image: none;";
+            return;
+        }
+
+        if (wallpaperId == "default")
+        {
+            // Let the theme's CSS handle it
+            _wallpaperStyle = "";
+            return;
+        }
+
+        var wallpaper = ThemeService.GetAvailableWallpapers()
+            .FirstOrDefault(w => w.Id == wallpaperId);
+
+        if (wallpaper is null)
+        {
+            _wallpaperStyle = "";
+            return;
+        }
+
+        var pattern = isDark ? wallpaper.DarkPattern : wallpaper.LightPattern;
+        _wallpaperStyle = pattern is not null ? $"--chat-bg-image: {pattern};" : "";
+    }
+
+    private MessageInput.ReplyContextModel? _replyContext;
+
+    // Reaction state: messageId -> list of (userId, emoji)
+    private readonly Dictionary<long, List<(long UserId, string Emoji, string DisplayName)>> _messageReactions = [];
+
+    private void SetReplyTo(ChatMessage msg)
+    {
+        _replyingTo = msg;
+        _replyContext = new MessageInput.ReplyContextModel
+        {
+            MessageId = msg.MessageId,
+            SenderName = msg.IsMine ? "You" : GetSenderDisplayName(msg),
+            Text = FormatReplyText(msg),
+            ThumbnailDataUrl = msg.ContentType is ContentType.Image or ContentType.Video
+                ? (msg.ThumbnailDataUrl ?? msg.MediaDataUrl)
+                : msg.ThumbnailDataUrl,
+            ContentType = msg.ContentType
+        };
+        _showContextMenu = false;
+    }
+
+    private string FormatReplyText(ChatMessage msg)
+    {
+        return msg.ContentType switch
+        {
+            ContentType.Image => Loc["[Image]"],
+            ContentType.Audio => Loc["[Voice message]"],
+            ContentType.Video => Loc["[Video]"],
+            ContentType.File => string.Format(Loc["[File: {0}]"], msg.FileName ?? "file"),
+            _ => msg.Text.Length > 80 ? msg.Text[..80] + "..." : msg.Text
+        };
+    }
+
+    private void CancelReply()
+    {
+        _replyingTo = null;
+        _replyContext = null;
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/chat");
+    }
+
+    // ReSharper disable once UnusedParameter.Local
+    private string GetSenderDisplayName(ChatMessage msg)
+    {
+        // For 1:1 chats, the sender of a non-mine message is always the peer
+        return _participants.FirstOrDefault(p => p.UserId != _localUserId)?.DisplayName ?? "User";
+    }
+
+    private async Task ShowContextMenu(double x, double y, ChatMessage msg)
+    {
+        _contextMenuMessage = msg;
+        _contextMenuX = x;
+
+        // Get viewport height to determine if we need to flip the menu upward
+        double viewportHeight;
+        try { viewportHeight = await Js.InvokeAsync<double>("mediaHelpers.getViewportHeight"); }
+        catch { viewportHeight = 800; }
+
+        // Estimate menu height: ~40px per item, 5-6 items + padding
+        var itemCount = 4 + (msg.IsMine ? 1 : 0) + (!string.IsNullOrEmpty(msg.MediaDataUrl) ? 1 : 0);
+        var estimatedMenuHeight = itemCount * 40 + 16;
+
+        if (y + estimatedMenuHeight > viewportHeight - 20)
+        {
+            _contextMenuFlipUp = true;
+            _contextMenuBottomY = viewportHeight - y;
+            _contextMenuY = 0; // unused when flipped
+        }
+        else
+        {
+            _contextMenuFlipUp = false;
+            _contextMenuY = y;
+            _contextMenuBottomY = 0;
+        }
+
+        _showContextMenu = true;
+    }
+
+    private void CloseContextMenu()
+    {
+        _showContextMenu = false;
+        _contextMenuMessage = null;
+    }
+
+    private async Task CopyMessageText()
+    {
+        if (_contextMenuMessage is not null)
+        {
+            try { await Js.InvokeAsync<bool>("mediaHelpers.copyToClipboard", _contextMenuMessage.Text); }
+            catch
+            {
+                // ignored
+            }
+        }
+        CloseContextMenu();
+    }
+
+    private async Task DownloadMediaFromContextMenu()
+    {
+        if (_contextMenuMessage is not null && !string.IsNullOrEmpty(_contextMenuMessage.MediaDataUrl))
+        {
+            var fileName = _contextMenuMessage.FileName ?? "download";
+            try { await Js.InvokeVoidAsync("mediaHelpers.downloadDataUrl", _contextMenuMessage.MediaDataUrl, fileName); }
+            catch { /* ignored */ }
+        }
+        CloseContextMenu();
+    }
+
+    private void ReplyFromContextMenu()
+    {
+        if (_contextMenuMessage is not null)
+            SetReplyTo(_contextMenuMessage);
+        CloseContextMenu();
+    }
+
+    private async Task DeleteForMe()
+    {
+        if (_contextMenuMessage is not null)
+        {
+            // Revoke blob URLs to prevent memory leak
+            if (_contextMenuMessage.MediaDataUrl is not null && _contextMenuMessage.MediaDataUrl.StartsWith("blob:"))
+            {
+                try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _contextMenuMessage.MediaDataUrl); }
+                catch { /* ignored */ }
+                _blobUrls.Remove(_contextMenuMessage.MediaDataUrl);
+            }
+            if (_contextMenuMessage.ThumbnailDataUrl is not null && _contextMenuMessage.ThumbnailDataUrl.StartsWith("blob:"))
+            {
+                try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", _contextMenuMessage.ThumbnailDataUrl); }
+                catch { /* ignored */ }
+                _blobUrls.Remove(_contextMenuMessage.ThumbnailDataUrl);
+            }
+
+            _messages.Remove(_contextMenuMessage);
+            _messageReactions.Remove(_contextMenuMessage.MessageId);
+
+            // Clear reply context if replying to the deleted message
+            if (_replyingTo?.MessageId == _contextMenuMessage.MessageId)
+                CancelReply();
+
+            try { await MessageStore.UpdateMessageStatusAsync(_contextMenuMessage.MessageId.ToString(CultureInfo.InvariantCulture), -1); }
+            catch
+            {
+                // ignored
+            }
+        }
+        CloseContextMenu();
+    }
+
+    private async Task DeleteForEveryone()
+    {
+        if (_contextMenuMessage is not null && _contextMenuMessage.IsMine)
+        {
+            try
+            {
+                await SignalR.DeleteForEveryoneAsync(_contextMenuMessage.MessageId);
+                // Local removal will happen via the MessageDeleted event
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+        CloseContextMenu();
+    }
+
+    private async void HandleMessageDeleted(long messageId, long conversationId)
+    {
+        if (_disposed) return;
+        try {
+        if (conversationId != ConversationId)
+            return;
+
+        await InvokeAsync(async () =>
+        {
+            var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
+            if (msg is not null)
+            {
+                // Revoke blob URLs to prevent memory leak
+                if (msg.MediaDataUrl is not null && msg.MediaDataUrl.StartsWith("blob:"))
+                {
+                    try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", msg.MediaDataUrl); }
+                    catch { /* ignored */ }
+                    _blobUrls.Remove(msg.MediaDataUrl);
+                }
+                if (msg.ThumbnailDataUrl is not null && msg.ThumbnailDataUrl.StartsWith("blob:"))
+                {
+                    try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", msg.ThumbnailDataUrl); }
+                    catch { /* ignored */ }
+                    _blobUrls.Remove(msg.ThumbnailDataUrl);
+                }
+
+                _messages.Remove(msg);
+
+                // Clear reply context if the deleted message was being replied to
+                if (_replyingTo?.MessageId == messageId)
+                    CancelReply();
+            }
+            _messageReactions.Remove(messageId);
+            try { await MessageStore.UpdateMessageStatusAsync(messageId.ToString(CultureInfo.InvariantCulture), -1); }
+            catch
+            {
+                // ignored
+            }
+            StateHasChanged();
+        });
+        } catch { /* prevent async void crash */ }
+    }
+
+    // FR-032: Handle SignalR reconnection - flush offline queue
+    private async void HandleReconnected()
+    {
+        if (_disposed) return;
+        try
+        {
+            await InvokeAsync(async () =>
+            {
+                await FlushOfflineQueueAsync();
+                StateHasChanged();
+            });
+        }
+        catch { /* prevent async void crash */ }
+    }
+
+    // FR-032: Flush offline queue - send queued messages
+    private async Task FlushOfflineQueueAsync()
+    {
+        if (!SignalR.IsConnected || ConversationId <= 0)
+            return;
+
+        try
+        {
+            var queue = await Js.InvokeAsync<List<JsonElement>>("toledoMessageStore.getOfflineQueue", ConversationId, "pending");
+            if (queue.Count == 0)
+                return;
+
+            foreach (var entry in queue)
+            {
+                try
+                {
+                    var text = entry.TryGetProperty("text", out var t) ? t.GetString() ?? "" : "";
+                    byte[]? mediaBytes = null;
+                    if (entry.TryGetProperty("mediaBase64", out var mb) && mb.ValueKind == JsonValueKind.String)
+                    {
+                        mediaBytes = Convert.FromBase64String(mb.GetString()!);
+                    }
+                    var fileName = entry.TryGetProperty("fileName", out var fn) ? fn.GetString() : null;
+                    var mimeType = entry.TryGetProperty("mimeType", out var mt) ? mt.GetString() : null;
+                    var contentTypeStr = entry.TryGetProperty("contentType", out var ct) ? ct.GetString() : "Text";
+                    var sendAsHd = entry.TryGetProperty("sendAsHd", out var hd) && hd.GetBoolean();
+                    var replyToMsgId = entry.TryGetProperty("replyToMessageId", out var rid) && rid.ValueKind == JsonValueKind.Number
+                        ? rid.GetInt64() : (long?)null;
+
+                    var id = entry.TryGetProperty("id", out var idProp) ? idProp.GetInt64() : 0;
+
+                    var msg = new MessageInput.ChatInputMessage
+                    {
+                        Text = text,
+                        MediaBytes = mediaBytes,
+                        FileName = fileName,
+                        MimeType = mimeType,
+                        ContentType = Enum.Parse<ContentType>(contentTypeStr ?? "Text"),
+                        SendAsHd = sendAsHd,
+                        ReplyToMessageId = replyToMsgId
+                    };
+
+                    // Send the message
+                    await SendTextToRecipients(msg.Text, null, msg.ReplyToMessageId);
+
+                    // Remove from queue after successful send
+                    if (id > 0)
+                    {
+                        await Js.InvokeVoidAsync("toledoMessageStore.removeFromOfflineQueue", id);
+                    }
+                }
+                catch
+                {
+                    // Continue with next message if one fails
+                }
+            }
+        }
+        catch
+        {
+            // Queue flush failed - will retry on next reconnect
+        }
+    }
+
+    // FR-032: Handle notification when message is queued offline
+    private async Task HandleMessageQueuedOffline()
+    {
+        _infoMessage = "Message queued. Will be sent when online.";
+        await Task.Delay(3000);
+        _infoMessage = null;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OpenClearChatDialog()
+    {
+        _showChatMenu = false;
+        _showClearChatDialog = true;
+    }
+
+    private async Task ClearChat(TimeSpan span)
+    {
+        _showClearChatDialog = false;
+        // For "all messages" (TimeSpan.Zero), use far future cutoff to delete everything
+        // For time-bounded, cutoff = now so server deletes up to now
+        var cutoff = DateTimeOffset.UtcNow.AddYears(1);
+        var threshold = DateTimeOffset.MinValue;
+
+        if (span != TimeSpan.Zero)
+        {
+            threshold = DateTimeOffset.UtcNow - span;
+            cutoff = DateTimeOffset.UtcNow;
+        }
+
+        // Revoke blob URLs for messages being removed
+        foreach (var msg in _messages.Where(m => m.Timestamp >= threshold && !string.IsNullOrEmpty(m.MediaDataUrl)))
+        {
+            try { await Js.InvokeVoidAsync("mediaHelpers.revokeObjectUrl", msg.MediaDataUrl); }
+            catch
+            {
+                // ignored
+            }
+        }
+
+        // Collect IDs of messages being removed
+        var deletedIds = _messages
+            .Where(m => m.Timestamp >= threshold)
+            .Select(m => m.MessageId)
+            .ToHashSet();
+
+        // Remove from local UI
+        _messages.RemoveAll(m => m.Timestamp >= threshold);
+
+        // Remove only reactions for deleted messages (not all reactions)
+        foreach (var id in deletedIds)
+            _messageReactions.Remove(id);
+
+        // Clear from IndexedDB (delete messages within the time range)
+        try { await MessageStore.DeleteConversationMessagesAsync(ConversationId.ToString(CultureInfo.InvariantCulture), threshold); }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to clear local messages: {ex.Message}";
+        }
+
+        // Clear from server
+        try { await SignalR.ClearMessagesAsync(ConversationId, threshold, cutoff); }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to clear messages from server: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ScrollToMessage(long messageId)
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("mediaHelpers.scrollToElement", $"[data-msg-id=\"{messageId}\"]");
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private List<MessageBubble.ReactionBadgeModel> GetReactionBadges(long messageId)
+    {
+        if (!_messageReactions.TryGetValue(messageId, out var reactions) || reactions.Count == 0)
+            return [];
+
+        return reactions
+            .GroupBy(r => r.Emoji)
+            .Select(g => new MessageBubble.ReactionBadgeModel
+            {
+                Emoji = g.Key,
+                Count = g.Count(),
+                IncludesMine = g.Any(r => r.UserId == _localUserId)
+            })
+            .ToList();
+    }
+
+    private async Task ToggleReaction(long messageId, string emoji)
+    {
+        try
+        {
+            if (SignalR.IsConnected)
+            {
+                // Check if we already reacted with this emoji
+                if (_messageReactions.TryGetValue(messageId, out var reactions) &&
+                    reactions.Any(r => r.UserId == _localUserId && r.Emoji == emoji))
+                {
+                    await SignalR.RemoveReactionAsync(messageId, emoji);
+                }
+                else
+                {
+                    await SignalR.AddReactionAsync(messageId, emoji);
+                }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private void HandleImageClick(string imageUrl)
+    {
+        _lightboxImageUrls = _messages
+            .Where(m => m.ContentType == ContentType.Image && !string.IsNullOrEmpty(m.MediaDataUrl))
+            .Select(m => m.MediaDataUrl!)
+            .ToList();
+        _lightboxIndex = _lightboxImageUrls.IndexOf(imageUrl);
+        if (_lightboxIndex < 0) _lightboxIndex = 0;
+        _lightboxVisible = true;
+    }
+
+    private void CloseLightbox()
+    {
+        _lightboxVisible = false;
+    }
+
+    private void SetLightboxIndex(int index)
+    {
+        _lightboxIndex = index;
+    }
+
+    private void HandleVideoClick(string videoUrl)
+    {
+        _videoLightboxUrl = videoUrl;
+        _videoLightboxVisible = true;
+    }
+
+    private void CloseVideoLightbox()
+    {
+        _videoLightboxVisible = false;
+        _videoLightboxUrl = null;
+    }
+
+    // ─── Search methods ───
+
+    private void ToggleSearch()
+    {
+        _showSearch = !_showSearch;
+        if (!_showSearch)
+        {
+            _searchQuery = "";
+            _searchResults.Clear();
+            _searchIndex = 0;
+        }
+    }
+
+    private void CloseSearch()
+    {
+        _showSearch = false;
+        _searchQuery = "";
+        _searchResults.Clear();
+        _searchIndex = 0;
+    }
+
+    private async Task UpdateSearchResults()
+    {
+        if (string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            _searchResults.Clear();
+            _searchIndex = 0;
+            return;
+        }
+
+        _searchResults = _messages
+            .Where(m => !string.IsNullOrEmpty(m.Text) && m.Text.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        _searchIndex = _searchResults.Count > 0 ? _searchResults.Count - 1 : 0;
+
+        if (_searchResults.Count > 0)
+            await ScrollToMessage(_searchResults[_searchIndex].MessageId);
+    }
+
+    private async Task HandleSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            CloseSearch();
+        }
+        else if (e.Key == "Enter")
+        {
+            if (e.ShiftKey)
+                await SearchPrevious();
+            else
+                await SearchNext();
+        }
+    }
+
+    private async Task SearchNext()
+    {
+        if (_searchResults.Count == 0) return;
+        _searchIndex = (_searchIndex + 1) % _searchResults.Count;
+        await ScrollToMessage(_searchResults[_searchIndex].MessageId);
+    }
+
+    private async Task SearchPrevious()
+    {
+        if (_searchResults.Count == 0) return;
+        _searchIndex = (_searchIndex - 1 + _searchResults.Count) % _searchResults.Count;
+        await ScrollToMessage(_searchResults[_searchIndex].MessageId);
+    }
+
+    private bool IsSearchHighlighted(long messageId)
+    {
+        return _searchResults.Count > 0 && _searchResults[_searchIndex].MessageId == messageId;
+    }
+
+    // ─── Forward methods ───
+
+    private void ForwardFromContextMenu()
+    {
+        if (_contextMenuMessage is not null)
+        {
+            _forwardingMessage = _contextMenuMessage;
+            _showForwardDialog = true;
+            _forwardSearchQuery = "";
+            _forwardConversations = null;
+            CloseContextMenu();
+            _ = LoadForwardConversations();
+        }
+    }
+
+    private async Task LoadForwardConversations()
+    {
+        try
+        {
+            _forwardConversations = await Http.GetFromJsonAsync<List<ConversationListItemResponse>>(
+                "/api/conversations");
+            await InvokeAsync(StateHasChanged);
+        }
+        catch
+        {
+            _forwardConversations = [];
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void CloseForwardDialog()
+    {
+        _showForwardDialog = false;
+        _forwardingMessage = null;
+        _forwardSearchQuery = "";
+    }
+
+    private async void ForwardToConversation(long targetConversationId)
+    {
+        if (_forwardingMessage is null) return;
+
+        // BUG-CR-004 FIX: Convert blob URL to bytes before navigation
+        // otherwise the URL gets revoked when the old component disposes
+        string? mediaDataUrl = _forwardingMessage.MediaDataUrl;
+        byte[]? mediaBytes = null;
+        if (_forwardingMessage.ContentType != ContentType.Text && !string.IsNullOrEmpty(mediaDataUrl))
+        {
+            try
+            {
+                mediaBytes = await Js.InvokeAsync<byte[]>("mediaHelpers.fetchBlobAsBytes", mediaDataUrl);
+            }
+            catch
+            {
+                _errorMessage = "Could not forward media — the file is no longer available.";
+                return;
+            }
+        }
+
+        // Store bytes instead of blob URL (null means bytes are in MediaBytes)
+        PendingForward = (
+            _forwardingMessage.Text,
+            _forwardingMessage.ContentType,
+            _forwardingMessage.FileName,
+            _forwardingMessage.MimeType,
+            mediaBytes is not null ? null : mediaDataUrl, // if we have bytes, don't need URL
+            true,
+            mediaBytes
+        );
+
+        CloseForwardDialog();
+        Navigation.NavigateTo($"/chat/{targetConversationId}", forceLoad: false);
+    }
+
+    private async Task SendForwardedMessage(string text, ContentType contentType, string? fileName, string? mimeType, string? mediaDataUrl, byte[]? mediaBytesFromForward = null)
+    {
+        try
+        {
+            if (contentType != ContentType.Text && (mediaBytesFromForward is not null || !string.IsNullOrEmpty(mediaDataUrl)))
+            {
+                // For media: use pre-fetched bytes if available, otherwise fetch from blob URL
+                byte[]? mediaBytes = mediaBytesFromForward;
+                if (mediaBytes is null)
+                {
+                    try
+                    {
+                        mediaBytes = await Js.InvokeAsync<byte[]>("mediaHelpers.fetchBlobAsBytes", mediaDataUrl);
+                    }
+                    catch
+                    {
+                        _errorMessage = "Could not forward media — the file is no longer available. Try re-sending.";
+                        return;
+                    }
+                }
+
+                if (mediaBytes.Length == 0)
+                {
+                    _errorMessage = "Could not forward media — the file is no longer available. Try re-sending.";
+                    return;
+                }
+
+                // Use forwarded MimeType if available, otherwise fall back to filename guess
+                var resolvedMimeType = mimeType ?? (fileName is not null ? GetMimeTypeFromFileName(fileName) : GetDefaultMimeType(contentType));
+                var input = new MessageInput.ChatInputMessage
+                {
+                    Text = text,
+                    ContentType = contentType,
+                    FileName = fileName,
+                    MimeType = resolvedMimeType,
+                    MediaBytes = mediaBytes
+                };
+                var tempMessage = new ChatMessage
+                {
+                    MessageId = 0,
+                    Text = text,
+                    Timestamp = DateTimeOffset.UtcNow,
+                    IsMine = true,
+                    ContentType = contentType,
+                    FileName = fileName,
+                    MediaDataUrl = await CreateMediaBlobUrl(mimeType, mediaBytes),
+                    MediaBytes = mediaBytes, // Keep until persisted
+                    MimeType = mimeType,
+                    Status = Shared.Enums.DeliveryStatus.Sending,
+                    IsForwarded = true
+                };
+                _messages.Add(tempMessage);
+                StateHasChanged();
+                await SendMediaToRecipients(input, tempMessage);
+                await PersistMessageAsync(tempMessage);
+                tempMessage.MediaBytes = null; // Release after persist
+                StateHasChanged();
+                return;
+            }
+
+            // Text-only forward
+            if (!string.IsNullOrEmpty(text))
+            {
+                var tempMessage = new ChatMessage
+                {
+                    MessageId = 0,
+                    Text = text,
+                    Timestamp = DateTimeOffset.UtcNow,
+                    IsMine = true,
+                    ContentType = ContentType.Text,
+                    Status = Shared.Enums.DeliveryStatus.Sending,
+                    IsForwarded = true
+                };
+                _messages.Add(tempMessage);
+                StateHasChanged();
+                await SendTextToRecipients(text, tempMessage);
+                await PersistMessageAsync(tempMessage);
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to forward message: {ex.Message}";
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        // Unsubscribe from theme changes (BUG-CR-001 fix: must be in DisposeAsync, not Dispose)
+        Theme.OnThemeChanged -= OnThemeChanged;
+
+        // Unsubscribe from events
+        SignalR.OnMessageReceived -= HandleMessageReceived;
+        SignalR.OnMessageDelivered -= HandleMessageDelivered;
+        SignalR.OnMessageRead -= HandleMessageRead;
+        SignalR.OnTypingIndicator -= HandleTypingIndicator;
+        SignalR.OnParticipantAdded -= HandleParticipantAdded;
+        SignalR.OnParticipantRemoved -= HandleParticipantRemoved;
+        SignalR.OnUserOnline -= HandleUserOnline;
+        SignalR.OnUserOffline -= HandleUserOffline;
+        SignalR.OnReactionAdded -= HandleReactionAdded;
+        SignalR.OnReactionRemoved -= HandleReactionRemoved;
+        SignalR.OnMessageDeleted -= HandleMessageDeleted;
+        SignalR.OnReconnected -= HandleReconnected;
+        MessageExpiry.OnMessageExpired -= HandleMessageExpired;
+
+        _typingTimer?.Stop();
+        _typingTimer?.Dispose();
+        _readDebounceTimer?.Stop();
+        _readDebounceTimer?.Dispose();
+
+        // Send final read ack for messages the user has scrolled past BEFORE disposing dotNetRef
+        try { await SendReadAck(); }
+        catch { /* best effort */ }
+
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
+
+        // Revoke blob URLs to free browser memory
+        await RevokeBlobUrls();
+    }
+
+    // ─── Disappearing Messages (FR-030) ───
+
+    /// <summary>
+    /// Track a message for automatic expiry if the conversation has a disappearing timer.
+    /// </summary>
+    private void TrackForExpiry(ChatMessage msg)
+    {
+        if (_conversationDetail?.DisappearingTimerSeconds is not > 0) return;
+        var expiresAt = msg.Timestamp.AddSeconds(_conversationDetail.DisappearingTimerSeconds.Value);
+        MessageExpiry.TrackMessage(msg.MessageId, expiresAt);
+    }
+
+    private void HandleMessageExpired(long messageId)
+    {
+        InvokeAsync(async () =>
+        {
+            if (_disposed) return;
+
+            var msg = _messages.FirstOrDefault(m => m.MessageId == messageId);
+            if (msg is null) return;
+
+            // Revoke blob URL if present
+            if (!string.IsNullOrEmpty(msg.MediaDataUrl))
+            {
+                try { await Js.InvokeVoidAsync("URL.revokeObjectURL", msg.MediaDataUrl); }
+                catch { /* ignored */ }
+            }
+
+            _messages.Remove(msg);
+
+            // Remove from IndexedDB
+            try
+            {
+                await MessageStore.DeleteMessageAsync(
+                    messageId.ToString(CultureInfo.InvariantCulture));
+            }
+            catch { /* best effort */ }
+
+            StateHasChanged();
+        });
+    }
+
+    /// <summary>
+    /// Local view model for a chat message displayed in the UI.
+    /// </summary>
+    private sealed class ChatMessage
+    {
+        public long MessageId { get; set; }
+        public long SequenceNumber { get; set; }
+        // ReSharper disable once PropertyCanBeMadeInitOnly.Local
+        public string Text { get; set; } = "";
+        public DateTimeOffset Timestamp { get; set; }
+        public bool IsMine { get; init; }
+        public Shared.Enums.DeliveryStatus Status { get; set; }
+        public ContentType ContentType { get; init; } = ContentType.Text;
+        public string? MediaDataUrl { get; init; }
+        public string? ThumbnailDataUrl { get; set; }
+        public byte[]? MediaBytes { get; set; }
+        public string? MimeType { get; init; }
+        public string? FileName { get; init; }
+        public long? ReplyToMessageId { get; init; }
+        public string? ReplyToText { get; init; }
+        public string? ReplyToSenderName { get; init; }
+        public string? ReplyToMediaDataUrl { get; init; }
+        public string? ReplyToThumbnailDataUrl { get; init; }
+        public ContentType ReplyToContentType { get; init; } = ContentType.Text;
+        public bool IsForwarded { get; init; }
+        public int[]? Waveform { get; init; }
+    }
+}

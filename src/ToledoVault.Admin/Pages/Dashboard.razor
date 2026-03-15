@@ -1,0 +1,53 @@
+@page "/admin"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@layout AdminLayout
+@inject AdminApiService Api
+@inject IStringLocalizer<AdminResource> Loc
+
+<h2>@Loc["Dashboard_Title"]</h2>
+
+<div class="summary-cards">
+    <a href="/admin/settings" class="summary-card">
+        <div class="card-label">@Loc["Dashboard_TotalSettings"]</div>
+        <div class="card-value">@settingsCount</div>
+    </a>
+    <a href="/admin/logs" class="summary-card">
+        <div class="card-label">@Loc["Dashboard_LogEntriesToday"]</div>
+        <div class="card-value">@logsCount</div>
+    </a>
+    <a href="/admin/localization" class="summary-card">
+        <div class="card-label">@Loc["Dashboard_LocalizationKeys"]</div>
+        <div class="card-value">@localizationCount</div>
+    </a>
+</div>
+
+@code {
+    private int settingsCount;
+    private int logsCount;
+    private int localizationCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var settings = await Api.GetSettingsAsync();
+            settingsCount = settings.Sum(c => c.Settings.Count);
+        }
+        catch { settingsCount = 0; }
+
+        try
+        {
+            var today = DateTimeOffset.UtcNow.Date;
+            var logs = await Api.GetLogsAsync(new ToledoVault.Shared.DTOs.LogQueryRequest(From: today, PageSize: 1));
+            logsCount = logs.TotalCount;
+        }
+        catch { logsCount = 0; }
+
+        try
+        {
+            var loc = await Api.GetLocalizationAsync(null, null, false);
+            localizationCount = loc.TotalKeys;
+        }
+        catch { localizationCount = 0; }
+    }
+}

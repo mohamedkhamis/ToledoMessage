@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" />
+              <xsd:attribute name="xml:space" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+
+  <!-- Navigation -->
+  <data name="Nav_Dashboard" xml:space="preserve">
+    <value>لوحة التحكم</value>
+  </data>
+  <data name="Nav_Settings" xml:space="preserve">
+    <value>الإعدادات</value>
+  </data>
+  <data name="Nav_Logs" xml:space="preserve">
+    <value>السجلات</value>
+  </data>
+  <data name="Nav_Localization" xml:space="preserve">
+    <value>الترجمة</value>
+  </data>
+  <data name="Nav_Logout" xml:space="preserve">
+    <value>تسجيل الخروج</value>
+  </data>
+
+  <!-- Login Page -->
+  <data name="Login_AppTitle" xml:space="preserve">
+    <value>ToledoVault</value>
+  </data>
+  <data name="Login_Subtitle" xml:space="preserve">
+    <value>لوحة الإدارة</value>
+  </data>
+  <data name="Login_Username" xml:space="preserve">
+    <value>اسم المستخدم</value>
+  </data>
+  <data name="Login_Password" xml:space="preserve">
+    <value>كلمة المرور</value>
+  </data>
+  <data name="Login_Button" xml:space="preserve">
+    <value>تسجيل الدخول</value>
+  </data>
+  <data name="Login_LoggingIn" xml:space="preserve">
+    <value>جارٍ تسجيل الدخول...</value>
+  </data>
+  <data name="Login_InvalidCredentials" xml:space="preserve">
+    <value>بيانات الاعتماد غير صالحة.</value>
+  </data>
+  <data name="Login_ConnectionError" xml:space="preserve">
+    <value>خطأ في الاتصال. يرجى المحاولة مرة أخرى.</value>
+  </data>
+
+  <!-- Change Password Page -->
+  <data name="ChangePassword_Title" xml:space="preserve">
+    <value>تغيير كلمة المرور</value>
+  </data>
+  <data name="ChangePassword_MustChange" xml:space="preserve">
+    <value>يجب عليك تغيير كلمة المرور الافتراضية قبل المتابعة.</value>
+  </data>
+  <data name="ChangePassword_CurrentPassword" xml:space="preserve">
+    <value>كلمة المرور الحالية</value>
+  </data>
+  <data name="ChangePassword_NewPassword" xml:space="preserve">
+    <value>كلمة المرور الجديدة (12 حرفًا على الأقل)</value>
+  </data>
+  <data name="ChangePassword_ConfirmPassword" xml:space="preserve">
+    <value>تأكيد كلمة المرور الجديدة</value>
+  </data>
+  <data name="ChangePassword_Button" xml:space="preserve">
+    <value>تغيير كلمة المرور</value>
+  </data>
+  <data name="ChangePassword_Changing" xml:space="preserve">
+    <value>جارٍ التغيير...</value>
+  </data>
+  <data name="ChangePassword_MinLength" xml:space="preserve">
+    <value>يجب أن تكون كلمة المرور 12 حرفًا على الأقل.</value>
+  </data>
+  <data name="ChangePassword_Mismatch" xml:space="preserve">
+    <value>كلمات المرور غير متطابقة.</value>
+  </data>
+  <data name="ChangePassword_Incorrect" xml:space="preserve">
+    <value>كلمة المرور الحالية غير صحيحة.</value>
+  </data>
+  <data name="ChangePassword_ConnectionError" xml:space="preserve">
+    <value>خطأ في الاتصال. يرجى المحاولة مرة أخرى.</value>
+  </data>
+
+  <!-- Dashboard Page -->
+  <data name="Dashboard_Title" xml:space="preserve">
+    <value>لوحة التحكم</value>
+  </data>
+  <data name="Dashboard_TotalSettings" xml:space="preserve">
+    <value>إجمالي الإعدادات</value>
+  </data>
+  <data name="Dashboard_LogEntriesToday" xml:space="preserve">
+    <value>سجلات اليوم</value>
+  </data>
+  <data name="Dashboard_LocalizationKeys" xml:space="preserve">
+    <value>مفاتيح الترجمة</value>
+  </data>
+
+  <!-- Settings Page -->
+  <data name="Settings_Title" xml:space="preserve">
+    <value>الإعدادات العامة</value>
+  </data>
+  <data name="Settings_Loading" xml:space="preserve">
+    <value>جارٍ تحميل الإعدادات...</value>
+  </data>
+  <data name="Settings_Reset" xml:space="preserve">
+    <value>إعادة تعيين</value>
+  </data>
+  <data name="Settings_Saved" xml:space="preserve">
+    <value>تم حفظ الإعداد.</value>
+  </data>
+  <data name="Settings_LoadFailed" xml:space="preserve">
+    <value>فشل تحميل الإعدادات.</value>
+  </data>
+  <data name="Settings_Error" xml:space="preserve">
+    <value>خطأ</value>
+  </data>
+  <data name="Settings_SaveFailed" xml:space="preserve">
+    <value>فشل حفظ الإعداد.</value>
+  </data>
+  <data name="Settings_ResetSuccess" xml:space="preserve">
+    <value>تم إعادة تعيين الإعداد إلى القيمة الافتراضية.</value>
+  </data>
+  <data name="Settings_ResetFailed" xml:space="preserve">
+    <value>فشل إعادة تعيين الإعداد.</value>
+  </data>
+
+  <!-- Logs Page -->
+  <data name="Logs_Title" xml:space="preserve">
+    <value>سجلات التطبيق</value>
+  </data>
+  <data name="Logs_Severity" xml:space="preserve">
+    <value>الخطورة</value>
+  </data>
+  <data name="Logs_All" xml:space="preserve">
+    <value>الكل</value>
+  </data>
+  <data name="Logs_From" xml:space="preserve">
+    <value>من</value>
+  </data>
+  <data name="Logs_To" xml:space="preserve">
+    <value>إلى</value>
+  </data>
+  <data name="Logs_Search" xml:space="preserve">
+    <value>بحث</value>
+  </data>
+  <data name="Logs_SearchPlaceholder" xml:space="preserve">
+    <value>كلمة مفتاحية...</value>
+  </data>
+  <data name="Logs_Apply" xml:space="preserve">
+    <value>تطبيق</value>
+  </data>
+  <data name="Logs_Clear" xml:space="preserve">
+    <value>مسح</value>
+  </data>
+  <data name="Logs_DeleteOld" xml:space="preserve">
+    <value>حذف السجلات القديمة</value>
+  </data>
+  <data name="Logs_Loading" xml:space="preserve">
+    <value>جارٍ تحميل السجلات...</value>
+  </data>
+  <data name="Logs_Timestamp" xml:space="preserve">
+    <value>الوقت</value>
+  </data>
+  <data name="Logs_Level" xml:space="preserve">
+    <value>المستوى</value>
+  </data>
+  <data name="Logs_Message" xml:space="preserve">
+    <value>الرسالة</value>
+  </data>
+  <data name="Logs_FullMessage" xml:space="preserve">
+    <value>الرسالة الكاملة:</value>
+  </data>
+  <data name="Logs_Exception" xml:space="preserve">
+    <value>الاستثناء:</value>
+  </data>
+  <data name="Logs_Showing" xml:space="preserve">
+    <value>عرض</value>
+  </data>
+  <data name="Logs_Of" xml:space="preserve">
+    <value>من</value>
+  </data>
+  <data name="Logs_Entries" xml:space="preserve">
+    <value>إدخال</value>
+  </data>
+  <data name="Logs_Previous" xml:space="preserve">
+    <value>السابق</value>
+  </data>
+  <data name="Logs_Page" xml:space="preserve">
+    <value>صفحة</value>
+  </data>
+  <data name="Logs_Next" xml:space="preserve">
+    <value>التالي</value>
+  </data>
+  <data name="Logs_DeleteOlderThan" xml:space="preserve">
+    <value>حذف السجلات الأقدم من:</value>
+  </data>
+  <data name="Logs_Delete" xml:space="preserve">
+    <value>حذف</value>
+  </data>
+  <data name="Logs_Cancel" xml:space="preserve">
+    <value>إلغاء</value>
+  </data>
+  <data name="Logs_DeletedCount" xml:space="preserve">
+    <value>تم حذف {0} سجل.</value>
+  </data>
+  <data name="Logs_LoadFailed" xml:space="preserve">
+    <value>فشل تحميل السجلات.</value>
+  </data>
+  <data name="Logs_DeleteFailed" xml:space="preserve">
+    <value>فشل حذف السجلات.</value>
+  </data>
+  <data name="Logs_NoLogsFound" xml:space="preserve">
+    <value>لا توجد سجلات.</value>
+  </data>
+
+  <!-- Localization Page -->
+  <data name="Loc_Title" xml:space="preserve">
+    <value>الترجمة</value>
+  </data>
+  <data name="Loc_All" xml:space="preserve">
+    <value>الكل</value>
+  </data>
+  <data name="Loc_English" xml:space="preserve">
+    <value>الإنجليزية</value>
+  </data>
+  <data name="Loc_Arabic" xml:space="preserve">
+    <value>العربية</value>
+  </data>
+  <data name="Loc_Language" xml:space="preserve">
+    <value>اللغة</value>
+  </data>
+  <data name="Loc_Search" xml:space="preserve">
+    <value>بحث</value>
+  </data>
+  <data name="Loc_SearchPlaceholder" xml:space="preserve">
+    <value>مفتاح أو قيمة...</value>
+  </data>
+  <data name="Loc_MissingOnly" xml:space="preserve">
+    <value>المفقود فقط</value>
+  </data>
+  <data name="Loc_Apply" xml:space="preserve">
+    <value>تطبيق</value>
+  </data>
+  <data name="Loc_Clear" xml:space="preserve">
+    <value>مسح</value>
+  </data>
+  <data name="Loc_AddNewKey" xml:space="preserve">
+    <value>إضافة مفتاح جديد</value>
+  </data>
+  <data name="Loc_ResourceKey" xml:space="preserve">
+    <value>مفتاح المورد</value>
+  </data>
+  <data name="Loc_EnglishValue" xml:space="preserve">
+    <value>القيمة بالإنجليزية</value>
+  </data>
+  <data name="Loc_ArabicValue" xml:space="preserve">
+    <value>القيمة بالعربية</value>
+  </data>
+  <data name="Loc_Source" xml:space="preserve">
+    <value>المصدر</value>
+  </data>
+  <data name="Loc_Actions" xml:space="preserve">
+    <value>الإجراءات</value>
+  </data>
+  <data name="Loc_Missing" xml:space="preserve">
+    <value>مفقود</value>
+  </data>
+  <data name="Loc_Revert" xml:space="preserve">
+    <value>استعادة</value>
+  </data>
+  <data name="Loc_Delete" xml:space="preserve">
+    <value>حذف</value>
+  </data>
+  <data name="Loc_AddKey" xml:space="preserve">
+    <value>إضافة مفتاح</value>
+  </data>
+  <data name="Loc_Cancel" xml:space="preserve">
+    <value>إلغاء</value>
+  </data>
+  <data name="Loc_Saved" xml:space="preserve">
+    <value>تم الحفظ.</value>
+  </data>
+  <data name="Loc_SaveFailed" xml:space="preserve">
+    <value>فشل الحفظ.</value>
+  </data>
+  <data name="Loc_LoadFailed" xml:space="preserve">
+    <value>فشل تحميل البيانات.</value>
+  </data>
+  <data name="Loc_KeyAdded" xml:space="preserve">
+    <value>تمت إضافة المفتاح.</value>
+  </data>
+  <data name="Loc_KeyDeleted" xml:space="preserve">
+    <value>تم حذف المفتاح.</value>
+  </data>
+  <data name="Loc_Reverted" xml:space="preserve">
+    <value>تم الاستعادة إلى الأصل.</value>
+  </data>
+  <data name="Loc_ErrorSaving" xml:space="preserve">
+    <value>خطأ في الحفظ.</value>
+  </data>
+  <data name="Loc_KeyExists" xml:space="preserve">
+    <value>المفتاح موجود بالفعل.</value>
+  </data>
+  <data name="Loc_KeyRequired" xml:space="preserve">
+    <value>مفتاح المورد مطلوب.</value>
+  </data>
+  <data name="Loc_ValueRequired" xml:space="preserve">
+    <value>قيمة واحدة على الأقل مطلوبة.</value>
+  </data>
+  <data name="Loc_Loading" xml:space="preserve">
+    <value>جارٍ تحميل بيانات الترجمة...</value>
+  </data>
+  <data name="Loc_TotalKeys" xml:space="preserve">
+    <value>{0} مفتاح إجمالي</value>
+  </data>
+  <data name="Loc_AddNewLocKey" xml:space="preserve">
+    <value>إضافة مفتاح ترجمة جديد</value>
+  </data>
+  <data name="Loc_KeyPlaceholder" xml:space="preserve">
+    <value>مثال: Feature.NewLabel</value>
+  </data>
+  <data name="Loc_ErrorCreating" xml:space="preserve">
+    <value>خطأ في إنشاء المفتاح.</value>
+  </data>
+</root>

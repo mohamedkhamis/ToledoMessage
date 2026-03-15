@@ -1,0 +1,681 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- ==================== Home Page ==================== -->
+  <data name="Ultra-Secure Messaging" xml:space="preserve">
+    <value>مراسلة فائقة الأمان</value>
+  </data>
+  <data name="Simple, Secure Messaging for Everyone" xml:space="preserve">
+    <value>مراسلة بسيطة وآمنة للجميع</value>
+  </data>
+  <data name="HeroDescription" xml:space="preserve">
+    <value>محادثاتك خاصة تمامًا. نستخدم أحدث تقنيات الأمان لضمان أنّك أنت ومن تراسلهم فقط من يمكنه قراءة الرسائل.</value>
+  </data>
+  <data name="Start Messaging" xml:space="preserve">
+    <value>ابدأ المراسلة</value>
+  </data>
+  <data name="Private" xml:space="preserve">
+    <value>خاصّ</value>
+  </data>
+  <data name="Always Encrypted" xml:space="preserve">
+    <value>مشفّر دائمًا</value>
+  </data>
+  <data name="Zero Data Collected" xml:space="preserve">
+    <value>لا نجمع أيّ بيانات</value>
+  </data>
+  <data name="Why ToledoVault?" xml:space="preserve">
+    <value>لماذا ToledoVault؟</value>
+  </data>
+  <data name="Future-Proof Security" xml:space="preserve">
+    <value>أمان المستقبل</value>
+  </data>
+  <data name="FutureProofSecurityDesc" xml:space="preserve">
+    <value>حماية متقدّمة تحافظ على أمان رسائلك من أيّ تهديدات خارجية، الآن وفي المستقبل.</value>
+  </data>
+  <data name="End-to-End Encrypted" xml:space="preserve">
+    <value>تشفير تامّ بين الطرفين</value>
+  </data>
+  <data name="EndToEndEncryptedDesc" xml:space="preserve">
+    <value>رسائلك مُقفلة لحظة إرسالها. لا يستطيع قراءتها سوى الشخص الذي تتحدّث معه.</value>
+  </data>
+  <data name="Your Data is Yours" xml:space="preserve">
+    <value>بياناتك ملكك</value>
+  </data>
+  <data name="YourDataIsYoursDesc" xml:space="preserve">
+    <value>لا نقرأ رسائلك، ولا نتتبّع من تتحدّث إليه، ولا نشارك بياناتك أبدًا.</value>
+  </data>
+
+  <!-- ==================== Auth (Login + Register) ==================== -->
+  <data name="Welcome Back" xml:space="preserve">
+    <value>مرحبًا بعودتك</value>
+  </data>
+  <data name="Sign in to continue your secure conversations" xml:space="preserve">
+    <value>سجّل دخولك لمتابعة محادثاتك الآمنة</value>
+  </data>
+  <data name="Username" xml:space="preserve">
+    <value>اسم المستخدم</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>كلمة المرور</value>
+  </data>
+  <data name="Signing in..." xml:space="preserve">
+  <value>جارٍ تسجيل الدخول…</value>
+  </data>
+  <data name="Sign In" xml:space="preserve">
+    <value>تسجيل الدخول</value>
+  </data>
+  <data name="Remember me" xml:space="preserve">
+    <value>تذكرني</value>
+  </data>
+  <data name="Don't have an account?" xml:space="preserve">
+    <value>ليس لديك حساب؟</value>
+  </data>
+  <data name="Create one" xml:space="preserve">
+    <value>أنشئ حسابًا</value>
+  </data>
+  <data name="Create Account" xml:space="preserve">
+    <value>إنشاء حساب</value>
+  </data>
+  <data name="Start your private messaging journey" xml:space="preserve">
+    <value>ابدأ رحلتك في المراسلة الخاصّة</value>
+  </data>
+  <data name="Choose a unique username" xml:space="preserve">
+    <value>اختر اسم مستخدم مميّزًا</value>
+  </data>
+  <data name="Letters, digits, hyphens, underscores only" xml:space="preserve">
+    <value>يُسمح بالأحرف والأرقام والشرطات فقط</value>
+  </data>
+  <data name="Display Name" xml:space="preserve">
+  <value>الاسم الظاهر</value>
+</data>
+  <data name="Your name shown to others" xml:space="preserve">
+  <value>الاسم الذي سيظهر للآخرين</value>
+</data>
+  <data name="Display Name (Secondary Language)" xml:space="preserve">
+    <value>الاسم الظاهر (لغة ثانية)</value>
+  </data>
+  <data name="Optional - shown when app language changes" xml:space="preserve">
+    <value>اختياري - يظهر عند تغيير لغة التطبيق</value>
+  </data>
+  <data name="Minimum 8 characters" xml:space="preserve">
+    <value>8 أحرف على الأقل</value>
+  </data>
+  <data name="Creating account..." xml:space="preserve">
+    <value>جارٍ إنشاء الحساب...</value>
+  </data>
+  <data name="Already have an account?" xml:space="preserve">
+    <value>لديك حساب بالفعل؟</value>
+  </data>
+  <data name="Weak" xml:space="preserve">
+    <value>ضعيفة</value>
+  </data>
+  <data name="Fair" xml:space="preserve">
+    <value>مقبولة</value>
+  </data>
+  <data name="Strong" xml:space="preserve">
+    <value>قوية</value>
+  </data>
+  <data name="Get Started" xml:space="preserve">
+    <value>ابدأ الآن</value>
+  </data>
+  <data name="Invalid credentials." xml:space="preserve">
+  <value>بيانات تسجيل الدخول غير صحيحة.</value>
+  </data>
+  <data name="The username or password you entered is incorrect. Please try again." xml:space="preserve">
+    <value>اسم المستخدم أو كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.</value>
+  </data>
+  <data name="Too many login attempts. Please wait a moment and try again." xml:space="preserve">
+    <value>محاولات تسجيل دخول كثيرة جداً. يرجى الانتظار لحظة والمحاولة مرة أخرى.</value>
+  </data>
+  <data name="Unable to connect. Please check your internet connection and try again." xml:space="preserve">
+    <value>تعذر الاتصال. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.</value>
+  </data>
+  <data name="Something went wrong. Please try again later." xml:space="preserve">
+    <value>حدث خطأ ما. يرجى المحاولة مرة أخرى لاحقاً.</value>
+  </data>
+  <data name="No account found with this username. Please check and try again." xml:space="preserve">
+    <value>لا يوجد حساب بهذا الاسم. يرجى التحقق والمحاولة مرة أخرى.</value>
+  </data>
+  <data name="This account has been deactivated." xml:space="preserve">
+    <value>تم تعطيل هذا الحساب.</value>
+  </data>
+  <data name="Incorrect password. Please try again." xml:space="preserve">
+    <value>كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.</value>
+  </data>
+  <data name="Setting up encryption keys..." xml:space="preserve">
+    <value>جارٍ إعداد مفاتيح التشفير...</value>
+  </data>
+  <data name="Restoring encryption keys..." xml:space="preserve">
+    <value>جارٍ استعادة مفاتيح التشفير...</value>
+  </data>
+  <data name="Generating encryption keys..." xml:space="preserve">
+    <value>جارٍ توليد مفاتيح التشفير...</value>
+  </data>
+  <data name="DeviceRegistrationFailed" xml:space="preserve">
+    <value>فشل تسجيل الجهاز: {0}</value>
+  </data>
+  <data name="Username already taken." xml:space="preserve">
+  <value>اسم المستخدم مستخدم بالفعل.</value>
+  </data>
+  <data name="RegistrationFailed" xml:space="preserve">
+    <value>فشل التسجيل: {0}</value>
+  </data>
+  <data name="Device registration failed." xml:space="preserve">
+    <value>فشل تسجيل الجهاز.</value>
+  </data>
+
+  <!-- ==================== Navigation ==================== -->
+  <data name="Register" xml:space="preserve">
+    <value>إنشاء حساب</value>
+  </data>
+  <data name="Chats" xml:space="preserve">
+    <value>المحادثات</value>
+  </data>
+  <data name="Logout" xml:space="preserve">
+    <value>تسجيل الخروج</value>
+  </data>
+
+  <!-- ==================== Sidebar ==================== -->
+  <data name="Search conversations..." xml:space="preserve">
+    <value>ابحث في المحادثات...</value>
+  </data>
+  <data name="No conversations yet" xml:space="preserve">
+    <value>لا توجد محادثات بعد</value>
+  </data>
+  <data name="Start a conversation" xml:space="preserve">
+    <value>ابدأ محادثة</value>
+  </data>
+  <data name="New conversation" xml:space="preserve">
+    <value>محادثة جديدة</value>
+  </data>
+  <data name="No messages yet" xml:space="preserve">
+    <value>لا توجد رسائل بعد</value>
+  </data>
+  <data name="NoResultsFor" xml:space="preserve">
+    <value>لا توجد نتائج لـ "{0}"</value>
+  </data>
+
+  <!-- ==================== Chat ==================== -->
+  <data name="Settings" xml:space="preserve">
+    <value>الإعدادات</value>
+  </data>
+  <data name="online" xml:space="preserve">
+    <value>متّصل</value>
+  </data>
+  <data name="last seen {0}" xml:space="preserve">
+    <value>آخر ظهور {0}</value>
+  </data>
+  <data name="{0} is typing..." xml:space="preserve">
+    <value>{0} يكتب...</value>
+  </data>
+  <data name="{0} members" xml:space="preserve">
+    <value>{0} أعضاء</value>
+  </data>
+  <data name="Search messages..." xml:space="preserve">
+    <value>ابحث في الرسائل...</value>
+  </data>
+  <data name="Send the first message to start the conversation." xml:space="preserve">
+    <value>أرسل أوّل رسالة لبدء المحادثة.</value>
+  </data>
+  <data name="{0} new message(s)" xml:space="preserve">
+    <value>{0} رسالة جديدة</value>
+  </data>
+  <data name="Copy" xml:space="preserve">
+    <value>نسخ</value>
+  </data>
+  <data name="Reply" xml:space="preserve">
+    <value>ردّ</value>
+  </data>
+  <data name="Forward" xml:space="preserve">
+    <value>إعادة توجيه</value>
+  </data>
+  <data name="Delete for me" xml:space="preserve">
+    <value>حذف لي</value>
+  </data>
+  <data name="Delete for everyone" xml:space="preserve">
+    <value>حذف للجميع</value>
+  </data>
+  <data name="Forward message" xml:space="preserve">
+    <value>إعادة توجيه الرسالة</value>
+  </data>
+  <data name="Clear chat" xml:space="preserve">
+    <value>مسح المحادثة</value>
+  </data>
+  <data name="Clear chat messages" xml:space="preserve">
+    <value>مسح رسائل المحادثة</value>
+  </data>
+  <data name="Choose which messages to delete:" xml:space="preserve">
+    <value>اختر الرسائل التي تريد حذفها:</value>
+  </data>
+  <data name="Last hour" xml:space="preserve">
+    <value>آخر ساعة</value>
+  </data>
+  <data name="Last 24 hours" xml:space="preserve">
+    <value>آخر 24 ساعة</value>
+  </data>
+  <data name="Last 7 days" xml:space="preserve">
+    <value>آخر 7 أيام</value>
+  </data>
+  <data name="Last 30 days" xml:space="preserve">
+    <value>آخر 30 يومًا</value>
+  </data>
+  <data name="All messages" xml:space="preserve">
+    <value>جميع الرسائل</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>إلغاء</value>
+  </data>
+  <data name="[Image]" xml:space="preserve">
+    <value>[صورة]</value>
+  </data>
+  <data name="[Voice message]" xml:space="preserve">
+    <value>[رسالة صوتية]</value>
+  </data>
+  <data name="[Video]" xml:space="preserve">
+    <value>[فيديو]</value>
+  </data>
+  <data name="[File: {0}]" xml:space="preserve">
+    <value>[ملف: {0}]</value>
+  </data>
+
+  <!-- ==================== Message Input ==================== -->
+  <data name="Type a message..." xml:space="preserve">
+    <value>اكتب رسالة...</value>
+  </data>
+  <data name="Photo or Video" xml:space="preserve">
+    <value>صورة أو فيديو</value>
+  </data>
+  <data name="Audio" xml:space="preserve">
+    <value>صوت</value>
+  </data>
+  <data name="Document" xml:space="preserve">
+    <value>مستند</value>
+  </data>
+
+  <!-- ==================== Message Bubble ==================== -->
+  <data name="Forwarded" xml:space="preserve">
+    <value>مُعاد توجيهها</value>
+  </data>
+  <data name="Image unavailable" xml:space="preserve">
+    <value>الصورة غير متاحة</value>
+  </data>
+  <data name="Video unavailable" xml:space="preserve">
+    <value>الفيديو غير متاح</value>
+  </data>
+  <data name="Audio unavailable" xml:space="preserve">
+    <value>الصوت غير متاح</value>
+  </data>
+  <data name="File unavailable" xml:space="preserve">
+    <value>الملف غير متاح</value>
+  </data>
+  <data name="Download" xml:space="preserve">
+    <value>تنزيل</value>
+  </data>
+
+  <!-- ==================== Settings ==================== -->
+  <data name="Appearance" xml:space="preserve">
+    <value>المظهر</value>
+  </data>
+  <data name="Font Size" xml:space="preserve">
+    <value>حجم الخط</value>
+  </data>
+  <data name="Small" xml:space="preserve">
+    <value>صغير</value>
+  </data>
+  <data name="Medium" xml:space="preserve">
+    <value>متوسط</value>
+  </data>
+  <data name="Large" xml:space="preserve">
+    <value>كبير</value>
+  </data>
+  <data name="Chat Wallpaper" xml:space="preserve">
+    <value>خلفية المحادثة</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>اللغة</value>
+  </data>
+  <data name="Privacy" xml:space="preserve">
+    <value>الخصوصية</value>
+  </data>
+  <data name="Read Receipts" xml:space="preserve">
+    <value>إيصالات القراءة</value>
+  </data>
+  <data name="ReadReceiptsDesc" xml:space="preserve">
+    <value>إعلام الآخرين عند قراءتك لرسائلهم</value>
+  </data>
+  <data name="Typing Indicators" xml:space="preserve">
+    <value>مؤشّر الكتابة</value>
+  </data>
+  <data name="TypingIndicatorsDesc" xml:space="preserve">
+    <value>إظهار حالتك أثناء كتابة رسالة</value>
+  </data>
+  <data name="Security" xml:space="preserve">
+    <value>الأمان</value>
+  </data>
+  <data name="Share Keys Across Devices" xml:space="preserve">
+    <value>مشاركة المفاتيح بين الأجهزة</value>
+  </data>
+  <data name="ShareKeysDesc" xml:space="preserve">
+    <value>نسخ احتياطي لمفاتيح هويّتك (مشفّرة بكلمة مرورك) حتى تتمكّن الأجهزة الجديدة من فكّ تشفير المحادثات السابقة</value>
+  </data>
+  <data name="Storage and Data" xml:space="preserve">
+    <value>التخزين والبيانات</value>
+  </data>
+  <data name="HD Photos" xml:space="preserve">
+    <value>صور بجودة عالية</value>
+  </data>
+  <data name="HdPhotosDesc" xml:space="preserve">
+    <value>إرسال الصور بجودة عالية تلقائيًا. يمكنك تغيير الجودة لكل صورة على حدة.</value>
+  </data>
+  <data name="Notifications" xml:space="preserve">
+    <value>الإشعارات</value>
+  </data>
+  <data name="Desktop Notifications" xml:space="preserve">
+    <value>إشعارات سطح المكتب</value>
+  </data>
+  <data name="DesktopNotificationsDesc" xml:space="preserve">
+    <value>استلام إشعار عند وصول رسالة جديدة</value>
+  </data>
+  <data name="Linked Devices" xml:space="preserve">
+    <value>الأجهزة المرتبطة</value>
+  </data>
+  <data name="Loading devices..." xml:space="preserve">
+    <value>جارٍ تحميل الأجهزة...</value>
+  </data>
+  <data name="No active devices found." xml:space="preserve">
+    <value>لم يتم العثور على أجهزة نشطة.</value>
+  </data>
+  <data name="(this device)" xml:space="preserve">
+    <value>(هذا الجهاز)</value>
+  </data>
+  <data name="Linked {0}" xml:space="preserve">
+    <value>مرتبط منذ {0}</value>
+  </data>
+  <data name="DeviceLastSeen" xml:space="preserve">
+    <value>شوهد آخر مرة: {0}</value>
+  </data>
+  <data name="Unlink" xml:space="preserve">
+    <value>إلغاء الربط</value>
+  </data>
+  <data name="Unlinking..." xml:space="preserve">
+    <value>جارٍ إلغاء الربط...</value>
+  </data>
+  <data name="Link New Device" xml:space="preserve">
+    <value>ربط جهاز جديد</value>
+  </data>
+  <data name="QrCodeComingSoon" xml:space="preserve">
+    <value>سيتوفّر مسح رمز QR في تحديث قادم.</value>
+  </data>
+  <data name="Account Deletion" xml:space="preserve">
+    <value>حذف الحساب</value>
+  </data>
+  <data name="DeleteAccountDesc" xml:space="preserve">
+    <value>حذف حسابك وجميع بياناتك نهائيًا. ستحصل على مهلة 7 أيام لإلغاء الحذف عبر تسجيل الدخول مجددًا.</value>
+  </data>
+  <data name="Delete Account" xml:space="preserve">
+    <value>حذف الحساب</value>
+  </data>
+  <data name="DeleteConfirmDesc" xml:space="preserve">
+    <value>هل أنت متأكّد؟ سيبدأ العدّ التنازلي لحذف الحساب خلال 7 أيام. ستُزال جميع أجهزتك ومفاتيحك ورسائلك نهائيًا.</value>
+  </data>
+  <data name="Yes, Delete My Account" xml:space="preserve">
+    <value>نعم، احذف حسابي</value>
+  </data>
+  <data name="Deleting..." xml:space="preserve">
+    <value>جارٍ الحذف...</value>
+  </data>
+  <data name="DeletionScheduledDesc" xml:space="preserve">
+    <value>تمّت جدولة حذف الحساب. سيتم إلغاء تنشيط حسابك نهائيًا في {0}.</value>
+  </data>
+  <data name="Log in again to cancel the deletion." xml:space="preserve">
+    <value>سجّل دخولك مجددًا لإلغاء الحذف.</value>
+  </data>
+  <data name="Theme saved." xml:space="preserve">
+    <value>تم حفظ السمة.</value>
+  </data>
+  <data name="Font size saved." xml:space="preserve">
+    <value>تم حفظ حجم الخط.</value>
+  </data>
+  <data name="Wallpaper saved." xml:space="preserve">
+    <value>تم حفظ الخلفية.</value>
+  </data>
+  <data name="Language saved." xml:space="preserve">
+    <value>تم حفظ اللغة.</value>
+  </data>
+  <data name="Key sharing disabled. Server backup deleted." xml:space="preserve">
+    <value>تم تعطيل مشاركة المفاتيح. حُذفت النسخة الاحتياطية من الخادم.</value>
+  </data>
+  <data name="Key sharing disabled." xml:space="preserve">
+    <value>تم تعطيل مشاركة المفاتيح.</value>
+  </data>
+  <data name="Key sharing enabled. Backup will be created on next login." xml:space="preserve">
+    <value>تم تفعيل مشاركة المفاتيح. ستُنشأ نسخة احتياطية عند تسجيل الدخول التالي.</value>
+  </data>
+  <data name="Account deletion scheduled. Log in again within 7 days to cancel." xml:space="preserve">
+    <value>تمّت جدولة حذف الحساب. سجّل دخولك خلال 7 أيام للإلغاء.</value>
+  </data>
+  <data name="FailedToLoadSettings" xml:space="preserve">
+    <value>فشل تحميل الإعدادات: {0}</value>
+  </data>
+  <data name="FailedToSave" xml:space="preserve">
+    <value>فشل الحفظ: {0}</value>
+  </data>
+  <data name="Device unlinked successfully." xml:space="preserve">
+    <value>تم إلغاء ربط الجهاز بنجاح.</value>
+  </data>
+  <data name="Failed to unlink device." xml:space="preserve">
+    <value>فشل إلغاء ربط الجهاز.</value>
+  </data>
+  <data name="ErrorUnlinkingDevice" xml:space="preserve">
+    <value>خطأ في إلغاء ربط الجهاز: {0}</value>
+  </data>
+  <data name="Failed to initiate account deletion." xml:space="preserve">
+    <value>فشل بدء عملية حذف الحساب.</value>
+  </data>
+  <data name="ErrorDeletingAccount" xml:space="preserve">
+    <value>خطأ في حذف الحساب: {0}</value>
+  </data>
+
+  <!-- ==================== New Conversation ==================== -->
+  <data name="NewConversationTitle" xml:space="preserve">
+    <value>محادثة جديدة</value>
+  </data>
+  <data name="Search by name or @username..." xml:space="preserve">
+    <value>ابحث بالاسم أو @اسم المستخدم...</value>
+  </data>
+  <data name="Loading..." xml:space="preserve">
+    <value>جارٍ التحميل...</value>
+  </data>
+  <data name="Searching..." xml:space="preserve">
+    <value>جارٍ البحث...</value>
+  </data>
+  <data name="{0} device(s)" xml:space="preserve">
+    <value>{0} جهاز</value>
+  </data>
+  <data name="Message" xml:space="preserve">
+    <value>رسالة</value>
+  </data>
+  <data name="Creating..." xml:space="preserve">
+    <value>جارٍ الإنشاء...</value>
+  </data>
+  <data name="No users found." xml:space="preserve">
+    <value>لم يتم العثور على مستخدمين.</value>
+  </data>
+  <data name="Failed to create conversation." xml:space="preserve">
+    <value>فشل إنشاء المحادثة.</value>
+  </data>
+  <data name="SearchFailed" xml:space="preserve">
+    <value>فشل البحث: {0}</value>
+  </data>
+
+  <!-- ==================== Security Info ==================== -->
+  <data name="Security Verification" xml:space="preserve">
+    <value>التحقّق الأمني</value>
+  </data>
+  <data name="Computing safety number..." xml:space="preserve">
+    <value>جارٍ حساب رقم الأمان...</value>
+  </data>
+  <data name="Safety Number" xml:space="preserve">
+    <value>رقم الأمان</value>
+  </data>
+  <data name="Copied!" xml:space="preserve">
+    <value>تم النسخ!</value>
+  </data>
+  <data name="Verified" xml:space="preserve">
+    <value>تم التحقّق</value>
+  </data>
+  <data name="Not Verified" xml:space="preserve">
+    <value>لم يتم التحقّق</value>
+  </data>
+  <data name="Mark as Verified" xml:space="preserve">
+    <value>تعيين كمُتحقَّق منه</value>
+  </data>
+  <data name="Mark as Unverified" xml:space="preserve">
+    <value>تعيين كغير مُتحقَّق منه</value>
+  </data>
+  <data name="SecurityInfoDesc" xml:space="preserve">
+    <value>قارن رقم الأمان هذا مع جهة اتّصالك. إذا تطابقت الأرقام فاتّصالك آمن. يمكنك المقارنة شخصيًا أو عبر قناة موثوقة كمكالمة هاتفية.</value>
+  </data>
+
+  <!-- ==================== Common ==================== -->
+  <data name="Back to conversations" xml:space="preserve">
+    <value>العودة إلى المحادثات</value>
+  </data>
+  <data name="Error: {0}" xml:space="preserve">
+    <value>خطأ: {0}</value>
+  </data>
+
+  <data name="BackupLastUpdated" xml:space="preserve">
+    <value>تم نسخ المفاتيح احتياطياً: {0}</value>
+  </data>
+  <data name="No backup found" xml:space="preserve">
+    <value>لا توجد نسخة احتياطية</value>
+  </data>
+  <data name="Backup Now" xml:space="preserve">
+    <value>نسخ احتياطي الآن</value>
+  </data>
+  <data name="Enter your password" xml:space="preserve">
+    <value>أدخل كلمة المرور</value>
+  </data>
+  <data name="Confirm" xml:space="preserve">
+    <value>تأكيد</value>
+  </data>
+  <data name="Key backup uploaded successfully." xml:space="preserve">
+    <value>تم رفع النسخة الاحتياطية للمفاتيح بنجاح.</value>
+  </data>
+  <data name="BackupFailed" xml:space="preserve">
+    <value>فشل النسخ الاحتياطي: {0}</value>
+  </data>
+  <data name="Key backup failed. You can retry from Settings." xml:space="preserve">
+    <value>فشل النسخ الاحتياطي للمفاتيح. يمكنك المحاولة من الإعدادات.</value>
+  </data>
+
+  <!-- ==================== Offline / Connectivity ==================== -->
+  <data name="Offline - messages will be sent when connected" xml:space="preserve">
+    <value>غير متّصل - سيتم إرسال الرسائل عند الاتّصال</value>
+  </data>
+  <data name="Retry" xml:space="preserve">
+    <value>إعادة المحاولة</value>
+  </data>
+  <data name="Load earlier messages" xml:space="preserve">
+    <value>تحميل الرسائل السابقة</value>
+  </data>
+  <data name="Registering device..." xml:space="preserve">
+    <value>جارٍ تسجيل الجهاز...</value>
+  </data>
+
+  <!-- ==================== Emoji Picker ==================== -->
+  <data name="Search emoji..." xml:space="preserve">
+    <value>ابحث عن إيموجي...</value>
+  </data>
+  <data name="No matches" xml:space="preserve">
+    <value>لا توجد نتائج</value>
+  </data>
+  <data name="Recently Used" xml:space="preserve">
+    <value>المستخدمة مؤخرًا</value>
+  </data>
+
+  <!-- ==================== Disappearing Timer ==================== -->
+  <data name="Disappearing Messages" xml:space="preserve">
+    <value>الرسائل المختفية</value>
+  </data>
+  <data name="Off" xml:space="preserve">
+    <value>إيقاف</value>
+  </data>
+  <data name="5 minutes" xml:space="preserve">
+    <value>5 دقائق</value>
+  </data>
+  <data name="1 hour" xml:space="preserve">
+    <value>ساعة واحدة</value>
+  </data>
+  <data name="24 hours" xml:space="preserve">
+    <value>24 ساعة</value>
+  </data>
+  <data name="7 days" xml:space="preserve">
+    <value>7 أيام</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>حفظ</value>
+  </data>
+  <data name="Open" xml:space="preserve">
+    <value>فتح</value>
+  </data>
+  <data name="Save as..." xml:space="preserve">
+    <value>حفظ باسم...</value>
+  </data>
+  <data name="Saving..." xml:space="preserve">
+    <value>جارٍ الحفظ...</value>
+  </data>
+  <data name="Disappearing timer set." xml:space="preserve">
+    <value>تم ضبط مؤقّت الاختفاء.</value>
+  </data>
+  <data name="Disappearing messages disabled." xml:space="preserve">
+    <value>تم تعطيل الرسائل المختفية.</value>
+  </data>
+  <data name="Failed to update timer." xml:space="preserve">
+    <value>فشل تحديث المؤقّت.</value>
+  </data>
+  <data name="Wait {0} seconds before sending more messages" xml:space="preserve">
+    <value>انتظر {0} ثانية قبل إرسال المزيد من الرسائل</value>
+  </data>
+
+</root>

@@ -1,0 +1,552 @@
+@page "/login"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using System.Globalization
+@using System.Text
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject LocalStorageService Storage
+@inject KeyGenerationService KeyGenService
+@inject IJSRuntime Js
+@inject ThemeService Theme
+@inject PreferencesService Preferences
+@inject KeyBackupService KeyBackup
+@inject IStringLocalizer<SharedResource> Loc
+
+<div class="auth-page-container fade-in">
+    <div class="auth-header">
+        <a href="/" class="brand-link">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                <path d="M8 10h8M8 14h4" />
+            </svg>
+            <span>ToledoVault</span>
+        </a>
+    </div>
+
+    <div class="auth-page">
+        <div class="auth-title-area">
+            <h2>@Loc["Welcome Back"]</h2>
+            <p>@Loc["Sign in to continue your secure conversations"]</p>
+        </div>
+
+        @if (_isAutoLogging)
+        {
+            <div class="card auth-card" style="text-align:center; padding:48px 28px;">
+                <span class="spinner" style="width:36px;height:36px;margin:0 auto 16px;"></span>
+                <p style="color:var(--text-secondary);margin:0;">@Loc["Signing in..."]</p>
+            </div>
+        }
+        else
+        {
+        <div class="card auth-card">
+            <div class="auth-status-area" style="min-height:48px;">
+                <div class="alert alert-error @(string.IsNullOrEmpty(_errorMessage) ? "alert-hidden" : "")" role="alert">
+                    @(_errorMessage ?? "\u00A0")
+                </div>
+                <div class="alert alert-info @(string.IsNullOrEmpty(_statusMessage) ? "alert-hidden" : "")" role="status">
+                    @(_statusMessage ?? "\u00A0")
+                </div>
+            </div>
+
+            <form @onsubmit="HandleLogin">
+                <div class="form-group floating-group">
+                    <input id="username" @bind="_username" class="floating-input" placeholder=" "
+                           autocomplete="username" required aria-required="true" />
+                    <label for="username" class="floating-label">@Loc["Username"]</label>
+                </div>
+                <div class="form-group floating-group">
+                    <input id="password" type="password" @bind="_password" class="floating-input" placeholder=" "
+                           autocomplete="current-password" required aria-required="true" />
+                    <label for="password" class="floating-label">@Loc["Password"]</label>
+                </div>
+                <label class="remember-me-row">
+                    <input type="checkbox" @bind="_rememberMe" class="remember-me-checkbox" />
+                    <span>@Loc["Remember me"]</span>
+                </label>
+                <button type="submit" class="btn-primary btn-full auth-btn" disabled="@_isLoading"
+                        aria-busy="@_isLoading">
+                    @if (_isLoading)
+                    {
+                        <span class="spinner spinner-sm"></span>
+                        <text> @Loc["Signing in..."]</text>
+                    }
+                    else
+                    {
+                        <text>@Loc["Sign In"]</text>
+                    }
+                </button>
+            </form>
+        </div>
+        }
+
+        <p class="auth-footer">@Loc["Don't have an account?"] <a href="/register" class="auth-link">@Loc["Create one"]</a></p>
+        <div class="app-version-footer">Toledo Vault v@(AppVersion.Current)</div>
+    </div>
+</div>
+
+<style>
+    .auth-page-container {
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-primary);
+        background-image: radial-gradient(circle at 50% 0%, var(--accent-light, rgba(56, 189, 248, 0.05)) 0%, transparent 60%);
+        color: var(--text-primary);
+    }
+
+    .auth-header {
+        padding: 24px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .brand-link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        text-decoration: none;
+        letter-spacing: -0.5px;
+    }
+
+    .brand-link svg {
+        color: var(--accent);
+    }
+
+    .auth-page {
+        max-width: 440px;
+        margin: 4vh auto 40px;
+        padding: 0 20px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .auth-title-area {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+
+    .auth-title-area h2 {
+        font-size: 2rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+        color: var(--text-primary);
+        letter-spacing: -0.5px;
+    }
+
+    .auth-title-area p {
+        color: var(--text-secondary);
+        font-size: 1.05rem;
+    }
+
+    .auth-card {
+        padding: 32px 28px;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-md);
+        background: var(--card-bg);
+        margin-bottom: 24px;
+    }
+
+    .floating-group {
+        position: relative;
+        margin-bottom: 20px;
+    }
+
+    .floating-input {
+        width: 100%;
+        padding: 18px 16px 8px;
+        font-size: 1rem;
+        border: 2px solid var(--input-border);
+        border-radius: 12px;
+        background: var(--input-bg);
+        color: var(--text-primary);
+        transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+    }
+
+    .floating-input:focus {
+        border-color: var(--accent);
+        background: var(--bg-secondary);
+        outline: none;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+    }
+
+    .floating-label {
+        position: absolute;
+        inset-inline-start: 16px;
+        top: 14px;
+        font-size: 1rem;
+        color: var(--text-secondary);
+        transition: all 0.2s ease-out;
+        pointer-events: none;
+        margin: 0;
+        transform-origin: left top;
+    }
+
+    :global([dir="rtl"]) .floating-label {
+        transform-origin: right top;
+    }
+
+    .floating-input:focus ~ .floating-label,
+    .floating-input:not(:placeholder-shown) ~ .floating-label {
+        transform: translateY(-8px) scale(0.8);
+        color: var(--accent);
+        font-weight: 600;
+    }
+
+    .floating-input {
+        text-align: start;
+    }
+
+    .auth-btn {
+        margin-top: 12px;
+        padding: 14px;
+        font-size: 1rem;
+        font-weight: 600;
+        border-radius: 12px;
+        border: none;
+        background: var(--accent);
+        color: var(--accent-text);
+        transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent);
+    }
+
+    .auth-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        background: var(--accent-hover);
+        box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 40%, transparent);
+    }
+
+    .auth-footer {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+    }
+
+    .auth-link {
+        color: var(--accent);
+        font-weight: 600;
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+
+    .auth-link:hover {
+        color: var(--accent-hover);
+        text-decoration: underline;
+    }
+
+    .remember-me-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        font-size: 0.92rem;
+        color: var(--text-secondary);
+        margin-bottom: 4px;
+        user-select: none;
+    }
+
+    .remember-me-checkbox {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--accent);
+        cursor: pointer;
+        border-radius: 4px;
+        flex-shrink: 0;
+    }
+</style>
+
+@code {
+    private string _username = "";
+    private string _password = "";
+    private string? _errorMessage;
+    private string? _statusMessage;
+    private string? _backupWarning;
+    private bool _isLoading;
+    private bool _rememberMe = true;
+    private bool _isAutoLogging;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = new Uri(Navigation.Uri);
+        if (uri.Query.Contains("logout", StringComparison.OrdinalIgnoreCase))
+        {
+            // Clear auth and crypto data but preserve UI preferences (theme, fontSize)
+            await Js.InvokeVoidAsync("toledoStorage.clearAuthData");
+            Http.DefaultRequestHeaders.Authorization = null;
+            return;
+        }
+
+        // Auto-login: if we have stored tokens, try silent refresh and navigate to chat
+        await TryAutoLoginAsync();
+    }
+
+    private async Task TryAutoLoginAsync()
+    {
+        try
+        {
+            var refreshTokenBytes = await Storage.GetAsync("auth.refreshToken");
+            var accessTokenBytes = await Storage.GetAsync("auth.token");
+            if (refreshTokenBytes is null || accessTokenBytes is null)
+                return;
+
+            _isAutoLogging = true;
+            StateHasChanged();
+
+            var accessToken = Encoding.UTF8.GetString(accessTokenBytes);
+            var refreshToken = Encoding.UTF8.GetString(refreshTokenBytes);
+
+            // Include device ID for device-bound token validation
+            long? deviceId = null;
+            var deviceIdBytes = await Storage.GetAsync("local.deviceId");
+            if (deviceIdBytes is not null && long.TryParse(Encoding.UTF8.GetString(deviceIdBytes), out var parsed))
+                deviceId = parsed;
+
+            // Try to refresh the token silently
+            var refreshRequest = new RefreshTokenRequest(accessToken, refreshToken, deviceId);
+            var response = await Http.PostAsJsonAsync("/api/auth/refresh", refreshRequest);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<RefreshTokenResponse>();
+                if (result is not null)
+                {
+                    // Store new tokens
+                    await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(result.Token));
+                    await Storage.StoreAsync("auth.refreshToken", Encoding.UTF8.GetBytes(result.RefreshToken));
+                    Http.DefaultRequestHeaders.Authorization =
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", result.Token);
+
+                    Navigation.NavigateTo("/chat");
+                    return;
+                }
+            }
+
+            // Refresh failed — clear stale tokens and show login form
+            await Js.InvokeVoidAsync("toledoStorage.clearAuthData");
+        }
+        catch
+        {
+            // Auto-login failed — fall through to show login form
+        }
+        finally
+        {
+            _isAutoLogging = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        _statusMessage = null;
+
+        try
+        {
+            // 1. Set storage mode based on remember me choice
+            await Storage.SetStorageModeAsync(_rememberMe);
+
+            // 2. Authenticate
+            var request = new LoginRequest(_username, _password, _rememberMe);
+            var response = await Http.PostAsJsonAsync("/api/auth/login", request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                {
+                    _errorMessage = Loc["Too many login attempts. Please wait a moment and try again."];
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    var errorBody = await response.Content.ReadAsStringAsync();
+                    _errorMessage = errorBody switch
+                    {
+                        _ when errorBody.Contains("USER_NOT_FOUND") =>
+                            Loc["No account found with this username. Please check and try again."],
+                        _ when errorBody.Contains("ACCOUNT_DEACTIVATED") =>
+                            Loc["This account has been deactivated."],
+                        _ when errorBody.Contains("WRONG_PASSWORD") =>
+                            Loc["Incorrect password. Please try again."],
+                        _ => Loc["The username or password you entered is incorrect. Please try again."]
+                    };
+                }
+                else
+                {
+                    _errorMessage = Loc["Unable to connect. Please check your internet connection and try again."];
+                }
+                return;
+            }
+
+            var authResponse = await response.Content.ReadFromJsonAsync<AuthResponse>();
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authResponse!.Token);
+
+            // 3. Store auth tokens
+            await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse.Token));
+            if (authResponse.RefreshToken is not null)
+                await Storage.StoreAsync("auth.refreshToken", Encoding.UTF8.GetBytes(authResponse.RefreshToken));
+
+            // 3. Sync user preferences from server
+            try
+            {
+                var prefs = await Preferences.GetPreferencesAsync();
+                await Theme.SetThemeAsync(prefs.Theme);
+                await Theme.SetFontSizeAsync(int.TryParse(prefs.FontSize, out var fsPx) ? fsPx : 15);
+                // Sync language from server — if different, apply and reload
+                var localLang = await Js.InvokeAsync<string?>("localStorage.getItem", "app.culture") ?? "en";
+                if (!string.Equals(localLang, prefs.Language, StringComparison.OrdinalIgnoreCase))
+                {
+                    await Js.InvokeVoidAsync("localStorage.setItem", "app.culture", prefs.Language);
+                }
+            }
+            catch
+            {
+                // Non-critical: preferences will use local defaults
+            }
+
+            // 4. Check if we already have a deviceId stored (returning to same browser)
+            var existingDeviceId = await Storage.GetAsync("local.deviceId");
+            if (existingDeviceId is not null)
+            {
+                // Validate the stored device still exists on the server
+                var storedId = Encoding.UTF8.GetString(existingDeviceId);
+                var devicesResponse = await Http.GetAsync("/api/devices");
+                if (devicesResponse.IsSuccessStatusCode)
+                {
+                    var devices = await devicesResponse.Content.ReadFromJsonAsync<List<DeviceInfoResponse>>();
+                    var stillValid = devices?.Any(d =>
+                        d.DeviceId.ToString(CultureInfo.InvariantCulture) == storedId) == true;
+
+                    if (stillValid)
+                    {
+                        Navigation.NavigateTo("/chat");
+                        return;
+                    }
+                }
+                else
+                {
+                    // Can't verify — assume valid to avoid blocking login
+                    Navigation.NavigateTo("/chat");
+                    return;
+                }
+
+                // Device no longer exists on server — clear stale data and re-register below
+                await Js.InvokeVoidAsync("toledoStorage.clearAuthData");
+                await Storage.StoreAsync("auth.token", Encoding.UTF8.GetBytes(authResponse.Token));
+                if (authResponse.RefreshToken is not null)
+                    await Storage.StoreAsync("auth.refreshToken", Encoding.UTF8.GetBytes(authResponse.RefreshToken));
+                Http.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authResponse.Token);
+            }
+
+            // 5. New device: check shared keys preference and try restore
+            _statusMessage = Loc["Setting up encryption keys..."];
+            StateHasChanged();
+
+            // Yield to let Blazor render the status message before CPU-intensive key generation
+            await Task.Delay(50);
+
+            DeviceRegistrationRequest deviceRequest;
+            var prefs2 = await Preferences.GetPreferencesAsync();
+
+            if (prefs2.SharedKeysEnabled)
+            {
+                // Try to restore keys from server backup
+                try
+                {
+                    var restored = await KeyBackup.TryRestoreBackupAsync(_password);
+                    if (restored is not null)
+                    {
+                        // Keys restored from backup — generate fresh pre-keys with shared identity
+                        _statusMessage = Loc["Restoring encryption keys..."];
+                        StateHasChanged();
+                        await Task.Delay(50);
+                        deviceRequest = await KeyGenService.RestoreKeysAndBuildRequest(restored, "Web Browser");
+                    }
+                    else
+                    {
+                        // No backup exists (first device) — generate new keys and upload backup
+                        _statusMessage = Loc["Generating encryption keys..."];
+                        StateHasChanged();
+                        await Task.Delay(50);
+                        deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+                    }
+                }
+                catch
+                {
+                    // Backup restore failed — fall back to fresh keys
+                    _statusMessage = Loc["Generating encryption keys..."];
+                    StateHasChanged();
+                    await Task.Delay(50);
+                    deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+                }
+            }
+            else
+            {
+                // Shared keys disabled — generate fresh keys (original behavior)
+                _statusMessage = Loc["Generating encryption keys..."];
+                StateHasChanged();
+                await Task.Delay(50);
+                deviceRequest = await KeyGenService.GenerateAndStoreKeys("Web Browser");
+            }
+
+            _statusMessage = Loc["Registering device..."];
+            StateHasChanged();
+
+            var deviceResponse = await Http.PostAsJsonAsync("/api/devices", deviceRequest);
+
+            if (!deviceResponse.IsSuccessStatusCode)
+            {
+                var errorBody = await deviceResponse.Content.ReadAsStringAsync();
+                _errorMessage = string.Format(Loc["DeviceRegistrationFailed"], errorBody);
+                return;
+            }
+
+            var deviceResult = await deviceResponse.Content.ReadFromJsonAsync<DeviceRegistrationResult>();
+            if (deviceResult is not null)
+            {
+                await Storage.StoreAsync("local.deviceId", Encoding.UTF8.GetBytes(deviceResult.DeviceId.ToString(CultureInfo.InvariantCulture)));
+            }
+
+            // 6. Upload backup if shared keys enabled and this is the first device (no backup existed)
+            if (prefs2.SharedKeysEnabled)
+            {
+                try
+                {
+                    await KeyBackup.UploadBackupAsync(_password);
+                }
+                catch
+                {
+                    _backupWarning = Loc["Key backup failed. You can retry from Settings."];
+                }
+            }
+
+            // 7. Navigate to chat (with optional warning)
+            if (_backupWarning is not null)
+            {
+                _statusMessage = _backupWarning;
+                StateHasChanged();
+                await Task.Delay(2500);
+            }
+
+            Navigation.NavigateTo("/chat");
+        }
+#pragma warning disable CS0168 // Variable is declared but never used
+        catch (Exception ex)
+#pragma warning restore CS0168 // Variable is declared but never used
+        {
+            // FR-007: Sanitize error messages - don't expose internal details
+            _errorMessage = Loc["Something went wrong. Please try again later."];
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private sealed record DeviceRegistrationResult(long DeviceId);
+}

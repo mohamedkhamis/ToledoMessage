@@ -1,4 +1,4 @@
-# ToledoMessage — Bug Tracker
+# ToledoVault — Bug Tracker
 
 > **Purpose:** Central bug tracking file for all features/components.
 > **Process:** See [Bug Workflow](#bug-workflow) at the bottom of this file.
@@ -15,18 +15,18 @@
 **Category:** Logic
 
 **Description:**
-The tasks.md specifies integration tests for media encryption round-trips (T016, T026, T032, T045, T046) in `tests/ToledoMessage.Integration.Tests/MediaEncryptionTests.cs`. These tests do not exist yet. The spec requires >90% code coverage on media send/receive/encrypt/decrypt paths (SC-005). Currently, only client-side `MediaPayloadTests` exist — no tests verify that `MediaPayload` survives the full `DoubleRatchet` encrypt/decrypt cycle.
+The tasks.md specifies integration tests for media encryption round-trips (T016, T026, T032, T045, T046) in `tests/ToledoVault.Integration.Tests/MediaEncryptionTests.cs`. These tests do not exist yet. The spec requires >90% code coverage on media send/receive/encrypt/decrypt paths (SC-005). Currently, only client-side `MediaPayloadTests` exist — no tests verify that `MediaPayload` survives the full `DoubleRatchet` encrypt/decrypt cycle.
 
 **Affected Files & Lines:**
 
 | File | Line | Current | Expected |
 |------|------|---------|----------|
-| `tests/ToledoMessage.Integration.Tests/MediaEncryptionTests.cs` | N/A | File does not exist | Should contain media encryption round-trip tests |
+| `tests/ToledoVault.Integration.Tests/MediaEncryptionTests.cs` | N/A | File does not exist | Should contain media encryption round-trip tests |
 
 **Impact:** No automated verification that encrypted media payloads can be successfully decrypted. A regression in the encryption pipeline or payload serialization would go undetected.
 
 **Fix Steps:**
-1. Create `tests/ToledoMessage.Integration.Tests/MediaEncryptionTests.cs`
+1. Create `tests/ToledoVault.Integration.Tests/MediaEncryptionTests.cs`
 2. Implement tests T016, T026, T032, T045, T046 as specified in tasks.md
 3. Use the existing `DoubleRatchet` session pair pattern from `DoubleRatchetTests.cs`
 
@@ -56,7 +56,7 @@ Added try/catch wrapper to all async void SignalR event handlers in Chat.razor (
 
 | File | Line | Current | Expected |
 |------|------|---------|----------|
-| `src/ToledoMessage.Client/Components/ConversationListSidebar.razor` | 311 | `Convert.FromBase64String(payload)` | Add `payload = payload.Replace('-', '+').Replace('_', '/');` before this line |
+| `src/ToledoVault.Client/Components/ConversationListSidebar.razor` | 311 | `Convert.FromBase64String(payload)` | Add `payload = payload.Replace('-', '+').Replace('_', '/');` before this line |
 
 **Impact:** Some users will see "?" as their display name in the sidebar instead of their actual name, depending on the JWT payload content.
 
@@ -84,7 +84,7 @@ Changed `ForwardToConversation` to async, pre-fetch blob bytes before navigation
 
 | File | Line | Current | Expected |
 |------|------|---------|----------|
-| `src/ToledoMessage/Controllers/BaseApiController.cs` | 21 | `return sub == null ? 0 : decimal.Parse(sub);` | Throw `UnauthorizedAccessException` if sub is null or unparseable |
+| `src/ToledoVault/Controllers/BaseApiController.cs` | 21 | `return sub == null ? 0 : decimal.Parse(sub);` | Throw `UnauthorizedAccessException` if sub is null or unparseable |
 
 **Impact:** If JWT is malformed or claims are stripped, API returns data for userId 0 instead of 401. Low real-world probability since [Authorize] validates the token, but violates defense-in-depth.
 
@@ -107,8 +107,8 @@ The `POST api/messages/read` endpoint and `ChatHub.AdvanceReadPointer` call `rel
 
 | File | Line | Current | Expected |
 |------|------|---------|----------|
-| `src/ToledoMessage/Controllers/MessagesController.cs` | 154-170 | No participant check | Add participant verification before calling AdvanceReadPointer |
-| `src/ToledoMessage/Hubs/ChatHub.cs` | 127-139 | No participant check | Add participant verification |
+| `src/ToledoVault/Controllers/MessagesController.cs` | 154-170 | No participant check | Add participant verification before calling AdvanceReadPointer |
+| `src/ToledoVault/Hubs/ChatHub.cs` | 127-139 | No participant check | Add participant verification |
 
 **Impact:** Data integrity issue. An attacker could create bogus read pointers for conversations they don't belong to.
 
@@ -137,7 +137,7 @@ When no read pointer exists (new conversation), `GetUnreadCount` fallback counts
 
 | File | Line | Current | Expected |
 |------|------|---------|----------|
-| `src/ToledoMessage/Services/MessageRelayService.cs` | 280-289 | `&& m.IsDelivered` filter | Remove `&& m.IsDelivered` — count all messages to user's devices |
+| `src/ToledoVault/Services/MessageRelayService.cs` | 280-289 | `&& m.IsDelivered` filter | Remove `&& m.IsDelivered` — count all messages to user's devices |
 
 **Impact:** Unread badge shows incorrect (lower) count for conversations that haven't been opened yet.
 
@@ -165,7 +165,7 @@ When `ConnectAsync` creates a new `HubConnection` (disposing the old one), `_reg
 
 | File | Line | Current | Expected |
 |------|------|---------|----------|
-| `src/ToledoMessage.Client/Services/SignalRService.cs` | 184-185 | Guard `if (_registeredDeviceId == deviceId) return;` | Reset `_registeredDeviceId = 0` in `ConnectAsync` after creating new connection |
+| `src/ToledoVault.Client/Services/SignalRService.cs` | 184-185 | Guard `if (_registeredDeviceId == deviceId) return;` | Reset `_registeredDeviceId = 0` in `ConnectAsync` after creating new connection |
 
 **Impact:** After connection rebuild (e.g., network change), device may not re-register on reconnect, causing messages to not be delivered until manual refresh.
 

@@ -29,32 +29,32 @@
 After investigation, the confirmed issues are:
 
 ### Critical: storage.js storeMessages early-return bug
-- File: `src/ToledoMessage.Client/wwwroot/storage.js`
+- File: `src/ToledoVault.Client/wwwroot/storage.js`
 - The `storeMessages` function has a logic error where the `db` variable is referenced before `this.open()` is called in the early-return path
 - This can cause IndexedDB persistence failures
 
 ### High: ClearChat silent failure
-- File: `src/ToledoMessage.Client/Pages/Chat.razor`
+- File: `src/ToledoVault.Client/Pages/Chat.razor`
 - `ClearChat()` catches and ignores all errors from both IndexedDB and SignalR clear operations
 - User never knows if clear failed
 - Also `_messageReactions.Clear()` removes ALL reactions instead of only reactions for deleted messages
 
 ### High: Reply context not cleared on message delete
-- File: `src/ToledoMessage.Client/Pages/Chat.razor`
+- File: `src/ToledoVault.Client/Pages/Chat.razor`
 - When a message is deleted via context menu (`DeleteForMe`), the reply preview is not checked/cleared if it references the deleted message
 
 ### Medium: Audio playback uses eval()
-- File: `src/ToledoMessage.Client/Components/MessageBubble.razor`
+- File: `src/ToledoVault.Client/Components/MessageBubble.razor`
 - Audio play/pause and time tracking use `Js.InvokeVoidAsync("eval", ...)` which is fragile
 - Should use proper JS helper functions in `media-helpers.js`
 
 ### Medium: MediaBytes memory not released
-- File: `src/ToledoMessage.Client/Pages/Chat.razor`
+- File: `src/ToledoVault.Client/Pages/Chat.razor`
 - `DecryptEnvelopeToChatMessage` stores `MediaBytes = bytes` in the ChatMessage object
 - These bytes stay in memory even after the blob URL is created
 
 ### Medium: Forward media fails silently
-- File: `src/ToledoMessage.Client/Pages/Chat.razor`
+- File: `src/ToledoVault.Client/Pages/Chat.razor`
 - `SendForwardedMessage` silently falls back to text-only if blob URL fetch fails
 - User is not notified that media wasn't forwarded
 
